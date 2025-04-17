@@ -28,5 +28,5 @@ development version directly from GitHub:
 ```r
 # Install devtools package if necessary
 # install.packages("devtools")
-devtools::install_github("your-github-username/pdm")
+devtools::install_github("michelcias/pdm")
 ```

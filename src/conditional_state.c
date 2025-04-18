@@ -1,5 +1,6 @@
 #include <R.h>
 #include <Rmath.h>
+#include "utils.h"
 #include "conditional_state.h"
 
 /**
@@ -51,7 +52,7 @@ void generate_theta_1_localtrend(double *data,
     mean_theta_1[j] = data[j] * prec_y;
   }
   // The first element also includes the initial condition component
-  mean_theta_1[0] += theta_01_post[iter] * prec_1; // Uses theta_01 from current iter
+  mean_theta_1[0] += theta_01_post[iter - 1] * prec_1; // Uses theta_01 from previous iter
 
   // Generate theta_1 for current iteration 'iter' using the auxiliary function
   // The precision matrix Phi for theta_1 | ... is tridiagonal:
@@ -121,7 +122,7 @@ void generate_theta_1(double *data,
 
   // Calculate first element (j=0)
   mean_theta_1[0] = data[0] * prec_y
-  + (theta_01_post[iter] + theta_02_post[iter] - theta_2_post[iter_n]) * prec_1;
+  + (theta_01_post[iter - 1] + theta_02_post[iter] - theta_2_post[iter_n]) * prec_1;
   // Uses theta_01, theta_02 from current iter; theta_2 from current iter (iter_n offset)
 
   // Calculate middle elements (j=1 to n-2)
@@ -205,7 +206,7 @@ void generate_theta_k(double *theta_km1_post,
 
   // Calculate first element (j = 0)
   mean_theta_k[0] = (theta_km1_post[iterm1_n + 1] - theta_km1_post[iterm1_n]) * prec_km1               // Uses theta_{k-1} from iter-1
-  + (theta_0k_post[iter] + theta_0kp1_post[iter] - theta_kp1_post[iter_n]) * prec_k; // Uses thetas_0 from iter; theta_{k+1} from iter
+  + (theta_0k_post[iter - 1] + theta_0kp1_post[iter] - theta_kp1_post[iter_n]) * prec_k; // Uses theta_0k from iter - 1 and theta_0(k+1) from iter; theta_{k+1} from iter
 
   // Calculate middle elements (j=1 to n-2)
   for (int j = 1; j < n - 1; j++) {
@@ -286,7 +287,7 @@ void generate_theta_p(double *theta_pm1_post,
   mean_theta_p[n - 1] = 0;
 
   // Add the initial condition component for the first element (j=0)
-  mean_theta_p[0] += theta_0p_post[iter] * prec_p; // Uses theta_0p from current iter
+  mean_theta_p[0] += theta_0p_post[iter - 1] * prec_p; // Uses theta_0p from iter-1
 
   // Generate theta_p for current iteration 'iter' using the auxiliary function
   // The precision matrix Phi for theta_p | ... is tridiagonal:

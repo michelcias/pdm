@@ -45,11 +45,11 @@ void generate_precision_theta_k(double *theta_0k_post,
                                 int iter) {
 
   int j;
-  int iter_n = iter * n; // Pre-calculate offset for current iteration's data
+  int iter_n = iter * n;     // Pre-calculate offset for current iteration
 
   // Compute sum of squared innovations based on the assumed state evolution model for theta_k
   // Innovation for element j=0 (first element): theta_k[0] - theta_0k - theta_0(k+1)
-  double theta_centered = theta_k_post[iter_n] - theta_0k_post[iter] - theta_0kp1_post[iter];
+  double theta_centered = theta_k_post[iter_n] - theta_0k_post[iter - 1] - theta_0kp1_post[iter];
   double ss_theta = theta_centered * theta_centered;
 
   for (j = 1; j < n; j++) {
@@ -112,7 +112,7 @@ void generate_precision_theta_p(double *theta_0p_post,
 
   // Compute sum of squared innovations based on the assumed state evolution model for theta_p (e.g., random walk)
   // Innovation for element j=0 (first element): theta_p[0] - theta_0p
-  double theta_centered = theta_p_post[iter_n] - theta_0p_post[iter];
+  double theta_centered = theta_p_post[iter_n] - theta_0p_post[iter - 1];
   double ss_theta = theta_centered * theta_centered;
 
   for (j = 1; j < n; j++) {

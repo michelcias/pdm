@@ -14,6 +14,42 @@
  * 1. Computes the variance of the conditional posterior distribution by combining
  *    the prior precision and the precision associated with theta_1.
  * 2. Computes the mean of the conditional posterior distribution as a precision-weighted
+ *    average of the prior mean and information from theta_1.
+ * 3. Samples a new value for theta_01 from the resulting Normal distribution using rnorm().
+ *
+ * @param theta_01_post       Output array storing posterior samples of theta_01. The value
+ *                            at index `iter` will be updated.
+ * @param theta_1_post        Array storing posterior samples of theta_1 (vectorized B x n matrix).
+ *                            Uses the first element (index 0) of the vector from the *previous*
+ *                            iteration (`iter - 1`).
+ * @param prec_theta_1_post   Array storing posterior samples of the precision related to theta_1.
+ *                            Uses value at `iter`.
+ * @param mean_theta_01       Prior mean for theta_01.
+ * @param prec_theta_01       Prior precision (inverse variance) for theta_01.
+ * @param n                   Sample size, representing the number of data points.
+ * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
+ */
+void generate_theta_01_localtrend(double *theta_01_post,
+                                  double *theta_1_post,
+                                  double *prec_theta_1_post,
+                                  double mean_theta_01,
+                                  double prec_theta_01,
+                                  int n,
+                                  int iter);
+
+
+/**
+ * Generates a sample from the full conditional posterior distribution of theta_01
+ * within a Gibbs sampler iteration.
+ *
+ * This function updates the value of theta_01 for the current MCMC iteration (`iter`)
+ * based on a Normal prior and likelihood information derived from other parameters.
+ * The conditional posterior distribution for theta_01 is assumed to be Normal.
+ *
+ * Calculation steps:
+ * 1. Computes the variance of the conditional posterior distribution by combining
+ *    the prior precision and the precision associated with theta_1.
+ * 2. Computes the mean of the conditional posterior distribution as a precision-weighted
  *    average of the prior mean and information from theta_1 and theta_02.
  * 3. Samples a new value for theta_01 from the resulting Normal distribution using rnorm().
  *
@@ -38,6 +74,7 @@ void generate_theta_01(double *theta_01_post,
                        double prec_theta_01,
                        int n,
                        int iter);
+
 
 /**
  * Generates a sample from the full conditional posterior distribution of theta_0k
@@ -84,6 +121,7 @@ void generate_theta_0k(double *theta_0km1_post,
                        double prec_theta_0k,
                        int n,
                        int iter);
+
 
 /**
  * Generates a sample from the full conditional posterior distribution of theta_0p

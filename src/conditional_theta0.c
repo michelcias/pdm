@@ -14,6 +14,57 @@
  * 1. Computes the variance of the conditional posterior distribution by combining
  *    the prior precision and the precision associated with theta_1.
  * 2. Computes the mean of the conditional posterior distribution as a precision-weighted
+ *    average of the prior mean and information from theta_1.
+ * 3. Samples a new value for theta_01 from the resulting Normal distribution using rnorm().
+ *
+ * @param theta_01_post       Output array storing posterior samples of theta_01. The value
+ *                            at index `iter` will be updated.
+ * @param theta_1_post        Array storing posterior samples of theta_1 (vectorized B x n matrix).
+ *                            Uses the first element (index 0) of the vector from the *previous*
+ *                            iteration (`iter - 1`).
+ * @param prec_theta_1_post   Array storing posterior samples of the precision related to theta_1.
+ *                            Uses value at `iter`.
+ * @param mean_theta_01       Prior mean for theta_01.
+ * @param prec_theta_01       Prior precision (inverse variance) for theta_01.
+ * @param n                   Sample size, representing the number of data points.
+ * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
+ */
+void generate_theta_01_localtrend(
+    double *theta_01_post,
+    double *theta_1_post,
+    double *prec_theta_1_post,
+    double mean_theta_01,
+    double prec_theta_01,
+    int n,
+    int iter
+) {
+  // Compute the posterior variance of theta_01
+  double var_theta_01_post = 1.0 / (prec_theta_01 + prec_theta_1_post[iter]);
+
+  // Compute the posterior mean of theta_01
+  // Note: Accessing theta_1 from the previous iteration (iter - 1)
+  double mean_theta_01_post = (mean_theta_01 * prec_theta_01 +
+                               theta_1_post[iter * n] *
+                               prec_theta_1_post[iter]) * var_theta_01_post;
+
+  // Sample theta_01 from its conditional posterior Normal distribution
+  theta_01_post[iter] = rnorm(mean_theta_01_post, sqrt(var_theta_01_post));
+}
+
+//----------------------------------------------------------------------
+
+/**
+ * Generates a sample from the full conditional posterior distribution of theta_01
+ * within a Gibbs sampler iteration.
+ *
+ * This function updates the value of theta_01 for the current MCMC iteration (`iter`)
+ * based on a Normal prior and likelihood information derived from other parameters.
+ * The conditional posterior distribution for theta_01 is assumed to be Normal.
+ *
+ * Calculation steps:
+ * 1. Computes the variance of the conditional posterior distribution by combining
+ *    the prior precision and the precision associated with theta_1.
+ * 2. Computes the mean of the conditional posterior distribution as a precision-weighted
  *    average of the prior mean and information from theta_1 and theta_02.
  * 3. Samples a new value for theta_01 from the resulting Normal distribution using rnorm().
  *
@@ -46,7 +97,7 @@ void generate_theta_01(
   // Compute the posterior mean of theta_01
   // Note: Accessing theta_1 from the previous iteration (iter - 1)
   double mean_theta_01_post = (mean_theta_01 * prec_theta_01 +
-                               (theta_1_post[(iter - 1) * n] - theta_02_post[iter]) *
+                               (theta_1_post[iter * n] - theta_02_post[iter]) *
                                prec_theta_1_post[iter]) * var_theta_01_post;
 
   // Sample theta_01 from its conditional posterior Normal distribution
@@ -113,7 +164,7 @@ void generate_theta_0k(
   double mean_theta_0k_post = (mean_theta_0k * prec_theta_0k +
   (theta_km1_post[(iter - 1) * n] - theta_0km1_post[iter - 1]) * // Info from k-1 state (iter - 1)
   prec_theta_km1_post[iter - 1] +
-  (theta_k_post[(iter - 1) * n] - theta_0kp1_post[iter]) *       // Info from k state (iter - 1 for theta_k, iter for theta_0(k+1))
+  (theta_k_post[iter * n] - theta_0kp1_post[iter]) *       // Info from k state (iter - 1 for theta_k, iter for theta_0(k+1))
   prec_theta_k_post[iter]) * var_theta_0k_post;
 
   // Sample theta_0k from its conditional posterior Normal distribution
@@ -179,7 +230,7 @@ void generate_theta_0p(
   double mean_theta_0p_post = (mean_theta_0p * prec_theta_0p +
   (theta_pm1_post[(iter - 1) * n] - theta_0pm1_post[iter - 1]) * // Info from p-1 state (iter - 1)
   prec_theta_pm1_post[iter - 1] +
-  (theta_p_post[(iter - 1) * n]) *                               // Info from p state (iter - 1)
+  (theta_p_post[iter * n]) *                               // Info from p state (iter - 1)
   prec_theta_p_post[iter]) *
   var_theta_0p_post;
 

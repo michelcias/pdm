@@ -13,3 +13,6 @@ Description: Provides tools for estimating polynomial dynamic models, which are
   higher-orderstates as hyperparameters.
 NeedsCompilation: yes
 License: GPL (>= 2)
+Encoding: UTF-8
+RoxygenNote: 7.3.2
+LazyData: true

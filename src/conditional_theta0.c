@@ -42,7 +42,7 @@ void generate_theta_01_localtrend(
   double var_theta_01_post = 1.0 / (prec_theta_01 + prec_theta_1_post[iter]);
 
   // Compute the posterior mean of theta_01
-  // Note: Accessing theta_1 from the previous iteration (iter - 1)
+  // Note: Accessing theta_1 from the current iteration (iter)
   double mean_theta_01_post = (mean_theta_01 * prec_theta_01 +
                                theta_1_post[iter * n] *
                                prec_theta_1_post[iter]) * var_theta_01_post;

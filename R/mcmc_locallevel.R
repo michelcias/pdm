@@ -11,16 +11,18 @@
 #' Burn‐in and thinning are applied so that exactly \code{n_chain}
 #' posterior samples are returned.
 #'
-#' @param y Numeric vector of observations (length \eqn{n}).
+#' @param y Numeric vector of observations (length \eqn{n}). Must contain only finite values.
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
 #' @param thinning Integer \eqn{\geq 1}, thinning interval.
 #' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_theta01_mean Numeric, prior mean for the initial state \eqn{\theta_{01}}.
-#' @param prior_theta01_prec Numeric, prior precision (inverse variance) for \eqn{\theta_{01}}.
-#' @param prior_prec1_shape Numeric, shape parameter of the Gamma prior for the innovation precision \eqn{1/W_1}.
-#' @param prior_prec1_rate Numeric, rate parameter of the Gamma prior for \eqn{1/W_1}.
-#' @param prior_prec_y_shape Numeric, shape parameter of the Gamma prior for the data precision \eqn{1/V}.
-#' @param prior_prec_y_rate Numeric, rate parameter of the Gamma prior for \eqn{1/V}.
+#' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{01}}.
+#' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for the innovation precision \eqn{1/W_1}.
+#' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}.
+#' @param prior_prec_y_shape Numeric > 0, shape parameter of the Gamma prior for the data precision \eqn{1/V}.
+#' @param prior_prec_y_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.
+#' @param seed Optional integer used to set the random number generator seed.
+#'   Default is \code{NULL}, which does not set the seed.
 #'
 #' @return A \code{list} with components:
 #' \describe{
@@ -37,126 +39,270 @@
 #' ## Description
 #' # This example demonstrates how to:
 #' # 1. Simulate data from a local-level dynamic model
-#' # 2. Use \code{mcmc_locallevel} to estimate latent states
+#' # 2. Use `mcmc_locallevel` to estimate latent states
 #' # 3. Visualize posterior results
+#' # 4. Set a seed for reproducibility
 #'
-#' ## Simulation of Data
+#' ## Simulation of data
 #' n <- 1000  # Number of observations to simulate
 #'
 #' # True parameters for simulation:
-#' theta0_true <- 10  # Initial state \eqn{\theta_{01}}
-#' prec1_true <- 1    # Innovation precision \eqn{1/W_1}
-#' prec_y_true <- 5   # Observation precision \eqn{1/V}
+#' theta0_true <- 10  # Initial state (theta[01])
+#' prec1_true <- 1    # Innovation precision (1/W[1])
+#' prec_y_true <- 5   # Observation precision (1/V)
 #'
-#' set.seed(123)  # For reproducibility
+#' # Use a fixed seed for data simulation
+#' set.seed(123)
 #'
 #' # Generate noise terms:
-#' u <- rnorm(n, sd = sqrt(1/prec1_true))  # Evolution noise \eqn{u_t}
-#' e <- rnorm(n, sd = sqrt(1/prec_y_true)) # Observation noise \eqn{e_t}
+#' u <- rnorm(n, sd = sqrt(1/prec1_true))  # Evolution noise (u[t])
+#' e <- rnorm(n, sd = sqrt(1/prec_y_true)) # Observation noise (e[t])
 #'
 #' # Simulate latent states and observations:
-#' theta1_true <- cumsum(c(theta0_true, u))[-1]  # \eqn{\theta_{t1}} series
-#' y <- theta1_true + e                          # Observed data \eqn{y_t}
+#' theta1_true <- cumsum(c(theta0_true, u))[-1]  # theta[t1] series
+#' y <- theta1_true + e                          # Observed data (y[t])
 #'
 #' # Plot the simulated data
 #' \dontrun{
-#' plot.ts(y, main = "Simulated Data", ylab = expression(y[t]), xlab = "t")
+#' plot.ts(y, main = "Simulated data", ylab = expression(y[t]), xlab = "t")
 #' }
 #'
-#' ## Running the Gibbs Sampler
+#' ## Running the Gibbs sampler
 #'
-#' # Run the Gibbs sampler with specified priors
+#' # Run the Gibbs sampler with specified priors and a seed
 #' out <- mcmc_locallevel(
 #'   y,
 #'   burnin               = 1000,          # Number of burn-in iterations
 #'   thinning             = 10,            # Thinning interval
 #'   n_chain              = 1000,          # Number of posterior samples
-#'   prior_theta01_mean   = y[1],          # Prior mean for \eqn{\theta_{01}}
-#'   prior_theta01_prec   = 1/var(y),      # Prior precision for \eqn{\theta_{01}}
-#'   prior_prec1_shape    = 1e-2,          # Shape parameter for \eqn{1/W_1}
-#'   prior_prec1_rate     = 1e-2,          # Rate parameter for \eqn{1/W_1}
-#'   prior_prec_y_shape   = 1e-2,          # Shape parameter for \eqn{1/V}
-#'   prior_prec_y_rate    = 1e-2           # Rate parameter for \eqn{1/V}
+#'   prior_theta01_mean   = y[1],          # Prior mean for theta[01]
+#'   prior_theta01_prec   = 1/var(y),      # Prior precision for theta[01]
+#'   prior_prec1_shape    = 1e-2,          # Shape parameter for 1/W[1]
+#'   prior_prec1_rate     = 1e-2,          # Rate parameter for 1/W[1]
+#'   prior_prec_y_shape   = 1e-2,          # Shape parameter for 1/V
+#'   prior_prec_y_rate    = 1e-2,          # Rate parameter for 1/V
+#'   seed                 = 456            # Set seed for MCMC run
 #' )
 #'
-#' ## Posterior Analysis and Visualization
+#' ## Posterior analysis and visualization
 #'
-#' # Estimate the latent state (\eqn{\theta_1}) using the median of posterior samples
+#' # Point estimates shown below are based on the median of posterior samples
+#'
+#' # --- 1. Latent State (theta[t1]) ---
+#'
+#' # Visualize trajectories from the first few posterior samples for theta[t1]
+#' \dontrun{
+#'   # (Requires the 'graphics' package for matplot and 'grDevices' for rainbow)
+#'   num_traj_to_plot <- 20 # How many trajectories (rows of out$theta_1) to plot
+#'   matplot(
+#'     t(out$theta_1[1:num_traj_to_plot, ]), # Plot columns (time) vs rows (samples)
+#'     type = "l",
+#'     lty = 1,
+#'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.5), # Transparent colors
+#'     xlab = "t",
+#'     ylab = expression(theta[t1]),
+#'     main = "Sampled trajectories for latent state"
+#'   )
+#' }
+#'
+#' # Estimate the latent state using the median of posterior samples
 #' theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
 #'
-#' # Plot the true latent state and its posterior estimate
-#' range_theta_1 <- range(theta_1_estimate)
-#' r1_theta1 <- range_theta_1[1]; r2_theta1 <- range_theta_1[2] + 0.2*diff(range_theta_1)
+#' # Plot true and estimated (median) latent state
 #' \dontrun{
-#' plot.ts(theta1_true, col = "red", type = "l", xlab = "t",
-#'         ylim = c(r1_theta1, r2_theta1), lty = 2,
-#'         ylab = expression(theta[t1]), main = "Estimate of the Latent State")
-#' points(theta_1_estimate, type = "l")
-#' legend("topright", legend = c(expression(theta[t1]), expression(hat(theta)[t1])),
-#'        col = c("red", "black"), lty = c(2, 1), bty = "n")
+#'   range_theta_1 <- range(theta_1_estimate, theta1_true)
+#'   r1_theta1 <- range_theta_1[1]
+#'   r2_theta1 <- range_theta_1[2] + 0.2 * diff(range_theta_1)
+#'
+#'   plot.ts(
+#'     theta1_true,
+#'     col = "red",
+#'     type = "l",
+#'     xlab = "t",
+#'     ylim = c(r1_theta1, r2_theta1),
+#'     lty = 2,
+#'     ylab = expression(theta[t1]),
+#'     main = "Latent state"
+#'   )
+#'   points(theta_1_estimate, type = "l") # Add median estimate line
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(theta[t1]), expression(hat(theta)[t1])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n"
+#'   )
 #' }
 #'
-#' # Trace plot for the initial state (\eqn{\theta_{01}})
-#' range_theta_01 <- range(out$theta_01)
-#' r1_theta01 <- range_theta_01[1]; r2_theta01 <- range_theta_01[2] + 0.2*diff(range_theta_01)
+#' # --- 2. Initial State (theta[01]) ---
+#'
+#' # Trace plot for theta[01]
 #' \dontrun{
-#' plot.ts(out$theta_01, ylab = expression(theta["01"]), main = "Trace Plot of Initial State",
-#'         xlab = "Iterations", col = "gray", ylim = c(r1_theta01, r2_theta01))
-#' abline(h = c(theta0_true, median(out$theta_01)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#' legend("topright", legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
-#'        col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+#'   range_theta_01 <- range(out$theta_01)
+#'   r1_theta01 <- range_theta_01[1]
+#'   r2_theta01 <- range_theta_01[2] + 0.2 * diff(range_theta_01)
+#'
+#'   plot.ts(
+#'     out$theta_01,
+#'     ylab = expression(theta["01"]),
+#'     main = "Trace plot of initial state",
+#'     xlab = "Iterations",
+#'     col = "gray",
+#'     ylim = c(r1_theta01, r2_theta01)
+#'   )
+#'   abline(
+#'     h = c(theta0_true, median(out$theta_01)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
 #' }
 #'
-#' # Density estimate for \eqn{\theta_{01}}
+#' # Density estimate for theta[01]
 #' \dontrun{
-#' plot(density(out$theta_01), main = "Posterior Density Estimate of Initial State",
-#'      xlab = expression(theta["01"]), ylab = "Density", lwd = 2)
-#' abline(v = c(theta0_true, median(out$theta_01)), col = c("red", "black"),
-#'        lty = c(2, 1), lwd = 2)
-#' legend("topright", legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
-#'        col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+#'   plot(
+#'     density(out$theta_01),
+#'     main = "Posterior density estimate of initial state",
+#'     xlab = expression(theta["01"]),
+#'     ylab = "Density",
+#'     lwd = 2
+#'   )
+#'   abline(
+#'     v = c(theta0_true, median(out$theta_01)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
 #' }
 #'
-#' # Traceplot for the precision of evolution (\eqn{1/W_1})
-#' range_prec_1 <- range(out$prec_1)
-#' r1_prec1 <- range_prec_1[1]; r2_prec1 <- range_prec_1[2] + 0.2*diff(range_prec_1)
+#' # --- 3. Evolution Precision (1/W[1]) ---
+#'
+#' # Traceplot for 1/W[1]
 #' \dontrun{
-#' plot.ts(out$prec_1, ylab = expression(1/W[1]), main = "Trace Plot of Evolution Precision",
-#'         xlab = "Iterations", col = "gray", ylim = c(r1_prec1, r2_prec1))
-#' abline(h = c(prec1_true, median(out$prec_1)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#' legend("topright", legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
-#'        col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+#'   range_prec_1 <- range(out$prec_1)
+#'   r1_prec1 <- range_prec_1[1]
+#'   r2_prec1 <- range_prec_1[2] + 0.2 * diff(range_prec_1)
+#'
+#'   plot.ts(
+#'     out$prec_1,
+#'     ylab = expression(1/W[1]),
+#'     main = "Trace plot of evolution precision",
+#'     xlab = "Iterations",
+#'     col = "gray",
+#'     ylim = c(r1_prec1, r2_prec1)
+#'   )
+#'   abline(
+#'     h = c(prec1_true, median(out$prec_1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
 #' }
 #'
-#' # Density estimate for the precision of evolution (\eqn{1/W_1})
+#' # Density estimate for 1/W[1]
 #' \dontrun{
-#' plot(density(out$prec_1), main = "Posterior Density Estimate of Evolution Precision",
-#'      xlab = expression(W[1]^-1), ylab = "Density", lwd = 2)
-#' abline(v = c(prec1_true, median(out$prec_1)), col = c("red", "black"),
-#'        lty = c(2, 1), lwd = 2)
-#' legend("topright", legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
-#'        col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+#'   plot(
+#'     density(out$prec_1),
+#'     main = "Posterior density estimate of evolution precision",
+#'     xlab = expression(W[1]^-1),
+#'     ylab = "Density",
+#'     lwd = 2
+#'   )
+#'   abline(
+#'     v = c(prec1_true, median(out$prec_1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
 #' }
 #'
-#' # Traceplot for the precision of observation (\eqn{1/V})
-#' range_prec_y <- range(out$prec_y)
-#' r1_precy <- range_prec_y[1]; r2_precy <- range_prec_y[2] + 0.2*diff(range_prec_y)
+#' # --- 4. Observation Precision (1/V) ---
+#'
+#' # Traceplot for 1/V
 #' \dontrun{
-#' plot.ts(out$prec_y, ylab = expression(1/V), main = "Trace Plot of Observation Precision",
-#'         xlab = "Iterations", col = "gray", ylim = c(r1_precy, r2_precy))
-#' abline(h = c(prec_y_true, median(out$prec_y)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#' legend("topright", legend = c(expression(V^-1), expression(hat(V)^-1)),
-#'        col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+#'   range_prec_y <- range(out$prec_y)
+#'   r1_precy <- range_prec_y[1]
+#'   r2_precy <- range_prec_y[2] + 0.2 * diff(range_prec_y)
+#'
+#'   plot.ts(
+#'     out$prec_y,
+#'     ylab = expression(1/V),
+#'     main = "Trace plot of observation precision",
+#'     xlab = "Iterations",
+#'     col = "gray",
+#'     ylim = c(r1_precy, r2_precy)
+#'   )
+#'   abline(
+#'     h = c(prec_y_true, median(out$prec_y)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(V^-1), expression(hat(V)^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
 #' }
 #'
-#' # Density estimate for the precision of observation (\eqn{1/V})
+#' # Density estimate for 1/V
 #' \dontrun{
-#' plot(density(out$prec_y), main = "Posterior Density Estimate of Observation Precision",
-#'      xlab = expression(V^-1), ylab = "Density", lwd = 2)
-#' abline(v = c(prec_y_true, median(out$prec_y)), col = c("red", "black"),
-#'        lty = c(2, 1), lwd = 2)
-#' legend("topright", legend = c(expression(V^-1), expression(hat(V)^-1)),
-#'        col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+#'   plot(
+#'     density(out$prec_y),
+#'     main = "Posterior density estimate of observation precision",
+#'     xlab = expression(V^-1),
+#'     ylab = "Density",
+#'     lwd = 2
+#'   )
+#'   abline(
+#'     v = c(prec_y_true, median(out$prec_y)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(V^-1), expression(hat(V)^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
 #' }
 #'
 #' @seealso \link[base]{.Call}, \link[base]{set.seed}, \link[stats]{rnorm}
@@ -170,20 +316,53 @@ mcmc_locallevel <- function(y,
                             prior_prec1_shape,
                             prior_prec1_rate,
                             prior_prec_y_shape,
-                            prior_prec_y_rate) {
+                            prior_prec_y_rate,
+                            seed = NULL) {
+  # --- Input Validation ---
   if (!is.numeric(y)) {
     stop("`y` must be a numeric vector")
   }
-  if (!is.numeric(burnin) || length(burnin) != 1 || burnin < 0) {
-    stop("`burnin` must be a single integer ≥ 0")
+  if (!all(is.finite(y))) {
+    stop("`y` must contain only finite numeric values (no NA, NaN, Inf)")
   }
-  if (!is.numeric(thinning) || length(thinning) != 1 || thinning < 1) {
-    stop("`thinning` must be a single integer ≥ 1")
+  if (!is.numeric(burnin) || length(burnin) != 1 || burnin < 0 || burnin != floor(burnin)) {
+    stop("`burnin` must be a single non-negative integer")
   }
-  if (!is.numeric(n_chain) || length(n_chain) != 1 || n_chain < 1) {
-    stop("`n_chain` must be a single integer ≥ 1")
+  if (!is.numeric(thinning) || length(thinning) != 1 || thinning < 1 || thinning != floor(thinning)) {
+    stop("`thinning` must be a single positive integer")
+  }
+  if (!is.numeric(n_chain) || length(n_chain) != 1 || n_chain < 1 || n_chain != floor(n_chain)) {
+    stop("`n_chain` must be a single positive integer")
+  }
+  if (!is.numeric(prior_theta01_mean) || length(prior_theta01_mean) != 1) {
+    stop("`prior_theta01_mean` must be a single numeric value")
+  }
+  if (!is.numeric(prior_theta01_prec) || length(prior_theta01_prec) != 1 || prior_theta01_prec <= 0) {
+    stop("`prior_theta01_prec` must be a single positive numeric value")
+  }
+  if (!is.numeric(prior_prec1_shape) || length(prior_prec1_shape) != 1 || prior_prec1_shape <= 0) {
+    stop("`prior_prec1_shape` must be a single positive numeric value")
+  }
+  if (!is.numeric(prior_prec1_rate) || length(prior_prec1_rate) != 1 || prior_prec1_rate <= 0) {
+    stop("`prior_prec1_rate` must be a single positive numeric value")
+  }
+  if (!is.numeric(prior_prec_y_shape) || length(prior_prec_y_shape) != 1 || prior_prec_y_shape <= 0) {
+    stop("`prior_prec_y_shape` must be a single positive numeric value")
+  }
+  if (!is.numeric(prior_prec_y_rate) || length(prior_prec_y_rate) != 1 || prior_prec_y_rate <= 0) {
+    stop("`prior_prec_y_rate` must be a single positive numeric value")
   }
 
+  # Validate and set seed if provided
+  if (!is.null(seed)) {
+    if (!is.numeric(seed) || length(seed) != 1 || seed != floor(seed)) {
+      stop("`seed` must be a single integer value")
+    }
+    set.seed(seed)
+  }
+  # --- End Input Validation ---
+
+  # Call the C function
   .Call(
     "_pdm_mcmc_locallevel",
     as.numeric(y),

@@ -89,7 +89,7 @@
 #' r1_theta1 <- range_theta_1[1]; r2_theta1 <- range_theta_1[2] + 0.2*diff(range_theta_1)
 #' \dontrun{
 #' plot.ts(theta1_true, col = "red", type = "l", xlab = "t",
-#'         ylim = c(r1_theta1, r2_theta_1), lty = 2,
+#'         ylim = c(r1_theta1, r2_theta1), lty = 2,
 #'         ylab = expression(theta[t1]), main = "Estimate of the Latent State")
 #' points(theta_1_estimate, type = "l")
 #' legend("topright", legend = c(expression(theta[t1]), expression(hat(theta)[t1])),

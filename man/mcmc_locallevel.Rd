@@ -18,83 +18,178 @@ mcmc_locallevel(
 )
 }
 \arguments{
-\item{y}{Numeric vector of observations (length = n).}
+\item{y}{Numeric vector of observations (length \eqn{n}).}
 
-\item{burnin}{Integer ≥ 0, number of burn‐in iterations.}
+\item{burnin}{Integer \eqn{\geq 0}, number of burn-in iterations.}
 
-\item{thinning}{Integer ≥ 1, thinning interval.}
+\item{thinning}{Integer \eqn{\geq 1}, thinning interval.}
 
-\item{n_chain}{Integer ≥ 1, number of posterior samples to retain.}
+\item{n_chain}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
 
-\item{prior_theta01_mean}{Numeric, prior mean for the initial state θ₀₁.}
+\item{prior_theta01_mean}{Numeric, prior mean for the initial state \eqn{\theta_{01}}.}
 
-\item{prior_theta01_prec}{Numeric, prior precision (1/variance) for θ₀₁.}
+\item{prior_theta01_prec}{Numeric, prior precision (inverse variance) for \eqn{\theta_{01}}.}
 
-\item{prior_prec1_shape}{Numeric, shape parameter of the Gamma prior for the innovation precision (1/W₁).}
+\item{prior_prec1_shape}{Numeric, shape parameter of the Gamma prior for the innovation precision \eqn{1/W_1}.}
 
-\item{prior_prec1_rate}{Numeric, rate  parameter of the Gamma prior for the innovation precision (1/W₁).}
+\item{prior_prec1_rate}{Numeric, rate parameter of the Gamma prior for \eqn{1/W_1}.}
 
-\item{prior_prec_y_shape}{Numeric, shape parameter of the Gamma prior for the data precision (1/V).}
+\item{prior_prec_y_shape}{Numeric, shape parameter of the Gamma prior for the data precision \eqn{1/V}.}
 
-\item{prior_prec_y_rate}{Numeric, rate  parameter of the Gamma prior for the data precision (1/V).}
+\item{prior_prec_y_rate}{Numeric, rate parameter of the Gamma prior for \eqn{1/V}.}
 }
 \value{
 A \code{list} with components:
 \describe{
-  \item{\code{theta_1}}{Numeric matrix [\code{n_chain} × n] of latent‐state samples.}
-  \item{\code{theta_01}}{Numeric vector [length = \code{n_chain}] of initial‐state samples.}
-  \item{\code{prec_1}}{Numeric vector [length = \code{n_chain}] of innovation precisions (1/W₁).}
-  \item{\code{prec_y}}{Numeric vector [length = \code{n_chain}] of data precisions (1/V).}
+  \item{\code{theta_1}}{Numeric matrix \eqn{[n_{\text{chain}} \times n]} of latent‐state samples.}
+  \item{\code{theta_01}}{Numeric vector of length \code{n_chain} containing
+  posterior samples of the initial state \eqn{\theta_{01}}}
+  \item{\code{prec_1}}{Numeric vector of length \code{n_chain} containing
+  posterior samples of the innovation precision \eqn{1/W_1}.}
+  \item{\code{prec_y}}{Numeric vector of length \code{n_chain} containing
+  posterior samples of the observation precision \eqn{1/V}.}
 }
 }
 \description{
-Runs a Gibbs sampler for the ocal‐level dynamic model
-with one state dimension (p = 1).  Burn‐in and thinning are applied
-so that exactly \code{n_chain} posterior samples are returned.
+Runs a Gibbs sampler for the local‐level dynamic model:
+\deqn{
+\begin{aligned}
+y_t &= \theta_{t1} + e_t, \quad e_t \sim N(0, V), \\
+\theta_{t1} &= \theta_{(t-1)1} + u_t, \quad u_t \sim N(0, W_1). \\
+\end{aligned}
+}
+}
+\details{
+Burn‐in and thinning are applied so that exactly \code{n_chain}
+posterior samples are returned.
 }
 \examples{
-## simulate data
-set.seed(123)
-n <- 100
+## Description
+# This example demonstrates how to:
+# 1. Simulate data from a local-level dynamic model
+# 2. Use \code{mcmc_locallevel} to estimate latent states
+# 3. Visualize posterior results
 
-# true parameters
-theta01_true <- 0
-prec1_true   <- 5   # 1/W1
-prec_y_true  <- 10  # 1/V
+## Simulation of Data
+n <- 1000  # Number of observations to simulate
 
-# generate evolution and observation noise
-u <- rnorm(n, 0, sqrt(1/prec1_true))
-e <- rnorm(n, 0, sqrt(1/prec_y_true))
+# True parameters for simulation:
+theta0_true <- 10  # Initial state \eqn{\theta_{01}}
+prec1_true <- 1    # Innovation precision \eqn{1/W_1}
+prec_y_true <- 5   # Observation precision \eqn{1/V}
 
-# latent state and observations
-theta1_true <- numeric(n)
-theta1_true[1] <- theta01_true + u[1]
-for (i in 2:n) {
-  theta1_true[i] <- theta1_true[i - 1] + u[i]
+set.seed(123)  # For reproducibility
+
+# Generate noise terms:
+u <- rnorm(n, sd = sqrt(1/prec1_true))  # Evolution noise \eqn{u_t}
+e <- rnorm(n, sd = sqrt(1/prec_y_true)) # Observation noise \eqn{e_t}
+
+# Simulate latent states and observations:
+theta1_true <- cumsum(c(theta0_true, u))[-1]  # \eqn{\theta_{t1}} series
+y <- theta1_true + e                          # Observed data \eqn{y_t}
+
+# Plot the simulated data
+\dontrun{
+plot.ts(y, main = "Simulated Data", ylab = expression(y[t]), xlab = "t")
 }
-y <- theta1_true + e
 
-## run the Gibbs sampler
-out <- mcmc_locallevel(
+## Running the Gibbs Sampler
+
+# Run the Gibbs sampler with specified priors
+out <- mcmc_localtrend(
   y,
-  burnin               = 200,
-  thinning             = 10,
-  n_chain              = 500,
-  prior_theta01_mean   = 0,
-  prior_theta01_prec   = 0.01,
-  prior_prec1_shape    = 1,
-  prior_prec1_rate     = 1,
-  prior_prec_y_shape   = 1,
-  prior_prec_y_rate    = 1
+  burnin               = 1000,          # Number of burn-in iterations
+  thinning             = 10,            # Thinning interval
+  n_chain              = 1000,          # Number of posterior samples
+  prior_theta01_mean   = y[1],          # Prior mean for \eqn{\theta_{01}}
+  prior_theta01_prec   = 1/var(y),      # Prior precision for \eqn{\theta_{01}}
+  prior_prec1_shape    = 1e-2,          # Shape parameter for \eqn{1/W_1}
+  prior_prec1_rate     = 1e-2,          # Rate parameter for \eqn{1/W_1}
+  prior_prec_y_shape   = 1e-2,          # Shape parameter for \eqn{1/V}
+  prior_prec_y_rate    = 1e-2           # Rate parameter for \eqn{1/V}
 )
 
-## summarized results
-print(summary(out$theta_01))
-matplot(t(out$theta_1)[1:5, ], type = "l",
-        lty = 1, col = rainbow(5),
-        xlab = "time", ylab = "latent state")
+## Posterior Analysis and Visualization
+
+# Estimate the latent state (\eqn{\theta_1}) using the median of posterior samples
+theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
+
+# Plot the true latent state and its posterior estimate
+range_theta_1 <- range(theta_1_estimate)
+r1_theta1 <- range_theta_1[1]; r2_theta1 <- range_theta_1[2] + 0.2*diff(range_theta_1)
+\dontrun{
+plot.ts(theta1_true, col = "red", type = "l", xlab = "t",
+        ylim = c(r1_theta1, r2_theta_1), lty = 2,
+        ylab = expression(theta[t1]), main = "Estimate of the Latent State")
+points(theta_1_estimate, type = "l")
+legend("topright", legend = c(expression(theta[t1]), expression(hat(theta)[t1])),
+       col = c("red", "black"), lty = c(2, 1), bty = "n")
+}
+
+# Trace plot for the initial state (\eqn{\theta_{01}})
+range_theta_01 <- range(out$theta_01)
+r1_theta01 <- range_theta_01[1]; r2_theta01 <- range_theta_01[2] + 0.2*diff(range_theta_01)
+\dontrun{
+plot.ts(out$theta_01, ylab = expression(theta["01"]), main = "Trace Plot of Initial State",
+        xlab = "Iterations", col = "gray", ylim = c(r1_theta01, r2_theta01))
+abline(h = c(theta0_true, median(out$theta_01)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+legend("topright", legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
+       col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+}
+
+# Density estimate for \eqn{\theta_{01}}
+\dontrun{
+plot(density(out$theta_01), main = "Posterior Density Estimate of Initial State",
+     xlab = expression(theta["01"]), ylab = "Density", lwd = 2)
+abline(v = c(theta0_true, median(out$theta_01)), col = c("red", "black"),
+       lty = c(2, 1), lwd = 2)
+legend("topright", legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
+       col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+}
+
+# Traceplot for the precision of evolution (\eqn{1/W_1})
+range_prec_1 <- range(out$prec_1)
+r1_prec1 <- range_prec_1[1]; r2_prec1 <- range_prec_1[2] + 0.2*diff(range_prec_1)
+\dontrun{
+plot.ts(out$prec_1, ylab = expression(1/W[1]), main = "Trace Plot of Evolution Precision",
+        xlab = "Iterations", col = "gray", ylim = c(r1_prec1, r2_prec1))
+abline(h = c(prec1_true, median(out$prec_1)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+legend("topright", legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+       col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+}
+
+# Density estimate for the precision of evolution (\eqn{1/W_1})
+\dontrun{
+plot(density(out$prec_1), main = "Posterior Density Estimate of Evolution Precision",
+     xlab = expression(W[1]^-1), ylab = "Density", lwd = 2)
+abline(v = c(prec1_true, median(out$prec_1)), col = c("red", "black"),
+       lty = c(2, 1), lwd = 2)
+legend("topright", legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+       col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+}
+
+# Traceplot for the precision of observation (\eqn{1/V})
+range_prec_y <- range(out$prec_y)
+r1_precy <- range_prec_y[1]; r2_precy <- range_prec_y[2] + 0.2*diff(range_prec_y)
+\dontrun{
+plot.ts(out$prec_y, ylab = expression(1/V), main = "Trace Plot of Observation Precision",
+        xlab = "Iterations", col = "gray", ylim = c(r1_precy, r2_precy))
+abline(h = c(prec_y_true, median(out$prec_y)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+legend("topright", legend = c(expression(V^-1), expression(hat(V)^-1)),
+       col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+}
+
+# Density estimate for the precision of observation (\eqn{1/V})
+\dontrun{
+plot(density(out$prec_y), main = "Posterior Density Estimate of Observation Precision",
+     xlab = expression(V^-1), ylab = "Density", lwd = 2)
+abline(v = c(prec_y_true, median(out$prec_y)), col = c("red", "black"),
+       lty = c(2, 1), lwd = 2)
+legend("topright", legend = c(expression(V^-1), expression(hat(V)^-1)),
+       col = c("red", "black"), lty = c(2, 1), bty = "n", lwd = 2)
+}
 
 }
 \seealso{
-\link{.Call}
+\link[base]{.Call}, \link[base]{set.seed}, \link[stats]{rnorm}
 }

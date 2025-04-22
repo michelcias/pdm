@@ -2,19 +2,29 @@
 #define CONDITIONAL_STATE_H
 
 /**
- * Generates a sample for the state vector theta_1 (local trend component)
- * assuming a simple local trend model (theta_1[j] = theta_1[j-1] + error).
+ * Generates a sample for the state vector theta_1 (local level component)
+ * assuming a simple local level model (theta_1[j] = theta_1[j-1] + error).
  * This is a step within a Gibbs sampler iteration.
+ *
+ * **Important Assumption:** This function assumes the dimension `n` is strictly greater than 2 (n > 2).
+ * Behavior for n <= 2 is undefined as boundary case checks have been removed.
+ *
+ * The function calculates the mean vector and uses `generate_normal_vector`
+ * to sample from the multivariate normal conditional posterior distribution of theta_1.
+ * The precision matrix (Phi) of this distribution is tridiagonal, determined by
+ * the data precision (prec_y) and the state innovation precision (prec_1).
  *
  * @param data                Array (size n) of observed data points, indexed 0 to n-1.
  * @param theta_1_post        Output array (vectorized B x n matrix) storing posterior samples of theta_1.
+ *                            The vector for the current iteration `iter` will be updated.
  * @param prec_data_post      Array storing posterior samples of data precision (1/V). Uses value from `iter - 1`.
- * @param prec_theta_1_post   Array storing posterior samples of theta_1 innovation precision (1/W_1). Uses value from `iter - 1`.
+ * @param prec_theta_1_post   Array storing posterior samples of theta_1 innovation precision (1/W_1).
+ *                            Uses value from `iter - 1`.
  * @param theta_01_post       Array storing posterior samples of the initial level theta_01. Uses value from `iter`.
  * @param n                   Sample size (number of data points/state elements, 0 to n-1). Must be > 2.
  * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
  */
-void generate_theta_1_localtrend(double *data,
+void generate_theta_1_locallevel(double *data,
                                  double *theta_1_post,
                                  double *prec_data_post,
                                  double *prec_theta_1_post,
@@ -27,11 +37,23 @@ void generate_theta_1_localtrend(double *data,
  * assuming a local linear trend model (theta_1 depends on theta_2).
  * This is a step within a Gibbs sampler iteration.
  *
+ * **Important Assumption:** This function assumes the dimension `n` is strictly greater than 2 (n > 2).
+ * Behavior for n <= 2 is undefined as boundary case checks have been removed.
+ *
+ * The function calculates the mean vector and uses `generate_normal_vector`
+ * to sample from the multivariate normal conditional posterior distribution of theta_1.
+ * The precision matrix (Phi) of this distribution is tridiagonal, determined by
+ * the data precision (prec_y) and the state innovation precision (prec_1). The mean
+ * vector calculation incorporates terms related to theta_2.
+ *
  * @param data                Array (size n) of observed data points, indexed 0 to n-1.
  * @param theta_1_post        Output array (vectorized B x n matrix) storing posterior samples of theta_1.
+ *                            The vector for the current iteration `iter` will be updated.
  * @param theta_2_post        Array storing posterior samples of theta_2 (vectorized B x n matrix).
+ *                            Uses the vector corresponding to the *current* iteration `iter`.
  * @param prec_data_post      Array storing posterior samples of data precision (1/V). Uses value from `iter - 1`.
- * @param prec_theta_1_post   Array storing posterior samples of theta_1 innovation precision (1/W_1). Uses value from `iter - 1`.
+ * @param prec_theta_1_post   Array storing posterior samples of theta_1 innovation precision (1/W_1).
+ *                            Uses value from `iter - 1`.
  * @param theta_01_post       Array storing posterior samples of the initial level theta_01. Uses value from `iter`.
  * @param theta_02_post       Array storing posterior samples of the initial trend theta_02. Uses value from `iter`.
  * @param n                   Sample size (number of data points/state elements, 0 to n-1). Must be > 2.

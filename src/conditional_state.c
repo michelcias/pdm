@@ -4,8 +4,8 @@
 #include "conditional_state.h"
 
 /**
- * Generates a sample for the state vector theta_1 (local trend component)
- * assuming a simple local trend model (theta_1[j] = theta_1[j-1] + error).
+ * Generates a sample for the state vector theta_1 (local level component)
+ * assuming a simple local level model (theta_1[j] = theta_1[j-1] + error).
  * This is a step within a Gibbs sampler iteration.
  *
  * **Important Assumption:** This function assumes the dimension `n` is strictly greater than 2 (n > 2).
@@ -26,7 +26,7 @@
  * @param n                   Sample size (number of data points/state elements, 0 to n-1). Must be > 2.
  * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
  */
-void generate_theta_1_localtrend(double *data,
+void generate_theta_1_locallevel(double *data,
                                  double *theta_1_post,
                                  double *prec_data_post,
                                  double *prec_theta_1_post,

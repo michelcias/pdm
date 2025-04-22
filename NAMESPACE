@@ -2,4 +2,4 @@ exportPattern("^[[:alpha:]]+")
 useDynLib(pdm, .registration = TRUE)
 
 export(ilogit)
-export(mcmc_localtrend)
+export(mcmc_locallevel)

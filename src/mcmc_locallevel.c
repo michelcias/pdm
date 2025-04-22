@@ -4,16 +4,16 @@
 #include "conditional_state.h"
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
-#include "mcmc_localtrend.h"
+#include "mcmc_locallevel.h"
 
 /**
- * C_MCMC_localtrend: Gibbs sampler for a local-level dynamic model (p = 1).
+ * C_MCMC_locallevel: Gibbs sampler for a local-level dynamic model (p = 1).
  *
- * This function runs a Gibbs MCMC for the polynomial dynamic model with a simple local
- * level (local trend) structure, sampling parameters in the following order:
- *   1) state vector      — generate_theta_1_localtrend
+ * This function runs a Gibbs MCMC for the polynomial dynamic model with a simple
+ * local level structure, sampling parameters in the following order:
+ *   1) state vector      — generate_theta_1_locallevel
  *   2) innovation prec.  — generate_precision_theta_p  (1/W_1)
- *   3) initial state     — generate_theta_01_localtrend
+ *   3) initial state     — generate_theta_01_locallevel
  *   4) data precision    — generate_precision_data     (1/V)
  *
  * Burn‐in and thinning are applied so that exactly n_chain posterior draws are returned.
@@ -35,7 +35,7 @@
  *   $prec_1   — numeric vector [length = n_chain] of innovation precisions
  *   $prec_y   — numeric vector [length = n_chain] of data precisions
  */
-SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
+SEXP C_MCMC_locallevel(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
                        SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
                        SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
                        SEXP prior_prec_y_shape_, SEXP prior_prec_y_rate_) {
@@ -43,10 +43,10 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
     double   *y    = REAL(y_);
     R_xlen_t  len  = LENGTH(y_);
     if (len < 3)
-        Rf_error("C_MCMC_localtrend: sample size 'n' must be at least 3, got %lld",
+        Rf_error("C_MCMC_locallevel: sample size 'n' must be at least 3, got %lld",
                  (long long) len);
     if (len > INT_MAX)
-        Rf_error("C_MCMC_localtrend: sample size too large (%lld > %d)",
+        Rf_error("C_MCMC_locallevel: sample size too large (%lld > %d)",
                  (long long) len, INT_MAX);
     int n = (int) len;
 
@@ -94,7 +94,7 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
     int chain = 0;
     for (int ii = 1; ii < n_iter; ii++) {
         /* 1) Sample state vector theta_1 */
-        generate_theta_1_localtrend(
+        generate_theta_1_locallevel(
             y, theta_1_post, prec_y_post, prec_1_post,
             theta_01_post, n, ii
         );
@@ -109,7 +109,7 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
         );
 
         /* 3) Sample initial state theta_01 */
-        generate_theta_01_localtrend(
+        generate_theta_01_locallevel(
             theta_01_post, theta_1_post, prec_1_post,
             mean_theta01, prec_theta01,
             n, ii

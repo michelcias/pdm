@@ -12,8 +12,8 @@
 /* Declaration of the existing wrapper in utils.c */
 SEXP C_ILogit(SEXP x);
 
-/* Declaration of the new MCMC local-trend sampler */
-SEXP C_MCMC_localtrend(
+/* Declaration of the new MCMC local-level sampler */
+SEXP C_MCMC_locallevel(
     SEXP y_,
     SEXP burnin_,
     SEXP thinning_,
@@ -29,8 +29,8 @@ SEXP C_MCMC_localtrend(
 static const R_CallMethodDef CallEntries[] = {
   /* existing ilogit wrapper */
   {"_pdm_ilogit",           (DL_FUNC) &C_ILogit,               1},
-  /* new Gibbs sampler for local-trend */
-  {"_pdm_mcmc_localtrend",  (DL_FUNC) &C_MCMC_localtrend,      10},
+  /* new Gibbs sampler for local-level */
+  {"_pdm_mcmc_locallevel",  (DL_FUNC) &C_MCMC_locallevel,      10},
   {NULL, NULL, 0}
 };
 

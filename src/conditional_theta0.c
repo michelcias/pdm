@@ -29,7 +29,7 @@
  * @param n                   Sample size, representing the number of data points.
  * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
  */
-void generate_theta_01_localtrend(
+void generate_theta_01_locallevel(
     double *theta_01_post,
     double *theta_1_post,
     double *prec_theta_1_post,

@@ -6,7 +6,16 @@
 #include <Rmath.h>
 
 /**
- * C_MCMC_localtrend: Gibbs sampler for a local-level dynamic model (p = 1).
+ * C_MCMC_locallevel: Gibbs sampler for a local-level dynamic model (p = 1).
+ *
+ * This function runs a Gibbs MCMC for the polynomial dynamic model with a simple
+ * local level structure, sampling parameters in the following order:
+ *   1) state vector      — generate_theta_1_locallevel
+ *   2) innovation prec.  — generate_precision_theta_p  (1/W_1)
+ *   3) initial state     — generate_theta_01_locallevel
+ *   4) data precision    — generate_precision_data     (1/V)
+ *
+ * Burn‐in and thinning are applied so that exactly n_chain posterior draws are returned.
  *
  * @param y                    Numeric vector of observations (length = n).
  * @param burnin               Integer, number of burn‐in iterations.
@@ -19,13 +28,13 @@
  * @param prior_prec_y_shape   Double, shape parameter of Gamma prior for 1/V.
  * @param prior_prec_y_rate    Double, rate  parameter of Gamma prior for 1/V.
  *
- * @return An R list (SEXP) with components:
- *   theta_1  — numeric matrix [n_chain × n] of state samples
- *   theta_01 — numeric vector [length = n_chain] of initial state samples
- *   prec_1   — numeric vector [length = n_chain] of innovation precisions
- *   prec_y   — numeric vector [length = n_chain] of data precisions
+ * @return An R list with components:
+ *   $theta_1  — numeric matrix [n_chain × n] of state samples
+ *   $theta_01 — numeric vector [length = n_chain] of initial state samples
+ *   $prec_1   — numeric vector [length = n_chain] of innovation precisions
+ *   $prec_y   — numeric vector [length = n_chain] of data precisions
  */
-SEXP C_MCMC_localtrend(
+SEXP C_MCMC_locallevel(
     SEXP y_,
     SEXP burnin_,
     SEXP thinning_,

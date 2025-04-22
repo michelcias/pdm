@@ -96,7 +96,7 @@ plot.ts(y, main = "Simulated Data", ylab = expression(y[t]), xlab = "t")
 ## Running the Gibbs Sampler
 
 # Run the Gibbs sampler with specified priors
-out <- mcmc_localtrend(
+out <- mcmc_locallevel(
   y,
   burnin               = 1000,          # Number of burn-in iterations
   thinning             = 10,            # Thinning interval

@@ -1,7 +1,8 @@
+# Activate the renv environment for project-specific package management
+# This ensures that the correct package versions specified in renv.lock are used.
 source("renv/activate.R")
 
-# Code for the .Rprofile file using system()
-
+# --- Automatic Git Pull on Startup ---
 # Display a message indicating the process is starting
 message("Attempting automatic git pull...")
 
@@ -14,6 +15,7 @@ pull_status <- system("git pull")
 if (pull_status == 0) {
   # Success message (exit status 0 usually indicates success)
   message("--> Success! Repository updated via 'git pull'.")
+  message("--> If package dependencies (renv.lock) or the package source changed, consider restarting R or running renv::restore().")
 } else {
   # Error message (a non-zero exit status indicates an error)
   message(paste("--> Error running 'git pull'. Exit code:", pull_status))
@@ -21,4 +23,9 @@ if (pull_status == 0) {
 }
 
 # Clean up the status variable to avoid polluting the global environment
+# This prevents the 'pull_status' variable from remaining in your R session.
 rm(pull_status)
+
+# --- End of Automatic Git Pull ---
+
+# You can add other R startup commands below if needed.

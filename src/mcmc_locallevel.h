@@ -1,5 +1,5 @@
-#ifndef MCMC_LOCALTREND_H
-#define MCMC_LOCALTREND_H
+#ifndef MCMC_LOCALLEVEL_H
+#define MCMC_LOCALLEVEL_H
 
 #include <R.h>
 #include <Rinternals.h>
@@ -47,4 +47,4 @@ SEXP C_MCMC_locallevel(
     SEXP prior_prec_y_rate_
 );
 
-#endif /* MCMC_LOCALTREND_H */
+#endif /* MCMC_LOCALLEVEL_H */

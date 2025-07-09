@@ -7,49 +7,50 @@
 #include "mcmc_localtrend.h"
 
 /**
-  * C_MCMC_localtrend: Gibbs sampler for a local-trend dynamic model (p = 2).
-*
-  * This function runs a Gibbs MCMC for the polynomial dynamic model with a local trend structure,
-* sampling parameters in the following order:
-  *   1) state vector      — generate_theta_p (theta_2)
-*   2) innovation prec.  — generate_precision_theta_p (1/W_2)
-*   3) initial state     — generate_theta_0p (theta_02)
-*   4) state vector      — generate_theta_1 (theta_1)
-*   5) innovation prec.  — generate_precision_theta_k (1/W_1)
-*   6) initial state     — generate_theta_01 (theta_01)
-*   7) data precision    — generate_precision_data (1/V)
-*
-  * The model is:
-  *   y_t        = theta_{t1} + e_t,                        e_t ~ N(0, V)
-  *   theta_{t1} = theta_{(t-1)1} + theta_{(t-1)2} + u_{t1}, u_{t1} ~ N(0, W_1)
-  *   theta_{t2} = theta_{(t-1)2} + u_{t2},                 u_{t2} ~ N(0, W_2)
-  *
-    * Burn-in and thinning are applied so that exactly n_chain posterior draws are returned.
-  *
-    * @param y                    Numeric vector of observations (length = n).
-  * @param burnin               Integer, number of burn-in iterations.
-  * @param thinning             Integer, thinning interval.
-  * @param n_chain              Integer, number of retained posterior samples.
-  * @param prior_theta01_mean   Double, prior mean for theta_01.
-  * @param prior_theta01_prec   Double, prior precision (1/variance) for theta_01.
-  * @param prior_theta02_mean   Double, prior mean for theta_02.
-  * @param prior_theta02_prec   Double, prior precision (1/variance) for theta_02.
-  * @param prior_prec1_shape    Double, shape parameter of Gamma prior for 1/W_1.
-  * @param prior_prec1_rate     Double, rate  parameter of Gamma prior for 1/W_1.
-  * @param prior_prec2_shape    Double, shape parameter of Gamma prior for 1/W_2.
-  * @param prior_prec2_rate     Double, rate  parameter of Gamma prior for 1/W_2.
-  * @param prior_prec_y_shape   Double, shape parameter of Gamma prior for 1/V.
-  * @param prior_prec_y_rate    Double, rate  parameter of Gamma prior for 1/V.
-  *
-    * @return An R list with components:
-    *   $theta_1  — numeric matrix [n_chain × n] of state samples for level
-  *   $theta_2  — numeric matrix [n_chain × n] of state samples for trend
-  *   $theta_01 — numeric vector [length = n_chain] of initial state samples (level)
-  *   $theta_02 — numeric vector [length = n_chain] of initial state samples (trend)
-  *   $prec_1   — numeric vector [length = n_chain] of innovation precisions (level)
-  *   $prec_2   — numeric vector [length = n_chain] of innovation precisions (trend)
-  *   $prec_y   — numeric vector [length = n_chain] of data precisions
-  */
+ * C_MCMC_localtrend: Gibbs sampler for a local-trend dynamic model (p = 2).
+ *
+ * This function runs a Gibbs MCMC for the polynomial dynamic model with a local trend structure,
+ * sampling parameters in the following order:
+ *   1) state vector      — generate_theta_p (theta_2)
+ *   2) innovation prec.  — generate_precision_theta_p (1/W_2)
+ *   3) initial state     — generate_theta_0p (theta_02)
+ *   4) state vector      — generate_theta_1 (theta_1)
+ *   5) innovation prec.  — generate_precision_theta_k (1/W_1)
+ *   6) initial state     — generate_theta_01 (theta_01)
+ *   7) data precision    — generate_precision_data (1/V)
+ *
+ * The model is:
+ *   y_t        = theta_{t1} + e_t,                         e_t ~ N(0, V)
+ *   theta_{t1} = theta_{(t-1)1} + theta_{(t-1)2} + u_{t1}, u_{t1} ~ N(0, W_1)
+ *   theta_{t2} = theta_{(t-1)2} + u_{t2},                  u_{t2} ~ N(0, W_2)
+ *
+ * Burn‐in and thinning are applied so that exactly n_chain posterior draws are returned.
+ *
+ * @param y                    Numeric vector of observations (length = n).
+ * @param burnin               Integer, number of burn‐in iterations.
+ * @param thinning             Integer, thinning interval.
+ * @param n_chain              Integer, number of retained posterior samples.
+ * @param prior_theta01_mean   Double, prior mean for theta_01.
+ * @param prior_theta01_prec   Double, prior precision (1/variance) for theta_01.
+ * @param prior_theta02_mean   Double, prior mean for theta_02.
+ * @param prior_theta02_prec   Double, prior precision (1/variance) for theta_02.
+ * @param prior_prec1_shape    Double, shape parameter of Gamma prior for 1/W_1.
+ * @param prior_prec1_rate     Double, rate  parameter of Gamma prior for 1/W_1.
+ * @param prior_prec2_shape    Double, shape parameter of Gamma prior for 1/W_2.
+ * @param prior_prec2_rate     Double, rate  parameter of Gamma prior for 1/W_2.
+ * @param prior_prec_y_shape   Double, shape parameter of Gamma prior for 1/V.
+ * @param prior_prec_y_rate    Double, rate  parameter of Gamma prior for 1/V.
+ *
+ * @return An R list with components:
+ *   $theta_1  — numeric matrix [n_chain × n] of state samples for level
+ *   $theta_2  — numeric matrix [n_chain × n] of state samples for trend
+ *   $theta_01 — numeric vector [length = n_chain] of initial state samples (level)
+ *   $theta_02 — numeric vector [length = n_chain] of initial state samples (trend)
+ *   $prec_1   — numeric vector [length = n_chain] of innovation precisions (level)
+ *   $prec_2   — numeric vector [length = n_chain] of innovation precisions (trend)
+ *   $prec_y   — numeric vector [length = n_chain] of data precisions
+ */
+
 SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
                        SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
                        SEXP prior_theta02_mean_, SEXP prior_theta02_prec_,
@@ -71,6 +72,7 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
     int burnin   = INTEGER(burnin_)[0];
     int thinning = INTEGER(thinning_)[0];
     int n_chain  = INTEGER(n_chain_)[0];
+    /* Use alternative formula to run just enough iters */
     int n_iter   = burnin + (n_chain - 1) * thinning + 1;
 
     /* Parse prior hyperparameters */
@@ -94,7 +96,7 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
     SEXP prec_2_samples   = PROTECT(allocVector(REALSXP, n_chain));
     SEXP prec_y_samples   = PROTECT(allocVector(REALSXP, n_chain));
 
-    /* Buffers for full MCMC trajectory (including burn-in) */
+    /* Buffers for full MCMC trajectory (including burn‐in) */
     double *theta_1_post  = (double *) R_Calloc(n_iter * n, double);
     double *theta_2_post  = (double *) R_Calloc(n_iter * n, double);
     double *theta_01_post = (double *) R_Calloc(n_iter,     double);
@@ -164,12 +166,10 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
 
         /* 7) Sample data precision 1/V */
         generate_precision_data(
-            y, theta_1_post, prec_y_post,
-            nu_y, eta_y,
-            n, ii
+            y, theta_1_post, prec_y_post, nu_y, eta_y, n, ii
         );
 
-        /* Store post-burn-in draws, applying thinning */
+        /* Store post‐burn‐in draws, applying thinning */
         if (ii >= burnin && ((ii - burnin) % thinning) == 0) {
             int idx = chain++;
             for (int j = 0; j < n; j++) {

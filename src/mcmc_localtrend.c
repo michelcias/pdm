@@ -129,89 +129,89 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
   for (int ii = 1; ii < n_iter; ii++) {
     /* 1) Sample trend state vector theta_2 */
     generate_theta_p(
-      theta_01_post,
-      theta_02_post,
-      theta_2_post,
-      prec_2_post,
-      theta_1_post,
-      prec_1_post,
-      n,
-      ii
+      theta_01_post,     // theta_pm1_post (theta_1 é p-1)
+      theta_02_post,     // theta_p_post (theta_2 é p)  
+      theta_2_post,      // prec_theta_pm1_post
+      prec_2_post,       // prec_theta_p_post
+      theta_1_post,      // theta_0p_post
+      prec_1_post,       // (extra parameter)
+      n,                 // n
+      ii                 // iter
     );
 
     /* 2) Sample innovation precision 1/W_2 */
     generate_precision_theta_p(
-      theta_01_post,
-      theta_02_post,
-      theta_2_post,
-      prec_2_post,
-      nu_02,
-      eta_02,
-      n,
-      ii
+      theta_01_post,     // theta_0p_post
+      theta_02_post,     // theta_p_post  
+      theta_2_post,      // prec_theta_p_post
+      prec_2_post,       // prec_theta_p_post (output)
+      nu_02,             // nu_0p (prior shape)
+      eta_02,            // eta_0p (prior rate)
+      n,                 // n
+      ii                 // iter
     );
 
     /* 3) Sample initial trend state theta_02 */
     generate_theta_0p(
-      theta_01_post,
-      theta_02_post,
-      theta_1_post,
-      theta_2_post,
-      prec_1_post,
-      prec_2_post,
-      theta_02_post,
-      theta02_mean,
-      theta02_prec,
-      n,
-      ii
+      theta_01_post,     // theta_0pm1_post
+      theta_02_post,     // theta_0p_post (output)
+      theta_1_post,      // theta_pm1_post
+      theta_2_post,      // theta_p_post
+      prec_1_post,       // prec_theta_pm1_post
+      prec_2_post,       // prec_theta_p_post
+      theta_02_post,     // theta_0p_post (additional?)
+      theta02_mean,      // mean_theta_0p (prior mean)
+      theta02_prec,      // prec_theta_0p (prior precision)
+      n,                 // n
+      ii                 // iter
     );
 
     /* 4) Sample level state vector theta_1 */
     generate_theta_1(
-      y,
-      theta_1_post,
-      theta_2_post,
-      prec_y_post,
-      prec_1_post,
-      theta_01_post,
-      theta_02_post,
-      n,
-      ii
+      y,                 // data (observed values)
+      theta_1_post,      // theta_1_post (output)
+      theta_2_post,      // theta_2_post (trend states)
+      prec_y_post,       // prec_data_post (data precision)
+      prec_1_post,       // prec_theta_1_post (level precision)
+      theta_01_post,     // theta_01_post (initial level)
+      theta_02_post,     // theta_02_post (initial trend)
+      n,                 // n
+      ii                 // iter
     );
 
     /* 5) Sample innovation precision 1/W_1 */
     generate_precision_theta_k(
-      theta_01_post,
-      theta_02_post,
-      theta_1_post,
-      theta_2_post,
-      prec_1_post,
-      nu_01,
-      eta_01,
-      n,
-      ii
+      theta_01_post,     // theta_0k_post (initial level)
+      theta_02_post,     // theta_0kp1_post (initial trend)
+      theta_1_post,      // theta_k_post (level states)
+      theta_2_post,      // theta_kp1_post (trend states)
+      prec_1_post,       // prec_theta_k_post (output)
+      nu_01,             // nu_0k (prior shape)
+      eta_01,            // eta_0k (prior rate)
+      n,                 // n
+      ii                 // iter
     );
 
     /* 6) Sample initial level state theta_01 */
     generate_theta_01(
-      theta_01_post,
-      theta_02_post,
-      theta_1_post,
-      prec_1_post,
-      theta_01_post,
-      n,
-      ii
+      theta_01_post,     // theta_01_post (output)
+      theta_02_post,     // theta_02_post (initial trend)
+      theta_1_post,      // theta_1_post (level states)
+      prec_1_post,       // prec_theta_1_post (level precision)
+      theta_01_post,     // (parameter mismatch - check signature)
+      n,                 // n
+      ii                 // iter
     );
 
     /* 7) Sample data precision 1/V */
     generate_precision_data(
-      y,
-      theta_1_post,
-      prec_y_post,
-      nu_y,
-      eta_y,
-      n,
-      ii
+      y,                 // y (observed data)
+      theta_1_post,      // theta_1_post (level states)
+      prec_y_post,       // prec_y_post (output)
+      nu_y,              // nu_y (prior shape)
+      eta_y,             // eta_y (prior rate)
+      n,                 // n
+      ii                 // iter
     );
 
     /* Store post‐burn‐in draws, applying thinning */

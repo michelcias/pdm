@@ -129,21 +129,19 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
   for (int ii = 1; ii < n_iter; ii++) {
     /* 1) Sample trend state vector theta_2 */
     generate_theta_p(
-      theta_01_post,     // theta_pm1_post (theta_1 é p-1)
-      theta_02_post,     // theta_p_post (theta_2 é p)  
-      theta_2_post,      // prec_theta_pm1_post
+      theta_1_post,      // theta_pm1_post
+      theta_2_post,      // theta_p_post (output)
+      prec_1_post,       // prec_theta_pm1_post
       prec_2_post,       // prec_theta_p_post
-      theta_1_post,      // theta_0p_post
-      prec_1_post,       // (extra parameter)
+      theta_02_post,     // theta_0p_post
       n,                 // n
       ii                 // iter
     );
 
     /* 2) Sample innovation precision 1/W_2 */
     generate_precision_theta_p(
-      theta_01_post,     // theta_0p_post
-      theta_02_post,     // theta_p_post  
-      theta_2_post,      // prec_theta_p_post
+      theta_02_post,     // theta_0p_post
+      theta_2_post,      // theta_p_post
       prec_2_post,       // prec_theta_p_post (output)
       nu_02,             // nu_0p (prior shape)
       eta_02,            // eta_0p (prior rate)
@@ -153,13 +151,12 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
 
     /* 3) Sample initial trend state theta_02 */
     generate_theta_0p(
-      theta_01_post,     // theta_0pm1_post
+      theta_01_post,     // theta_0pm1_post (initial level)
       theta_02_post,     // theta_0p_post (output)
       theta_1_post,      // theta_pm1_post
       theta_2_post,      // theta_p_post
       prec_1_post,       // prec_theta_pm1_post
       prec_2_post,       // prec_theta_p_post
-      theta_02_post,     // theta_0p_post (additional?)
       theta02_mean,      // mean_theta_0p (prior mean)
       theta02_prec,      // prec_theta_0p (prior precision)
       n,                 // n
@@ -198,7 +195,8 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
       theta_02_post,     // theta_02_post (initial trend)
       theta_1_post,      // theta_1_post (level states)
       prec_1_post,       // prec_theta_1_post (level precision)
-      theta_01_post,     // (parameter mismatch - check signature)
+      theta01_mean,      // mean_theta_01 (prior mean)
+      theta01_prec,      // prec_theta_01 (prior precision)
       n,                 // n
       ii                 // iter
     );

@@ -2,3 +2,4 @@
 
 export(mcmc_locallevel)
 export(mcmc_localtrend)
+useDynLib(pdm, .registration = TRUE)

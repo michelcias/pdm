@@ -1,12 +1,15 @@
-#' Gibbs Sampler for a Local‐Level Dynamic Model
+#' @title Gibbs Sampler for a Local‐Level Dynamic Model
 #'
-#' Runs a Gibbs sampler for the local‐level dynamic model:
+#' @description Runs a Gibbs sampler for the local-level dynamic model.
+#'
+#' @details The model is defined as:
 #' \deqn{
 #' \begin{aligned}
-#' y_t &= \theta_{t1} + e_t, \quad e_t \sim N(0, V), \\
-#' \theta_{t1} &= \theta_{(t-1)1} + u_t, \quad u_t \sim N(0, W_1). \\
+#' y_t &= \theta_{t,1} + e_t,                 & e_t     & \sim N(0, V),  \\
+#' \theta_{t,1} &= \theta_{t-1,1} + u_{t,1},  & u_{t,1} & \sim N(0, W_1),
 #' \end{aligned}
 #' }
+#' where \eqn{t = 1, 2, \ldots, n} and \eqn{n} is the number of observations.
 #'
 #' Burn‐in and thinning are applied so that exactly \code{n_chain}
 #' posterior samples are returned.
@@ -15,8 +18,8 @@
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
 #' @param thinning Integer \eqn{\geq 1}, thinning interval.
 #' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
-#' @param prior_theta01_mean Numeric, prior mean for the initial state \eqn{\theta_{01}}.
-#' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{01}}.
+#' @param prior_theta01_mean Numeric, prior mean for the initial state \eqn{\theta_{0,1}}.
+#' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,1}}.
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for the innovation precision \eqn{1/W_1}.
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}.
 #' @param prior_prec_y_shape Numeric > 0, shape parameter of the Gamma prior for the data precision \eqn{1/V}.
@@ -24,11 +27,11 @@
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is \code{NULL}, which does not set the seed.
 #'
-#' @return A \code{list} with components:
+#' @return A list with components:
 #' \describe{
 #'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{\text{chain}} \times n]} of latent‐state samples.}
 #'   \item{\code{theta_01}}{Numeric vector of length \code{n_chain} containing
-#'   posterior samples of the initial state \eqn{\theta_{01}}}
+#'   posterior samples of the initial state \eqn{\theta_{0,1}}}
 #'   \item{\code{prec_1}}{Numeric vector of length \code{n_chain} containing
 #'   posterior samples of the innovation precision \eqn{1/W_1}.}
 #'   \item{\code{prec_y}}{Numeric vector of length \code{n_chain} containing
@@ -305,7 +308,7 @@
 #'   )
 #' }
 #'
-#' @seealso \link[base]{.Call}, \link[base]{set.seed}, \link[stats]{rnorm}
+#' @seealso \link[pdm]{mcmc_localtrend}
 #' @export
 mcmc_locallevel <- function(y,
                             burnin,

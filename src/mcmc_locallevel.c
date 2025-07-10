@@ -16,6 +16,10 @@
  *   3) initial state     — generate_theta_01_locallevel
  *   4) data precision    — generate_precision_data     (1/V)
  *
+ * The model is:
+ *   y_t        = theta_{t1} + e_t,           e_t    ~ N(0, V)
+ *   theta_{t1} = theta_{(t-1)1} + u_{t1},    u_{t1} ~ N(0, W_1)
+ *
  * Burn‐in and thinning are applied so that exactly n_chain posterior draws are returned.
  *
  * @param y                    Numeric vector of observations (length = n).

@@ -117,7 +117,7 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
   /* Initialize state vectors for t = 1..n */
   double init_sd_1 = sqrt(1.0 / prec_1_post[0]);
   double init_sd_2 = sqrt(1.0 / prec_2_post[0]);
-  theta_1_post[0] = rnorm(theta_01_post[0], init_sd_1);
+  theta_1_post[0] = rnorm(theta_01_post[0] + theta_02_post[0], init_sd_1);
   theta_2_post[0] = rnorm(theta_02_post[0], init_sd_2);
   for (int j = 1; j < n; j++) {
     theta_1_post[j] = rnorm(theta_1_post[j - 1] + theta_2_post[j - 1], init_sd_1);

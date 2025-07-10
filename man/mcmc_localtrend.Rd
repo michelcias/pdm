@@ -2,7 +2,7 @@
 % Please edit documentation in R/mcmc_localtrend.R
 \name{mcmc_localtrend}
 \alias{mcmc_localtrend}
-\title{Gibbs Sampler for a Local Trend Dynamic Model}
+\title{Gibbs Sampler for a Local-Trend Dynamic Model}
 \usage{
 mcmc_localtrend(
   y,
@@ -52,10 +52,10 @@ mcmc_localtrend(
 \item{prior_prec_y_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
-Default is `NULL`, which does not set the seed.}
+Default is \code{NULL}, which does not set the seed.}
 }
 \value{
-A `list` with components:
+A list with components:
 \describe{
   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
@@ -73,11 +73,12 @@ Runs a Gibbs sampler for the local trend dynamic model.
 The model is defined as:
 \deqn{
 \begin{aligned}
-y_t &= \theta_{t,1} + \epsilon_t, \quad \epsilon_t \sim N(0, V), \\
-\theta_{t,1} &= \theta_{t-1,1} + \theta_{t-1,2} + \omega_{t,1}, \quad \omega_{t,1} \sim N(0, W_1), \\
-\theta_{t,2} &= \theta_{t-1,2} + \omega_{t,2}, \quad \omega_{t,2} \sim N(0, W_2).
+y_t &= \theta_{t,1} + \epsilon_t,                          & \epsilon_t  & \sim N(0, V), \\
+\theta_{t,1} &= \theta_{t-1,1} + \theta_{t-1,2} + u_{t,1}, & u_{t,1}     & \sim N(0, W_1), \\
+\theta_{t,2} &= \theta_{t-1,2} + u_{t,2},                  & u_{t,2}     & \sim N(0, W_2),
 \end{aligned}
 }
+where \eqn{t = 1, 2, \ldots, n} and \eqn{n} is the number of observations.
 
 Burn-in and thinning are applied so that exactly `n_chain` posterior samples
 are returned.
@@ -155,5 +156,5 @@ out <- mcmc_localtrend(
 
 }
 \seealso{
-[mcmc_locallevel()]
+\link[pdm]{mcmc_locallevel}
 }

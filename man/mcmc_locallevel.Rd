@@ -2,7 +2,7 @@
 % Please edit documentation in R/mcmc_locallevel.R
 \name{mcmc_locallevel}
 \alias{mcmc_locallevel}
-\title{Gibbs Sampler for a Local‐Level Dynamic Model}
+\title{Gibbs Sampler for a Local-Level Dynamic Model}
 \usage{
 mcmc_locallevel(
   y,
@@ -45,13 +45,10 @@ Default is \code{NULL}, which does not set the seed.}
 \value{
 A list with components:
 \describe{
-  \item{\code{theta_1}}{Numeric matrix \eqn{[n_{\text{chain}} \times n]} of latent‐state samples.}
-  \item{\code{theta_01}}{Numeric vector of length \code{n_chain} containing
-  posterior samples of the initial state \eqn{\theta_{0,1}}}
-  \item{\code{prec_1}}{Numeric vector of length \code{n_chain} containing
-  posterior samples of the innovation precision \eqn{1/W_1}.}
-  \item{\code{prec_y}}{Numeric vector of length \code{n_chain} containing
-  posterior samples of the observation precision \eqn{1/V}.}
+  \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
+  \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
+  \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
+  \item{`prec_y`}{Numeric vector of length `n_chain` of posterior samples for the data precision \eqn{1/V}.}
 }
 }
 \description{
@@ -74,116 +71,103 @@ posterior samples are returned.
 ## Description
 # This example demonstrates how to:
 # 1. Simulate data from a local-level dynamic model
-# 2. Use `mcmc_locallevel` to estimate latent states
-# 3. Visualize posterior results
-# 4. Set a seed for reproducibility
+# 2. Use `mcmc_locallevel` to estimate parameters and latent states
+# 3. Perform a detailed posterior analysis with visualizations
 
 ## Simulation of data
-n <- 1000  # Number of observations to simulate
-
-# True parameters for simulation:
-theta0_true <- 10  # Initial state (theta[01])
-prec1_true <- 1    # Innovation precision (1/W[1])
-prec_y_true <- 5   # Observation precision (1/V)
-
-# Use a fixed seed for data simulation
 set.seed(123)
+n <- 1000
 
-# Generate noise terms:
-u <- rnorm(n, sd = sqrt(1/prec1_true))  # Evolution noise (u[t])
-e <- rnorm(n, sd = sqrt(1/prec_y_true)) # Observation noise (e[t])
+# True parameters
+theta0_true <- 10
+prec1_true <- 1
+prec_y_true <- 5
 
-# Simulate latent states and observations:
-theta1_true <- cumsum(c(theta0_true, u))[-1]  # theta[t1] series
-y <- theta1_true + e                          # Observed data (y[t])
+# Generate noise terms
+u <- rnorm(n, sd = sqrt(1 / prec1_true))
+e <- rnorm(n, sd = sqrt(1 / prec_y_true))
 
-# Plot the simulated data
-\dontrun{
-plot.ts(y, main = "Simulated data", ylab = expression(y[t]), xlab = "t")
-}
+# Simulate latent states and observations
+theta1_true <- cumsum(c(theta0_true, u))[-1]
+y <- theta1_true + e
 
 ## Running the Gibbs sampler
-
-# Run the Gibbs sampler with specified priors and a seed
+# Run the sampler with non-informative priors and a seed for reproducibility
 out <- mcmc_locallevel(
   y,
-  burnin               = 1000,          # Number of burn-in iterations
-  thinning             = 10,            # Thinning interval
-  n_chain              = 1000,          # Number of posterior samples
-  prior_theta01_mean   = y[1],          # Prior mean for theta[01]
-  prior_theta01_prec   = 1/var(y),      # Prior precision for theta[01]
-  prior_prec1_shape    = 1e-2,          # Shape parameter for 1/W[1]
-  prior_prec1_rate     = 1e-2,          # Rate parameter for 1/W[1]
-  prior_prec_y_shape   = 1e-2,          # Shape parameter for 1/V
-  prior_prec_y_rate    = 1e-2,          # Rate parameter for 1/V
-  seed                 = 456            # Set seed for MCMC run
+  burnin = 1000,
+  thinning = 10,
+  n_chain = 1000,
+  prior_theta01_mean = 0,
+  prior_theta01_prec = 1e-4,
+  prior_prec1_shape = 1e-3,
+  prior_prec1_rate = 1e-3,
+  prior_prec_y_shape = 1e-3,
+  prior_prec_y_rate = 1e-3,
+  seed = 456
 )
 
 ## Posterior analysis and visualization
-
-# Point estimates shown below are based on the median of posterior samples
-
-# --- 1. Latent State (theta[t1]) ---
-
-# Visualize trajectories from the first few posterior samples for theta[t1]
+# The following plots show how to analyze the posterior distributions
+# of the parameters and the latent state.
+# Point estimates are based on the median of posterior samples.
 \dontrun{
-  # (Requires the 'graphics' package for matplot and 'grDevices' for rainbow)
-  num_traj_to_plot <- 20 # How many trajectories (rows of out$theta_1) to plot
+  # --- 0. Plot the simulated data ---
+  plot.ts(
+    y,
+    main = "Simulated Data",
+    ylab = expression(y[t]),
+    xlab = "Time"
+  )
+
+  # --- 1. Latent State (theta_t1) ---
+
+  # Visualize trajectories from the first 20 posterior samples
+  num_traj_to_plot <- 20
   matplot(
-    t(out$theta_1[1:num_traj_to_plot, ]), # Plot columns (time) vs rows (samples)
+    t(out$theta_1[1:num_traj_to_plot, ]),
     type = "l",
     lty = 1,
-    col = grDevices::rainbow(num_traj_to_plot, alpha = 0.5), # Transparent colors
-    xlab = "t",
+    col = grDevices::rainbow(num_traj_to_plot, alpha = 0.5),
+    xlab = "Time",
     ylab = expression(theta[t1]),
-    main = "Sampled trajectories for latent state"
+    main = "Sampled Trajectories for Latent State"
   )
-}
 
-# Estimate the latent state using the median of posterior samples
-theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
-
-# Plot true and estimated (median) latent state
-\dontrun{
-  range_theta_1 <- range(theta_1_estimate, theta1_true)
-  r1_theta1 <- range_theta_1[1]
-  r2_theta1 <- range_theta_1[2] + 0.2 * diff(range_theta_1)
-
-  plot.ts(
+  # Plot true and estimated (median) latent state
+  theta_1_estimate <- apply(out$theta_1, 2, median)
+  plot(
     theta1_true,
-    col = "red",
     type = "l",
-    xlab = "t",
-    ylim = c(r1_theta1, r2_theta1),
+    col = "red",
     lty = 2,
+    ylim = range(theta1_true, theta_1_estimate),
     ylab = expression(theta[t1]),
-    main = "Latent state"
+    xlab = "Time",
+    main = "Latent State: True vs. Estimated"
   )
-  points(theta_1_estimate, type = "l") # Add median estimate line
+  lines(
+    theta_1_estimate,
+    col = "black",
+    lty = 1
+  )
   legend(
-    "topright",
-    legend = c(expression(theta[t1]), expression(hat(theta)[t1])),
+    "topleft",
+    legend = c("True", "Estimated"),
     col = c("red", "black"),
     lty = c(2, 1),
     bty = "n"
   )
-}
 
-# --- 2. Initial State (theta[01]) ---
+  # --- 2. Initial State (theta_01) ---
 
-# Trace plot for theta[01]
-\dontrun{
-  range_theta_01 <- range(out$theta_01)
-  r1_theta01 <- range_theta_01[1]
-  r2_theta01 <- range_theta_01[2] + 0.2 * diff(range_theta_01)
-
+  # Trace plot
   plot.ts(
     out$theta_01,
-    ylab = expression(theta["01"]),
-    main = "Trace plot of initial state",
-    xlab = "Iterations",
+    main = "Trace Plot of Initial State",
     col = "gray",
-    ylim = c(r1_theta01, r2_theta01)
+    ylab = expression(theta["01"]),
+    xlab = "Iteration"
   )
   abline(
     h = c(theta0_true, median(out$theta_01)),
@@ -193,22 +177,18 @@ theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
   )
   legend(
     "topright",
-    legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
+    legend = c("True", "Median"),
     col = c("red", "black"),
     lty = c(2, 1),
-    bty = "n",
-    lwd = 2
+    lwd = 2,
+    bty = "n"
   )
-}
 
-# Density estimate for theta[01]
-\dontrun{
+  # Posterior density plot
   plot(
     density(out$theta_01),
-    main = "Posterior density estimate of initial state",
-    xlab = expression(theta["01"]),
-    ylab = "Density",
-    lwd = 2
+    main = "Posterior Density of Initial State",
+    xlab = expression(theta["01"])
   )
   abline(
     v = c(theta0_true, median(out$theta_01)),
@@ -218,29 +198,22 @@ theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
   )
   legend(
     "topright",
-    legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
+    legend = c("True", "Median"),
     col = c("red", "black"),
     lty = c(2, 1),
-    bty = "n",
-    lwd = 2
+    lwd = 2,
+    bty = "n"
   )
-}
 
-# --- 3. Evolution Precision (1/W[1]) ---
+  # --- 3. Evolution Precision (1/W_1) ---
 
-# Traceplot for 1/W[1]
-\dontrun{
-  range_prec_1 <- range(out$prec_1)
-  r1_prec1 <- range_prec_1[1]
-  r2_prec1 <- range_prec_1[2] + 0.2 * diff(range_prec_1)
-
+  # Trace plot
   plot.ts(
     out$prec_1,
-    ylab = expression(1/W[1]),
-    main = "Trace plot of evolution precision",
-    xlab = "Iterations",
+    main = "Trace Plot of Evolution Precision",
     col = "gray",
-    ylim = c(r1_prec1, r2_prec1)
+    ylab = expression(1/W[1]),
+    xlab = "Iteration"
   )
   abline(
     h = c(prec1_true, median(out$prec_1)),
@@ -250,22 +223,18 @@ theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
   )
   legend(
     "topright",
-    legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+    legend = c("True", "Median"),
     col = c("red", "black"),
     lty = c(2, 1),
-    bty = "n",
-    lwd = 2
+    lwd = 2,
+    bty = "n"
   )
-}
 
-# Density estimate for 1/W[1]
-\dontrun{
+  # Posterior density plot
   plot(
     density(out$prec_1),
-    main = "Posterior density estimate of evolution precision",
-    xlab = expression(W[1]^-1),
-    ylab = "Density",
-    lwd = 2
+    main = "Posterior Density of Evolution Precision",
+    xlab = expression(1/W[1])
   )
   abline(
     v = c(prec1_true, median(out$prec_1)),
@@ -275,29 +244,22 @@ theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
   )
   legend(
     "topright",
-    legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+    legend = c("True", "Median"),
     col = c("red", "black"),
     lty = c(2, 1),
-    bty = "n",
-    lwd = 2
+    lwd = 2,
+    bty = "n"
   )
-}
 
-# --- 4. Observation Precision (1/V) ---
+  # --- 4. Observation Precision (1/V) ---
 
-# Traceplot for 1/V
-\dontrun{
-  range_prec_y <- range(out$prec_y)
-  r1_precy <- range_prec_y[1]
-  r2_precy <- range_prec_y[2] + 0.2 * diff(range_prec_y)
-
+  # Trace plot
   plot.ts(
     out$prec_y,
-    ylab = expression(1/V),
-    main = "Trace plot of observation precision",
-    xlab = "Iterations",
+    main = "Trace Plot of Observation Precision",
     col = "gray",
-    ylim = c(r1_precy, r2_precy)
+    ylab = expression(1/V),
+    xlab = "Iteration"
   )
   abline(
     h = c(prec_y_true, median(out$prec_y)),
@@ -307,22 +269,18 @@ theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
   )
   legend(
     "topright",
-    legend = c(expression(V^-1), expression(hat(V)^-1)),
+    legend = c("True", "Median"),
     col = c("red", "black"),
     lty = c(2, 1),
-    bty = "n",
-    lwd = 2
+    lwd = 2,
+    bty = "n"
   )
-}
 
-# Density estimate for 1/V
-\dontrun{
+  # Posterior density plot
   plot(
     density(out$prec_y),
-    main = "Posterior density estimate of observation precision",
-    xlab = expression(V^-1),
-    ylab = "Density",
-    lwd = 2
+    main = "Posterior Density of Observation Precision",
+    xlab = expression(1/V)
   )
   abline(
     v = c(prec_y_true, median(out$prec_y)),
@@ -332,11 +290,11 @@ theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
   )
   legend(
     "topright",
-    legend = c(expression(V^-1), expression(hat(V)^-1)),
+    legend = c("True", "Median"),
     col = c("red", "black"),
     lty = c(2, 1),
-    bty = "n",
-    lwd = 2
+    lwd = 2,
+    bty = "n"
   )
 }
 

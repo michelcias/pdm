@@ -1,4 +1,4 @@
-#' @title Gibbs Sampler for a Local‐Level Dynamic Model
+#' @title Gibbs Sampler for a Local-Level Dynamic Model
 #'
 #' @description Runs a Gibbs sampler for the local-level dynamic model.
 #'
@@ -29,13 +29,10 @@
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{\text{chain}} \times n]} of latent‐state samples.}
-#'   \item{\code{theta_01}}{Numeric vector of length \code{n_chain} containing
-#'   posterior samples of the initial state \eqn{\theta_{0,1}}}
-#'   \item{\code{prec_1}}{Numeric vector of length \code{n_chain} containing
-#'   posterior samples of the innovation precision \eqn{1/W_1}.}
-#'   \item{\code{prec_y}}{Numeric vector of length \code{n_chain} containing
-#'   posterior samples of the observation precision \eqn{1/V}.}
+#'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
+#'   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
+#'   \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
+#'   \item{`prec_y`}{Numeric vector of length `n_chain` of posterior samples for the data precision \eqn{1/V}.}
 #' }
 #'
 #' @examples
@@ -367,7 +364,7 @@ mcmc_locallevel <- function(y,
 
   # Call the C function
   .Call(
-    "_pdm_mcmc_locallevel",
+    "_pdm_C_MCMC_locallevel",
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),

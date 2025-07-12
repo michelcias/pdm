@@ -43,33 +43,33 @@
 #'   \item{`prec_y`}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_locallevel}
-#' @export
-#'
 #' @examples
 #' ## Description
 #' # This example demonstrates how to:
 #' # 1. Simulate data from a local trend dynamic model
 #' # 2. Use `mcmc_localtrend` to estimate parameters and latent states
-#' # 3. Visualize posterior results
+#' # 3. Perform a detailed posterior analysis with visualizations
+#' # 4. Set a seed for reproducibility
 #'
 #' ## Simulation of data
+#' n <- 150 # Number of observations to simulate
+#'
+#' # True parameters for simulation:
+#' theta01_true <- 10      # Initial level (theta[0,1])
+#' theta02_true <- 0.5     # Initial trend (theta[0,2])
+#' prec1_true <- 1 / 0.1   # Level innovation precision (1/W[1])
+#' prec2_true <- 1 / 0.01  # Trend innovation precision (1/W[2])
+#' prec_y_true <- 1 / 0.5  # Observation precision (1/V)
+#'
+#' # Use a fixed seed for data simulation
 #' set.seed(123)
-#' n <- 150
 #'
-#' # True parameters
-#' theta01_true <- 10
-#' theta02_true <- 0.5
-#' prec1_true <- 1 / 0.1
-#' prec2_true <- 1 / 0.01
-#' prec_y_true <- 1 / 0.5
+#' # Generate noise terms:
+#' omega1 <- rnorm(n, sd = sqrt(1 / prec1_true))  # Level noise
+#' omega2 <- rnorm(n, sd = sqrt(1 / prec2_true))  # Trend noise
+#' epsilon <- rnorm(n, sd = sqrt(1 / prec_y_true)) # Observation noise
 #'
-#' # Generate noise terms
-#' omega1 <- rnorm(n, sd = sqrt(1 / prec1_true))
-#' omega2 <- rnorm(n, sd = sqrt(1 / prec2_true))
-#' epsilon <- rnorm(n, sd = sqrt(1 / prec_y_true))
-#'
-#' # Simulate latent states and observations
+#' # Simulate latent states and observations:
 #' theta1_true <- numeric(n)
 #' theta2_true <- numeric(n)
 #' theta2_true[1] <- theta02_true + omega2[1]
@@ -78,44 +78,144 @@
 #'   theta2_true[t] <- theta2_true[t-1] + omega2[t]
 #'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + omega1[t]
 #' }
-#' y <- theta1_true + epsilon
+#' y <- theta1_true + epsilon # Observed data
 #'
 #' ## Running the Gibbs sampler
+#' # Run the Gibbs sampler with specified priors and a seed
 #' out <- mcmc_localtrend(
 #'   y,
 #'   burnin = 2000,
 #'   thinning = 20,
 #'   n_chain = 1000,
-#'   prior_theta01_mean = 0,
-#'   prior_theta01_prec = 1e-4,
+#'   prior_theta01_mean = y[1],
+#'   prior_theta01_prec = 1/var(y),
 #'   prior_theta02_mean = 0,
-#'   prior_theta02_prec = 1e-4,
-#'   prior_prec1_shape = 1e-3,
-#'   prior_prec1_rate = 1e-3,
-#'   prior_prec2_shape = 1e-3,
-#'   prior_prec2_rate = 1e-3,
-#'   prior_prec_y_shape = 1e-3,
-#'   prior_prec_y_rate = 1e-3,
+#'   prior_theta02_prec = 1e-2,
+#'   prior_prec1_shape = 1e-1,
+#'   prior_prec1_rate = 1e-1,
+#'   prior_prec2_shape = 1e-1,
+#'   prior_prec2_rate = 1e-1,
+#'   prior_prec_y_shape = 1e-1,
+#'   prior_prec_y_rate = 1e-1,
 #'   seed = 456
 #' )
 #'
-#' ## Posterior analysis
-#' # You can now analyze the `out` object, for example, by plotting the median
-#' # of the posterior samples for the latent states against the true values.
+#' ## Posterior analysis and visualization
+#' # The following plots show how to analyze the posterior distributions.
+#' # Point estimates are based on the median of posterior samples.
 #' \dontrun{
+#'   # --- 0. Plot the simulated data ---
+#'   plot.ts(
+#'     y,
+#'     main = "Simulated Data",
+#'     ylab = expression(y[t]),
+#'     xlab = "t"
+#'   )
+#'
+#'   # --- 1. Latent Level (theta[t,1]) ---
 #'   theta1_est <- apply(out$theta_1, 2, median)
-#'   theta2_est <- apply(out$theta_2, 2, median)
-#'
-#'   # Plot level
-#'   plot.ts(theta1_true, col = "red", ylab = expression(theta[t1]), main = "Latent Level")
+#'   plot.ts(
+#'     theta1_true, col = "red", lty = 2,
+#'     ylab = expression(theta[t1]), main = "Latent Level State",
+#'     ylim = range(c(theta1_true, theta1_est))
+#'   )
 #'   lines(theta1_est, col = "black")
-#'   legend("topleft", legend = c("True", "Estimated"), col = c("red", "black"), lty = 1)
+#'   legend(
+#'     "topleft", bty = "n", lty = c(2, 1),
+#'     legend = c("True", "Estimated"), col = c("red", "black")
+#'   )
 #'
-#'   # Plot trend
-#'   plot.ts(theta2_true, col = "red", ylab = expression(theta[t2]), main = "Latent Trend")
+#'   # --- 2. Latent Trend (theta[t,2]) ---
+#'   theta2_est <- apply(out$theta_2, 2, median)
+#'   plot.ts(
+#'     theta2_true, col = "red", lty = 2,
+#'     ylab = expression(theta[t2]), main = "Latent Trend State",
+#'     ylim = range(c(theta2_true, theta2_est))
+#'   )
 #'   lines(theta2_est, col = "black")
-#'   legend("topleft", legend = c("True", "Estimated"), col = c("red", "black"), lty = 1)
+#'   legend(
+#'     "topleft", bty = "n", lty = c(2, 1),
+#'     legend = c("True", "Estimated"), col = c("red", "black")
+#'   )
+#'
+#'   # --- 3. Initial Level (theta[0,1]) ---
+#'   # Trace plot
+#'   plot.ts(
+#'     out$theta_01, col = "gray", xlab = "Iterations",
+#'     ylab = expression(theta["01"]), main = "Trace Plot of Initial Level",
+#'     ylim = range(c(out$theta_01, theta01_true))
+#'   )
+#'   abline(h = c(theta01_true, median(out$theta_01)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # Density plot
+#'   plot(density(out$theta_01), main = "Posterior Density of Initial Level", xlab = expression(theta["01"]))
+#'   abline(v = c(theta01_true, median(out$theta_01)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # --- 4. Initial Trend (theta[0,2]) ---
+#'   # Trace plot
+#'   plot.ts(
+#'     out$theta_02, col = "gray", xlab = "Iterations",
+#'     ylab = expression(theta["02"]), main = "Trace Plot of Initial Trend",
+#'     ylim = range(c(out$theta_02, theta02_true))
+#'   )
+#'   abline(h = c(theta02_true, median(out$theta_02)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # Density plot
+#'   plot(density(out$theta_02), main = "Posterior Density of Initial Trend", xlab = expression(theta["02"]))
+#'   abline(v = c(theta02_true, median(out$theta_02)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # --- 5. Level Precision (1/W_1) ---
+#'   # Trace plot
+#'   plot.ts(
+#'     out$prec_1, col = "gray", xlab = "Iterations",
+#'     ylab = expression(1/W[1]), main = "Trace Plot of Level Precision",
+#'     ylim = range(c(out$prec_1, prec1_true))
+#'   )
+#'   abline(h = c(prec1_true, median(out$prec_1)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # Density plot
+#'   plot(density(out$prec_1), main = "Posterior Density of Level Precision", xlab = expression(1/W[1]))
+#'   abline(v = c(prec1_true, median(out$prec_1)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # --- 6. Trend Precision (1/W_2) ---
+#'   # Trace plot
+#'   plot.ts(
+#'     out$prec_2, col = "gray", xlab = "Iterations",
+#'     ylab = expression(1/W[2]), main = "Trace Plot of Trend Precision",
+#'     ylim = range(c(out$prec_2, prec2_true))
+#'   )
+#'   abline(h = c(prec2_true, median(out$prec_2)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # Density plot
+#'   plot(density(out$prec_2), main = "Posterior Density of Trend Precision", xlab = expression(1/W[2]))
+#'   abline(v = c(prec2_true, median(out$prec_2)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # --- 7. Observation Precision (1/V) ---
+#'   # Trace plot
+#'   plot.ts(
+#'     out$prec_y, col = "gray", xlab = "Iterations",
+#'     ylab = expression(1/V), main = "Trace Plot of Observation Precision",
+#'     ylim = range(c(out$prec_y, prec_y_true))
+#'   )
+#'   abline(h = c(prec_y_true, median(out$prec_y)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'
+#'   # Density plot
+#'   plot(density(out$prec_y), main = "Posterior Density of Observation Precision", xlab = expression(1/V))
+#'   abline(v = c(prec_y_true, median(out$prec_y)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
 #' }
+#'
+#' @seealso \link[pdm]{mcmc_locallevel}
+#' @export
 #'
 mcmc_localtrend <- function(y,
                             burnin,

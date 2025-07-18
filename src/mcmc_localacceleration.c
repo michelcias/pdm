@@ -4,26 +4,29 @@
 #include "conditional_state.h"
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
-#include "mcmc_localtrend.h"
+#include "mcmc_localacceleration.h"
 
 /**
- * C_MCMC_localtrend: Gibbs sampler for a local-trend dynamic model (p = 2).
+ * C_MCMC_localacceleration: Gibbs sampler for a local-acceleration dynamic model (p = 3).
  *
- * This function runs a Gibbs MCMC for the polynomial dynamic model with a local trend structure,
+ * This function runs a Gibbs MCMC for the polynomial dynamic model with a local acceleration structure,
  * sampling parameters in the following order:
- *   1) state vector      — generate_theta_p (theta_2)
- *   2) innovation prec.  — generate_precision_theta_p (1/W_2)
- *   3) initial state     — generate_theta_0p (theta_02)
- *   4) state vector      — generate_theta_1 (theta_1)
- *   5) innovation prec.  — generate_precision_theta_k (1/W_1)
- *   6) initial state     — generate_theta_01 (theta_01)
- *   7) data precision    — generate_precision_data (1/V)
+ *   1) state vector      — generate_theta_p (theta_3)
+ *   2) innovation prec.  — generate_precision_theta_p (1/W_3)
+ *   3) initial state     — generate_theta_0p (theta_03)
+ *   4) state vector      — generate_theta_k (theta_2)
+ *   5) innovation prec.  — generate_precision_theta_k (1/W_2)
+ *   6) initial state     — generate_theta_0k (theta_02)
+ *   7) state vector      — generate_theta_1 (theta_1)
+ *   8) innovation prec.  — generate_precision_theta_k (1/W_1)
+ *   9) initial state     — generate_theta_01 (theta_01)
+ *  10) data precision    — generate_precision_data (1/V)
  *
  * The model is:
- *   y_t         = theta_{t,1} + e_t,                           e_t ~ N(0, V)
- *   theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1}, u_{t,1} ~ N(0, W_1)
- *   theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2}, u_{t,2} ~ N(0, W_2)
- *   theta_{t,3} = theta_{t-1,3} + u_{t2},                  u_{t,3} ~ N(0, W_3)
+ *   y_t         = theta_{t,1} + e_t,                            e_t ~ N(0, V)
+ *   theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
+ *   theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2},  u_{t,2} ~ N(0, W_2)
+ *   theta_{t,3} = theta_{t-1,3} + u_{t,3},                  u_{t,3} ~ N(0, W_3)
  *
  * Burn‐in and thinning are applied so that exactly n_chain posterior draws are returned.
  *
@@ -35,36 +38,45 @@
  * @param prior_theta01_prec   Double, prior precision (1/variance) for theta_01.
  * @param prior_theta02_mean   Double, prior mean for theta_02.
  * @param prior_theta02_prec   Double, prior precision (1/variance) for theta_02.
+ * @param prior_theta03_mean   Double, prior mean for theta_03.
+ * @param prior_theta03_prec   Double, prior precision (1/variance) for theta_03.
  * @param prior_prec1_shape    Double, shape parameter of Gamma prior for 1/W_1.
  * @param prior_prec1_rate     Double, rate  parameter of Gamma prior for 1/W_1.
  * @param prior_prec2_shape    Double, shape parameter of Gamma prior for 1/W_2.
  * @param prior_prec2_rate     Double, rate  parameter of Gamma prior for 1/W_2.
+ * @param prior_prec3_shape    Double, shape parameter of Gamma prior for 1/W_3.
+ * @param prior_prec3_rate     Double, rate  parameter of Gamma prior for 1/W_3.
  * @param prior_prec_y_shape   Double, shape parameter of Gamma prior for 1/V.
  * @param prior_prec_y_rate    Double, rate  parameter of Gamma prior for 1/V.
  *
  * @return An R list with components:
  *   $theta_1  — numeric matrix [n_chain × n] of state samples for level
  *   $theta_2  — numeric matrix [n_chain × n] of state samples for trend
+ *   $theta_3  — numeric matrix [n_chain × n] of state samples for acceleration
  *   $theta_01 — numeric vector [length = n_chain] of initial state samples (level)
  *   $theta_02 — numeric vector [length = n_chain] of initial state samples (trend)
+ *   $theta_03 — numeric vector [length = n_chain] of initial state samples (acceleration)
  *   $prec_1   — numeric vector [length = n_chain] of innovation precisions (level)
  *   $prec_2   — numeric vector [length = n_chain] of innovation precisions (trend)
+ *   $prec_3   — numeric vector [length = n_chain] of innovation precisions (acceleration)
  *   $prec_y   — numeric vector [length = n_chain] of data precisions
  */
-SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
-                       SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
-                       SEXP prior_theta02_mean_, SEXP prior_theta02_prec_,
-                       SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
-                       SEXP prior_prec2_shape_, SEXP prior_prec2_rate_,
-                       SEXP prior_prec_y_shape_, SEXP prior_prec_y_rate_) {
+SEXP C_MCMC_localacceleration(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
+                              SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
+                              SEXP prior_theta02_mean_, SEXP prior_theta02_prec_,
+                              SEXP prior_theta03_mean_, SEXP prior_theta03_prec_,
+                              SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
+                              SEXP prior_prec2_shape_, SEXP prior_prec2_rate_,
+                              SEXP prior_prec3_shape_, SEXP prior_prec3_rate_,
+                              SEXP prior_prec_y_shape_, SEXP prior_prec_y_rate_) {
   /* Parse data vector and check its length */
   double   *y    = REAL(y_);
   R_xlen_t  len  = LENGTH(y_);
   if (len < 3)
-    Rf_error("C_MCMC_localtrend: sample size 'n' must be at least 3, got %lld",
+    Rf_error("C_MCMC_localacceleration: sample size 'n' must be at least 3, got %lld",
              (long long) len);
   if (len > INT_MAX)
-    Rf_error("C_MCMC_localtrend: sample size too large (%lld > %d)",
+    Rf_error("C_MCMC_localacceleration: sample size too large (%lld > %d)",
              (long long) len, INT_MAX);
   int n = (int) len;
 
@@ -80,29 +92,39 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
   double theta01_prec = REAL(prior_theta01_prec_)[0];
   double theta02_mean = REAL(prior_theta02_mean_)[0];
   double theta02_prec = REAL(prior_theta02_prec_)[0];
+  double theta03_mean = REAL(prior_theta03_mean_)[0];
+  double theta03_prec = REAL(prior_theta03_prec_)[0];
   double nu_01        = REAL(prior_prec1_shape_)[0];
   double eta_01       = REAL(prior_prec1_rate_)[0];
   double nu_02        = REAL(prior_prec2_shape_)[0];
   double eta_02       = REAL(prior_prec2_rate_)[0];
+  double nu_03        = REAL(prior_prec3_shape_)[0];
+  double eta_03       = REAL(prior_prec3_rate_)[0];
   double nu_y         = REAL(prior_prec_y_shape_)[0];
   double eta_y        = REAL(prior_prec_y_rate_)[0];
 
   /* Allocate storage for posterior samples */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_2_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_3_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
   SEXP theta_02_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_03_samples = PROTECT(allocVector(REALSXP, n_chain));
   SEXP prec_1_samples   = PROTECT(allocVector(REALSXP, n_chain));
   SEXP prec_2_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_3_samples   = PROTECT(allocVector(REALSXP, n_chain));
   SEXP prec_y_samples   = PROTECT(allocVector(REALSXP, n_chain));
 
   /* Buffers for full MCMC trajectory (including burn‐in) */
   double *theta_1_post  = (double *) R_Calloc(n_iter * n, double);
   double *theta_2_post  = (double *) R_Calloc(n_iter * n, double);
+  double *theta_3_post  = (double *) R_Calloc(n_iter * n, double);
   double *theta_01_post = (double *) R_Calloc(n_iter,     double);
   double *theta_02_post = (double *) R_Calloc(n_iter,     double);
+  double *theta_03_post = (double *) R_Calloc(n_iter,     double);
   double *prec_1_post   = (double *) R_Calloc(n_iter,     double);
   double *prec_2_post   = (double *) R_Calloc(n_iter,     double);
+  double *prec_3_post   = (double *) R_Calloc(n_iter,     double);
   double *prec_y_post   = (double *) R_Calloc(n_iter,     double);
 
   /* Initialize RNG state */
@@ -111,24 +133,29 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
   /*--- INITIALIZATION (iter = 0) ---*/
   theta_01_post[0] = rnorm(theta01_mean, sqrt(1.0 / theta01_prec));
   theta_02_post[0] = rnorm(theta02_mean, sqrt(1.0 / theta02_prec));
+  theta_03_post[0] = rnorm(theta03_mean, sqrt(1.0 / theta03_prec));
   prec_1_post[0]   = rgamma(nu_01, 1.0 / eta_01);
   prec_2_post[0]   = rgamma(nu_02, 1.0 / eta_02);
+  prec_3_post[0]   = rgamma(nu_03, 1.0 / eta_03);
   prec_y_post[0]   = rgamma(nu_y,  1.0 / eta_y);
 
   /* Initialize state vectors for t = 1..n */
   double init_sd_1 = sqrt(1.0 / prec_1_post[0]);
   double init_sd_2 = sqrt(1.0 / prec_2_post[0]);
+  double init_sd_3 = sqrt(1.0 / prec_3_post[0]);
   theta_1_post[0] = rnorm(theta_01_post[0] + theta_02_post[0], init_sd_1);
-  theta_2_post[0] = rnorm(theta_02_post[0], init_sd_2);
+  theta_2_post[0] = rnorm(theta_02_post[0] + theta_03_post[0], init_sd_2);
+  theta_3_post[0] = rnorm(theta_03_post[0], init_sd_3);
   for (int j = 1; j < n; j++) {
     theta_1_post[j] = rnorm(theta_1_post[j - 1] + theta_2_post[j - 1], init_sd_1);
-    theta_2_post[j] = rnorm(theta_2_post[j - 1], init_sd_2);
+    theta_2_post[j] = rnorm(theta_2_post[j - 1] + theta_3_post[j - 1], init_sd_2);
+    theta_3_post[j] = rnorm(theta_3_post[j - 1], init_sd_3);
   }
 
   /*--- Main Gibbs sampling loop ---*/
   int chain = 0;
   for (int ii = 1; ii < n_iter; ii++) {
-    /* 1) Sample trend state vector theta_3 */
+    /* 1) Sample acceleration state vector theta_3 */
     generate_theta_p(
       theta_2_post,      // theta_pm1_post
       theta_3_post,      // theta_p_post (output)
@@ -150,9 +177,9 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
       ii                 // iter
     );
 
-    /* 3) Sample initial trend state theta_03 */
+    /* 3) Sample initial acceleration state theta_03 */
     generate_theta_0p(
-      theta_02_post,     // theta_0pm1_post (initial level)
+      theta_02_post,     // theta_0pm1_post
       theta_03_post,     // theta_0p_post (output)
       theta_2_post,      // theta_pm1_post
       theta_3_post,      // theta_p_post
@@ -164,7 +191,48 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
       ii                 // iter
     );
 
-    /* 4) Sample level state vector theta_1 */
+    /* 4) Sample trend state vector theta_2 */
+    generate_theta_k(
+      theta_1_post,      // theta_km1_post
+      theta_2_post,      // theta_k_post (output)
+      theta_3_post,      // theta_kp1_post
+      prec_1_post,       // prec_theta_km1_post
+      prec_2_post,       // prec_theta_k_post
+      theta_02_post,     // theta_0k_post
+      theta_03_post,     // theta_0kp1_post
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 5) Sample innovation precision 1/W_2 */
+    generate_precision_theta_k(
+      theta_02_post,     // theta_0k_post
+      theta_03_post,     // theta_0kp1_post
+      theta_2_post,      // theta_k_post
+      theta_3_post,      // theta_kp1_post
+      prec_2_post,       // prec_theta_k_post (output)
+      nu_02,             // nu_0k (prior shape)
+      eta_02,            // eta_0k (prior rate)
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 6) Sample initial trend state theta_02 */
+    generate_theta_0k(
+      theta_01_post,     // theta_0km1_post
+      theta_02_post,     // theta_0k_post (output)
+      theta_03_post,     // theta_0kp1_post
+      theta_1_post,      // theta_km1_post
+      theta_2_post,      // theta_k_post
+      prec_1_post,       // prec_theta_km1_post
+      prec_2_post,       // prec_theta_k_post
+      theta02_mean,      // mean_theta_0k (prior mean)
+      theta02_prec,      // prec_theta_0k (prior precision)
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 7) Sample level state vector theta_1 */
     generate_theta_1(
       y,                 // data (observed values)
       theta_1_post,      // theta_1_post (output)
@@ -177,7 +245,7 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
       ii                 // iter
     );
 
-    /* 5) Sample innovation precision 1/W_1 */
+    /* 8) Sample innovation precision 1/W_1 */
     generate_precision_theta_k(
       theta_01_post,     // theta_0k_post (initial level)
       theta_02_post,     // theta_0kp1_post (initial trend)
@@ -190,7 +258,7 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
       ii                 // iter
     );
 
-    /* 6) Sample initial level state theta_01 */
+    /* 9) Sample initial level state theta_01 */
     generate_theta_01(
       theta_01_post,     // theta_01_post (output)
       theta_02_post,     // theta_02_post (initial trend)
@@ -202,7 +270,7 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
       ii                 // iter
     );
 
-    /* 7) Sample data precision 1/V */
+    /* 10) Sample data precision 1/V */
     generate_precision_data(
       y,                 // y (observed data)
       theta_1_post,      // theta_1_post (level states)
@@ -219,11 +287,14 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
       for (int j = 0; j < n; j++) {
         REAL(theta_1_samples)[idx + j * n_chain] = theta_1_post[ii * n + j];
         REAL(theta_2_samples)[idx + j * n_chain] = theta_2_post[ii * n + j];
+        REAL(theta_3_samples)[idx + j * n_chain] = theta_3_post[ii * n + j];
       }
       REAL(theta_01_samples)[idx] = theta_01_post[ii];
       REAL(theta_02_samples)[idx] = theta_02_post[ii];
+      REAL(theta_03_samples)[idx] = theta_03_post[ii];
       REAL(prec_1_samples)[idx]   = prec_1_post[ii];
       REAL(prec_2_samples)[idx]   = prec_2_post[ii];
+      REAL(prec_3_samples)[idx]   = prec_3_post[ii];
       REAL(prec_y_samples)[idx]   = prec_y_post[ii];
     }
   }
@@ -234,32 +305,41 @@ SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
   /* Free temporary buffers */
   R_Free(theta_1_post);
   R_Free(theta_2_post);
+  R_Free(theta_3_post);
   R_Free(theta_01_post);
   R_Free(theta_02_post);
+  R_Free(theta_03_post);
   R_Free(prec_1_post);
   R_Free(prec_2_post);
+  R_Free(prec_3_post);
   R_Free(prec_y_post);
 
   /* Package results into a named list */
-  SEXP out = PROTECT(allocVector(VECSXP, 7));
+  SEXP out = PROTECT(allocVector(VECSXP, 10));
   SET_VECTOR_ELT(out, 0, theta_1_samples);
   SET_VECTOR_ELT(out, 1, theta_2_samples);
-  SET_VECTOR_ELT(out, 2, theta_01_samples);
-  SET_VECTOR_ELT(out, 3, theta_02_samples);
-  SET_VECTOR_ELT(out, 4, prec_1_samples);
-  SET_VECTOR_ELT(out, 5, prec_2_samples);
-  SET_VECTOR_ELT(out, 6, prec_y_samples);
+  SET_VECTOR_ELT(out, 2, theta_3_samples);
+  SET_VECTOR_ELT(out, 3, theta_01_samples);
+  SET_VECTOR_ELT(out, 4, theta_02_samples);
+  SET_VECTOR_ELT(out, 5, theta_03_samples);
+  SET_VECTOR_ELT(out, 6, prec_1_samples);
+  SET_VECTOR_ELT(out, 7, prec_2_samples);
+  SET_VECTOR_ELT(out, 8, prec_3_samples);
+  SET_VECTOR_ELT(out, 9, prec_y_samples);
 
-  SEXP nms = PROTECT(allocVector(STRSXP, 7));
+  SEXP nms = PROTECT(allocVector(STRSXP, 10));
   SET_STRING_ELT(nms, 0, mkChar("theta_1"));
   SET_STRING_ELT(nms, 1, mkChar("theta_2"));
-  SET_STRING_ELT(nms, 2, mkChar("theta_01"));
-  SET_STRING_ELT(nms, 3, mkChar("theta_02"));
-  SET_STRING_ELT(nms, 4, mkChar("prec_1"));
-  SET_STRING_ELT(nms, 5, mkChar("prec_2"));
-  SET_STRING_ELT(nms, 6, mkChar("prec_y"));
+  SET_STRING_ELT(nms, 2, mkChar("theta_3"));
+  SET_STRING_ELT(nms, 3, mkChar("theta_01"));
+  SET_STRING_ELT(nms, 4, mkChar("theta_02"));
+  SET_STRING_ELT(nms, 5, mkChar("theta_03"));
+  SET_STRING_ELT(nms, 6, mkChar("prec_1"));
+  SET_STRING_ELT(nms, 7, mkChar("prec_2"));
+  SET_STRING_ELT(nms, 8, mkChar("prec_3"));
+  SET_STRING_ELT(nms, 9, mkChar("prec_y"));
   setAttrib(out, R_NamesSymbol, nms);
 
-  UNPROTECT(9);
+  UNPROTECT(12);
   return out;
 }

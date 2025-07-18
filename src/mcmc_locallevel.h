@@ -15,6 +15,10 @@
  *   3) initial state     — generate_theta_01_locallevel
  *   4) data precision    — generate_precision_data     (1/V)
  *
+ * The model is:
+ *   y_t         = theta_{t,1} + e_t,        e_t ~ N(0, V)
+ *   theta_{t,1} = theta_{t-1,1} + u_{t,1},  u_{t,1} ~ N(0, W_1)
+ *
  * Burn‐in and thinning are applied so that exactly n_chain posterior draws are returned.
  *
  * @param y                    Numeric vector of observations (length = n).
@@ -22,7 +26,7 @@
  * @param thinning             Integer, thinning interval.
  * @param n_chain              Integer, number of retained posterior samples.
  * @param prior_theta01_mean   Double, prior mean for theta_01.
- * @param prior_theta01_prec   Double, prior precision (1/variance) for theta_01.
+ * @param prior_theta01_prec   Double, prior precision (1/variance) for theta_{0,1}.
  * @param prior_prec1_shape    Double, shape parameter of Gamma prior for 1/W_1.
  * @param prior_prec1_rate     Double, rate  parameter of Gamma prior for 1/W_1.
  * @param prior_prec_y_shape   Double, shape parameter of Gamma prior for 1/V.

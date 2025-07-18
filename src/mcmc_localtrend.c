@@ -20,9 +20,9 @@
  *   7) data precision    — generate_precision_data (1/V)
  *
  * The model is:
- *   y_t        = theta_{t1} + e_t,                         e_t ~ N(0, V)
- *   theta_{t1} = theta_{(t-1)1} + theta_{(t-1)2} + u_{t1}, u_{t1} ~ N(0, W_1)
- *   theta_{t2} = theta_{(t-1)2} + u_{t2},                  u_{t2} ~ N(0, W_2)
+ *   y_t         = theta_{t,1} + e_t,                            e_t ~ N(0, V)
+ *   theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
+ *   theta_{t,2} = theta_{t-1,2} + u_{t,2},                  u_{t,2} ~ N(0, W_2)
  *
  * Burn‐in and thinning are applied so that exactly n_chain posterior draws are returned.
  *
@@ -31,9 +31,9 @@
  * @param thinning             Integer, thinning interval.
  * @param n_chain              Integer, number of retained posterior samples.
  * @param prior_theta01_mean   Double, prior mean for theta_01.
- * @param prior_theta01_prec   Double, prior precision (1/variance) for theta_01.
- * @param prior_theta02_mean   Double, prior mean for theta_02.
- * @param prior_theta02_prec   Double, prior precision (1/variance) for theta_02.
+ * @param prior_theta01_prec   Double, prior precision (1/variance) for theta_{0,1}.
+ * @param prior_theta02_mean   Double, prior mean for theta_{0,2}.
+ * @param prior_theta02_prec   Double, prior precision (1/variance) for theta_{0,2}.
  * @param prior_prec1_shape    Double, shape parameter of Gamma prior for 1/W_1.
  * @param prior_prec1_rate     Double, rate  parameter of Gamma prior for 1/W_1.
  * @param prior_prec2_shape    Double, shape parameter of Gamma prior for 1/W_2.

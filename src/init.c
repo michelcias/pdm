@@ -5,6 +5,7 @@
 /* Include headers for all registered functions */
 #include "mcmc_locallevel.h"
 #include "mcmc_localtrend.h"
+#include "mcmc_localacceleration.h"
 #include "utils.h"
 
 /* .Call definitions:
@@ -13,9 +14,10 @@
  *   - Third argument: the number of arguments of the C function
  */
 static const R_CallMethodDef CallEntries[] = {
-  {"_pdm_C_ILogit",           (DL_FUNC) &C_ILogit,           1},
-  {"_pdm_C_MCMC_locallevel",  (DL_FUNC) &C_MCMC_locallevel,  10},
-  {"_pdm_C_MCMC_localtrend",  (DL_FUNC) &C_MCMC_localtrend,  14},
+  {"_pdm_C_ILogit",                (DL_FUNC) &C_ILogit,                  1},
+  {"_pdm_C_MCMC_locallevel",       (DL_FUNC) &C_MCMC_locallevel,        10},
+  {"_pdm_C_MCMC_localtrend",       (DL_FUNC) &C_MCMC_localtrend,        14},
+  {"_pdm_C_MCMC_localacceleration",(DL_FUNC) &C_MCMC_localacceleration, 18},
   {NULL, NULL, 0}
 };
 

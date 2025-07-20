@@ -125,22 +125,48 @@
 #'   # --- 0. Plot the simulated data ---
 #'   plot.ts(
 #'     y,
-#'     main = "Simulated Data",
+#'     main = "Simulated data",
 #'     ylab = expression(y[t]),
 #'     xlab = "t"
 #'   )
 #'
-#'   # --- 1. Latent Level (theta[t,1]) ---
-#'   theta1_est <- apply(out$theta_1, 2, median)
-#'   plot.ts(
-#'     theta1_true, col = "red", lty = 2,
-#'     ylab = expression(theta[t1]), main = "Latent Level State",
-#'     ylim = range(c(theta1_true, theta1_est))
+#'   # --- 1. Latent State (theta[t1]) ---
+#'
+#'   # Visualize trajectories from the first few posterior samples
+#'   num_traj_to_plot <- 20
+#'   matplot(
+#'     t(out$theta_1[1:num_traj_to_plot, ]),
+#'     type = "l",
+#'     lty = 1,
+#'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.5),
+#'     xlab = "t",
+#'     ylab = expression(theta[t1]),
+#'     main = "Sampled trajectories for latent state"
 #'   )
-#'   lines(theta1_est, col = "black")
+#'
+#'   # Plot true and estimated (median) latent state
+#'   theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
+#'   range_theta_1 <- range(theta_1_estimate, theta1_true)
+#'   r1_theta1 <- range_theta_1[1]
+#'   r2_theta1 <- range_theta_1[2] + 0.2 * diff(range_theta_1)
+#'
+#'   plot.ts(
+#'     theta1_true,
+#'     col = "red",
+#'     type = "l",
+#'     xlab = "t",
+#'     ylim = c(r1_theta1, r2_theta1),
+#'     lty = 2,
+#'     ylab = expression(theta[t1]),
+#'     main = "Latent state"
+#'   )
+#'   points(theta_1_estimate, type = "l")
 #'   legend(
-#'     "topleft", bty = "n", lty = c(2, 1),
-#'     legend = c("True", "Estimated"), col = c("red", "black")
+#'     "topright",
+#'     legend = c(expression(theta[t1]), expression(hat(theta)[t1])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n"
 #'   )
 #'
 #'   # --- 2. Latent Trend (theta[t,2]) ---

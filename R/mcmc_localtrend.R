@@ -52,31 +52,31 @@
 #' # 4. Set a seed for reproducibility
 #'
 #' ## Simulation of data
-#' n <- 150 # Number of observations to simulate
+#' n <- 1000 # Number of observations to simulate
 #'
 #' # True parameters for simulation:
-#' theta01_true <- 10      # Initial level (theta[0,1])
-#' theta02_true <- 0.5     # Initial trend (theta[0,2])
-#' prec1_true <- 1 / 0.1   # Level innovation precision (1/W[1])
-#' prec2_true <- 1 / 0.01  # Trend innovation precision (1/W[2])
-#' prec_y_true <- 1 / 0.5  # Observation precision (1/V)
+#' theta01_true <- 10        # Initial level (theta[0,1])
+#' theta02_true <- 0.5       # Initial trend (theta[0,2])
+#' prec1_true   <- 1 / 0.10  # Level innovation precision (1/W[1])
+#' prec2_true   <- 1 / 0.01  # Trend innovation precision (1/W[2])
+#' prec_y_true  <- 1 / 1.00  # Observation precision (1/V)
 #'
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
 #'
 #' # Generate noise terms:
-#' omega1 <- rnorm(n, sd = sqrt(1 / prec1_true))  # Level noise
-#' omega2 <- rnorm(n, sd = sqrt(1 / prec2_true))  # Trend noise
+#' u1      <- rnorm(n, sd = sqrt(1 / prec1_true))  # Level noise
+#' u2      <- rnorm(n, sd = sqrt(1 / prec2_true))  # Trend noise
 #' epsilon <- rnorm(n, sd = sqrt(1 / prec_y_true)) # Observation noise
 #'
 #' # Simulate latent states and observations:
-#' theta1_true <- numeric(n)
-#' theta2_true <- numeric(n)
-#' theta2_true[1] <- theta02_true + omega2[1]
-#' theta1_true[1] <- theta01_true + theta02_true + omega1[1]
+#' theta1_true    <- numeric(n)
+#' theta2_true    <- numeric(n)
+#' theta2_true[1] <- theta02_true + u2[1]
+#' theta1_true[1] <- theta01_true + theta02_true + u1[1]
 #' for (t in 2:n) {
-#'   theta2_true[t] <- theta2_true[t-1] + omega2[t]
-#'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + omega1[t]
+#'   theta2_true[t] <- theta2_true[t-1] + u2[t]
+#'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
 #' }
 #' y <- theta1_true + epsilon # Observed data
 #'
@@ -84,19 +84,19 @@
 #' # Run the Gibbs sampler with specified priors and a seed
 #' out <- mcmc_localtrend(
 #'   y,
-#'   burnin = 2000,
-#'   thinning = 20,
-#'   n_chain = 1000,
-#'   prior_theta01_mean = y[1],
-#'   prior_theta01_prec = 1/var(y),
-#'   prior_theta02_mean = 0,
-#'   prior_theta02_prec = 1e-2,
-#'   prior_prec1_shape = 1e-1,
-#'   prior_prec1_rate = 1e-1,
-#'   prior_prec2_shape = 1e-1,
-#'   prior_prec2_rate = 1e-1,
+#'   burnin   = 2000,
+#'   thinning = 100,
+#'   n_chain  = 1000,
+#'   prior_theta01_mean = y[1] / 2,
+#'   prior_theta01_prec = 1 / var(y),
+#'   prior_theta02_mean = y[1] / 2,
+#'   prior_theta02_prec = 1 / var(y),
+#'   prior_prec1_shape  = 1e-1,
+#'   prior_prec1_rate   = 1e-1,
+#'   prior_prec2_shape  = 1e-2,
+#'   prior_prec2_rate   = 1e-2,
 #'   prior_prec_y_shape = 1e-1,
-#'   prior_prec_y_rate = 1e-1,
+#'   prior_prec_y_rate  = 1e-1,
 #'   seed = 456
 #' )
 #'
@@ -107,22 +107,48 @@
 #'   # --- 0. Plot the simulated data ---
 #'   plot.ts(
 #'     y,
-#'     main = "Simulated Data",
+#'     main = "Simulated data",
 #'     ylab = expression(y[t]),
 #'     xlab = "t"
 #'   )
 #'
-#'   # --- 1. Latent Level (theta[t,1]) ---
-#'   theta1_est <- apply(out$theta_1, 2, median)
-#'   plot.ts(
-#'     theta1_true, col = "red", lty = 2,
-#'     ylab = expression(theta[t1]), main = "Latent Level State",
-#'     ylim = range(c(theta1_true, theta1_est))
+#'   # --- 1. Latent State (theta[t1]) ---
+#'
+#'   # Visualize trajectories from the first few posterior samples
+#'   num_traj_to_plot <- 20
+#'   matplot(
+#'     t(out$theta_1[1:num_traj_to_plot, ]),
+#'     type = "l",
+#'     lty = 1,
+#'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.5),
+#'     xlab = "t",
+#'     ylab = expression(theta[t1]),
+#'     main = "Sampled trajectories for latent state"
 #'   )
-#'   lines(theta1_est, col = "black")
+#'
+#'   # Plot true and estimated (median) latent state
+#'   theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
+#'   range_theta_1 <- range(theta_1_estimate, theta1_true)
+#'   r1_theta1 <- range_theta_1[1]
+#'   r2_theta1 <- range_theta_1[2] + 0.2 * diff(range_theta_1)
+#'
+#'   plot.ts(
+#'     theta1_true,
+#'     col = "red",
+#'     type = "l",
+#'     xlab = "t",
+#'     ylim = c(r1_theta1, r2_theta1),
+#'     lty = 2,
+#'     ylab = expression(theta[t1]),
+#'     main = "Latent state"
+#'   )
+#'   points(theta_1_estimate, type = "l")
 #'   legend(
-#'     "topleft", bty = "n", lty = c(2, 1),
-#'     legend = c("True", "Estimated"), col = c("red", "black")
+#'     "topright",
+#'     legend = c(expression(theta[t1]), expression(hat(theta)[t1])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n"
 #'   )
 #'
 #'   # --- 2. Latent Trend (theta[t,2]) ---

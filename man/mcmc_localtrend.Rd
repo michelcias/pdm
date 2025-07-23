@@ -92,31 +92,31 @@ are returned.
 # 4. Set a seed for reproducibility
 
 ## Simulation of data
-n <- 150 # Number of observations to simulate
+n <- 1000 # Number of observations to simulate
 
 # True parameters for simulation:
-theta01_true <- 10      # Initial level (theta[0,1])
-theta02_true <- 0.5     # Initial trend (theta[0,2])
-prec1_true <- 1 / 0.1   # Level innovation precision (1/W[1])
-prec2_true <- 1 / 0.01  # Trend innovation precision (1/W[2])
-prec_y_true <- 1 / 0.5  # Observation precision (1/V)
+theta01_true <- 10        # Initial level (theta[0,1])
+theta02_true <- 0.5       # Initial trend (theta[0,2])
+prec1_true   <- 1 / 0.10  # Level innovation precision (1/W[1])
+prec2_true   <- 1 / 0.01  # Trend innovation precision (1/W[2])
+prec_y_true  <- 1 / 1.00  # Observation precision (1/V)
 
 # Use a fixed seed for data simulation
 set.seed(123)
 
 # Generate noise terms:
-omega1 <- rnorm(n, sd = sqrt(1 / prec1_true))  # Level noise
-omega2 <- rnorm(n, sd = sqrt(1 / prec2_true))  # Trend noise
+u1      <- rnorm(n, sd = sqrt(1 / prec1_true))  # Level noise
+u2      <- rnorm(n, sd = sqrt(1 / prec2_true))  # Trend noise
 epsilon <- rnorm(n, sd = sqrt(1 / prec_y_true)) # Observation noise
 
 # Simulate latent states and observations:
-theta1_true <- numeric(n)
-theta2_true <- numeric(n)
-theta2_true[1] <- theta02_true + omega2[1]
-theta1_true[1] <- theta01_true + theta02_true + omega1[1]
+theta1_true    <- numeric(n)
+theta2_true    <- numeric(n)
+theta2_true[1] <- theta02_true + u2[1]
+theta1_true[1] <- theta01_true + theta02_true + u1[1]
 for (t in 2:n) {
-  theta2_true[t] <- theta2_true[t-1] + omega2[t]
-  theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + omega1[t]
+  theta2_true[t] <- theta2_true[t-1] + u2[t]
+  theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
 }
 y <- theta1_true + epsilon # Observed data
 
@@ -124,19 +124,19 @@ y <- theta1_true + epsilon # Observed data
 # Run the Gibbs sampler with specified priors and a seed
 out <- mcmc_localtrend(
   y,
-  burnin = 2000,
-  thinning = 20,
-  n_chain = 1000,
-  prior_theta01_mean = y[1],
-  prior_theta01_prec = 1/var(y),
-  prior_theta02_mean = 0,
-  prior_theta02_prec = 1e-2,
-  prior_prec1_shape = 1e-1,
-  prior_prec1_rate = 1e-1,
-  prior_prec2_shape = 1e-1,
-  prior_prec2_rate = 1e-1,
+  burnin   = 2000,
+  thinning = 100,
+  n_chain  = 1000,
+  prior_theta01_mean = y[1] / 2,
+  prior_theta01_prec = 1 / var(y),
+  prior_theta02_mean = y[1] / 2,
+  prior_theta02_prec = 1 / var(y),
+  prior_prec1_shape  = 1e-1,
+  prior_prec1_rate   = 1e-1,
+  prior_prec2_shape  = 1e-2,
+  prior_prec2_rate   = 1e-2,
   prior_prec_y_shape = 1e-1,
-  prior_prec_y_rate = 1e-1,
+  prior_prec_y_rate  = 1e-1,
   seed = 456
 )
 

@@ -112,7 +112,7 @@
 #'     xlab = "t"
 #'   )
 #'
-#'   # --- 1. Latent State (theta[t1]) ---
+#'   # --- 1. Latent Level (theta[t,1]) ---
 #'
 #'   # Visualize trajectories from the first few posterior samples
 #'   num_traj_to_plot <- 20
@@ -122,15 +122,15 @@
 #'     lty = 1,
 #'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.5),
 #'     xlab = "t",
-#'     ylab = expression(theta[t1]),
-#'     main = "Sampled trajectories for latent state"
+#'     ylab = expression(theta["t,1"]),
+#'     main = "Sampled trajectories for latent level"
 #'   )
 #'
-#'   # Plot true and estimated (median) latent state
+#'   # Plot true and estimated (median) latent level
 #'   theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
 #'   range_theta_1 <- range(theta_1_estimate, theta1_true)
 #'   r1_theta1 <- range_theta_1[1]
-#'   r2_theta1 <- range_theta_1[2] + 0.2 * diff(range_theta_1)
+#'   r2_theta1 <- range_theta_1[2] + 0.25 * diff(range_theta_1)
 #'
 #'   plot.ts(
 #'     theta1_true,
@@ -139,105 +139,292 @@
 #'     xlab = "t",
 #'     ylim = c(r1_theta1, r2_theta1),
 #'     lty = 2,
-#'     ylab = expression(theta[t1]),
-#'     main = "Latent state"
+#'     ylab = expression(theta["t,1"]),
+#'     main = "Latent level"
 #'   )
 #'   points(theta_1_estimate, type = "l")
 #'   legend(
 #'     "topright",
-#'     legend = c(expression(theta[t1]), expression(hat(theta)[t1])),
+#'     legend = c(expression(theta["t,1"]), expression(hat(theta)["t,1"])),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     bty = "n"
 #'   )
 #'
 #'   # --- 2. Latent Trend (theta[t,2]) ---
-#'   theta2_est <- apply(out$theta_2, 2, median)
+#'   theta_2_estimate <- apply(X = out$theta_2, MARGIN = 2, FUN = median)
+#'   range_theta_2 <- range(theta_2_estimate, theta2_true)
+#'   r1_theta2 <- range_theta_2[1]
+#'   r2_theta2 <- range_theta_2[2] + 0.25 * diff(range_theta_2)
+#'
 #'   plot.ts(
-#'     theta2_true, col = "red", lty = 2,
-#'     ylab = expression(theta[t2]), main = "Latent Trend State",
-#'     ylim = range(c(theta2_true, theta2_est))
+#'     theta2_true,
+#'     col = "red",
+#'     type = "l",
+#'     xlab = "t",
+#'     ylim = c(r1_theta2, r2_theta2),
+#'     lty = 2,
+#'     ylab = expression(theta["t,2"]),
+#'     main = "Latent trend"
 #'   )
-#'   lines(theta2_est, col = "black")
+#'   points(theta_2_estimate, type = "l")
 #'   legend(
-#'     "topleft", bty = "n", lty = c(2, 1),
-#'     legend = c("True", "Estimated"), col = c("red", "black")
+#'     "topright",
+#'     legend = c(expression(theta["t,2"]), expression(hat(theta)["t,2"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n"
 #'   )
 #'
 #'   # --- 3. Initial Level (theta[0,1]) ---
 #'   # Trace plot
+#'   range_theta_01 <- range(out$theta_01, theta01_true)
+#'   r1_theta01 <- range_theta_01[1]
+#'   r2_theta01 <- range_theta_01[2] + 0.25 * diff(range_theta_01)
+#'
 #'   plot.ts(
-#'     out$theta_01, col = "gray", xlab = "Iterations",
-#'     ylab = expression(theta["01"]), main = "Trace Plot of Initial Level",
-#'     ylim = range(c(out$theta_01, theta01_true))
+#'     out$theta_01,
+#'     col = "gray",
+#'     xlab = "Iterations",
+#'     ylab = expression(theta["0,1"]),
+#'     main = "Trace Plot of Initial Level",
+#'     ylim = c(r1_theta01, r2_theta01)
 #'   )
-#'   abline(h = c(theta01_true, median(out$theta_01)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   abline(
+#'     h = c(theta01_true, median(out$theta_01)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # Density plot
-#'   plot(density(out$theta_01), main = "Posterior Density of Initial Level", xlab = expression(theta["01"]))
-#'   abline(v = c(theta01_true, median(out$theta_01)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   plot(
+#'     density(out$theta_01),
+#'     main = "Posterior Density of Initial Level",
+#'     xlab = expression(theta["0,1"])
+#'   )
+#'   abline(
+#'     v = c(theta01_true, median(out$theta_01)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # --- 4. Initial Trend (theta[0,2]) ---
 #'   # Trace plot
+#'   range_theta_02 <- range(out$theta_02, theta02_true)
+#'   r1_theta02 <- range_theta_02[1]
+#'   r2_theta02 <- range_theta_02[2] + 0.25 * diff(range_theta_02)
+#'
 #'   plot.ts(
-#'     out$theta_02, col = "gray", xlab = "Iterations",
-#'     ylab = expression(theta["02"]), main = "Trace Plot of Initial Trend",
-#'     ylim = range(c(out$theta_02, theta02_true))
+#'     out$theta_02,
+#'     col = "gray",
+#'     xlab = "Iterations",
+#'     ylab = expression(theta["0,2"]),
+#'     main = "Trace Plot of Initial Trend",
+#'     ylim = c(r1_theta02, r2_theta02)
 #'   )
-#'   abline(h = c(theta02_true, median(out$theta_02)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   abline(
+#'     h = c(theta02_true, median(out$theta_02)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(theta["0,2"]), expression(hat(theta)["0,2"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # Density plot
-#'   plot(density(out$theta_02), main = "Posterior Density of Initial Trend", xlab = expression(theta["02"]))
-#'   abline(v = c(theta02_true, median(out$theta_02)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   plot(
+#'     density(out$theta_02),
+#'     main = "Posterior Density of Initial Trend",
+#'     xlab = expression(theta["0,2"])
+#'   )
+#'   abline(
+#'     v = c(theta02_true, median(out$theta_02)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(theta["0,2"]), expression(hat(theta)["0,2"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # --- 5. Level Precision (1/W_1) ---
 #'   # Trace plot
+#'   range_prec_1 <- range(out$prec_1, prec1_true)
+#'   r1_prec1 <- range_prec_1[1]
+#'   r2_prec1 <- range_prec_1[2] + 0.25 * diff(range_prec_1)
+#'
 #'   plot.ts(
-#'     out$prec_1, col = "gray", xlab = "Iterations",
-#'     ylab = expression(1/W[1]), main = "Trace Plot of Level Precision",
-#'     ylim = range(c(out$prec_1, prec1_true))
+#'     out$prec_1,
+#'     col = "gray",
+#'     xlab = "Iterations",
+#'     ylab = expression(1/W[1]),
+#'     main = "Trace Plot of Level Precision",
+#'     ylim = c(r1_prec1, r2_prec1)
 #'   )
-#'   abline(h = c(prec1_true, median(out$prec_1)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   abline(
+#'     h = c(prec1_true, median(out$prec_1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # Density plot
-#'   plot(density(out$prec_1), main = "Posterior Density of Level Precision", xlab = expression(1/W[1]))
-#'   abline(v = c(prec1_true, median(out$prec_1)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   plot(
+#'     density(out$prec_1),
+#'     main = "Posterior Density of Level Precision",
+#'     xlab = expression(W[1]^-1)
+#'   )
+#'   abline(
+#'     v = c(prec1_true, median(out$prec_1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # --- 6. Trend Precision (1/W_2) ---
 #'   # Trace plot
+#'   range_prec_2 <- range(out$prec_2, prec2_true)
+#'   r1_prec2 <- range_prec_2[1]
+#'   r2_prec2 <- range_prec_2[2] + 0.25 * diff(range_prec_2)
+#'
 #'   plot.ts(
-#'     out$prec_2, col = "gray", xlab = "Iterations",
-#'     ylab = expression(1/W[2]), main = "Trace Plot of Trend Precision",
-#'     ylim = range(c(out$prec_2, prec2_true))
+#'     out$prec_2,
+#'     col = "gray",
+#'     xlab = "Iterations",
+#'     ylab = expression(1/W[2]),
+#'     main = "Trace Plot of Trend Precision",
+#'     ylim = c(r1_prec2, r2_prec2)
 #'   )
-#'   abline(h = c(prec2_true, median(out$prec_2)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   abline(
+#'     h = c(prec2_true, median(out$prec_2)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(W[2]^-1), expression(hat(W)[2]^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # Density plot
-#'   plot(density(out$prec_2), main = "Posterior Density of Trend Precision", xlab = expression(1/W[2]))
-#'   abline(v = c(prec2_true, median(out$prec_2)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   plot(
+#'     density(out$prec_2),
+#'     main = "Posterior Density of Trend Precision",
+#'     xlab = expression(W[2]^-1)
+#'   )
+#'   abline(
+#'     v = c(prec2_true, median(out$prec_2)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(W[2]^-1), expression(hat(W)[2]^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # --- 7. Observation Precision (1/V) ---
 #'   # Trace plot
+#'   range_prec_y <- range(out$prec_y, prec_y_true)
+#'   r1_prec_y <- range_prec_y[1]
+#'   r2_prec_y <- range_prec_y[2] + 0.25 * diff(range_prec_y)
+#'
 #'   plot.ts(
-#'     out$prec_y, col = "gray", xlab = "Iterations",
-#'     ylab = expression(1/V), main = "Trace Plot of Observation Precision",
-#'     ylim = range(c(out$prec_y, prec_y_true))
+#'     out$prec_y,
+#'     col = "gray",
+#'     xlab = "Iterations",
+#'     ylab = expression(1/V),
+#'     main = "Trace Plot of Observation Precision",
+#'     ylim = c(r1_prec_y, r2_prec_y)
 #'   )
-#'   abline(h = c(prec_y_true, median(out$prec_y)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   abline(
+#'     h = c(prec_y_true, median(out$prec_y)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(V^-1), expression(hat(V)^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #'
 #'   # Density plot
-#'   plot(density(out$prec_y), main = "Posterior Density of Observation Precision", xlab = expression(1/V))
-#'   abline(v = c(prec_y_true, median(out$prec_y)), col = c("red", "black"), lty = c(2, 1), lwd = 2)
-#'   legend("topright", bty = "n", legend = c("True", "Median"), col = c("red", "black"), lty = c(2, 1), lwd = 2)
+#'   plot(
+#'     density(out$prec_y),
+#'     main = "Posterior Density of Observation Precision",
+#'     xlab = expression(V^-1)
+#'   )
+#'   abline(
+#'     v = c(prec_y_true, median(out$prec_y)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     bty = "n",
+#'     legend = c(expression(V^-1), expression(hat(V)^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
 #' }
 #'
 #' @seealso \link[pdm]{mcmc_locallevel}

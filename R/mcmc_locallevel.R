@@ -55,26 +55,26 @@
 #' set.seed(123)
 #'
 #' # Generate noise terms:
-#' u <- rnorm(n, sd = sqrt(1/prec1_true))  # Evolution noise (u[t])
-#' e <- rnorm(n, sd = sqrt(1/prec_y_true)) # Observation noise (e[t])
+#' u1 <- rnorm(n, sd = sqrt(1/prec1_true))  # Evolution noise (u1[t])
+#' e  <- rnorm(n, sd = sqrt(1/prec_y_true)) # Observation noise (e[t])
 #'
 #' # Simulate latent states and observations:
-#' theta1_true <- cumsum(c(theta0_true, u))[-1]  # theta[t1] series
-#' y <- theta1_true + e                          # Observed data (y[t])
+#' theta1_true <- cumsum(c(theta0_true, u1))[-1]  # theta[t1] series
+#' y <- theta1_true + e                           # Observed data (y[t])
 #'
 #' ## Running the Gibbs sampler
 #' # Run the Gibbs sampler with specified priors and a seed
 #' out <- mcmc_locallevel(
 #'   y,
-#'   burnin = 1000,
+#'   burnin   = 1000,
 #'   thinning = 10,
-#'   n_chain = 1000,
+#'   n_chain  = 1000,
 #'   prior_theta01_mean = y[1],
-#'   prior_theta01_prec = 1/var(y),
-#'   prior_prec1_shape = 1e-2,
-#'   prior_prec1_rate = 1e-2,
+#'   prior_theta01_prec = 1 / var(y),
+#'   prior_prec1_shape  = 1e-2,
+#'   prior_prec1_rate   = 1e-2,
 #'   prior_prec_y_shape = 1e-2,
-#'   prior_prec_y_rate = 1e-2,
+#'   prior_prec_y_rate  = 1e-2,
 #'   seed = 456
 #' )
 #'
@@ -100,7 +100,7 @@
 #'     lty = 1,
 #'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.5),
 #'     xlab = "t",
-#'     ylab = expression(theta[t1]),
+#'     ylab = expression(theta["t,1"]),
 #'     main = "Sampled trajectories for latent state"
 #'   )
 #'
@@ -108,7 +108,7 @@
 #'   theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
 #'   range_theta_1 <- range(theta_1_estimate, theta1_true)
 #'   r1_theta1 <- range_theta_1[1]
-#'   r2_theta1 <- range_theta_1[2] + 0.2 * diff(range_theta_1)
+#'   r2_theta1 <- range_theta_1[2] + 0.25 * diff(range_theta_1)
 #'
 #'   plot.ts(
 #'     theta1_true,
@@ -117,13 +117,13 @@
 #'     xlab = "t",
 #'     ylim = c(r1_theta1, r2_theta1),
 #'     lty = 2,
-#'     ylab = expression(theta[t1]),
+#'     ylab = expression(theta["t,1"]),
 #'     main = "Latent state"
 #'   )
 #'   points(theta_1_estimate, type = "l")
 #'   legend(
 #'     "topright",
-#'     legend = c(expression(theta[t1]), expression(hat(theta)[t1])),
+#'     legend = c(expression(theta["t,1"]), expression(hat(theta)["t,1"])),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     bty = "n"
@@ -134,11 +134,11 @@
 #'   # Trace plot for theta[01]
 #'   range_theta_01 <- range(out$theta_01)
 #'   r1_theta01 <- range_theta_01[1]
-#'   r2_theta01 <- range_theta_01[2] + 0.2 * diff(range_theta_01)
+#'   r2_theta01 <- range_theta_01[2] + 0.25 * diff(range_theta_01)
 #'
 #'   plot.ts(
 #'     out$theta_01,
-#'     ylab = expression(theta["01"]),
+#'     ylab = expression(theta["0,1"]),
 #'     main = "Trace plot of initial state",
 #'     xlab = "Iterations",
 #'     col = "gray",
@@ -152,7 +152,7 @@
 #'   )
 #'   legend(
 #'     "topright",
-#'     legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
+#'     legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     bty = "n",
@@ -163,7 +163,7 @@
 #'   plot(
 #'     density(out$theta_01),
 #'     main = "Posterior density estimate of initial state",
-#'     xlab = expression(theta["01"]),
+#'     xlab = expression(theta["0,1"]),
 #'     ylab = "Density",
 #'     lwd = 2
 #'   )
@@ -175,7 +175,7 @@
 #'   )
 #'   legend(
 #'     "topright",
-#'     legend = c(expression(theta["01"]), expression(hat(theta)["01"])),
+#'     legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     bty = "n",
@@ -187,7 +187,7 @@
 #'   # Traceplot for 1/W[1]
 #'   range_prec_1 <- range(out$prec_1)
 #'   r1_prec1 <- range_prec_1[1]
-#'   r2_prec1 <- range_prec_1[2] + 0.2 * diff(range_prec_1)
+#'   r2_prec1 <- range_prec_1[2] + 0.25 * diff(range_prec_1)
 #'
 #'   plot.ts(
 #'     out$prec_1,
@@ -240,7 +240,7 @@
 #'   # Traceplot for 1/V
 #'   range_prec_y <- range(out$prec_y)
 #'   r1_precy <- range_prec_y[1]
-#'   r2_precy <- range_prec_y[2] + 0.2 * diff(range_prec_y)
+#'   r2_precy <- range_prec_y[2] + 0.25 * diff(range_prec_y)
 #'
 #'   plot.ts(
 #'     out$prec_y,

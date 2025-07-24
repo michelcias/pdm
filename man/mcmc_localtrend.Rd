@@ -349,7 +349,7 @@ out <- mcmc_localtrend(
   plot(
     density(out$prec_1),
     main = "Posterior Density of Level Precision",
-    xlab = expression(1/W[1])
+    xlab = expression(W[1]^-1)
   )
   abline(
     v = c(prec1_true, median(out$prec_1)),

@@ -80,6 +80,50 @@ y_t &= \theta_{t,1} + \epsilon_t,                          & \epsilon_t  & \sim 
 }
 where \eqn{t = 1, 2, \ldots, n} and \eqn{n} is the number of observations.
 
+
+\strong{Prior Distributions:}
+
+The following conjugate prior distributions are employed to ensure computational
+tractability and closed-form posterior updates in the Gibbs sampler:
+
+\emph{Initial States:}
+\deqn{
+\begin{aligned}
+\theta_{0,1} &\sim N(\mu_{01}, \tau_{01}^{-1}), \\
+\theta_{0,2} &\sim N(\mu_{02}, \tau_{02}^{-1}).
+\end{aligned}
+}
+
+\emph{Precision Parameters:}
+\deqn{
+\begin{aligned}
+W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1), \\
+W_2^{-1} &\sim \text{Gamma}(\nu_2, \eta_2), \\
+V^{-1} &\sim \text{Gamma}(\nu_V, \eta_V).
+\end{aligned}
+}
+
+The prior hyperparameters correspond to function arguments as follows:
+\tabular{cc}{
+  \strong{Hyperparameter} \tab \strong{Function Argument} \cr
+  \eqn{\mu_{01}} \tab `prior_theta01_mean` \cr
+  \eqn{\tau_{01}} \tab `prior_theta01_prec` \cr
+  \eqn{\mu_{02}} \tab `prior_theta02_mean` \cr
+  \eqn{\tau_{02}} \tab `prior_theta02_prec` \cr
+  \eqn{\nu_1} \tab `prior_prec1_shape` \cr
+  \eqn{\eta_1} \tab `prior_prec1_rate` \cr
+  \eqn{\nu_2} \tab `prior_prec2_shape` \cr
+  \eqn{\eta_2} \tab `prior_prec2_rate` \cr
+  \eqn{\nu_V} \tab `prior_prec_y_shape` \cr
+  \eqn{\eta_V} \tab `prior_prec_y_rate`
+}
+
+These conjugate priors enable efficient Gibbs sampling with closed-form
+conditional distributions. The parameterization uses precision (inverse
+variance) to maintain natural conjugacy and ensure numerical stability.
+The Gamma distribution uses shape-rate parameterization, where
+\eqn{E(X) = \nu/\eta} and \eqn{\text{Var}(X) = \nu/\eta^2}.
+
 Burn-in and thinning are applied so that exactly `n_chain` posterior samples
 are returned.
 }

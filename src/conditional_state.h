@@ -113,4 +113,4 @@ void generate_theta_p(double *theta_pm1_post,
                       int n,
                       int iter);
 
-#endif // CONDITIONAL_STATE_H
+#endif /* CONDITIONAL_STATE_H */

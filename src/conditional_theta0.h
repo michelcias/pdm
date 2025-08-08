@@ -168,4 +168,4 @@ void generate_theta_0p(double *theta_0pm1_post,
                        int n,
                        int iter);
 
-#endif
+#endif /* CONDITIONAL_THETA0_H */

@@ -82,4 +82,4 @@ void generate_precision_theta_p(double *theta_0p_post,
                                 int n,
                                 int iter);
 
-#endif // CONDITIONAL_PRECISION_H
+#endif /* CONDITIONAL_PRECISION_H */

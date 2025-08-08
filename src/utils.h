@@ -82,4 +82,4 @@ void adapt_cwmh_parameters(double *theta_updated,
  */
 SEXP C_ILogit(SEXP x);
 
-#endif // UTILS_H
+#endif /* UTILS_H */

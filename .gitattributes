@@ -1,0 +1,3 @@
+# Force C language detection for header files
+*.h linguist-language=C
+src/*.h linguist-language=C

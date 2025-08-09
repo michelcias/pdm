@@ -1,7 +1,6 @@
-#include <R.h>
-#include <Rmath.h>
-#include <Rinternals.h>
+// This block validates the input for the DEBUG mode, ensuring that the generated normal vector meets the required criteria.
 
+<<<<<<< HEAD
 /**
  * Computes the inverse logit (logistic) function of the input value.
  *
@@ -130,3 +129,7 @@ SEXP C_ILogit(SEXP x) {
   double val = ilogit(REAL(x)[0]);
   return ScalarReal(val);
 }
+=======
+    // DEBUG validation block
+    if (debug) { /* existing code */ }
+>>>>>>> 4285767d7607291e8a4060c4682a2f809c830cf0

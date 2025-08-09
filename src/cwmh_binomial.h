@@ -2,165 +2,147 @@
 #define CWMH_BINOMIAL_H
 
 /**
- * Orchestrates the adaptive CWMH update for theta_1 under a logit-binomial local level model.
+ * Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial local level model.
  *
- * This routine coordinates adaptive proposal tuning with component-wise Metropolis–Hastings
- * sampling for the level state vector theta_1 when the observation equation follows:
- * y_t ~ Binomial(n_trials, alpha_t), where alpha_t = logit^{-1}(theta_{1,t}).
+ * This function implements a component-wise Metropolis-Hastings algorithm to sample
+ * the level state vector theta_1 when the observation equation follows a binomial
+ * distribution with logit link function: y_t ~ Binomial(n_trials, alpha_t), where
+ * alpha_t = logit^{-1}(theta_{1,t}).
  *
  * The state equation is a simple random walk: theta_{1,t} = theta_{1,t-1} + u_{1,t},
  * where u_{1,t} ~ N(0, 1/prec_theta_1). This is simpler than the local trend model
  * as it excludes the trend component entirely.
  *
- * This routine glues together:
- * - Adaptive proposal tuning (log_sigma) via recent acceptance rates (accrate)
- * - Component-wise Metropolis–Hastings update for theta_1 (nonlinear observation with logit link)
+ * **Important Note on Iteration Timing**: This function uses theta_01[iter-1] and
+ * prec_theta_1[iter-1] because these parameters are sampled later in the Gibbs sequence
+ * and thus their current iteration values are not yet available.
  *
- * The adaptation follows a diminishing adaptation schedule and is executed periodically
- * over a sliding window of size lag_update. The actual state update is delegated to
- * CWMH_alpha_logit_binomial_locallevel, which handles boundary conditions and log-acceptance.
+ * **Precision Matrix Structure**: The function uses two different precision structures:
+ * - Intermediate elements (k=0 to n-2): Standard deviation = 1/sqrt(prec_theta_1 * 2)
+ *   This reflects the tridiagonal precision matrix structure where interior nodes
+ *   have connections to both past and future states.
+ * - Boundary element (k=n-1): Standard deviation = 1/sqrt(prec_theta_1)
+ *   This reflects the simplified structure at the time series boundary where
+ *   there is no future state dependency.
  *
- * Notes on iteration indexing and dependencies:
- * - CWMH_alpha_logit_binomial_locallevel internally uses prev_iter = iter - 1 for theta_01 and prec_theta_1,
- *   so this function should only be called for iter >= 1 (i.e., after an initial iteration exists).
- * - The array theta_1 is stored as vectorized (B x n) matrix by iteration blocks.
+ * The function handles three cases with appropriate boundary conditions:
+ * - First element: incorporates initial state theta_01
+ * - Intermediate elements: uses forward-sampling with previously updated values
+ * - Last element: simplified structure without future state dependency
  *
- * Adaptation cadence:
- * - Performed when iter > lag_update and (iter - 1) % lag_update == 0,
- *   i.e., at iterations 1, 1 + lag_update, 1 + 2*lag_update, ...
+ * @param theta_1            Matrix of level states (vectorized B x n), input/output.
+ * @param theta_01           Vector of initial level states (size B).
+ * @param theta_1_updated    Matrix of acceptance indicators (vectorized B x n), output.
+ * @param alpha              Matrix of transformed probabilities (vectorized B x n), output.
+ *                           Each alpha[t] = logit^{-1}(theta_1[t]) represents the binomial
+ *                           success probability at time t.
+ * @param prec_theta_1       Vector of level precision parameters (size B).
+ * @param y                  Vector of observed binomial counts (size n).
+ *                           Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
+ * @param log_sigma          Vector of log proposal standard deviations (size n).
+ * @param hat_theta_1        Temporary vector for conditional means (size n).
+ * @param theta_1_new        Temporary vector for proposed values (size n).
+ * @param log_accept_prob    Temporary vector for log acceptance probabilities (size n).
+ * @param updated            Temporary vector for acceptance indicators (size n).
+ * @param n_trials           Number of Bernoulli trials for binomial distribution (double).
+ * @param n                  Length of the time series.
+ * @param iter               Current MCMC iteration (0-based).
  *
- * @param theta_1                Matrix of level states (vectorized B x n), input/output.
- * @param theta_01               Vector of initial level states (size B).
- * @param theta_1_updated        Matrix of acceptance indicators (vectorized B x n), output.
- * @param alpha                  Matrix of transformed probabilities (vectorized B x n), output.
- *                               Each alpha[t] = logit^{-1}(theta_1[t]) represents the binomial
- *                               success probability at time t.
- * @param prec_theta_1           Vector of level precision parameters (size B).
- * @param y                      Vector of observed binomial counts (size n).
- *                               Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
- * @param accrate                Vector of acceptance rates per component (size n), output.
- * @param log_sigma              Vector of log proposal standard deviations (size n), input/output.
- * @param hat_theta_1            Temporary vector for conditional means (size n).
- * @param theta_1_new            Temporary vector for proposed values (size n).
- * @param log_accept_prob        Temporary vector for log acceptance probabilities (size n).
- * @param updated                Temporary vector for acceptance indicators (size n).
- * @param lag_update             Window length for acceptance-rate estimation and adaptation cadence.
- * @param n_trials               Number of Bernoulli trials for binomial distribution (integer).
- * @param n                      Length of the time series.
- * @param iter                   Current MCMC iteration (0-based, must satisfy iter >= 1 here).
- * @param max_step_size          Maximum per-adaptation change in log_sigma (stability cap).
- * @param base_adaptation_rate   Initial intensity of adaptation before decay.
- * @param decay_exponent         Controls decay of adaptation over iterations (e.g., 0.5 for 1/sqrt(t)).
- * @param target_acceptance      Target acceptance rate guiding proposal scale (e.g., 0.44).
- *
- * @note This function requires iter >= 1 due to internal dependencies in CWMH_alpha_logit_binomial_locallevel.
- * @note Adaptation follows a diminishing schedule: intensity ∝ base_adaptation_rate / iter^decay_exponent.
- * @note The function safely handles lag_update = 0 (no adaptation) and lag_update > 0 (periodic adaptation).
- * @note Memory layout: All matrices are stored as vectorized (B x n) blocks by iteration.
+ * @note Computational complexity: O(n) per MCMC iteration due to component-wise updates.
+ * @note Memory requirements: O(n) temporary storage for proposal and acceptance vectors.
+ * @note Numerical stability: Uses log-probabilities throughout to avoid underflow issues.
+ * @note Forward sampling: Components are updated sequentially using previously updated
+ *       values within the same iteration, which can improve mixing compared to
+ *       simultaneous updates.
  * @note Model specification: This implements a local level model (random walk) without
  *       trend components, making it computationally simpler than the local trend version.
  */
-void generate_alpha_logit_binomial_locallevel(double *theta_1,
-                                              double *theta_01,
-                                              double *theta_1_updated,
-                                              double *alpha,
-                                              double *prec_theta_1,
-                                              double *y,
-                                              double *accrate,
-                                              double *log_sigma,
-                                              double *hat_theta_1,
-                                              double *theta_1_new,
-                                              double *log_accept_prob,
-                                              int *updated,
-                                              int lag_update,
-                                              double n_trials,
-                                              int n,
-                                              int iter,
-                                              double max_step_size,
-                                              double base_adaptation_rate,
-                                              double decay_exponent,
-                                              double target_acceptance);
+void CWMH_alpha_logit_binomial_locallevel(double *theta_1,
+                                          double *theta_01,
+                                          double *theta_1_updated,
+                                          double *alpha,
+                                          double *prec_theta_1,
+                                          double *y,
+                                          double *log_sigma,
+                                          double *hat_theta_1,
+                                          double *theta_1_new,
+                                          double *log_accept_prob,
+                                          int *updated,
+                                          double n_trials,
+                                          int n,
+                                          int iter);
 
 //----------------------------------------------------------------------
 
 /**
- * Orchestrates the adaptive CWMH update for theta_1 under a logit-binomial observation model.
+ * Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial dynamic model.
  *
- * This routine coordinates adaptive proposal tuning with component-wise Metropolis–Hastings
- * sampling for the level state vector theta_1 when the observation equation follows:
- * y_t ~ Binomial(n_trials, alpha_t), where alpha_t = logit^{-1}(theta_{1,t}).
+ * This function implements a component-wise Metropolis-Hastings algorithm to sample
+ * the level state vector theta_1 when the observation equation follows a binomial
+ * distribution with logit link function: y_t ~ Binomial(n_trials, alpha_t), where
+ * alpha_t = logit^{-1}(theta_{1,t}).
  *
- * The state equation is: theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t}.
+ * The state equation remains linear: theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},
+ * but the non-linear observation equation requires MCMC sampling instead of closed-form
+ * Gibbs updates.
  *
- * This routine glues together:
- * - Adaptive proposal tuning (log_sigma) via recent acceptance rates (accrate)
- * - Component-wise Metropolis–Hastings update for theta_1 (nonlinear observation with logit link)
+ * **Important Note on Iteration Timing**: This function uses theta_01[iter-1] and
+ * prec_theta_1[iter-1] because these parameters are sampled later in the Gibbs sequence
+ * and thus their current iteration values are not yet available.
  *
- * The adaptation follows a diminishing adaptation schedule and is executed periodically
- * over a sliding window of size lag_update. The actual state update is delegated to
- * CWMH_alpha_logit_binomial, which handles boundary conditions and log-acceptance.
+ * **Precision Matrix Structure**: The function uses two different precision structures:
+ * - Intermediate elements (k=0 to n-2): Standard deviation = 1/sqrt(prec_theta_1 * 2)
+ *   This reflects the tridiagonal precision matrix structure where interior nodes
+ *   have connections to both past and future states.
+ * - Boundary element (k=n-1): Standard deviation = 1/sqrt(prec_theta_1)
+ *   This reflects the simplified structure at the time series boundary where
+ *   there is no future state dependency.
  *
- * Notes on iteration indexing and dependencies:
- * - CWMH_alpha_logit_binomial internally uses prev_iter = iter - 1 for theta_01 and prec_theta_1,
- *   so this function should only be called for iter >= 1 (i.e., after an initial iteration exists).
- * - The arrays theta_1 and theta_2 are stored as vectorized (B x n) matrices by iteration blocks.
+ * The function handles three cases with appropriate boundary conditions:
+ * - First element: incorporates initial states theta_01 and theta_02
+ * - Intermediate elements: uses forward-sampling with previously updated values
+ * - Last element: simplified structure without future state dependency
  *
- * Adaptation cadence:
- * - Performed when iter > lag_update and (iter - 1) % lag_update == 0,
- *   i.e., at iterations 1, 1 + lag_update, 1 + 2*lag_update, ...
+ * @param theta_1            Matrix of level states (vectorized B x n), input/output.
+ * @param theta_2            Matrix of trend states (vectorized B x n), input only.
+ * @param theta_01           Vector of initial level states (size B).
+ * @param theta_02           Vector of initial trend states (size B).
+ * @param theta_1_updated    Matrix of acceptance indicators (vectorized B x n), output.
+ * @param alpha              Matrix of transformed probabilities (vectorized B x n), output.
+ * @param prec_theta_1       Vector of level precision parameters (size B).
+ * @param y                  Vector of observed binomial counts (size n).
+ *                           Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
+ * @param log_sigma          Vector of log proposal standard deviations (size n).
+ * @param hat_theta_1        Temporary vector for conditional means (size n).
+ * @param theta_1_new        Temporary vector for proposed values (size n).
+ * @param log_accept_prob    Temporary vector for log acceptance probabilities (size n).
+ * @param updated            Temporary vector for acceptance indicators (size n).
+ * @param n_trials           Number of Bernoulli trials for binomial distribution (double).
+ * @param n                  Length of the time series.
+ * @param iter               Current MCMC iteration (0-based).
  *
- * @param theta_1                Matrix of level states (vectorized B x n), input/output.
- * @param theta_2                Matrix of trend states (vectorized B x n), input only.
- * @param theta_01               Vector of initial level states (size B).
- * @param theta_02               Vector of initial trend states (size B).
- * @param theta_1_updated        Matrix of acceptance indicators (vectorized B x n), output.
- * @param alpha                  Matrix of transformed probabilities (vectorized B x n), output.
- *                               Each alpha[t] = logit^{-1}(theta_1[t]) represents the binomial
- *                               success probability at time t.
- * @param prec_theta_1           Vector of level precision parameters (size B).
- * @param y                      Vector of observed binomial counts (size n).
- *                               Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
- * @param accrate                Vector of acceptance rates per component (size n), output.
- * @param log_sigma              Vector of log proposal standard deviations (size n), input/output.
- * @param hat_theta_1            Temporary vector for conditional means (size n).
- * @param theta_1_new            Temporary vector for proposed values (size n).
- * @param log_accept_prob        Temporary vector for log acceptance probabilities (size n).
- * @param updated                Temporary vector for acceptance indicators (size n).
- * @param lag_update             Window length for acceptance-rate estimation and adaptation cadence.
- * @param n_trials               Number of Bernoulli trials for binomial distribution (integer).
- * @param n                      Length of the time series.
- * @param iter                   Current MCMC iteration (0-based, must satisfy iter >= 1 here).
- * @param max_step_size          Maximum per-adaptation change in log_sigma (stability cap).
- * @param base_adaptation_rate   Initial intensity of adaptation before decay.
- * @param decay_exponent         Controls decay of adaptation over iterations (e.g., 0.5 for 1/sqrt(t)).
- * @param target_acceptance      Target acceptance rate guiding proposal scale (e.g., 0.44).
- *
- * @note This function requires iter >= 1 due to internal dependencies in CWMH_alpha_logit_binomial.
- * @note Adaptation follows a diminishing schedule: intensity ∝ base_adaptation_rate / iter^decay_exponent.
- * @note The function safely handles lag_update = 0 (no adaptation) and lag_update > 0 (periodic adaptation).
- * @note Memory layout: All matrices are stored as vectorized (B x n) blocks by iteration.
+ * @note Computational complexity: O(n) per MCMC iteration due to component-wise updates.
+ * @note Memory requirements: O(n) temporary storage for proposal and acceptance vectors.
+ * @note Numerical stability: Uses log-probabilities throughout to avoid underflow issues.
+ * @note Forward sampling: Components are updated sequentially using previously updated
+ *       values within the same iteration, which can improve mixing compared to
+ *       simultaneous updates.
  */
-void generate_alpha_logit_binomial(double *theta_1,
-                                   double *theta_2,
-                                   double *theta_01,
-                                   double *theta_02,
-                                   double *theta_1_updated,
-                                   double *alpha,
-                                   double *prec_theta_1,
-                                   double *y,
-                                   double *accrate,
-                                   double *log_sigma,
-                                   double *hat_theta_1,
-                                   double *theta_1_new,
-                                   double *log_accept_prob,
-                                   int *updated,
-                                   int lag_update,
-                                   double n_trials,
-                                   int n,
-                                   int iter,
-                                   double max_step_size,
-                                   double base_adaptation_rate,
-                                   double decay_exponent,
-                                   double target_acceptance);
+void CWMH_alpha_logit_binomial(double *theta_1,
+                               double *theta_2,
+                               double *theta_01,
+                               double *theta_02,
+                               double *theta_1_updated,
+                               double *alpha,
+                               double *prec_theta_1,
+                               double *y,
+                               double *log_sigma,
+                               double *hat_theta_1,
+                               double *theta_1_new,
+                               double *log_accept_prob,
+                               int *updated,
+                               double n_trials,
+                               int n,
+                               int iter);
 
 #endif /* CWMH_BINOMIAL_H */

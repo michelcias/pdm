@@ -58,6 +58,14 @@ void generate_normal_vector(double *r,
                             int n,
                             int iter,
                             int add_a) {
+
+  /* ========== Debug Validation ========== */
+#ifdef DEBUG
+  if (n <= 2) {
+    error("generate_normal_vector: dimension n must be > 2, got %d", n);
+  }
+#endif
+
   /* ========== Matrix Parameters Setup ========== */
   double a11 = a + 2 * b;                                             // Standard diagonal element of A
   double ann = add_a == 1 ? a + b : b;                                // Last diagonal element of A

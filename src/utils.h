@@ -1,3 +1,16 @@
+/**
+ * @file utils.h
+ * @brief Header file for utility functions in PDM package.
+ * @author Michel H. Montoril
+ * @date 2025-08-09
+ * @version 1.0
+ *
+ * @details This header declares core utility functions including:
+ *          - Inverse logit transformation (numerically stable)
+ *          - Multivariate normal random vector generation with tridiagonal precision
+ *          - R interface wrappers for core C functions with input validation
+ */
+
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -5,29 +18,67 @@
 #include <Rinternals.h>
 
 /**
- * Computes the inverse logit (logistic) function of the input value.
+ * @brief Computes the inverse logit (logistic) function of the input value.
  *
- * The inverse logit is defined as 1/(1 + exp(-x)) or equivalently exp(x)/(1 + exp(x)).
- * This implementation is numerically stable using Rf_log1pexp().
+ * @details The inverse logit is defined as 1/(1 + exp(-x)) or equivalently
+ *          exp(x)/(1 + exp(x)). This implementation is numerically stable
+ *          using Rf_log1pexp().
  *
- * @param x  Input value.
- * @return   The result of the inverse logit transformation, in the interval (0, 1).
+ * @param x Input value.
+ * @return The result of the inverse logit transformation, in the interval (0, 1).
  */
 double ilogit(double x);
 
+//----------------------------------------------------------------------
+
 /**
- * Auxiliary function to generate a multivariate normal random vector
- * with precision matrix A, where A is a tridiagonal matrix with specific structure.
+ * @brief Generate a multivariate normal random vector with structured tridiagonal precision matrix.
  *
- * @param r       Output array (vectorized B x n matrix) where the sampled n-variate
- *                normal vector will be stored at row `iter`.
- * @param y       Right-hand side vector (size n) of the system A*x = y, used to calculate the mean.
- * @param a       Constant 'a' for the precision matrix structure.
- * @param b       Constant 'b' for the precision matrix structure.
- * @param n       Dimension of the matrix/vectors (number of elements, indexed 0 to n-1). Must be > 2.
- * @param iter    Row index (0-based) in the output matrix `r` where the sample will be stored.
- * @param add_a   Flag (1 or 0) to determine the last diagonal element A[n-1,n-1].
- *                If 1, A[n-1,n-1] = a+b. If 0, A[n-1,n-1] = b.
+ * @details This function generates samples from a multivariate normal distribution N(mu, Sigma)
+ *          where the precision matrix A = Sigma^(-1) has a specific tridiagonal structure.
+ *
+ *          **Precision Matrix Structure:**
+ *          - Diagonal elements: A[i,i] = (a + 2*b) for i = 0,...,n-2
+ *          - Last diagonal: A[n-1,n-1] = (a + b) if add_a == 1, otherwise b
+ *          - Off-diagonal: A[i+1,i] = A[i,i+1] = -b for i = 0,...,n-2
+ *
+ *          **Algorithm Steps:**
+ *          1. Cholesky decomposition: A = L*L' where L is lower triangular
+ *          2. Forward substitution: L*u = y to find intermediate vector u
+ *          3. Backward substitution: L'*x = u to find mean vector x = A^(-1)*y
+ *          4. Generate random component: L'*s = z where z ~ N(0,I)
+ *          5. Return r = x + s ~ N(A^(-1)*y, A^(-1))
+ *
+ *          The algorithm exploits the tridiagonal structure for O(n) complexity
+ *          instead of O(n^3) for general matrices.
+ *
+ * @param r       Output array (vectorized B x n matrix). The sampled n-variate normal
+ *                vector will be stored at row `iter` (r[iter*n:(iter+1)*n-1]).
+ * @param y       Right-hand side vector (size n) of the system A*x = y.
+ *                Determines the mean of the generated distribution.
+ * @param a       Scalar parameter 'a' for precision matrix structure.
+ * @param b       Scalar parameter 'b' for precision matrix structure.
+ * @param n       Dimension of vectors/matrix (must be > 2).
+ * @param iter    Row index (0-based) in output matrix `r` for storage.
+ * @param add_a   Flag controlling last diagonal element:
+ *                - 1: A[n-1,n-1] = a + b
+ *                - 0: A[n-1,n-1] = b
+ *
+ * @complexity O(n) time, O(n) space
+ * @memory Allocates 4n doubles: d[n], l[n-1], u[n], x[n]
+ *
+ * @note **Critical Assumption**: n > 2 required for algorithm stability.
+ * @note Uses R's memory allocation (R_alloc) - automatically garbage collected.
+ * @note Thread-safe if different threads use different `iter` values.
+ * @note Numerical stability depends on condition number of precision matrix A.
+ *
+ * @warning Undefined behavior for n <= 2 (boundary checks removed for performance).
+ * @warning No validation of matrix positive definiteness - may fail silently.
+ * @warning Parameters a, b should ensure A is positive definite.
+ *
+ * @see rnorm, R_alloc
+ * @since version 1.0
+ *
  */
 void generate_normal_vector(double *r,
                             double *y,
@@ -37,48 +88,27 @@ void generate_normal_vector(double *r,
                             int iter,
                             int add_a);
 
-/**
- * Adapts CWMH (Component-Wise Metropolis-Hastings) parameters by updating
- * acceptance rates and log-sigma values for proposal variance tuning.
- *
- * This function implements an adaptive MCMC algorithm that automatically adjusts
- * the proposal variance (sigma) for each component of the parameter vector to
- * achieve user-specified target acceptance rates.
- *
- * @param theta_updated          Matrix of update indicators (1 if accepted, 0 if rejected).
- *                               Stored as vectorized (B x n) matrix where B = total iterations.
- * @param accrate                Output vector (size n) of acceptance rates for each component.
- * @param log_sigma              Input/output vector (size n) of log proposal standard deviations.
- *                               Will be updated based on current acceptance rates.
- * @param lag_update             Number of recent iterations to use for acceptance rate calculation.
- *                               Should be large enough for stable estimates (e.g., 50-100).
- * @param n                      Number of components in the parameter vector.
- * @param iter                   Current MCMC iteration (1-based). Must be > lag_update.
- * @param max_step_size          Maximum adaptation step size to ensure stability (e.g., 0.01).
- * @param base_adaptation_rate   Base adaptation rate controlling initial adaptation intensity.
- * @param decay_exponent         Exponent controlling decay speed (0.5 = sqrt decay, 1.0 = linear).
- * @param target_acceptance      Target acceptance rate for optimization (e.g., 0.44 for univariate,
- *                               0.234 for multivariate, 0.6 for aggressive burn-in).
- */
-void adapt_cwmh_parameters(double *theta_updated,
-                           double *accrate,
-                           double *log_sigma,
-                           int lag_update,
-                           int n,
-                           int iter,
-                           double max_step_size,
-                           double base_adaptation_rate,
-                           double decay_exponent,
-                           double target_acceptance);
+//----------------------------------------------------------------------
 
 /**
- * R interface wrapper for the ilogit function.
+ * @brief R interface wrapper for the ilogit function.
  *
- * Takes a numeric SEXP object from R, applies the ilogit transformation to its first element,
- * and returns the result as a scalar real SEXP.
+ * @details Takes a numeric SEXP object from R, applies the ilogit transformation
+ *          to its first element, and returns the result as a scalar real SEXP.
+ *          This function serves as the bridge between R and the internal C
+ *          implementation of the inverse logit function.
  *
- * @param x  Numeric input from R (only the first element is used).
- * @return   Scalar real containing the result of ilogit(x).
+ * @param x Numeric SEXP input from R (only the first element is used).
+ * @return Scalar real SEXP containing the result of ilogit(x[0]).
+ *
+ * @complexity O(1)
+ * @memory O(1) - no dynamic allocation
+ * @note Only the first element of the input vector is used; remaining elements are ignored.
+ * @note Input validation ensures x is a non-empty numeric vector.
+ * @warning Remaining elements beyond x[0] are silently ignored.
+ *
+ * @see ilogit
+ * @since version 1.0
  */
 SEXP C_ILogit(SEXP x);
 

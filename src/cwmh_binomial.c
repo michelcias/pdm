@@ -1,38 +1,50 @@
+/**
+ * @file cwmh_binomial.c
+ * @brief Component-wise Metropolis-Hastings sampling for logit-binomial state-space
+ *        models (local level and local trend).
+ * @author Michel H. Montoril
+ * @date 2025-08-10
+ * @version 1.0
+ *
+ * @details This file implements core MCMC update routines for state-space models with
+ *          binomial observations and logit link, including:
+ *          - Component-wise MH updates for local level (random walk) binomial models
+ *          - Component-wise MH updates for local trend (random walk + trend) binomial models
+ */
+
 #include <R.h>
 #include <Rmath.h>
 
 #include "utils.h"  /* ilogit */
 #include "cwmh_binomial.h"
 
-
 /**
- * Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial local level model.
+ * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
+ *        local level model.
  *
- * This function implements a component-wise Metropolis-Hastings algorithm to sample
- * the level state vector theta_1 when the observation equation follows a binomial
- * distribution with logit link function: y_t ~ Binomial(n_trials, alpha_t), where
- * alpha_t = logit^{-1}(theta_{1,t}).
+ * @details This function implements a component-wise Metropolis-Hastings algorithm to
+ *          sample the level state vector theta_1 in a binomial observation model with
+ *          logit link:
+ *          y_t ~ Binomial(n_trials, alpha_t),
+ *          where alpha_t = logit^{-1}(theta_{1,t}).
  *
- * The state equation is a simple random walk: theta_{1,t} = theta_{1,t-1} + u_{1,t},
- * where u_{1,t} ~ N(0, 1/prec_theta_1). This is simpler than the local trend model
- * as it excludes the trend component entirely.
+ *          State equation (local level):
+ *              theta_{1,t} = theta_{1,t-1} + u_{1,t}, u_{1,t} ~ N(0, 1/prec_theta_1)
  *
- * **Important Note on Iteration Timing**: This function uses theta_01[iter-1] and
- * prec_theta_1[iter-1] because these parameters are sampled later in the Gibbs sequence
- * and thus their current iteration values are not yet available.
+ *          **Iteration timing:** Uses theta_01[iter-1] and prec_theta_1[iter-1] because
+ *          these parameters are sampled later in the Gibbs sequence.
  *
- * **Precision Matrix Structure**: The function uses two different precision structures:
- * - Intermediate elements (k=0 to n-2): Standard deviation = 1/sqrt(prec_theta_1 * 2)
- *   This reflects the tridiagonal precision matrix structure where interior nodes
- *   have connections to both past and future states.
- * - Boundary element (k=n-1): Standard deviation = 1/sqrt(prec_theta_1)
- *   This reflects the simplified structure at the time series boundary where
- *   there is no future state dependency.
+ *          **Precision structure:**
+ *          - Interior (k=0..n-2): sd = 1/sqrt(prec_theta_1 * 2)
+ *          - Boundary (k=n-1):    sd = 1/sqrt(prec_theta_1)
  *
- * The function handles three cases with appropriate boundary conditions:
- * - First element: incorporates initial state theta_01
- * - Intermediate elements: uses forward-sampling with previously updated values
- * - Last element: simplified structure without future state dependency
+ *          **Conditional means for proposal:**
+ *          - First:
+ *          E[theta_{1,1} | theta_01, theta_{1,2}] = 0.5 * (theta_{1,2} + theta_01)
+ *          - Intermediate:
+ *          E[theta_{1,k} | theta_{1,k-1}, theta_{1,k+1}] = 0.5 * (theta_{1,k-1} + theta_{1,k+1})
+ *          - Last:
+ *          E[theta_{1,n} | theta_{1,n-1}] = theta_{1,n-1}
  *
  * @param theta_1            Matrix of level states (vectorized B x n), input/output.
  * @param theta_01           Vector of initial level states (size B).
@@ -58,8 +70,14 @@
  * @note Forward sampling: Components are updated sequentially using previously updated
  *       values within the same iteration, which can improve mixing compared to
  *       simultaneous updates.
- * @note Model specification: This implements a local level model (random walk) without
- *       trend components, making it computationally simpler than the local trend version.
+ * @note Model specification: Implements a local level binomial model (random walk only).
+ *
+ * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
+ * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
+ *          history (iter < 1).
+ *
+ * @see CWMH_alpha_logit_binomial
+ * @see generate_alpha_logit_binomial_locallevel
  */
 void CWMH_alpha_logit_binomial_locallevel(double *theta_1,
                                           double *theta_01,
@@ -171,33 +189,35 @@ void CWMH_alpha_logit_binomial_locallevel(double *theta_1,
 //----------------------------------------------------------------------
 
 /**
- * Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial dynamic model.
+ * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
+ *        dynamic model (local trend).
  *
- * This function implements a component-wise Metropolis-Hastings algorithm to sample
- * the level state vector theta_1 when the observation equation follows a binomial
- * distribution with logit link function: y_t ~ Binomial(n_trials, alpha_t), where
- * alpha_t = logit^{-1}(theta_{1,t}).
+ * @details This function implements a component-wise Metropolis-Hastings algorithm to
+ *          sample the level state vector theta_1 in a binomial observation model with
+ *          logit link:
+ *          y_t ~ Binomial(n_trials, alpha_t),
+ *          where alpha_t = logit^{-1}(theta_{1,t}).
  *
- * The state equation remains linear: theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},
- * but the non-linear observation equation requires MCMC sampling instead of closed-form
- * Gibbs updates.
+ *          State equation (local trend):
+ *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},
+ *          with u_{1,t} ~ N(0, 1/prec_theta_1).
  *
- * **Important Note on Iteration Timing**: This function uses theta_01[iter-1] and
- * prec_theta_1[iter-1] because these parameters are sampled later in the Gibbs sequence
- * and thus their current iteration values are not yet available.
+ *          **Iteration timing:** Uses theta_01[iter-1] and prec_theta_1[iter-1] because
+ *          these parameters are sampled later in the Gibbs sequence.
  *
- * **Precision Matrix Structure**: The function uses two different precision structures:
- * - Intermediate elements (k=0 to n-2): Standard deviation = 1/sqrt(prec_theta_1 * 2)
- *   This reflects the tridiagonal precision matrix structure where interior nodes
- *   have connections to both past and future states.
- * - Boundary element (k=n-1): Standard deviation = 1/sqrt(prec_theta_1)
- *   This reflects the simplified structure at the time series boundary where
- *   there is no future state dependency.
+ *          **Precision structure:**
+ *          - Interior (k=0..n-2): sd = 1/sqrt(prec_theta_1 * 2)
+ *          - Boundary (k=n-1):    sd = 1/sqrt(prec_theta_1)
  *
- * The function handles three cases with appropriate boundary conditions:
- * - First element: incorporates initial states theta_01 and theta_02
- * - Intermediate elements: uses forward-sampling with previously updated values
- * - Last element: simplified structure without future state dependency
+ *          **Conditional means for proposal:**
+ *          - First:
+ *          E[theta_{1,1} | theta_01, theta_02, theta_{1,2}, theta_{2,1}] =
+ *                            0.5 * (theta_{1,2} - theta_{2,1} + theta_01 + theta_02)
+ *          - Intermediate:
+ *          E[theta_{1,k} | theta_{1,k-1}, theta_{2,k-1}, theta_{1,k+1}, theta_{2,k}] =
+ *                            0.5 * (theta_{1,k+1} - theta_{2,k} + theta_{1,k-1} - theta_{2,k-1})
+ *          - Last:
+ *          E[theta_{1,n} | theta_{1,n-1}, theta_{2,n-1}] = theta_{1,n-1} + theta_{2,n-1}
  *
  * @param theta_1            Matrix of level states (vectorized B x n), input/output.
  * @param theta_2            Matrix of trend states (vectorized B x n), input only.
@@ -223,6 +243,14 @@ void CWMH_alpha_logit_binomial_locallevel(double *theta_1,
  * @note Forward sampling: Components are updated sequentially using previously updated
  *       values within the same iteration, which can improve mixing compared to
  *       simultaneous updates.
+ * @note Model specification: Implements a local trend binomial model (random walk + trend).
+ *
+ * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
+ * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
+ *          history (iter < 1).
+ *
+ * @see CWMH_alpha_logit_binomial_locallevel
+ * @see generate_alpha_logit_binomial
  */
 void CWMH_alpha_logit_binomial(double *theta_1,
                                double *theta_2,

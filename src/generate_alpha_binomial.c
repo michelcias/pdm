@@ -77,8 +77,6 @@
  *
  * @see adapt_cwmh_parameters
  * @see CWMH_alpha_logit_binomial_locallevel
- * @see CWMH_alpha_logit_binomial
- * @see generate_alpha_logit_binomial
  */
 void generate_alpha_logit_binomial_locallevel(double *theta_1,
                                               double *theta_01,
@@ -207,8 +205,6 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *
  * @see adapt_cwmh_parameters
  * @see CWMH_alpha_logit_binomial
- * @see CWMH_alpha_logit_binomial_locallevel
- * @see generate_alpha_logit_binomial_locallevel
  */
 void generate_alpha_logit_binomial(double *theta_1,
                                    double *theta_2,

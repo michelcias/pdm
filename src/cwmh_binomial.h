@@ -72,9 +72,6 @@
  * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
- *
- * @see CWMH_alpha_logit_binomial
- * @see generate_alpha_logit_binomial_locallevel
  */
 void CWMH_alpha_logit_binomial_locallevel(double *theta_1,
                                           double *theta_01,
@@ -153,9 +150,6 @@ void CWMH_alpha_logit_binomial_locallevel(double *theta_1,
  * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
- *
- * @see CWMH_alpha_logit_binomial_locallevel
- * @see generate_alpha_logit_binomial
  */
 void CWMH_alpha_logit_binomial(double *theta_1,
                                double *theta_2,

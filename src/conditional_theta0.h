@@ -1,33 +1,58 @@
+/**
+ * @file conditional_theta0.h
+ * @brief Conditional posterior sampling for initial state parameters
+ * @details This module provides functions for sampling initial state parameters (theta_0k)
+ *          from their conditional posterior distributions within Gibbs MCMC iterations,
+ *          implementing Bayesian inference for polynomial dynamic models.
+ * @author Michel H. Montoril
+ * @date 2025-01-11
+ * @version 1.0
+ */
+
 #ifndef CONDITIONAL_THETA0_H
 #define CONDITIONAL_THETA0_H
 
 
 /**
- * Generates a sample from the full conditional posterior distribution of theta_01
- * within a Gibbs sampler iteration.
+ * @brief Generates sample from conditional posterior of initial level state theta_01
+ *        (local-level model)
  *
- * This function updates the value of theta_01 for the current MCMC iteration (`iter`)
- * based on a Normal prior and likelihood information derived from other parameters.
- * The conditional posterior distribution for theta_01 is assumed to be Normal.
+ * @details Implements Bayesian updating for the initial level state in local-level
+ *          dynamic models. The conditional posterior is Normal, derived from combining
+ *          a Normal prior with likelihood information from the first state element
+ *          theta_1[0].
  *
- * Calculation steps:
- * 1. Computes the variance of the conditional posterior distribution by combining
- *    the prior precision and the precision associated with theta_1.
- * 2. Computes the mean of the conditional posterior distribution as a precision-weighted
- *    average of the prior mean and information from theta_1.
- * 3. Samples a new value for theta_01 from the resulting Normal distribution using rnorm().
+ *          Model structure:
+ *          theta_1[0] = theta_01 + u_{1,0},  u_{1,0} ~ N(0, W_1)
+ *          theta_01 ~ N(mu_01, tau_01^{-1})
  *
- * @param theta_01_post       Output array storing posterior samples of theta_01. The value
- *                            at index `iter` will be updated.
- * @param theta_1_post        Array storing posterior samples of theta_1 (vectorized B x n matrix).
- *                            Uses the first element (index 0) of the vector from the *previous*
- *                            iteration (`iter - 1`).
- * @param prec_theta_1_post   Array storing posterior samples of the precision related to theta_1.
- *                            Uses value at `iter`.
- * @param mean_theta_01       Prior mean for theta_01.
- * @param prec_theta_01       Prior precision (inverse variance) for theta_01.
- * @param n                   Sample size, representing the number of data points.
- * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
+ *          Conditional posterior derivation:
+ *          tau_post = tau_01 + 1/W_1 (posterior precision)
+ *          mu_post = (mu_01 * tau_01 + theta_1[0] / W_1) / tau_post (posterior mean)
+ *          theta_01 | theta_1, W_1 ~ N(mu_post, tau_post^{-1})
+ *
+ * @param theta_01_post       Double array storing posterior samples of theta_01.
+ *                            Updated at index `iter`
+ * @param theta_1_post        Double array storing posterior samples of theta_1
+ *                            (vectorized B*n matrix). Uses current iteration `iter`
+ * @param prec_theta_1_post   Double array storing posterior samples of precision 1/W_1.
+ *                            Uses current iteration `iter`
+ * @param mean_theta_01       Double scalar, prior mean mu_01 for theta_01
+ * @param prec_theta_01       Double scalar, prior precision tau_01 = 1/sigma_01^2
+ *                            for theta_01
+ * @param n                   Integer scalar, sample size (number of observations)
+ * @param iter                Integer scalar, current MCMC iteration index (0-based)
+ *
+ * @note Computational complexity: O(1) constant time operation
+ * @note Numerical stability: Uses sqrt() for standard deviation conversion from precision
+ * @note Memory access: Accesses theta_1_post[iter*n] for first state element
+ * @note Algorithm: Direct Normal-Normal conjugate updating with precision weighting
+ *
+ * @warning Assumes iter >= 0 and valid array bounds
+ * @warning No validation of prior parameter positivity
+ * @warning Requires GetRNGstate()/PutRNGstate() bracket in calling function
+ *
+ * @see generate_theta_01
  */
 void generate_theta_01_locallevel(double *theta_01_post,
                                   double *theta_1_post,
@@ -39,32 +64,49 @@ void generate_theta_01_locallevel(double *theta_01_post,
 
 
 /**
- * Generates a sample from the full conditional posterior distribution of theta_01
- * within a Gibbs sampler iteration.
+ * @brief Generates sample from conditional posterior of initial level state theta_01
+ *        (local-trend model)
  *
- * This function updates the value of theta_01 for the current MCMC iteration (`iter`)
- * based on a Normal prior and likelihood information derived from other parameters.
- * The conditional posterior distribution for theta_01 is assumed to be Normal.
+ * @details Implements Bayesian updating for the initial level state in local-trend
+ *          dynamic models. The conditional posterior is Normal, derived from combining
+ *          a Normal prior with likelihood information from the first state element
+ *          theta_1[0] and trend theta_02.
  *
- * Calculation steps:
- * 1. Computes the variance of the conditional posterior distribution by combining
- *    the prior precision and the precision associated with theta_1.
- * 2. Computes the mean of the conditional posterior distribution as a precision-weighted
- *    average of the prior mean and information from theta_1 and theta_02.
- * 3. Samples a new value for theta_01 from the resulting Normal distribution using rnorm().
+ *          Model structure:
+ *          theta_1[0] = theta_01 + theta_02 + u_{1,0},  u_{1,0} ~ N(0, W_1)
+ *          theta_01 ~ N(mu_01, tau_01^{-1})
  *
- * @param theta_01_post       Output array storing posterior samples of theta_01. The value
- *                            at index `iter` will be updated.
- * @param theta_02_post       Array storing posterior samples of theta_02. Uses value at `iter`.
- * @param theta_1_post        Array storing posterior samples of theta_1 (vectorized B x n matrix).
- *                            Uses the first element (index 0) of the vector from the *previous*
- *                            iteration (`iter - 1`).
- * @param prec_theta_1_post   Array storing posterior samples of the precision related to theta_1.
- *                            Uses value at `iter`.
- * @param mean_theta_01       Prior mean for theta_01.
- * @param prec_theta_01       Prior precision (inverse variance) for theta_01.
- * @param n                   Sample size, representing the number of data points.
- * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
+ *          Conditional posterior derivation:
+ *          tau_post = tau_01 + 1/W_1 (posterior precision)
+ *          mu_post = (mu_01 * tau_01 + (theta_1[0] - theta_02) / W_1) / tau_post
+ *          theta_01 | theta_1, theta_02, W_1 ~ N(mu_post, tau_post^{-1})
+ *
+ * @param theta_01_post       Double array storing posterior samples of theta_01.
+ *                            Updated at index `iter`
+ * @param theta_02_post       Double array storing posterior samples of theta_02.
+ *                            Uses current iteration `iter`
+ * @param theta_1_post        Double array storing posterior samples of theta_1
+ *                            (vectorized B*n matrix). Uses current iteration `iter`
+ * @param prec_theta_1_post   Double array storing posterior samples of precision 1/W_1.
+ *                            Uses current iteration `iter`
+ * @param mean_theta_01       Double scalar, prior mean mu_01 for theta_01
+ * @param prec_theta_01       Double scalar, prior precision tau_01 = 1/sigma_01^2
+ *                            for theta_01
+ * @param n                   Integer scalar, sample size (number of observations)
+ * @param iter                Integer scalar, current MCMC iteration index (0-based)
+ *
+ * @note Computational complexity: O(1) constant time operation
+ * @note Numerical stability: Uses sqrt() for standard deviation conversion from precision
+ * @note Memory access: Accesses theta_1_post[iter*n] for first state element
+ * @note Algorithm: Normal-Normal conjugate updating with trend adjustment
+ *
+ * @warning Assumes iter >= 0 and valid array bounds
+ * @warning No validation of prior parameter positivity
+ * @warning Requires GetRNGstate()/PutRNGstate() bracket in calling function
+ *
+ * @see generate_theta_01_locallevel
+ * @see generate_theta_0k
+ * @see generate_theta_0p
  */
 void generate_theta_01(double *theta_01_post,
                        double *theta_02_post,
@@ -77,38 +119,58 @@ void generate_theta_01(double *theta_01_post,
 
 
 /**
- * Generates a sample from the full conditional posterior distribution of theta_0k
- * (for indices k from 2 to p-1) within a Gibbs sampler iteration.
+ * @brief Generates sample from conditional posterior of intermediate initial state
+ *        theta_0k (k=2,...,p-1)
  *
- * This function updates the value of theta_0k for the current MCMC iteration (`iter`)
- * based on a Normal prior and likelihood information derived from other parameters.
- * It handles the general case for the levels between the first (k=1) and the last (k=p).
- * The conditional posterior distribution for theta_0k is assumed to be Normal.
+ * @details Implements Bayesian updating for intermediate initial states in polynomial
+ *          dynamic models. The conditional posterior is Normal, derived from combining
+ *          a Normal prior with likelihood information from adjacent state equations.
+ *          Notation: km1 = k-1, kp1 = k+1
  *
- * Calculation steps:
- * 1. Computes the variance of the conditional posterior distribution by combining the
- *    prior precision and the precisions associated with theta_(k-1) and theta_k.
- * 2. Computes the mean of the conditional posterior distribution as a precision-weighted
- *    average of the prior mean and information derived from related parameters.
- * 3. Samples a new value for theta_0k from the resulting Normal distribution using rnorm().
+ *          Model structure:
+ *          theta_{k-1}[0] = theta_{0,k-1} + theta_0k + u_{k-1,0},  u_{k-1,0} ~ N(0, W_{k-1})
+ *          theta_k[0] = theta_0k + theta_{0,k+1} + u_{k,0},       u_{k,0} ~ N(0, W_k)
+ *          theta_0k ~ N(mu_0k, tau_0k^{-1})
  *
- * @param theta_0km1_post     Array storing posterior samples of theta_0(k-1). Uses value at `iter - 1`.
- * @param theta_0k_post       Output array storing posterior samples of theta_0k. The value
- *                            at index `iter` will be updated.
- * @param theta_0kp1_post     Array storing posterior samples of theta_0(k+1). Uses value at `iter`.
- * @param theta_km1_post      Array storing posterior samples of theta_(k-1) (vectorized B x n matrix).
- *                            Uses the first element (index 0) of the vector from `iter - 1`.
- * @param theta_k_post        Array storing posterior samples of theta_k (vectorized B x n matrix).
- *                            Uses the first element (index 0) of the vector from `iter - 1`.
- * @param prec_theta_km1_post Array storing posterior samples of the precision related to theta_(k-1).
- *                            Uses value at `iter - 1`.
- * @param prec_theta_k_post   Array storing posterior samples of the precision related to theta_k.
- *                            Uses value at `iter`.
- * @param mean_theta_0k       Prior mean for theta_0k.
- * @param prec_theta_0k       Prior precision (inverse variance) for theta_0k.
- * @param n                   Sample size, used for indexing the vectorized state parameter arrays
- *                            theta_km1_post and theta_k_post.
- * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
+ *          Conditional posterior derivation:
+ *          tau_post = tau_0k + 1/W_{k-1} + 1/W_k (posterior precision)
+ *          mu_post = [mu_0k * tau_0k + (theta_{k-1}[0] - theta_{0,k-1}) / W_{k-1} +
+ *                     (theta_k[0] - theta_{0,k+1}) / W_k] / tau_post
+ *          theta_0k | ... ~ N(mu_post, tau_post^{-1})
+ *
+ * @param theta_0km1_post     Double array storing posterior samples of theta_{0,k-1}.
+ *                            Uses previous iteration (`iter - 1`)
+ * @param theta_0k_post       Double array storing posterior samples of theta_0k.
+ *                            Updated at index `iter`
+ * @param theta_0kp1_post     Double array storing posterior samples of theta_{0,k+1}.
+ *                            Uses current iteration `iter`
+ * @param theta_km1_post      Double array storing posterior samples of theta_{k-1}
+ *                            (vectorized B*n matrix). Uses previous iteration (`iter - 1`)
+ * @param theta_k_post        Double array storing posterior samples of theta_k
+ *                            (vectorized B*n matrix). Uses current iteration `iter`
+ * @param prec_theta_km1_post Double array storing posterior samples of precision 1/W_{k-1}.
+ *                            Uses previous iteration (`iter - 1`)
+ * @param prec_theta_k_post   Double array storing posterior samples of precision 1/W_k.
+ *                            Uses current iteration `iter`
+ * @param mean_theta_0k       Double scalar, prior mean mu_0k for theta_0k
+ * @param prec_theta_0k       Double scalar, prior precision tau_0k = 1/sigma_0k^2
+ *                            for theta_0k
+ * @param n                   Integer scalar, sample size (number of observations)
+ * @param iter                Integer scalar, current MCMC iteration index (0-based)
+ *
+ * @note Computational complexity: O(1) constant time operation
+ * @note Numerical stability: Uses sqrt() for standard deviation conversion from precision
+ * @note Memory access: Accesses first elements of state vectors from different iterations
+ * @note Algorithm: Normal-Normal conjugate updating with multiple information sources
+ * @note Notation: km1 = k-1, kp1 = k+1 for parameter naming
+ *
+ * @warning Assumes iter >= 1 for accessing previous iteration
+ * @warning No validation of prior parameter positivity
+ * @warning Requires GetRNGstate()/PutRNGstate() bracket in calling function
+ *
+ * @see generate_theta_01() for initial level state
+ * @see generate_theta_0p() for final initial state
+ * @see generate_precision_theta_k() for precision sampling
  */
 void generate_theta_0k(double *theta_0km1_post,
                        double *theta_0k_post,
@@ -124,38 +186,58 @@ void generate_theta_0k(double *theta_0km1_post,
 
 
 /**
- * Generates a sample from the full conditional posterior distribution of theta_0p
- * (the last level, k=p) within a Gibbs sampler iteration.
+ * @brief Generates sample from conditional posterior of final initial state theta_0p
+ *        (k=p)
  *
- * This function updates the value of theta_0p for the current MCMC iteration (`iter`)
- * based on a Normal prior and likelihood information derived from other parameters.
- * It specifically handles the boundary case for the last level p.
- * The conditional posterior distribution for theta_0p is assumed to be Normal.
+ * @details Implements Bayesian updating for the final initial state in polynomial
+ *          dynamic models. The conditional posterior is Normal, derived from combining
+ *          a Normal prior with likelihood information from the state equations. This is
+ *          a boundary case handling the highest-order polynomial component.
+ *          Notation: pm1 = p-1
  *
- * Calculation steps:
- * 1. Computes the variance of the conditional posterior distribution by combining the
- *    prior precision and the precisions associated with theta_(p-1) and theta_p.
- * 2. Computes the mean of the conditional posterior distribution as a precision-weighted
- *    average of the prior mean and information derived from related parameters. Note
- *    the term related to theta_p does not involve subtraction of a higher-level baseline.
- * 3. Samples a new value for theta_0p from the resulting Normal distribution using rnorm().
+ *          Model structure:
+ *          theta_{p-1}[0] = theta_{0,p-1} + theta_0p + u_{p-1,0},  u_{p-1,0} ~ N(0, W_{p-1})
+ *          theta_p[0] = theta_0p + u_{p,0},                        u_{p,0} ~ N(0, W_p)
+ *          theta_0p ~ N(mu_0p, tau_0p^{-1})
  *
- * @param theta_0pm1_post     Array storing posterior samples of theta_0(p-1). Uses value at `iter - 1`.
- * @param theta_0p_post       Output array storing posterior samples of theta_0p. The value
- *                            at index `iter` will be updated.
- * @param theta_pm1_post      Array storing posterior samples of theta_(p-1) (vectorized B x n matrix).
- *                            Uses the first element (index 0) of the vector from `iter - 1`.
- * @param theta_p_post        Array storing posterior samples of theta_p (vectorized B x n matrix).
- *                            Uses the first element (index 0) of the vector from `iter - 1`.
- * @param prec_theta_pm1_post Array storing posterior samples of the precision related to theta_(p-1).
- *                            Uses value at `iter - 1`.
- * @param prec_theta_p_post   Array storing posterior samples of the precision related to theta_p.
- *                            Uses value at `iter`.
- * @param mean_theta_0p       Prior mean for theta_0p.
- * @param prec_theta_0p       Prior precision (inverse variance) for theta_0p.
- * @param n                   Sample size, used for indexing the vectorized state parameter arrays
- *                            theta_pm1_post and theta_p_post.
- * @param iter                Current MCMC iteration index (0-based). Assumes iter > 0.
+ *          Conditional posterior derivation:
+ *          tau_post = tau_0p + 1/W_{p-1} + 1/W_p (posterior precision)
+ *          mu_post = [mu_0p * tau_0p + (theta_{p-1}[0] - theta_{0,p-1}) / W_{p-1} +
+ *                     theta_p[0] / W_p] / tau_post
+ *          Note: theta_p equation doesn't involve higher-order terms (boundary case)
+ *          theta_0p | ... ~ N(mu_post, tau_post^{-1})
+ *
+ * @param theta_0pm1_post     Double array storing posterior samples of theta_{0,p-1}.
+ *                            Uses previous iteration (`iter - 1`)
+ * @param theta_0p_post       Double array storing posterior samples of theta_0p.
+ *                            Updated at index `iter`
+ * @param theta_pm1_post      Double array storing posterior samples of theta_{p-1}
+ *                            (vectorized B*n matrix). Uses previous iteration (`iter - 1`)
+ * @param theta_p_post        Double array storing posterior samples of theta_p
+ *                            (vectorized B*n matrix). Uses current iteration `iter`
+ * @param prec_theta_pm1_post Double array storing posterior samples of precision 1/W_{p-1}.
+ *                            Uses previous iteration (`iter - 1`)
+ * @param prec_theta_p_post   Double array storing posterior samples of precision 1/W_p.
+ *                            Uses current iteration `iter`
+ * @param mean_theta_0p       Double scalar, prior mean mu_0p for theta_0p
+ * @param prec_theta_0p       Double scalar, prior precision tau_0p = 1/sigma_0p^2
+ *                            for theta_0p
+ * @param n                   Integer scalar, sample size (number of observations)
+ * @param iter                Integer scalar, current MCMC iteration index (0-based)
+ *
+ * @note Computational complexity: O(1) constant time operation
+ * @note Numerical stability: Uses sqrt() for standard deviation conversion from precision
+ * @note Memory access: Accesses first elements of state vectors from different iterations
+ * @note Algorithm: Normal-Normal conjugate updating with boundary case handling
+ * @note Notation: pm1 = p-1 for parameter naming
+ *
+ * @warning Assumes iter >= 1 for accessing previous iteration
+ * @warning No validation of prior parameter positivity
+ * @warning Requires GetRNGstate()/PutRNGstate() bracket in calling function
+ *
+ * @see generate_theta_01
+ * @see generate_theta_0k
+ * @see generate_precision_theta_p
  */
 void generate_theta_0p(double *theta_0pm1_post,
                        double *theta_0p_post,

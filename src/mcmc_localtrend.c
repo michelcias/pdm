@@ -1,3 +1,14 @@
+/**
+ * @file mcmc_localtrend.c
+ * @brief Implementation of MCMC sampling for local-trend dynamic models
+ * @details Provides a complete Gibbs sampler for Bayesian estimation of polynomial
+ *          dynamic models with local-trend structure, utilizing conditional posterior
+ *          distributions for efficient sampling of level and trend components.
+ * @author Michel H. Montoril
+ * @date 2025-08-11
+ * @version 1.0
+ */
+
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>
@@ -7,48 +18,74 @@
 #include "mcmc_localtrend.h"
 
 /**
- * C_MCMC_localtrend: Gibbs sampler for a local-trend dynamic model (p = 2).
+ * @brief Gibbs sampler for local-trend dynamic model with polynomial structure
  *
- * This function runs a Gibbs MCMC for the polynomial dynamic model with a local trend structure,
- * sampling parameters in the following order:
- *   1) state vector      — generate_theta_p (theta_2)
- *   2) innovation prec.  — generate_precision_theta_p (1/W_2)
- *   3) initial state     — generate_theta_0p (theta_02)
- *   4) state vector      — generate_theta_1 (theta_1)
- *   5) innovation prec.  — generate_precision_theta_k (1/W_1)
- *   6) initial state     — generate_theta_01 (theta_01)
- *   7) data precision    — generate_precision_data (1/V)
+ * @details Implements a complete Gibbs MCMC algorithm for the local-trend dynamic model:
  *
- * The model is:
- *   y_t         = theta_{t,1} + e_t,                            e_t ~ N(0, V)
- *   theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
- *   theta_{t,2} = theta_{t-1,2} + u_{t,2},                  u_{t,2} ~ N(0, W_2)
+ *          Observation equation:
+ *          y_t = theta_{t,1} + e_t,     e_t ~ N(0, V)
  *
- * Burn‐in and thinning are applied so that exactly n_chain posterior draws are returned.
+ *          State equations:
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
+ *          theta_{t,2} = theta_{t-1,2} + u_{t,2},                  u_{t,2} ~ N(0, W_2)
  *
- * @param y                    Numeric vector of observations (length = n).
- * @param burnin               Integer, number of burn‐in iterations.
- * @param thinning             Integer, thinning interval.
- * @param n_chain              Integer, number of retained posterior samples.
- * @param prior_theta01_mean   Double, prior mean for theta_01.
- * @param prior_theta01_prec   Double, prior precision (1/variance) for theta_{0,1}.
- * @param prior_theta02_mean   Double, prior mean for theta_{0,2}.
- * @param prior_theta02_prec   Double, prior precision (1/variance) for theta_{0,2}.
- * @param prior_prec1_shape    Double, shape parameter of Gamma prior for 1/W_1.
- * @param prior_prec1_rate     Double, rate  parameter of Gamma prior for 1/W_1.
- * @param prior_prec2_shape    Double, shape parameter of Gamma prior for 1/W_2.
- * @param prior_prec2_rate     Double, rate  parameter of Gamma prior for 1/W_2.
- * @param prior_prec_y_shape   Double, shape parameter of Gamma prior for 1/V.
- * @param prior_prec_y_rate    Double, rate  parameter of Gamma prior for 1/V.
+ *          The sampler cycles through conditional posteriors in the following order:
+ *          1. State vector theta_2 | theta_1, theta_0, W_2
+ *          2. Innovation precision 1/W_2 | theta_2, theta_02
+ *          3. Initial state theta_02 | theta_2, theta_01, W_2
+ *          4. State vector theta_1 | y, theta_2, theta_0, W_1, V
+ *          5. Innovation precision 1/W_1 | theta_1, theta_01, theta_02
+ *          6. Initial state theta_01 | theta_1, theta_02, W_1
+ *          7. Data precision 1/V | y, theta_1
  *
- * @return An R list with components:
- *   $theta_1  — numeric matrix [n_chain × n] of state samples for level
- *   $theta_2  — numeric matrix [n_chain × n] of state samples for trend
- *   $theta_01 — numeric vector [length = n_chain] of initial state samples (level)
- *   $theta_02 — numeric vector [length = n_chain] of initial state samples (trend)
- *   $prec_1   — numeric vector [length = n_chain] of innovation precisions (level)
- *   $prec_2   — numeric vector [length = n_chain] of innovation precisions (trend)
- *   $prec_y   — numeric vector [length = n_chain] of data precisions
+ *          Priors:
+ *          - theta_{0,1} ~ N(mu_01, tau_01^{-1})
+ *          - theta_{0,2} ~ N(mu_02, tau_02^{-1})
+ *          - 1/W_1 ~ Gamma(nu_1, eta_1)
+ *          - 1/W_2 ~ Gamma(nu_2, eta_2)
+ *          - 1/V ~ Gamma(nu_y, eta_y)
+ *
+ * @param y                    SEXP Numeric vector of observed time series data [length n]
+ * @param burnin               SEXP Integer scalar, number of burn-in iterations to discard
+ * @param thinning             SEXP Integer scalar, thinning interval for posterior samples
+ * @param n_chain              SEXP Integer scalar, target number of retained posterior samples
+ * @param prior_theta01_mean   SEXP Double scalar, prior mean mu_01 for initial state theta_{0,1}
+ * @param prior_theta01_prec   SEXP Double scalar, prior precision tau_01 for initial state theta_{0,1}
+ * @param prior_theta02_mean   SEXP Double scalar, prior mean mu_02 for initial state theta_{0,2}
+ * @param prior_theta02_prec   SEXP Double scalar, prior precision tau_02 for initial state theta_{0,2}
+ * @param prior_prec1_shape    SEXP Double scalar, shape parameter nu_1 for Gamma prior on 1/W_1
+ * @param prior_prec1_rate     SEXP Double scalar, rate parameter eta_1 for Gamma prior on 1/W_1
+ * @param prior_prec2_shape    SEXP Double scalar, shape parameter nu_2 for Gamma prior on 1/W_2
+ * @param prior_prec2_rate     SEXP Double scalar, rate parameter eta_2 for Gamma prior on 1/W_2
+ * @param prior_prec_y_shape   SEXP Double scalar, shape parameter nu_y for Gamma prior on 1/V
+ * @param prior_prec_y_rate    SEXP Double scalar, rate parameter eta_y for Gamma prior on 1/V
+ *
+ * @return SEXP R list containing posterior samples with named components:
+ *         - theta_1: Numeric matrix [n_chain x n] of level state trajectory samples
+ *         - theta_2: Numeric matrix [n_chain x n] of trend state trajectory samples
+ *         - theta_01: Numeric vector [n_chain] of initial level state samples
+ *         - theta_02: Numeric vector [n_chain] of initial trend state samples
+ *         - prec_1: Numeric vector [n_chain] of level innovation precision samples
+ *         - prec_2: Numeric vector [n_chain] of trend innovation precision samples
+ *         - prec_y: Numeric vector [n_chain] of observation precision samples
+ *
+ * @note Computational complexity: O(n_iter x n) where n_iter = burnin + (n_chain-1)*thinning + 1
+ * @note Memory allocation: Requires O(n_iter x n) temporary storage for full MCMC trajectory
+ * @note Numerical stability: Uses R's built-in random number generators with proper state management
+ * @note Thread safety: Not thread-safe due to shared RNG state; use GetRNGstate()/PutRNGstate()
+ *
+ * @warning Minimum sample size n >= 3 required for numerical stability
+ * @warning Large sample sizes (n > INT_MAX) not supported due to R integer limitations
+ * @warning Prior parameters must be positive for proper Gamma distributions
+ * @warning No convergence diagnostics implemented; user must assess chain convergence
+ *
+ * @see generate_theta_p
+ * @see generate_precision_theta_p
+ * @see generate_theta_0p
+ * @see generate_theta_1
+ * @see generate_precision_theta_k
+ * @see generate_theta_01
+ * @see generate_precision_data
  */
 SEXP C_MCMC_localtrend(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
                        SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,

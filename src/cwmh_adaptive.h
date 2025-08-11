@@ -59,7 +59,6 @@
  *          (iter < lag_update).
  * @warning Inappropriate adaptation rates and step sizes may lead to poor MCMC mixing.
  *
- * @see generate_normal_vector
  */
 void adapt_cwmh_parameters(double *theta_updated,
                            double *accrate,

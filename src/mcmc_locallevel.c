@@ -72,7 +72,8 @@
  * @see generate_precision_theta_p
  * @see generate_theta_01_locallevel
  * @see generate_precision_data
- */SEXP C_MCMC_locallevel(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
+ */
+SEXP C_MCMC_locallevel(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
                        SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
                        SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
                        SEXP prior_prec_y_shape_, SEXP prior_prec_y_rate_) {

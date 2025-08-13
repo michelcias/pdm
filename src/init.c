@@ -18,6 +18,7 @@
 #include "mcmc_locallevel.h"
 #include "mcmc_localtrend.h"
 #include "mcmc_localacceleration.h"
+#include "mcmc_binomial_locallevel.h"
 #include "utils.h"
 
 /**
@@ -37,7 +38,10 @@
  *          - C_ILogit: Inverse logit transformation utility (1 argument)
  *          - C_MCMC_locallevel: Local level model MCMC sampler (10 arguments)
  *          - C_MCMC_localtrend: Local trend model MCMC sampler (14 arguments)
- *          - C_MCMC_localacceleration: Local acceleration model MCMC sampler (18 arguments)
+ *          - C_MCMC_localacceleration: Local acceleration model MCMC sampler
+ *            (18 arguments)
+ *          - C_MCMC_logit_binomial_locallevel: Binomial local level model MCMC
+ *            sampler (16 arguments)
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism
@@ -52,11 +56,12 @@
  * @see R_CallMethodDef
  */
 static const R_CallMethodDef CallEntries[] = {
-  {"_pdm_C_ILogit",                (DL_FUNC) &C_ILogit,                  1},
-  {"_pdm_C_MCMC_locallevel",       (DL_FUNC) &C_MCMC_locallevel,        10},
-  {"_pdm_C_MCMC_localtrend",       (DL_FUNC) &C_MCMC_localtrend,        14},
-  {"_pdm_C_MCMC_localacceleration",(DL_FUNC) &C_MCMC_localacceleration, 18},
-  {NULL, NULL, 0}
+  {"_pdm_C_ILogit",                        (DL_FUNC) &C_ILogit,                1},
+  {"_pdm_C_MCMC_locallevel",               (DL_FUNC) &C_MCMC_locallevel,      10},
+  {"_pdm_C_MCMC_localtrend",               (DL_FUNC) &C_MCMC_localtrend,      14},
+  {"_pdm_C_MCMC_localacceleration",        (DL_FUNC) &C_MCMC_localacceleration, 18},
+  {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel, 16},
+   {NULL, NULL, 0}
 };
 
 /**

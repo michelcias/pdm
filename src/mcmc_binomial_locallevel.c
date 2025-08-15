@@ -164,7 +164,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
   double *theta_1_updated  = (double *) R_Calloc(n_iter * n, double);
 
   /* Working arrays for CWMH algorithm */
-  double *accrate          = (double *) R_Calloc(n_iter * n, double);
+  double *accrate          = (double *) R_Calloc(n, double);
   double *log_sigma        = (double *) R_Calloc(n, double);
   double *hat_theta_1      = (double *) R_Calloc(n, double);
   double *theta_1_new      = (double *) R_Calloc(n, double);
@@ -226,11 +226,12 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
     /* 2) Sample innovation precision 1/W_1 */
     generate_precision_theta_p(
       theta_01_post,    /* theta_0p */
-    theta_1_post,     /* theta_p */
-    prec_1_post,      /* output precision 1/W_p */
-    nu_01, eta_01,
-    n,
-    ii
+      theta_1_post,     /* theta_p */
+      prec_1_post,      /* output precision 1/W_p */
+      nu_01,
+      eta_01,
+      n,
+      ii
     );
 
     /* 3) Sample initial state theta_01 */
@@ -256,7 +257,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
           REAL(log_sigma_samples)[idx + j * n_chain] = log_sigma[j];
         }
         if (return_accrate) {
-          REAL(accrate_samples)[idx + j * n_chain] = accrate[ii * n + j];
+          REAL(accrate_samples)[idx + j * n_chain] = accrate[j];
         }
       }
       REAL(theta_01_samples)[idx] = theta_01_post[ii];

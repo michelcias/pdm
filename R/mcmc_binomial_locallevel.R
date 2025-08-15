@@ -108,12 +108,12 @@
 #' # 4. Set a seed for reproducibility
 #'
 #' ## Simulation of data
-#' n <- 500  # Number of observations to simulate
-#' n_trials <- 10  # Number of binomial trials
+#' n <- 500        # Number of observations to simulate
+#' n_trials <- 20  # Number of binomial trials
 #'
 #' # True parameters for simulation:
-#' theta0_true <- 0.5   # Initial state (theta[01]) on logit scale
-#' prec1_true <- 2      # Innovation precision (1/W[1])
+#' theta0_true <- 0.5     # Initial state (theta[01]) on logit scale
+#' prec1_true <- 100      # Innovation precision (1/W[1])
 #'
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
@@ -130,22 +130,22 @@
 #' # Run the Gibbs sampler with specified priors and a seed
 #' out <- mcmc_binomial_locallevel(
 #'   y,
-#'   n_trials = n_trials,
-#'   burnin   = 1000,
-#'   thinning = 5,
-#'   n_chain  = 1000,
-#'   prior_theta01_mean = 0,
-#'   prior_theta01_prec = 1,
-#'   prior_prec1_shape  = 1e-2,
-#'   prior_prec1_rate   = 1e-2,
-#'   lag_update = 50,
-#'   max_step_size = 2.0,
-#'   base_adaptation_rate = 0.01,
-#'   decay_exponent = 0.6,
-#'   target_acceptance = 0.44,
-#'   return_log_sigma = FALSE,
-#'   return_accrate = FALSE,
-#'   seed = 456
+#'   n_trials             = n_trials,
+#'   burnin               = 1000,
+#'   thinning             = 50,
+#'   n_chain              = 1000,
+#'   prior_theta01_mean   = 0,
+#'   prior_theta01_prec   = 1,
+#'   prior_prec1_shape    = 100,
+#'   prior_prec1_rate     = 1,
+#'   lag_update           = 50,
+#'   max_step_size        = 0.1,
+#'   base_adaptation_rate = 1,
+#'   decay_exponent       = 0.6,
+#'   target_acceptance    = 0.44,
+#'   return_log_sigma     = FALSE,
+#'   return_accrate       = TRUE,
+#'   seed                 = 456
 #' )
 #'
 #' ## Posterior analysis and visualization
@@ -153,12 +153,22 @@
 #' # Point estimates are based on the median of posterior samples.
 #' \dontrun{
 #'   # --- 0. Plot the simulated data ---
-#'   plot.ts(
+#'   plot(
 #'     y,
 #'     main = "Simulated binomial counts",
 #'     ylab = expression(y[t]),
-#'     xlab = "t"
+#'     xlab = "t",
+#'     type = "o",
+#'     pch = 16
 #'   )
+#'
+#'   acc <- out$accrate
+#'   min_acc <- apply(X = acc, MARGIN = 2, min)
+#'   max_acc <- apply(X = acc, MARGIN = 2, max)
+#'   med_acc <- apply(X = acc, MARGIN = 2, median)
+#'   sum_acc <- cbind(min_acc, med_acc, max_acc)
+#'   matplot(sum_acc, type = "l")
+#'   abline(h = 0.44)
 #'
 #'   # --- 1. Latent State (theta[t1]) on logit scale ---
 #'

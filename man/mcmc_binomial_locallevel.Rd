@@ -152,12 +152,12 @@ samples are returned.
 # 4. Set a seed for reproducibility
 
 ## Simulation of data
-n <- 500  # Number of observations to simulate
-n_trials <- 10  # Number of binomial trials
+n <- 500        # Number of observations to simulate
+n_trials <- 20  # Number of binomial trials
 
 # True parameters for simulation:
-theta0_true <- 0.5   # Initial state (theta[01]) on logit scale
-prec1_true <- 2      # Innovation precision (1/W[1])
+theta0_true <- 0.5     # Initial state (theta[01]) on logit scale
+prec1_true <- 100      # Innovation precision (1/W[1])
 
 # Use a fixed seed for data simulation
 set.seed(123)
@@ -174,22 +174,22 @@ y <- rbinom(n, size = n_trials, prob = alpha_true)  # Observed binomial counts
 # Run the Gibbs sampler with specified priors and a seed
 out <- mcmc_binomial_locallevel(
   y,
-  n_trials = n_trials,
-  burnin   = 1000,
-  thinning = 5,
-  n_chain  = 1000,
-  prior_theta01_mean = 0,
-  prior_theta01_prec = 1,
-  prior_prec1_shape  = 1e-2,
-  prior_prec1_rate   = 1e-2,
-  lag_update = 50,
-  max_step_size = 2.0,
-  base_adaptation_rate = 0.01,
-  decay_exponent = 0.6,
-  target_acceptance = 0.44,
-  return_log_sigma = FALSE,
-  return_accrate = FALSE,
-  seed = 456
+  n_trials             = n_trials,
+  burnin               = 1000,
+  thinning             = 50,
+  n_chain              = 1000,
+  prior_theta01_mean   = 0,
+  prior_theta01_prec   = 1,
+  prior_prec1_shape    = 100,
+  prior_prec1_rate     = 1,
+  lag_update           = 50,
+  max_step_size        = 0.1,
+  base_adaptation_rate = 1,
+  decay_exponent       = 0.6,
+  target_acceptance    = 0.44,
+  return_log_sigma     = FALSE,
+  return_accrate       = TRUE,
+  seed                 = 456
 )
 
 ## Posterior analysis and visualization
@@ -197,70 +197,189 @@ out <- mcmc_binomial_locallevel(
 # Point estimates are based on the median of posterior samples.
 \dontrun{
   # --- 0. Plot the simulated data ---
-  plot.ts(
+  plot(
     y,
     main = "Simulated binomial counts",
     ylab = expression(y[t]),
-    xlab = "t"
+    xlab = "t",
+    type = "o",
+    pch = 16,
+    cex = 0.7
   )
 
-  # --- 1. Latent State (theta[t1]) on logit scale ---
+  # --- 1. Metropolis-Hastings Acceptance Rate Diagnostics ---
+  # Extract acceptance rate statistics for adaptive MCMC performance evaluation
+  acc <- out$accrate
+  min_acc <- apply(X = acc, MARGIN = 2, FUN = min)
+  max_acc <- apply(X = acc, MARGIN = 2, FUN = max)
+  med_acc <- apply(X = acc, MARGIN = 2, FUN = median)
 
-  # Plot true and estimated (median) latent state
+  # Calculate y-axis range for optimal legend positioning
+  range_acc <- range(min_acc, max_acc)
+  r1_acc <- range_acc[1] - 0.05
+  r2_acc <- range_acc[2] + 0.15 * diff(range_acc)
+
+  # Plot acceptance rates with target reference line and confidence bands
+  plot(
+    med_acc,
+    type = "l",
+    col = "black",
+    lwd = 2,
+    xlab = "Time (t)",
+    ylab = "Acceptance Rate",
+    main = "Metropolis-Hastings Acceptance Rates",
+    ylim = c(r1_acc, r2_acc)
+  )
+
+  # Add confidence bands showing min-max range across MCMC iterations
+  polygon(
+    c(1:length(med_acc), rev(1:length(med_acc))),
+    c(min_acc, rev(max_acc)),
+    col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
+    border = NA
+  )
+
+  # Overlay target acceptance rate
+  abline(h = 0.44, col = "red", lty = 2, lwd = 2)
+
+  # Add informative legend positioned in the expanded y-range
+  legend(
+    "topright",
+    legend = c("Median acceptance rate", "Min-Max range", "Target rate (0.44)"),
+    col = c("black", "gray", "red"),
+    lty = c(1, 1, 2),
+    lwd = c(2, 8, 2),
+    bty = "n"
+  )
+
+  # --- 2. Latent State Trajectories (theta[t1]) on logit scale ---
+  # Visualize uncertainty by plotting multiple posterior trajectory samples
+  num_traj_to_plot <- 20
+
+  # Calculate y-axis range for optimal legend positioning
+  range_traj <- range(out$theta_1[1:num_traj_to_plot, ], theta1_true)
+  r1_traj <- range_traj[1] - 0.1 * diff(range_traj)
+  r2_traj <- range_traj[2] + 0.1 * diff(range_traj)
+
+  matplot(
+    t(out$theta_1[1:num_traj_to_plot, ]),
+    type = "l",
+    lty = 1,
+    col = grDevices::rainbow(num_traj_to_plot, alpha = 0.3),
+    xlab = "t",
+    ylab = expression(theta["t,1"]),
+    main = "Posterior trajectory samples for latent state (logit scale)",
+    ylim = c(r1_traj, r2_traj)
+  )
+  # Overlay the true trajectory
+  lines(theta1_true, col = "black", lwd = 3, lty = 2)
+  legend(
+    "topright",
+    legend = expression(theta["t,1"]),
+    col = "black",
+    lty = 2,
+    lwd = 3,
+    bty = "n"
+  )
+
+  # --- 3. Latent State Point Estimates (theta[t1]) ---
+  # Plot true and estimated (median) latent state with credible intervals
   theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
-  range_theta_1 <- range(theta_1_estimate, theta1_true)
-  r1_theta1 <- range_theta_1[1] - 0.1 * diff(range_theta_1)
-  r2_theta1 <- range_theta_1[2] + 0.1 * diff(range_theta_1)
+  theta_1_q025 <- apply(X = out$theta_1, MARGIN = 2, FUN = quantile, probs = 0.025)
+  theta_1_q975 <- apply(X = out$theta_1, MARGIN = 2, FUN = quantile, probs = 0.975)
 
-  plot.ts(
+  range_theta_1 <- range(theta_1_estimate, theta1_true, theta_1_q025, theta_1_q975)
+  r1_theta1 <- range_theta_1[1] - 0.1 * diff(range_theta_1)
+  r2_theta1 <- range_theta_1[2] + 0.3 * diff(range_theta_1)
+
+  plot(
     theta1_true,
     col = "red",
     type = "l",
+    lwd = 3,
     xlab = "t",
     ylim = c(r1_theta1, r2_theta1),
     lty = 2,
     ylab = expression(theta["t,1"]),
-    main = "Latent state (logit scale)"
+    main = "Latent state estimation (logit scale)"
   )
-  points(theta_1_estimate, type = "l")
+
+  # Add 95\% credible intervals
+  polygon(
+    c(1:length(theta_1_estimate), rev(1:length(theta_1_estimate))),
+    c(theta_1_q025, rev(theta_1_q975)),
+    col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
+    border = NA
+  )
+
+  # Add point estimate
+  lines(theta_1_estimate, col = "black", lwd = 2)
+
   legend(
     "topright",
-    legend = c(expression(theta["t,1"]), expression(hat(theta)["t,1"])),
-    col = c("red", "black"),
-    lty = c(2, 1),
+    legend = c(
+      expression(theta["t,1"]),
+      expression(hat(theta)["t,1"]),
+      "95\% Credible Interval"
+    ),
+    col = c("red", "black", "gray"),
+    lty = c(2, 1, 1),
+    lwd = c(3, 2, 8),
     bty = "n"
   )
 
-  # --- 2. Success Probabilities (alpha[t]) ---
-
-  # Plot true and estimated (median) success probabilities
+  # --- 4. Success Probabilities (alpha[t]) ---
+  # Plot true and estimated (median) success probabilities with uncertainty
   alpha_estimate <- apply(X = out$alpha, MARGIN = 2, FUN = median)
+  alpha_q025 <- apply(X = out$alpha, MARGIN = 2, FUN = quantile, probs = 0.025)
+  alpha_q975 <- apply(X = out$alpha, MARGIN = 2, FUN = quantile, probs = 0.975)
 
-  plot.ts(
+  # Calculate y-axis range for optimal legend positioning
+  range_alpha <- range(alpha_true, alpha_estimate, alpha_q025, alpha_q975)
+  r1_alpha <- max(0, range_alpha[1] - 0.05)  # Ensure lower bound is at least 0
+  r2_alpha <- min(1, range_alpha[2] + 0.3 * diff(range_alpha))  # Ensure upper bound is at most 1
+
+  plot(
     alpha_true,
     col = "red",
     type = "l",
+    lwd = 3,
     xlab = "t",
-    ylim = c(0, 1),
+    ylim = c(r1_alpha, r2_alpha),
     lty = 2,
     ylab = expression(alpha[t]),
     main = "Success probabilities"
   )
-  points(alpha_estimate, type = "l")
+
+  # Add 95\% credible intervals
+  polygon(
+    c(1:length(alpha_estimate), rev(1:length(alpha_estimate))),
+    c(alpha_q025, rev(alpha_q975)),
+    col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
+    border = NA
+  )
+
+  # Add point estimate
+  lines(alpha_estimate, col = "black", lwd = 2)
+
   legend(
     "topright",
-    legend = c(expression(alpha[t]), expression(hat(alpha)[t])),
-    col = c("red", "black"),
-    lty = c(2, 1),
+    legend = c(
+      expression(alpha[t]),
+      expression(hat(alpha)[t]),
+      "95\% Credible Interval"
+    ),
+    col = c("red", "black", "gray"),
+    lty = c(2, 1, 1),
+    lwd = c(3, 2, 8),
     bty = "n"
   )
 
-  # --- 3. Initial State (theta[01]) ---
-
-  # Trace plot for theta[01]
+  # --- 5. Initial State (theta[01]) Diagnostics ---
+  # Trace plot for theta[01] to assess MCMC convergence
   range_theta_01 <- range(out$theta_01)
   r1_theta01 <- range_theta_01[1] - 0.1 * diff(range_theta_01)
-  r2_theta01 <- range_theta_01[2] + 0.1 * diff(range_theta_01)
+  r2_theta01 <- range_theta_01[2] + 0.3 * diff(range_theta_01)
 
   plot.ts(
     out$theta_01,
@@ -285,12 +404,39 @@ out <- mcmc_binomial_locallevel(
     lwd = 2
   )
 
-  # --- 4. Innovation Precision (1/W[1]) ---
+  # Posterior density estimate for theta[01]
+  range_dens_theta01 <- range(out$theta_01)
+  r1_dens_theta01 <- range_dens_theta01[1] - 0.1 * diff(range_dens_theta01)
+  r2_dens_theta01 <- range_dens_theta01[2] + 0.25 * diff(range_dens_theta01)
 
-  # Trace plot for 1/W[1]
+  plot(
+    density(out$theta_01),
+    main = "Posterior density estimate of initial state",
+    xlab = expression(theta["0,1"]),
+    ylab = "Density",
+    lwd = 2,
+    xlim = c(r1_dens_theta01, r2_dens_theta01)
+  )
+  abline(
+    v = c(theta0_true, median(out$theta_01)),
+    col = c("red", "black"),
+    lty = c(2, 1),
+    lwd = 2
+  )
+  legend(
+    "topright",
+    legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
+    col = c("red", "black"),
+    lty = c(2, 1),
+    bty = "n",
+    lwd = 2
+  )
+
+  # --- 6. Innovation Precision (1/W[1]) Diagnostics ---
+  # Trace plot for 1/W[1] to assess parameter convergence
   range_prec_1 <- range(out$prec_1)
   r1_prec1 <- range_prec_1[1] - 0.1 * diff(range_prec_1)
-  r2_prec1 <- range_prec_1[2] + 0.1 * diff(range_prec_1)
+  r2_prec1 <- range_prec_1[2] + 0.25 * diff(range_prec_1)
 
   plot.ts(
     out$prec_1,
@@ -302,6 +448,34 @@ out <- mcmc_binomial_locallevel(
   )
   abline(
     h = c(prec1_true, median(out$prec_1)),
+    col = c("red", "black"),
+    lty = c(2, 1),
+    lwd = 2
+  )
+  legend(
+    "topright",
+    legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
+    col = c("red", "black"),
+    lty = c(2, 1),
+    bty = "n",
+    lwd = 2
+  )
+
+  # Posterior density estimate for 1/W[1]
+  range_dens_prec1 <- range(out$prec_1)
+  r1_dens_prec1 <- range_dens_prec1[1] - 0.1 * diff(range_dens_prec1)
+  r2_dens_prec1 <- range_dens_prec1[2] + 0.25 * diff(range_dens_prec1)
+
+  plot(
+    density(out$prec_1),
+    main = "Posterior density estimate of innovation precision",
+    xlab = expression(W[1]^-1),
+    ylab = "Density",
+    lwd = 2,
+    xlim = c(r1_dens_prec1, r2_dens_prec1)
+  )
+  abline(
+    v = c(prec1_true, median(out$prec_1)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2

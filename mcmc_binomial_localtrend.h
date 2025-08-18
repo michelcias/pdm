@@ -1,0 +1,91 @@
+/**
+ * @file mcmc_binomial_localtrend.h
+ * @brief Header file for MCMC sampling of local-trend binomial dynamic models
+ * @details Function declarations for Gibbs sampling of binomial state-space models
+ *          with logit link and local-trend structure using component-wise
+ *          Metropolis-Hastings algorithms.
+ * @author Michel H. Montoril
+ * @date 2025-08-18
+ * @version 1.0
+ */
+
+#ifndef MCMC_BINOMIAL_LOCALTREND_H
+#define MCMC_BINOMIAL_LOCALTREND_H
+
+#include <R.h>
+#include <Rinternals.h>
+
+/**
+ * @brief Gibbs sampler for local-trend binomial dynamic model with logit link
+ *
+ * @details Implements a complete Gibbs MCMC algorithm for the local-trend binomial model:
+ *
+ *          Observation equation:
+ *          y_t ~ Binomial(n_trials, alpha_t)
+ *          where alpha_t = logit^(-1)(theta_{1,t})
+ *
+ *          State equations:
+ *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},  u_{1,t} ~ N(0, W_1)
+ *          theta_{2,t} = theta_{2,t-1} + u_{2,t},                  u_{2,t} ~ N(0, W_2)
+ *
+ *          Uses component-wise Metropolis-Hastings for non-linear observation model
+ *          with adaptive proposal tuning based on acceptance rates.
+ *
+ * @param y_                    SEXP Numeric vector of observed binomial counts [length n]
+ * @param n_trials_             SEXP Double scalar, number of trials per observation
+ * @param burnin_               SEXP Integer scalar, number of burn-in iterations
+ * @param thinning_             SEXP Integer scalar, thinning interval
+ * @param n_chain_              SEXP Integer scalar, target number of retained samples
+ * @param prior_theta01_mean_   SEXP Double scalar, prior mean for initial state theta_{0,1}
+ * @param prior_theta01_prec_   SEXP Double scalar, prior precision for initial state theta_{0,1}
+ * @param prior_theta02_mean_   SEXP Double scalar, prior mean for initial state theta_{0,2}
+ * @param prior_theta02_prec_   SEXP Double scalar, prior precision for initial state theta_{0,2}
+ * @param prior_prec1_shape_    SEXP Double scalar, shape parameter for Gamma prior on 1/W_1
+ * @param prior_prec1_rate_     SEXP Double scalar, rate parameter for Gamma prior on 1/W_1
+ * @param prior_prec2_shape_    SEXP Double scalar, shape parameter for Gamma prior on 1/W_2
+ * @param prior_prec2_rate_     SEXP Double scalar, rate parameter for Gamma prior on 1/W_2
+ * @param lag_update_           SEXP Integer scalar, adaptation frequency (iterations)
+ * @param max_step_size_        SEXP Double scalar, maximum proposal step size
+ * @param base_adaptation_rate_ SEXP Double scalar, base adaptation rate
+ * @param decay_exponent_       SEXP Double scalar, adaptation decay exponent
+ * @param target_acceptance_    SEXP Double scalar, target acceptance rate
+ * @param return_log_sigma_     SEXP Logical scalar, whether to return log_sigma diagnostics
+ * @param return_accrate_       SEXP Logical scalar, whether to return accrate diagnostics
+ *
+ * @return SEXP R list containing posterior samples with named components:
+ *         - theta_1: Numeric matrix [n_chain x n] of level state trajectory samples
+ *         - theta_2: Numeric matrix [n_chain x n] of trend state trajectory samples
+ *         - theta_01: Numeric vector [n_chain] of initial level state samples
+ *         - theta_02: Numeric vector [n_chain] of initial trend state samples
+ *         - prec_1: Numeric vector [n_chain] of level innovation precision samples
+ *         - prec_2: Numeric vector [n_chain] of trend innovation precision samples
+ *         - alpha: Numeric matrix [n_chain x n] of success probability samples
+ *         - log_sigma: Numeric matrix [n_chain x n] of proposal scales (if requested)
+ *         - accrate: Numeric matrix [n_chain x n] of acceptance rates (if requested)
+ *
+ * @note Computational complexity: O(n_iter x n) for n_iter total iterations
+ * @note Memory requirements: O(n_iter x n) for trajectory and adaptation storage
+ * @note Each y[i] must satisfy 0 <= y[i] <= n_trials
+ * @note Sample size n >= 3 required for numerical stability
+ * @note Uses diminishing adaptation with sliding window acceptance rates
+ *
+ * @warning Prior parameters must be positive for proper Gamma distributions
+ * @warning Large sample sizes may require substantial memory allocation
+ * @warning No convergence diagnostics implemented; user must assess convergence
+ *
+ * @see generate_alpha_logit_binomial
+ * @see generate_precision_theta_p
+ * @see generate_theta_0p
+ */
+SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
+                                      SEXP burnin_, SEXP thinning_, SEXP n_chain_,
+                                      SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
+                                      SEXP prior_theta02_mean_, SEXP prior_theta02_prec_,
+                                      SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
+                                      SEXP prior_prec2_shape_, SEXP prior_prec2_rate_,
+                                      SEXP lag_update_, SEXP max_step_size_,
+                                      SEXP base_adaptation_rate_, SEXP decay_exponent_,
+                                      SEXP target_acceptance_,
+                                      SEXP return_log_sigma_, SEXP return_accrate_);
+
+#endif /* MCMC_BINOMIAL_LOCALTREND_H */

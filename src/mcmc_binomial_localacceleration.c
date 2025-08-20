@@ -1,0 +1,448 @@
+/**
+ * @file mcmc_binomial_localacceleration.c
+ * @brief Implementation of MCMC sampling for local-acceleration binomial dynamic models
+ * @details Provides a complete Gibbs sampler for Bayesian estimation of binomial
+ *          dynamic models with logit link and local-acceleration structure, utilizing
+ *          component-wise Metropolis-Hastings for non-linear state sampling.
+ * @author Michel H. Montoril
+ * @date 2025-08-18
+ * @version 1.0
+ */
+
+#include <R.h>
+#include <Rinternals.h>
+#include <Rmath.h>
+#include "conditional_state.h"
+#include "conditional_precision.h"
+#include "conditional_theta0.h"
+#include "generate_alpha_binomial.h"
+#include "utils.h"
+#include "mcmc_binomial_localacceleration.h"
+
+/**
+ * @brief Gibbs sampler for local-acceleration binomial dynamic model with logit link
+ *
+ * @details Implements a complete Gibbs MCMC algorithm for the local-acceleration binomial model:
+ *
+ *          Observation equation:
+ *          y_t ~ Binomial(n_trials, alpha_t)
+ *          where alpha_t = logit^(-1)(theta_{1,t})
+ *
+ *          State equations:
+ *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},  u_{1,t} ~ N(0, W_1)
+ *          theta_{2,t} = theta_{2,t-1} + theta_{3,t-1} + u_{2,t},  u_{2,t} ~ N(0, W_2)
+ *          theta_{3,t} = theta_{3,t-1} + u_{3,t},                  u_{3,t} ~ N(0, W_3)
+ *
+ *          The algorithm employs component-wise Metropolis-Hastings for the non-linear
+ *          observation model, with adaptive proposal tuning based on acceptance rates.
+ *          Innovation precisions are sampled from conjugate Gamma posteriors.
+ *
+ *          Sampling sequence per iteration:
+ *          1. theta_3 | theta_2, theta_0, W_3 -> Gaussian posterior (conditional state)
+ *          2. 1/W_3 | theta_3, theta_03 -> Gamma posterior
+ *          3. theta_{0,3} | theta_3, theta_02, W_3 -> Gaussian posterior
+ *          4. theta_2 | theta_1, theta_3, theta_0, W_2 -> Gaussian posterior (conditional state)
+ *          5. 1/W_2 | theta_2, theta_02, theta_03 -> Gamma posterior
+ *          6. theta_{0,2} | theta_2, theta_01, theta_03, W_2 -> Gaussian posterior
+ *          7. theta_1 | y, theta_2, theta_0, W_1 -> Component-wise Metropolis-Hastings
+ *          8. 1/W_1 | theta_1, theta_01, theta_02 -> Gamma posterior
+ *          9. theta_{0,1} | theta_1, theta_02, W_1 -> Gaussian posterior
+ *
+ *          Total iterations computed as: burnin + (n_chain - 1) x thinning + 1
+ *
+ *          Priors:
+ *          - theta_{0,1} ~ N(mu_01, tau_01^{-1})
+ *          - theta_{0,2} ~ N(mu_02, tau_02^{-1})
+ *          - theta_{0,3} ~ N(mu_03, tau_03^{-1})
+ *          - 1/W_1 ~ Gamma(nu_1, eta_1)
+ *          - 1/W_2 ~ Gamma(nu_2, eta_2)
+ *          - 1/W_3 ~ Gamma(nu_3, eta_3)
+ */
+SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
+                                            SEXP burnin_, SEXP thinning_, SEXP n_chain_,
+                                            SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
+                                            SEXP prior_theta02_mean_, SEXP prior_theta02_prec_,
+                                            SEXP prior_theta03_mean_, SEXP prior_theta03_prec_,
+                                            SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
+                                            SEXP prior_prec2_shape_, SEXP prior_prec2_rate_,
+                                            SEXP prior_prec3_shape_, SEXP prior_prec3_rate_,
+                                            SEXP lag_update_, SEXP max_step_size_,
+                                            SEXP base_adaptation_rate_, SEXP decay_exponent_,
+                                            SEXP target_acceptance_,
+                                            SEXP return_log_sigma_, SEXP return_accrate_) {
+
+  /* Parse data vector and check its length */
+  double   *y    = REAL(y_);
+  R_xlen_t  len  = LENGTH(y_);
+  if (len < 3)
+    Rf_error("C_MCMC_logit_binomial_localacceleration: sample size 'n' must be at least 3, got %lld",
+             (long long) len);
+  if (len > INT_MAX)
+    Rf_error("C_MCMC_logit_binomial_localacceleration: sample size too large (%lld > %d)",
+             (long long) len, INT_MAX);
+  int n = (int) len;
+
+  /* Parse observation model parameters */
+  double n_trials = REAL(n_trials_)[0];
+
+  /* Validate binomial constraints */
+  for (int i = 0; i < n; i++) {
+    if (y[i] < 0 || y[i] > n_trials) {
+      Rf_error("C_MCMC_logit_binomial_localacceleration: y[%d] = %f violates 0 <= y <= n_trials = %f",
+               i, y[i], n_trials);
+    }
+  }
+
+  /* Parse MCMC settings */
+  int burnin   = INTEGER(burnin_)[0];
+  int thinning = INTEGER(thinning_)[0];
+  int n_chain  = INTEGER(n_chain_)[0];
+  int n_iter   = burnin + (n_chain - 1) * thinning + 1;
+
+  /* Parse prior hyperparameters */
+  double theta01_mean = REAL(prior_theta01_mean_)[0];
+  double theta01_prec = REAL(prior_theta01_prec_)[0];
+  double theta02_mean = REAL(prior_theta02_mean_)[0];
+  double theta02_prec = REAL(prior_theta02_prec_)[0];
+  double theta03_mean = REAL(prior_theta03_mean_)[0];
+  double theta03_prec = REAL(prior_theta03_prec_)[0];
+  double nu_01        = REAL(prior_prec1_shape_)[0];
+  double eta_01       = REAL(prior_prec1_rate_)[0];
+  double nu_02        = REAL(prior_prec2_shape_)[0];
+  double eta_02       = REAL(prior_prec2_rate_)[0];
+  double nu_03        = REAL(prior_prec3_shape_)[0];
+  double eta_03       = REAL(prior_prec3_rate_)[0];
+
+  /* Parse adaptive MCMC parameters */
+  int    lag_update           = INTEGER(lag_update_)[0];
+  double max_step_size        = REAL(max_step_size_)[0];
+  double base_adaptation_rate = REAL(base_adaptation_rate_)[0];
+  double decay_exponent       = REAL(decay_exponent_)[0];
+  double target_acceptance    = REAL(target_acceptance_)[0];
+
+  /* Parse diagnostic flags */
+  int return_log_sigma = LOGICAL(return_log_sigma_)[0];
+  int return_accrate   = LOGICAL(return_accrate_)[0];
+
+  /* Calculate number of outputs and protections */
+  int n_base_outputs = 10;  /* theta_1, theta_2, theta_3, theta_01, theta_02, theta_03, prec_1, prec_2, prec_3, alpha */
+  int n_outputs = n_base_outputs;
+  if (return_log_sigma) n_outputs++;
+  if (return_accrate) n_outputs++;
+  int n_protect = n_base_outputs;  /* Base matrices/vectors to protect */
+
+  /* Allocate storage for posterior samples */
+  SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_2_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_3_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_02_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_03_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_1_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_2_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_3_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
+
+  /* Conditional allocation for diagnostics */
+  SEXP log_sigma_samples = R_NilValue;
+  SEXP accrate_samples   = R_NilValue;
+  if (return_log_sigma) {
+    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    n_protect++;
+  }
+  if (return_accrate) {
+    accrate_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    n_protect++;
+  }
+
+  /* Buffers for full MCMC trajectory (including burn‐in) */
+  double *theta_1_post     = (double *) R_Calloc(n_iter * n, double);
+  double *theta_2_post     = (double *) R_Calloc(n_iter * n, double);
+  double *theta_3_post     = (double *) R_Calloc(n_iter * n, double);
+  double *theta_01_post    = (double *) R_Calloc(n_iter,     double);
+  double *theta_02_post    = (double *) R_Calloc(n_iter,     double);
+  double *theta_03_post    = (double *) R_Calloc(n_iter,     double);
+  double *prec_1_post      = (double *) R_Calloc(n_iter,     double);
+  double *prec_2_post      = (double *) R_Calloc(n_iter,     double);
+  double *prec_3_post      = (double *) R_Calloc(n_iter,     double);
+  double *alpha_post       = (double *) R_Calloc(n_iter * n, double);
+  double *theta_1_updated  = (double *) R_Calloc(n_iter * n, double);
+
+  /* Working arrays for CWMH algorithm */
+  double *accrate          = (double *) R_Calloc(n, double);
+  double *log_sigma        = (double *) R_Calloc(n, double);
+  double *hat_theta_1      = (double *) R_Calloc(n, double);
+  double *theta_1_new      = (double *) R_Calloc(n, double);
+  double *log_accept_prob  = (double *) R_Calloc(n, double);
+  int    *updated          = (int *)    R_Calloc(n, int);
+
+  /* Initialize log_sigma with reasonable starting values */
+  for (int j = 0; j < n; j++) {
+    log_sigma[j] = log(0.1);  /* Initial proposal sd = 0.1 */
+  }
+
+  /* Initialize RNG state */
+  GetRNGstate();
+
+  /*--- INITIALIZATION (iter = 0) ---*/
+  theta_01_post[0] = rnorm(theta01_mean, sqrt(1.0 / theta01_prec));
+  theta_02_post[0] = rnorm(theta02_mean, sqrt(1.0 / theta02_prec));
+  theta_03_post[0] = rnorm(theta03_mean, sqrt(1.0 / theta03_prec));
+  prec_1_post[0]   = rgamma(nu_01, 1.0 / eta_01);
+  prec_2_post[0]   = rgamma(nu_02, 1.0 / eta_02);
+  prec_3_post[0]   = rgamma(nu_03, 1.0 / eta_03);
+
+  /* Initialize state vectors for t = 1..n */
+  double init_sd_1 = sqrt(1.0 / prec_1_post[0]);
+  double init_sd_2 = sqrt(1.0 / prec_2_post[0]);
+  double init_sd_3 = sqrt(1.0 / prec_3_post[0]);
+  theta_1_post[0] = rnorm(theta_01_post[0] + theta_02_post[0], init_sd_1);
+  theta_2_post[0] = rnorm(theta_02_post[0] + theta_03_post[0], init_sd_2);
+  theta_3_post[0] = rnorm(theta_03_post[0], init_sd_3);
+  for (int j = 1; j < n; j++) {
+    theta_1_post[j] = rnorm(theta_1_post[j - 1] + theta_2_post[j - 1], init_sd_1);
+    theta_2_post[j] = rnorm(theta_2_post[j - 1] + theta_3_post[j - 1], init_sd_2);
+    theta_3_post[j] = rnorm(theta_3_post[j - 1], init_sd_3);
+  }
+
+  /* Initialize alpha (success probabilities) */
+  for (int j = 0; j < n; j++) {
+    alpha_post[j] = ilogit(theta_1_post[j]);
+  }
+
+  /*--- Main Gibbs sampling loop ---*/
+  int chain = 0;
+  for (int ii = 1; ii < n_iter; ii++) {
+    
+    /* 1) Sample acceleration state vector theta_3 */
+    generate_theta_p(
+      theta_2_post,      // theta_pm1_post
+      theta_3_post,      // theta_p_post (output)
+      prec_2_post,       // prec_theta_pm1_post
+      prec_3_post,       // prec_theta_p_post
+      theta_03_post,     // theta_0p_post
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 2) Sample innovation precision 1/W_3 */
+    generate_precision_theta_p(
+      theta_03_post,     // theta_0p_post
+      theta_3_post,      // theta_p_post
+      prec_3_post,       // prec_theta_p_post (output)
+      nu_03,             // nu_0p (prior shape)
+      eta_03,            // eta_0p (prior rate)
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 3) Sample initial acceleration state theta_03 */
+    generate_theta_0p(
+      theta_02_post,     // theta_0pm1_post
+      theta_03_post,     // theta_0p_post (output)
+      theta_2_post,      // theta_pm1_post
+      theta_3_post,      // theta_p_post
+      prec_2_post,       // prec_theta_pm1_post
+      prec_3_post,       // prec_theta_p_post
+      theta03_mean,      // mean_theta_0p (prior mean)
+      theta03_prec,      // prec_theta_0p (prior precision)
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 4) Sample trend state vector theta_2 */
+    generate_theta_k(
+      theta_1_post,      // theta_km1_post
+      theta_2_post,      // theta_k_post (output)
+      theta_3_post,      // theta_kp1_post
+      prec_1_post,       // prec_theta_km1_post
+      prec_2_post,       // prec_theta_k_post
+      theta_02_post,     // theta_0k_post
+      theta_03_post,     // theta_0kp1_post
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 5) Sample innovation precision 1/W_2 */
+    generate_precision_theta_k(
+      theta_02_post,     // theta_0k_post
+      theta_03_post,     // theta_0kp1_post
+      theta_2_post,      // theta_k_post
+      theta_3_post,      // theta_kp1_post
+      prec_2_post,       // prec_theta_k_post (output)
+      nu_02,             // nu_0k (prior shape)
+      eta_02,            // eta_0k (prior rate)
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 6) Sample initial trend state theta_02 */
+    generate_theta_0k(
+      theta_01_post,     // theta_0km1_post
+      theta_02_post,     // theta_0k_post (output)
+      theta_03_post,     // theta_0kp1_post
+      theta_1_post,      // theta_km1_post
+      theta_2_post,      // theta_k_post
+      prec_1_post,       // prec_theta_km1_post
+      prec_2_post,       // prec_theta_k_post
+      theta02_mean,      // mean_theta_0k (prior mean)
+      theta02_prec,      // prec_theta_0k (prior precision)
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 7) Sample level state vector theta_1 and success probabilities alpha */
+    generate_alpha_logit_binomial(
+      theta_1_post,
+      theta_2_post,
+      theta_01_post,
+      theta_02_post,
+      theta_1_updated,
+      alpha_post,
+      prec_1_post,
+      y,
+      accrate,
+      log_sigma,
+      hat_theta_1,
+      theta_1_new,
+      log_accept_prob,
+      updated,
+      lag_update,
+      n_trials,
+      n,
+      ii,
+      max_step_size,
+      base_adaptation_rate,
+      decay_exponent,
+      target_acceptance
+    );
+
+    /* 8) Sample innovation precision 1/W_1 */
+    generate_precision_theta_k(
+      theta_01_post,     // theta_0k_post (initial level)
+      theta_02_post,     // theta_0kp1_post (initial trend)
+      theta_1_post,      // theta_k_post (level states)
+      theta_2_post,      // theta_kp1_post (trend states)
+      prec_1_post,       // prec_theta_k_post (output)
+      nu_01,             // nu_0k (prior shape)
+      eta_01,            // eta_0k (prior rate)
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* 9) Sample initial level state theta_01 */
+    generate_theta_01(
+      theta_01_post,     // theta_01_post (output)
+      theta_1_post,      // theta_1_post (level states)
+      theta_02_post,     // theta_02_post (initial trend)
+      prec_1_post,       // prec_theta_1_post
+      theta01_mean,      // mean_theta_01 (prior mean)
+      theta01_prec,      // prec_theta_01 (prior precision)
+      n,                 // n
+      ii                 // iter
+    );
+
+    /* Store samples if past burn-in and on thinning schedule */
+    if (ii >= burnin && ((ii - burnin) % thinning) == 0) {
+      int idx = chain++;
+      for (int j = 0; j < n; j++) {
+        REAL(theta_1_samples)[idx + j * n_chain] = theta_1_post[ii * n + j];
+        REAL(theta_2_samples)[idx + j * n_chain] = theta_2_post[ii * n + j];
+        REAL(theta_3_samples)[idx + j * n_chain] = theta_3_post[ii * n + j];
+        REAL(alpha_samples)[idx + j * n_chain]   = alpha_post[ii * n + j];
+      }
+      /* Store diagnostics if requested */
+      if (return_log_sigma) {
+        for (int j = 0; j < n; j++) {
+          REAL(log_sigma_samples)[idx + j * n_chain] = log_sigma[j];
+        }
+      }
+      if (return_accrate) {
+        for (int j = 0; j < n; j++) {
+          REAL(accrate_samples)[idx + j * n_chain] = accrate[j];
+        }
+      }
+      REAL(theta_01_samples)[idx] = theta_01_post[ii];
+      REAL(theta_02_samples)[idx] = theta_02_post[ii];
+      REAL(theta_03_samples)[idx] = theta_03_post[ii];
+      REAL(prec_1_samples)[idx]   = prec_1_post[ii];
+      REAL(prec_2_samples)[idx]   = prec_2_post[ii];
+      REAL(prec_3_samples)[idx]   = prec_3_post[ii];
+    }
+  }
+
+  /* Return RNG state */
+  PutRNGstate();
+
+  /* Free temporary buffers */
+  R_Free(theta_1_post);
+  R_Free(theta_2_post);
+  R_Free(theta_3_post);
+  R_Free(theta_01_post);
+  R_Free(theta_02_post);
+  R_Free(theta_03_post);
+  R_Free(prec_1_post);
+  R_Free(prec_2_post);
+  R_Free(prec_3_post);
+  R_Free(alpha_post);
+  R_Free(theta_1_updated);
+  R_Free(accrate);
+  R_Free(log_sigma);
+  R_Free(hat_theta_1);
+  R_Free(theta_1_new);
+  R_Free(log_accept_prob);
+  R_Free(updated);
+
+  /* Package results into a named list */
+  SEXP out = PROTECT(allocVector(VECSXP, n_outputs));
+  SEXP nms = PROTECT(allocVector(STRSXP, n_outputs));
+
+  int output_idx = 0;
+
+  /* Always include base outputs */
+  SET_VECTOR_ELT(out, output_idx, theta_1_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("theta_1"));
+
+  SET_VECTOR_ELT(out, output_idx, theta_2_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("theta_2"));
+
+  SET_VECTOR_ELT(out, output_idx, theta_3_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("theta_3"));
+
+  SET_VECTOR_ELT(out, output_idx, theta_01_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("theta_01"));
+
+  SET_VECTOR_ELT(out, output_idx, theta_02_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("theta_02"));
+
+  SET_VECTOR_ELT(out, output_idx, theta_03_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("theta_03"));
+
+  SET_VECTOR_ELT(out, output_idx, prec_1_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("prec_1"));
+
+  SET_VECTOR_ELT(out, output_idx, prec_2_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("prec_2"));
+
+  SET_VECTOR_ELT(out, output_idx, prec_3_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("prec_3"));
+
+  SET_VECTOR_ELT(out, output_idx, alpha_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("alpha"));
+
+  /* Conditionally add diagnostic outputs */
+  if (return_log_sigma) {
+    SET_VECTOR_ELT(out, output_idx, log_sigma_samples);
+    SET_STRING_ELT(nms, output_idx++, mkChar("log_sigma"));
+  }
+  if (return_accrate) {
+    SET_VECTOR_ELT(out, output_idx, accrate_samples);
+    SET_STRING_ELT(nms, output_idx++, mkChar("accrate"));
+  }
+
+  setAttrib(out, R_NamesSymbol, nms);
+
+  /* Adjust UNPROTECT count: +2 for out and nms */
+  UNPROTECT(n_protect + 2);
+  return out;
+}

@@ -1,6 +1,6 @@
-#' @title Gibbs Sampler for a Local-Trend Binomial Dynamic Model
+#' @title Gibbs Sampler for a Local-Acceleration Binomial Dynamic Model
 #'
-#' @description Runs a Gibbs sampler for the local-trend binomial dynamic model
+#' @description Runs a Gibbs sampler for the local-acceleration binomial dynamic model
 #'   with logit link.
 #'
 #' @details The model is defined as:
@@ -9,7 +9,8 @@
 #' y_t &\sim \text{Binomial}(n_{trials}, \alpha_t), \\
 #' \alpha_t &= \text{logit}^{-1}(\theta_{t,1}), \\
 #' \theta_{t,1} &= \theta_{t-1,1} + \theta_{t-1,2} + u_{t,1}, \quad u_{t,1} \sim N(0, W_1), \\
-#' \theta_{t,2} &= \theta_{t-1,2} + u_{t,2}, \quad u_{t,2} \sim N(0, W_2),
+#' \theta_{t,2} &= \theta_{t-1,2} + \theta_{t-1,3} + u_{t,2}, \quad u_{t,2} \sim N(0, W_2), \\
+#' \theta_{t,3} &= \theta_{t-1,3} + u_{t,3}, \quad u_{t,3} \sim N(0, W_3),
 #' \end{aligned}
 #' }
 #' where \eqn{t = 1, 2, \ldots, n} and \eqn{n} is the number of observations.
@@ -25,7 +26,8 @@
 #' \deqn{
 #' \begin{aligned}
 #' \theta_{0,1} &\sim N(\mu_{01}, \tau_{01}^{-1}), \\
-#' \theta_{0,2} &\sim N(\mu_{02}, \tau_{02}^{-1}).
+#' \theta_{0,2} &\sim N(\mu_{02}, \tau_{02}^{-1}), \\
+#' \theta_{0,3} &\sim N(\mu_{03}, \tau_{03}^{-1}).
 #' \end{aligned}
 #' }
 #'
@@ -33,7 +35,8 @@
 #' \deqn{
 #' \begin{aligned}
 #' W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1), \\
-#' W_2^{-1} &\sim \text{Gamma}(\nu_2, \eta_2).
+#' W_2^{-1} &\sim \text{Gamma}(\nu_2, \eta_2), \\
+#' W_3^{-1} &\sim \text{Gamma}(\nu_3, \eta_3).
 #' \end{aligned}
 #' }
 #'
@@ -44,10 +47,14 @@
 #'   \eqn{\tau_{01}} \tab `prior_theta01_prec` \cr
 #'   \eqn{\mu_{02}} \tab `prior_theta02_mean` \cr
 #'   \eqn{\tau_{02}} \tab `prior_theta02_prec` \cr
+#'   \eqn{\mu_{03}} \tab `prior_theta03_mean` \cr
+#'   \eqn{\tau_{03}} \tab `prior_theta03_prec` \cr
 #'   \eqn{\nu_1} \tab `prior_prec1_shape` \cr
 #'   \eqn{\eta_1} \tab `prior_prec1_rate` \cr
 #'   \eqn{\nu_2} \tab `prior_prec2_shape` \cr
-#'   \eqn{\eta_2} \tab `prior_prec2_rate`
+#'   \eqn{\eta_2} \tab `prior_prec2_rate` \cr
+#'   \eqn{\nu_3} \tab `prior_prec3_shape` \cr
+#'   \eqn{\eta_3} \tab `prior_prec3_rate`
 #' }
 #'
 #' Due to the non-linear observation model with logit link, the algorithm
@@ -68,10 +75,14 @@
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,1}}.
 #' @param prior_theta02_mean Numeric, prior mean for the initial state \eqn{\theta_{0,2}}.
 #' @param prior_theta02_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,2}}.
+#' @param prior_theta03_mean Numeric, prior mean for the initial state \eqn{\theta_{0,3}}.
+#' @param prior_theta03_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,3}}.
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_1}.
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}.
 #' @param prior_prec2_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_2}.
 #' @param prior_prec2_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_2}.
+#' @param prior_prec3_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_3}.
+#' @param prior_prec3_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_3}.
 #' @param lag_update Integer \eqn{\geq 1}, adaptation frequency for Metropolis-Hastings proposals (iterations).
 #' @param max_step_size Numeric > 0, maximum proposal step size for adaptive algorithm.
 #' @param base_adaptation_rate Numeric > 0, base adaptation rate for proposal scaling.
@@ -85,10 +96,13 @@
 #' \describe{
 #'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
 #'   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,2}}.}
+#'   \item{`theta_3`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,3}}.}
 #'   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,1}}.}
 #'   \item{`theta_02`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,2}}.}
+#'   \item{`theta_03`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,3}}.}
 #'   \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_1}.}
 #'   \item{`prec_2`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_2}.}
+#'   \item{`prec_3`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_3}.}
 #'   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
 #'   \item{`log_sigma`}{Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics (if requested).}
 #'   \item{`accrate`}{Numeric matrix \eqn{[n_{chain} \times n]} of acceptance rate diagnostics (if requested).}
@@ -97,8 +111,8 @@
 #' @examples
 #' ## Description
 #' # This example demonstrates how to:
-#' # 1. Simulate data from a local-trend binomial dynamic model
-#' # 2. Use `mcmc_binomial_localtrend` to estimate parameters and latent states
+#' # 1. Simulate data from a local-acceleration binomial dynamic model
+#' # 2. Use `mcmc_binomial_localacceleration` to estimate parameters and latent states
 #' # 3. Perform a detailed posterior analysis with visualizations
 #' # 4. Set a seed for reproducibility
 #'
@@ -109,8 +123,10 @@
 #' # True parameters for simulation:
 #' theta01_true <- 0.5     # Initial level state (theta[0,1]) on logit scale
 #' theta02_true <- 0.01    # Initial trend state (theta[0,2]) on logit scale
+#' theta03_true <- 0.001   # Initial acceleration state (theta[0,3]) on logit scale
 #' prec1_true <- 100       # Level innovation precision (1/W[1])
 #' prec2_true <- 400       # Trend innovation precision (1/W[2])
+#' prec3_true <- 1600      # Acceleration innovation precision (1/W[3])
 #'
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
@@ -118,14 +134,18 @@
 #' # Generate noise terms:
 #' u1 <- rnorm(n, sd = sqrt(1/prec1_true))  # Level evolution noise (u1[t])
 #' u2 <- rnorm(n, sd = sqrt(1/prec2_true))  # Trend evolution noise (u2[t])
+#' u3 <- rnorm(n, sd = sqrt(1/prec3_true))  # Acceleration evolution noise (u3[t])
 #'
 #' # Simulate latent states and observations:
 #' theta1_true <- numeric(n)
 #' theta2_true <- numeric(n)
-#' theta2_true[1] <- theta02_true + u2[1]
+#' theta3_true <- numeric(n)
+#' theta3_true[1] <- theta03_true + u3[1]
+#' theta2_true[1] <- theta02_true + theta03_true + u2[1]
 #' theta1_true[1] <- theta01_true + theta02_true + u1[1]
 #' for (t in 2:n) {
-#'   theta2_true[t] <- theta2_true[t-1] + u2[t]
+#'   theta3_true[t] <- theta3_true[t-1] + u3[t]
+#'   theta2_true[t] <- theta2_true[t-1] + theta3_true[t-1] + u2[t]
 #'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
 #' }
 #' alpha_true <- plogis(theta1_true)  # Success probabilities
@@ -133,7 +153,7 @@
 #'
 #' ## Running the Gibbs sampler
 #' # Run the Gibbs sampler with specified priors and a seed
-#' out <- mcmc_binomial_localtrend(
+#' out <- mcmc_binomial_localacceleration(
 #'   y,
 #'   n_trials             = n_trials,
 #'   burnin               = 1000,
@@ -143,10 +163,14 @@
 #'   prior_theta01_prec   = 1,
 #'   prior_theta02_mean   = 0,
 #'   prior_theta02_prec   = 1,
+#'   prior_theta03_mean   = 0,
+#'   prior_theta03_prec   = 1,
 #'   prior_prec1_shape    = 100,
 #'   prior_prec1_rate     = 1,
 #'   prior_prec2_shape    = 400,
 #'   prior_prec2_rate     = 1,
+#'   prior_prec3_shape    = 1600,
+#'   prior_prec3_rate     = 1,
 #'   lag_update           = 50,
 #'   max_step_size        = 0.1,
 #'   base_adaptation_rate = 1,
@@ -274,7 +298,34 @@
 #'     bty = "n"
 #'   )
 #'
-#'   # --- 4. Latent Level Point Estimates (theta[t,1]) ---
+#'   # --- 4. Latent Acceleration Trajectories (theta[t,3]) on logit scale ---
+#'   # Visualize uncertainty by plotting multiple posterior trajectory samples
+#'   range_traj3 <- range(out$theta_3[1:num_traj_to_plot, ], theta3_true)
+#'   r1_traj3 <- range_traj3[1] - 0.1 * diff(range_traj3)
+#'   r2_traj3 <- range_traj3[2] + 0.1 * diff(range_traj3)
+#'
+#'   matplot(
+#'     t(out$theta_3[1:num_traj_to_plot, ]),
+#'     type = "l",
+#'     lty = 1,
+#'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.3),
+#'     xlab = "t",
+#'     ylab = expression(theta["t,3"]),
+#'     main = "Posterior trajectory samples for latent acceleration (logit scale)",
+#'     ylim = c(r1_traj3, r2_traj3)
+#'   )
+#'   # Overlay the true trajectory
+#'   lines(theta3_true, col = "black", lwd = 3, lty = 2)
+#'   legend(
+#'     "topright",
+#'     legend = expression(theta["t,3"]),
+#'     col = "black",
+#'     lty = 2,
+#'     lwd = 3,
+#'     bty = "n"
+#'   )
+#'
+#'   # --- 5. Latent Level Point Estimates (theta[t,1]) ---
 #'   # Plot true and estimated (median) latent level with credible intervals
 #'   theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
 #'   theta_1_q025 <- apply(X = out$theta_1, MARGIN = 2, FUN = quantile, probs = 0.025)
@@ -320,7 +371,7 @@
 #'     bty = "n"
 #'   )
 #'
-#'   # --- 5. Latent Trend Point Estimates (theta[t,2]) ---
+#'   # --- 6. Latent Trend Point Estimates (theta[t,2]) ---
 #'   # Plot true and estimated (median) latent trend with credible intervals
 #'   theta_2_estimate <- apply(X = out$theta_2, MARGIN = 2, FUN = median)
 #'   theta_2_q025 <- apply(X = out$theta_2, MARGIN = 2, FUN = quantile, probs = 0.025)
@@ -366,7 +417,53 @@
 #'     bty = "n"
 #'   )
 #'
-#'   # --- 6. Success Probabilities (alpha[t]) ---
+#'   # --- 7. Latent Acceleration Point Estimates (theta[t,3]) ---
+#'   # Plot true and estimated (median) latent acceleration with credible intervals
+#'   theta_3_estimate <- apply(X = out$theta_3, MARGIN = 2, FUN = median)
+#'   theta_3_q025 <- apply(X = out$theta_3, MARGIN = 2, FUN = quantile, probs = 0.025)
+#'   theta_3_q975 <- apply(X = out$theta_3, MARGIN = 2, FUN = quantile, probs = 0.975)
+#'
+#'   range_theta_3 <- range(theta_3_estimate, theta3_true, theta_3_q025, theta_3_q975)
+#'   r1_theta3 <- range_theta_3[1] - 0.1 * diff(range_theta_3)
+#'   r2_theta3 <- range_theta_3[2] + 0.3 * diff(range_theta_3)
+#'
+#'   plot(
+#'     theta3_true,
+#'     col = "red",
+#'     type = "l",
+#'     lwd = 3,
+#'     xlab = "t",
+#'     ylim = c(r1_theta3, r2_theta3),
+#'     lty = 2,
+#'     ylab = expression(theta["t,3"]),
+#'     main = "Latent acceleration estimation (logit scale)"
+#'   )
+#'
+#'   # Add 95% credible intervals
+#'   polygon(
+#'     c(1:length(theta_3_estimate), rev(1:length(theta_3_estimate))),
+#'     c(theta_3_q025, rev(theta_3_q975)),
+#'     col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
+#'     border = NA
+#'   )
+#'
+#'   # Add point estimate
+#'   lines(theta_3_estimate, col = "black", lwd = 2)
+#'
+#'   legend(
+#'     "topright",
+#'     legend = c(
+#'       expression(theta["t,3"]),
+#'       expression(hat(theta)["t,3"]),
+#'       "95% Credible Interval"
+#'     ),
+#'     col = c("red", "black", "gray"),
+#'     lty = c(2, 1, 1),
+#'     lwd = c(3, 2, 8),
+#'     bty = "n"
+#'   )
+#'
+#'   # --- 8. Success Probabilities (alpha[t]) ---
 #'   # Plot true and estimated (median) success probabilities with uncertainty
 #'   alpha_estimate <- apply(X = out$alpha, MARGIN = 2, FUN = median)
 #'   alpha_q025 <- apply(X = out$alpha, MARGIN = 2, FUN = quantile, probs = 0.025)
@@ -413,7 +510,7 @@
 #'     bty = "n"
 #'   )
 #'
-#'   # --- 7. Initial Level State (theta[0,1]) Diagnostics ---
+#'   # --- 9. Initial Level State (theta[0,1]) Diagnostics ---
 #'   # Trace plot for theta[0,1] to assess MCMC convergence
 #'   range_theta_01 <- range(out$theta_01)
 #'   r1_theta01 <- range_theta_01[1] - 0.1 * diff(range_theta_01)
@@ -470,7 +567,7 @@
 #'     lwd = 2
 #'   )
 #'
-#'   # --- 8. Initial Trend State (theta[0,2]) Diagnostics ---
+#'   # --- 10. Initial Trend State (theta[0,2]) Diagnostics ---
 #'   # Trace plot for theta[0,2] to assess MCMC convergence
 #'   range_theta_02 <- range(out$theta_02)
 #'   r1_theta02 <- range_theta_02[1] - 0.1 * diff(range_theta_02)
@@ -527,7 +624,64 @@
 #'     lwd = 2
 #'   )
 #'
-#'   # --- 9. Level Innovation Precision (1/W[1]) Diagnostics ---
+#'   # --- 11. Initial Acceleration State (theta[0,3]) Diagnostics ---
+#'   # Trace plot for theta[0,3] to assess MCMC convergence
+#'   range_theta_03 <- range(out$theta_03)
+#'   r1_theta03 <- range_theta_03[1] - 0.1 * diff(range_theta_03)
+#'   r2_theta03 <- range_theta_03[2] + 0.3 * diff(range_theta_03)
+#'
+#'   plot.ts(
+#'     out$theta_03,
+#'     ylab = expression(theta["0,3"]),
+#'     main = "Trace plot of initial acceleration state",
+#'     xlab = "Iterations",
+#'     col = "gray",
+#'     ylim = c(r1_theta03, r2_theta03)
+#'   )
+#'   abline(
+#'     h = c(theta03_true, median(out$theta_03)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(theta["0,3"]), expression(hat(theta)["0,3"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
+#'
+#'   # Posterior density estimate for theta[0,3]
+#'   range_dens_theta03 <- range(out$theta_03)
+#'   r1_dens_theta03 <- range_dens_theta03[1] - 0.1 * diff(range_dens_theta03)
+#'   r2_dens_theta03 <- range_dens_theta03[2] + 0.25 * diff(range_dens_theta03)
+#'
+#'   plot(
+#'     density(out$theta_03),
+#'     main = "Posterior density estimate of initial acceleration state",
+#'     xlab = expression(theta["0,3"]),
+#'     ylab = "Density",
+#'     lwd = 2,
+#'     xlim = c(r1_dens_theta03, r2_dens_theta03)
+#'   )
+#'   abline(
+#'     v = c(theta03_true, median(out$theta_03)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(theta["0,3"]), expression(hat(theta)["0,3"])),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
+#'
+#'   # --- 12. Level Innovation Precision (1/W[1]) Diagnostics ---
 #'   # Trace plot for 1/W[1] to assess parameter convergence
 #'   range_prec_1 <- range(out$prec_1)
 #'   r1_prec1 <- range_prec_1[1] - 0.1 * diff(range_prec_1)
@@ -584,7 +738,7 @@
 #'     lwd = 2
 #'   )
 #'
-#'   # --- 10. Trend Innovation Precision (1/W[2]) Diagnostics ---
+#'   # --- 13. Trend Innovation Precision (1/W[2]) Diagnostics ---
 #'   # Trace plot for 1/W[2] to assess parameter convergence
 #'   range_prec_2 <- range(out$prec_2)
 #'   r1_prec2 <- range_prec_2[1] - 0.1 * diff(range_prec_2)
@@ -640,31 +794,92 @@
 #'     bty = "n",
 #'     lwd = 2
 #'   )
+#'
+#'   # --- 14. Acceleration Innovation Precision (1/W[3]) Diagnostics ---
+#'   # Trace plot for 1/W[3] to assess parameter convergence
+#'   range_prec_3 <- range(out$prec_3)
+#'   r1_prec3 <- range_prec_3[1] - 0.1 * diff(range_prec_3)
+#'   r2_prec3 <- range_prec_3[2] + 0.25 * diff(range_prec_3)
+#'
+#'   plot.ts(
+#'     out$prec_3,
+#'     ylab = expression(1/W[3]),
+#'     main = "Trace plot of acceleration innovation precision",
+#'     xlab = "Iterations",
+#'     col = "gray",
+#'     ylim = c(r1_prec3, r2_prec3)
+#'   )
+#'   abline(
+#'     h = c(prec3_true, median(out$prec_3)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(W[3]^-1), expression(hat(W)[3]^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
+#'
+#'   # Posterior density estimate for 1/W[3]
+#'   range_dens_prec3 <- range(out$prec_3)
+#'   r1_dens_prec3 <- range_dens_prec3[1] - 0.1 * diff(range_dens_prec3)
+#'   r2_dens_prec3 <- range_dens_prec3[2] + 0.25 * diff(range_dens_prec3)
+#'
+#'   plot(
+#'     density(out$prec_3),
+#'     main = "Posterior density estimate of acceleration innovation precision",
+#'     xlab = expression(W[3]^-1),
+#'     ylab = "Density",
+#'     lwd = 2,
+#'     xlim = c(r1_dens_prec3, r2_dens_prec3)
+#'   )
+#'   abline(
+#'     v = c(prec3_true, median(out$prec_3)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     lwd = 2
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(expression(W[3]^-1), expression(hat(W)[3]^-1)),
+#'     col = c("red", "black"),
+#'     lty = c(2, 1),
+#'     bty = "n",
+#'     lwd = 2
+#'   )
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_localtrend}
+#' @seealso \link[pdm]{mcmc_localacceleration}
 #' @export
-mcmc_binomial_localtrend <- function(y,
-                                     n_trials,
-                                     burnin,
-                                     thinning,
-                                     n_chain,
-                                     prior_theta01_mean,
-                                     prior_theta01_prec,
-                                     prior_theta02_mean,
-                                     prior_theta02_prec,
-                                     prior_prec1_shape,
-                                     prior_prec1_rate,
-                                     prior_prec2_shape,
-                                     prior_prec2_rate,
-                                     lag_update = 50,
-                                     max_step_size = 2.0,
-                                     base_adaptation_rate = 0.01,
-                                     decay_exponent = 0.6,
-                                     target_acceptance = 0.44,
-                                     return_log_sigma = FALSE,
-                                     return_accrate = FALSE,
-                                     seed = NULL) {
+mcmc_binomial_localacceleration <- function(y,
+                                            n_trials,
+                                            burnin,
+                                            thinning,
+                                            n_chain,
+                                            prior_theta01_mean,
+                                            prior_theta01_prec,
+                                            prior_theta02_mean,
+                                            prior_theta02_prec,
+                                            prior_theta03_mean,
+                                            prior_theta03_prec,
+                                            prior_prec1_shape,
+                                            prior_prec1_rate,
+                                            prior_prec2_shape,
+                                            prior_prec2_rate,
+                                            prior_prec3_shape,
+                                            prior_prec3_rate,
+                                            lag_update = 50,
+                                            max_step_size = 2.0,
+                                            base_adaptation_rate = 0.01,
+                                            decay_exponent = 0.6,
+                                            target_acceptance = 0.44,
+                                            return_log_sigma = FALSE,
+                                            return_accrate = FALSE,
+                                            seed = NULL) {
 
   # --- Input Validation ---
   if (!is.numeric(y)) stop("`y` must be a numeric vector")
@@ -696,6 +911,12 @@ mcmc_binomial_localtrend <- function(y,
   if (!is.numeric(prior_theta02_prec) || length(prior_theta02_prec) != 1 || prior_theta02_prec <= 0) {
     stop("`prior_theta02_prec` must be a single positive numeric value")
   }
+  if (!is.numeric(prior_theta03_mean) || length(prior_theta03_mean) != 1) {
+    stop("`prior_theta03_mean` must be a single numeric value")
+  }
+  if (!is.numeric(prior_theta03_prec) || length(prior_theta03_prec) != 1 || prior_theta03_prec <= 0) {
+    stop("`prior_theta03_prec` must be a single positive numeric value")
+  }
 
   if (!is.numeric(prior_prec1_shape) || length(prior_prec1_shape) != 1 || prior_prec1_shape <= 0) {
     stop("`prior_prec1_shape` must be a single positive numeric value")
@@ -708,6 +929,12 @@ mcmc_binomial_localtrend <- function(y,
   }
   if (!is.numeric(prior_prec2_rate) || length(prior_prec2_rate) != 1 || prior_prec2_rate <= 0) {
     stop("`prior_prec2_rate` must be a single positive numeric value")
+  }
+  if (!is.numeric(prior_prec3_shape) || length(prior_prec3_shape) != 1 || prior_prec3_shape <= 0) {
+    stop("`prior_prec3_shape` must be a single positive numeric value")
+  }
+  if (!is.numeric(prior_prec3_rate) || length(prior_prec3_rate) != 1 || prior_prec3_rate <= 0) {
+    stop("`prior_prec3_rate` must be a single positive numeric value")
   }
 
   if (!is.numeric(lag_update) || length(lag_update) != 1 || lag_update < 1 || lag_update != floor(lag_update)) {
@@ -744,7 +971,7 @@ mcmc_binomial_localtrend <- function(y,
 
   # Call the C function
   .Call(
-    "_pdm_C_MCMC_logit_binomial_localtrend",
+    "_pdm_C_MCMC_logit_binomial_localacceleration",
     as.numeric(y),
     as.numeric(n_trials),
     as.integer(burnin),
@@ -754,10 +981,14 @@ mcmc_binomial_localtrend <- function(y,
     as.numeric(prior_theta01_prec),
     as.numeric(prior_theta02_mean),
     as.numeric(prior_theta02_prec),
+    as.numeric(prior_theta03_mean),
+    as.numeric(prior_theta03_prec),
     as.numeric(prior_prec1_shape),
     as.numeric(prior_prec1_rate),
     as.numeric(prior_prec2_shape),
     as.numeric(prior_prec2_rate),
+    as.numeric(prior_prec3_shape),
+    as.numeric(prior_prec3_rate),
     as.integer(lag_update),
     as.numeric(max_step_size),
     as.numeric(base_adaptation_rate),

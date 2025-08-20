@@ -19,6 +19,8 @@
 #include "mcmc_localtrend.h"
 #include "mcmc_localacceleration.h"
 #include "mcmc_binomial_locallevel.h"
+#include "mcmc_binomial_localtrend.h"
+#include "mcmc_binomial_localacceleration.h"
 #include "utils.h"
 
 /**
@@ -42,6 +44,10 @@
  *            (18 arguments)
  *          - C_MCMC_logit_binomial_locallevel: Binomial local level model MCMC
  *            sampler (16 arguments)
+ *          - C_MCMC_logit_binomial_localtrend: Binomial local trend model MCMC
+ *            sampler (20 arguments)
+ *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration
+ *            model MCMC sampler (24 arguments)
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism
@@ -61,6 +67,8 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_localtrend",               (DL_FUNC) &C_MCMC_localtrend,      14},
   {"_pdm_C_MCMC_localacceleration",        (DL_FUNC) &C_MCMC_localacceleration, 18},
   {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel, 16},
+  {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend, 20},
+  {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 24},
    {NULL, NULL, 0}
 };
 

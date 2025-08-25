@@ -8,8 +8,8 @@
 #' \begin{aligned}
 #' y_t &\sim \text{Binomial}(n_{trials}, \alpha_t), \\
 #' \alpha_t &= \text{logit}^{-1}(\theta_{t,1}), \\
-#' \theta_{t,1} &= \theta_{t-1,1} + \theta_{t-1,2} + u_{t,1}, \quad u_{t,1} \sim N(0, W_1), \\
-#' \theta_{t,2} &= \theta_{t-1,2} + u_{t,2}, \quad u_{t,2} \sim N(0, W_2),
+#' \theta_{t,1} &= \theta_{t-1,1} + \theta_{t-1,2} + u_{t,1}, & u_{t,1} \sim N(0, W_1), \\
+#' \theta_{t,2} &= \theta_{t-1,2} + u_{t,2},                  & u_{t,2} \sim N(0, W_2),
 #' \end{aligned}
 #' }
 #' where \eqn{t = 1, 2, \ldots, n} and \eqn{n} is the number of observations.

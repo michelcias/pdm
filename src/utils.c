@@ -140,36 +140,3 @@ void generate_normal_vector(double *r,
   r[iter_n] += x[0];                                                  // Final addition to r[iter, 0]
 
 }
-
-//----------------------------------------------------------------------
-
-/**
- * @brief R interface wrapper for the ilogit function.
- *
- * @details Takes a numeric SEXP object from R, applies the ilogit transformation
- *          to its first element, and returns the result as a scalar real SEXP.
- *          This function serves as the bridge between R and the internal C
- *          implementation of the inverse logit function.
- *
- * @param x Numeric SEXP input from R (only the first element is used).
- * @return Scalar real SEXP containing the result of ilogit(x[0]).
- *
- * @complexity O(1)
- * @memory O(1) - no dynamic allocation
- * @note Only the first element of the input vector is used; remaining elements are ignored.
- * @note Minimal input validation for performance - assumes x is a valid numeric SEXP.
- * @warning No bounds checking on input vector length - may segfault on empty vectors.
- * @warning Remaining elements beyond x[0] are silently ignored.
- *
- * @see ilogit
- * @since version 1.0
- */
-SEXP C_ILogit(SEXP x) {
-  // Add basic validation for production code
-  if (!isReal(x) || length(x) == 0) {
-    error("Input must be a non-empty numeric vector");
-  }
-
-  double val = ilogit(REAL(x)[0]);
-  return ScalarReal(val);
-}

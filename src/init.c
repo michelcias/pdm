@@ -23,6 +23,49 @@
 #include "mcmc_binomial_localacceleration.h"
 #include "utils.h"
 
+// Forward declaration for test helper functions defined in test_helpers.c
+SEXP test_ilogit(SEXP x_);
+SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_);
+SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
+                                SEXP lag_update_, SEXP n_, SEXP iter_,
+                                SEXP max_step_size_, SEXP base_adaptation_rate_,
+                                SEXP decay_exponent_, SEXP target_acceptance_);
+SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y_);
+SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP theta_k_,
+                                     SEXP theta_kp1_, SEXP nu_0k_, SEXP eta_0k_);
+SEXP test_generate_precision_theta_p(SEXP theta_0p_, SEXP theta_p_, SEXP nu_0p_, SEXP eta_0p_);
+SEXP test_generate_theta_1_locallevel(SEXP data_, SEXP prec_data_, SEXP prec_theta_1_, SEXP theta_01_);
+SEXP test_generate_theta_1(SEXP data_, SEXP theta_2_, SEXP prec_data_, SEXP prec_theta_1_,
+                           SEXP theta_01_, SEXP theta_02_);
+SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEXP prec_k_,
+                           SEXP theta_0k_, SEXP theta_0kp1_);
+SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP theta_0p_);
+SEXP test_generate_theta_01_locallevel(SEXP theta_1_, SEXP prec_theta_1_, SEXP mean_theta_01_,
+                                       SEXP prec_theta_01_);
+SEXP test_generate_theta_01(SEXP theta_1_, SEXP theta_02_, SEXP prec_theta_1_, SEXP mean_theta_01_,
+                            SEXP prec_theta_01_);
+SEXP test_generate_theta_0k(SEXP theta_km1_, SEXP theta_k_, SEXP theta_0km1_, SEXP theta_0kp1_,
+                            SEXP prec_km1_, SEXP prec_k_, SEXP mean_0k_, SEXP prec_0k_);
+SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SEXP prec_pm1_,
+                            SEXP prec_p_, SEXP mean_0p_, SEXP prec_0p_);
+SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
+                                                   SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
+SEXP test_CWMH_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_,
+                                               SEXP y_, SEXP n_trials_);
+SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
+                                        SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
+SEXP test_CWMH_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
+                                    SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
+SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP burnin_, SEXP thinning_,
+                                                SEXP n_chain_, SEXP theta_1_true_, SEXP theta_01_true_,
+                                                SEXP prec_1_true_, SEXP prior_theta01_mean_,
+                                                SEXP prior_theta01_prec_, SEXP prior_prec1_shape_,
+                                                SEXP prior_prec1_rate_, SEXP lag_update_,
+                                                SEXP max_step_size_, SEXP base_adaptation_rate_,
+                                                SEXP decay_exponent_, SEXP target_acceptance_);
+
+
+
 /**
  * @brief Static table defining .Call method entries for R-C interface
  *
@@ -62,14 +105,36 @@
  * @see R_CallMethodDef
  */
 static const R_CallMethodDef CallEntries[] = {
-  {"_pdm_C_ILogit",                        (DL_FUNC) &C_ILogit,                1},
   {"_pdm_C_MCMC_locallevel",               (DL_FUNC) &C_MCMC_locallevel,      10},
   {"_pdm_C_MCMC_localtrend",               (DL_FUNC) &C_MCMC_localtrend,      14},
   {"_pdm_C_MCMC_localacceleration",        (DL_FUNC) &C_MCMC_localacceleration, 18},
   {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel, 16},
   {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend, 20},
   {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 24},
-   {NULL, NULL, 0}
+
+  // --- Test helper function registrations ---
+  {"_pdm_test_ilogit",                     (DL_FUNC) &test_ilogit,                  1},
+  {"_pdm_test_generate_normal_vector",     (DL_FUNC) &test_generate_normal_vector,  4},
+  {"_pdm_test_adapt_cwmh_parameters",      (DL_FUNC) &test_adapt_cwmh_parameters,   9},
+  {"_pdm_test_generate_precision_data",    (DL_FUNC) &test_generate_precision_data,    4},
+  {"_pdm_test_generate_precision_theta_k", (DL_FUNC) &test_generate_precision_theta_k, 6},
+  {"_pdm_test_generate_precision_theta_p", (DL_FUNC) &test_generate_precision_theta_p, 4},
+  {"_pdm_test_generate_theta_1_locallevel", (DL_FUNC) &test_generate_theta_1_locallevel, 4},
+  {"_pdm_test_generate_theta_1",           (DL_FUNC) &test_generate_theta_1,           6},
+  {"_pdm_test_generate_theta_k",           (DL_FUNC) &test_generate_theta_k,           6},
+  {"_pdm_test_generate_theta_p",           (DL_FUNC) &test_generate_theta_p,           4},
+  {"_pdm_test_generate_theta_01_locallevel", (DL_FUNC) &test_generate_theta_01_locallevel, 4},
+  {"_pdm_test_generate_theta_01",            (DL_FUNC) &test_generate_theta_01,            5},
+  {"_pdm_test_generate_theta_0k",            (DL_FUNC) &test_generate_theta_0k,            8},
+  {"_pdm_test_generate_theta_0p",            (DL_FUNC) &test_generate_theta_0p,            7},
+  {"_pdm_test_generate_alpha_logit_binomial_locallevel", (DL_FUNC) &test_generate_alpha_logit_binomial_locallevel, 5},
+  {"_pdm_test_CWMH_alpha_logit_binomial_locallevel", (DL_FUNC) &test_CWMH_alpha_logit_binomial_locallevel, 5},
+  {"_pdm_test_generate_alpha_logit_binomial", (DL_FUNC) &test_generate_alpha_logit_binomial, 7},
+  {"_pdm_test_CWMH_alpha_logit_binomial", (DL_FUNC) &test_CWMH_alpha_logit_binomial, 7},
+  {"_pdm_test_mcmc_binomial_locallevel_fixed_params", (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params, 17},
+
+  // --- End of table marker ---
+  {NULL, NULL, 0}
 };
 
 /**

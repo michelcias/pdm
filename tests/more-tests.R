@@ -1,6 +1,6 @@
 set.seed(404)
 n <- 500
-n_trials <- 1
+n_trials <- 100
 
 # True parameters for simulation
 theta_01_true <- 0.5
@@ -18,7 +18,7 @@ y <- rbinom(n, size = n_trials, prob = alpha_true)
 plot.ts(y, type = "o")
 
 # --- 2. R Wrapper for the Test Sampler ---
-test_sampler <- function(y, n_trials, burnin, n_chain,
+test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
                          theta_1_true = NULL, theta_01_true = NULL, prec_1_true = NULL,
                          prior_theta01_mean = 0.0, prior_theta01_prec = 1.0,
                          prior_prec1_shape = 1.0, prior_prec1_rate = 1.0,
@@ -27,7 +27,7 @@ test_sampler <- function(y, n_trials, burnin, n_chain,
                          target_acceptance = 0.44) {
 
   .Call("_pdm_test_mcmc_binomial_locallevel_fixed_params",
-        y, n_trials, burnin, 1L, n_chain,
+        y, n_trials, burnin, thinning, n_chain,
         theta_1_true, theta_01_true, prec_1_true,
         prior_theta01_mean, prior_theta01_prec,
         prior_prec1_shape, prior_prec1_rate,
@@ -37,7 +37,8 @@ test_sampler <- function(y, n_trials, burnin, n_chain,
 
 # Test A: Sample theta_01, fixing theta_1 and prec_1
 set.seed(405)
-mcmc_out_A <- test_sampler(y, n_trials, burnin = 5000, n_chain = 2000,
+mcmc_out_A <- test_sampler(y, n_trials,
+                           burnin = 5000, thinning = 25, n_chain = 2000,
                            theta_1_true = theta_1_true,
                            prec_1_true = prec_1_true,
                            prior_theta01_mean = 0, # Prior for theta_01
@@ -53,7 +54,8 @@ abline(h = theta_01_true, col = "red")
 abline(h = posterior_mean_A, col = "blue")
 posterior_mean_A - theta_01_true
 
-mcmc_out_B <- test_sampler(y, n_trials, burnin = 5000, n_chain = 2000,
+mcmc_out_B <- test_sampler(y, n_trials,
+                           burnin = 5000, thinning = 25, n_chain = 2000,
                            theta_1_true = theta_1_true,
                            theta_01_true = theta_01_true,
                            prior_prec1_shape = 100, # Prior for prec_1
@@ -65,9 +67,12 @@ plot.ts(mcmc_out_B$prec_1)
 abline(h = prec_1_true, col = "red")
 abline(h = posterior_mean_B, col = "blue")
 posterior_mean_B - prec_1_true
-abs(posterior_mean_B - prec_1_true) / prec_1_true# --- 3. Run Tests for Each Conditional ---
+abs(posterior_mean_B - prec_1_true) / prec_1_true
 
-mcmc_out_C <- test_sampler(y, n_trials, burnin = 5000, n_chain = 1000,
+# --- 3. Run Tests for Each Conditional ---
+
+mcmc_out_C <- test_sampler(y, n_trials,
+                           burnin = 5000, thinning = 25, n_chain = 1000,
                            theta_01_true = theta_01_true,
                            prec_1_true = prec_1_true)
 

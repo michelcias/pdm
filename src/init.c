@@ -62,9 +62,8 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
                                                 SEXP prior_theta01_prec_, SEXP prior_prec1_shape_,
                                                 SEXP prior_prec1_rate_, SEXP lag_update_,
                                                 SEXP max_step_size_, SEXP base_adaptation_rate_,
-                                                SEXP decay_exponent_, SEXP target_acceptance_);
-
-
+                                                SEXP decay_exponent_, SEXP target_acceptance_,
+                                                SEXP return_log_sigma_, SEXP return_accrate_);
 
 /**
  * @brief Static table defining .Call method entries for R-C interface
@@ -79,32 +78,42 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          - Third element: Number of expected arguments
  *          - Final element: NULL terminator for array
  *
- *          Registered functions:
- *          - C_ILogit: Inverse logit transformation utility (1 argument)
+ *          Registered functions include:
+ *          **Main MCMC Functions:**
  *          - C_MCMC_locallevel: Local level model MCMC sampler (10 arguments)
  *          - C_MCMC_localtrend: Local trend model MCMC sampler (14 arguments)
- *          - C_MCMC_localacceleration: Local acceleration model MCMC sampler
- *            (18 arguments)
- *          - C_MCMC_logit_binomial_locallevel: Binomial local level model MCMC
- *            sampler (16 arguments)
- *          - C_MCMC_logit_binomial_localtrend: Binomial local trend model MCMC
- *            sampler (20 arguments)
- *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration
- *            model MCMC sampler (24 arguments)
+ *          - C_MCMC_localacceleration: Local acceleration model MCMC sampler (18 arguments)
+ *          - C_MCMC_logit_binomial_locallevel: Binomial local level model MCMC (16 arguments)
+ *          - C_MCMC_logit_binomial_localtrend: Binomial local trend model MCMC (20 arguments)
+ *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration MCMC (24 arguments)
+ *
+ *          **Test Helper Functions:**
+ *          - test_ilogit: Inverse logit transformation testing (1 argument)
+ *          - test_generate_normal_vector: Multivariate normal sampling testing (4 arguments)
+ *          - test_adapt_cwmh_parameters: CWMH adaptation testing (9 arguments)
+ *          - test_generate_precision_*: Precision parameter sampling testing (4-6 arguments)
+ *          - test_generate_theta_*: State parameter sampling testing (4-8 arguments)
+ *          - test_generate_alpha_*: Alpha parameter sampling testing (5-7 arguments)
+ *          - test_CWMH_alpha_*: CWMH algorithm testing (5-7 arguments)
+ *          - test_mcmc_binomial_locallevel_fixed_params: Full MCMC testing with diagnostics (19 arguments)
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism
  * @note NULL terminator is required for proper array traversal
  * @note Names must match exactly those used in R code .Call() invocations
+ * @note Test functions enable comprehensive unit testing of internal C algorithms
  *
  * @warning Modifying this table requires corresponding changes in R wrapper functions
  * @warning Incorrect argument counts will cause runtime errors in R
+ * @warning Test functions should only be used in testing environments
  *
  * @see R_registerRoutines
  * @see DL_FUNC
  * @see R_CallMethodDef
+ * @since version 1.0
  */
 static const R_CallMethodDef CallEntries[] = {
+  // --- Main MCMC algorithm functions ---
   {"_pdm_C_MCMC_locallevel",               (DL_FUNC) &C_MCMC_locallevel,      10},
   {"_pdm_C_MCMC_localtrend",               (DL_FUNC) &C_MCMC_localtrend,      14},
   {"_pdm_C_MCMC_localacceleration",        (DL_FUNC) &C_MCMC_localacceleration, 18},
@@ -112,26 +121,36 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend, 20},
   {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 24},
 
-  // --- Test helper function registrations ---
+  // --- Utility and basic function tests ---
   {"_pdm_test_ilogit",                     (DL_FUNC) &test_ilogit,                  1},
   {"_pdm_test_generate_normal_vector",     (DL_FUNC) &test_generate_normal_vector,  4},
   {"_pdm_test_adapt_cwmh_parameters",      (DL_FUNC) &test_adapt_cwmh_parameters,   9},
+
+  // --- Precision parameter sampling tests ---
   {"_pdm_test_generate_precision_data",    (DL_FUNC) &test_generate_precision_data,    4},
   {"_pdm_test_generate_precision_theta_k", (DL_FUNC) &test_generate_precision_theta_k, 6},
   {"_pdm_test_generate_precision_theta_p", (DL_FUNC) &test_generate_precision_theta_p, 4},
+
+  // --- State parameter sampling tests ---
   {"_pdm_test_generate_theta_1_locallevel", (DL_FUNC) &test_generate_theta_1_locallevel, 4},
   {"_pdm_test_generate_theta_1",           (DL_FUNC) &test_generate_theta_1,           6},
   {"_pdm_test_generate_theta_k",           (DL_FUNC) &test_generate_theta_k,           6},
   {"_pdm_test_generate_theta_p",           (DL_FUNC) &test_generate_theta_p,           4},
+
+  // --- Initial state parameter sampling tests ---
   {"_pdm_test_generate_theta_01_locallevel", (DL_FUNC) &test_generate_theta_01_locallevel, 4},
   {"_pdm_test_generate_theta_01",            (DL_FUNC) &test_generate_theta_01,            5},
   {"_pdm_test_generate_theta_0k",            (DL_FUNC) &test_generate_theta_0k,            8},
   {"_pdm_test_generate_theta_0p",            (DL_FUNC) &test_generate_theta_0p,            7},
+
+  // --- Binomial model component tests ---
   {"_pdm_test_generate_alpha_logit_binomial_locallevel", (DL_FUNC) &test_generate_alpha_logit_binomial_locallevel, 5},
   {"_pdm_test_CWMH_alpha_logit_binomial_locallevel", (DL_FUNC) &test_CWMH_alpha_logit_binomial_locallevel, 5},
   {"_pdm_test_generate_alpha_logit_binomial", (DL_FUNC) &test_generate_alpha_logit_binomial, 7},
   {"_pdm_test_CWMH_alpha_logit_binomial", (DL_FUNC) &test_CWMH_alpha_logit_binomial, 7},
-  {"_pdm_test_mcmc_binomial_locallevel_fixed_params", (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params, 17},
+
+  // --- Complete MCMC simulation tests ---
+  {"_pdm_test_mcmc_binomial_locallevel_fixed_params", (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params, 19},
 
   // --- End of table marker ---
   {NULL, NULL, 0}
@@ -144,6 +163,11 @@ static const R_CallMethodDef CallEntries[] = {
  *          Registers all C functions with R's dynamic loading system and configures
  *          security settings for symbol resolution. This function is automatically
  *          called by R when the package is loaded via library() or require().
+ *
+ *          The registration process includes:
+ *          - Main MCMC algorithms for Gaussian and binomial dynamic models
+ *          - Comprehensive test helper functions for unit testing internal components
+ *          - Utility functions for mathematical operations and diagnostics
  *
  *          Initialization sequence:
  *          1. Register .Call entry points from CallEntries table
@@ -162,14 +186,17 @@ static const R_CallMethodDef CallEntries[] = {
  * @note Called automatically during package loading - not intended for manual invocation
  * @note Disabling dynamic symbols is a recommended security practice
  * @note All .Call functions must be registered here to be accessible from R
+ * @note Test functions enable comprehensive validation of MCMC algorithm components
  *
  * @warning Do not call this function manually
  * @warning Modifying registration without updating R code will break package functionality
  * @warning Function must be exported in package's NAMESPACE
+ * @warning Test functions should only be exposed in development/testing builds
  *
  * @see R_registerRoutines
  * @see R_useDynamicSymbols
  * @see DllInfo
+ * @since version 1.0
  */
 void R_init_pdm(DllInfo *dll) {
   // Register .Call entry points for C functions accessible from R

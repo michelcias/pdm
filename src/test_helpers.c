@@ -758,24 +758,97 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   return res;
 }
 
-/* --- Wrapper for MCMC Simulation Test with Fixed Parameters --- */
+/**
+ * @brief Test wrapper for complete MCMC simulation with fixed parameters and diagnostic outputs
+ *
+ * @details Comprehensive testing function for the full MCMC binomial local level
+ *          algorithm with ability to fix specific parameters for validation.
+ *          Supports selective parameter fixing (theta_1, theta_01, prec_1) by
+ *          passing NULL or valid values, enabling thorough algorithm testing.
+ *
+ *          Includes optional diagnostic outputs (accrate, log_sigma) and always
+ *          returns success probabilities (alpha) for comprehensive validation.
+ *
+ * @param y_ SEXP: Binomial count observations (size n)
+ * @param n_trials_ SEXP: Number of trials for binomial model (scalar)
+ * @param burnin_ SEXP: Number of burn-in iterations (scalar)
+ * @param thinning_ SEXP: Thinning interval for sample storage (scalar)
+ * @param n_chain_ SEXP: Number of samples to store after burn-in (scalar)
+ * @param theta_1_true_ SEXP: Fixed theta_1 values (NULL or size n vector)
+ * @param theta_01_true_ SEXP: Fixed theta_01 value (NULL or scalar)
+ * @param prec_1_true_ SEXP: Fixed precision value (NULL or scalar)
+ * @param prior_theta01_mean_ SEXP: Prior mean for theta_01 (scalar)
+ * @param prior_theta01_prec_ SEXP: Prior precision for theta_01 (scalar)
+ * @param prior_prec1_shape_ SEXP: Prior shape for precision (scalar)
+ * @param prior_prec1_rate_ SEXP: Prior rate for precision (scalar)
+ * @param lag_update_ SEXP: Adaptation window size (scalar)
+ * @param max_step_size_ SEXP: Maximum adaptation step size (scalar)
+ * @param base_adaptation_rate_ SEXP: Base adaptation rate (scalar)
+ * @param decay_exponent_ SEXP: Adaptation decay exponent (scalar)
+ * @param target_acceptance_ SEXP: Target acceptance rate (scalar)
+ * @param return_log_sigma_ SEXP: Logical scalar, whether to return log_sigma diagnostics
+ * @param return_accrate_ SEXP: Logical scalar, whether to return accrate diagnostics
+ * @return Named list with MCMC samples and diagnostics:
+ *         - theta_1: Matrix [n_chain x n] of state samples
+ *         - theta_01: Vector [n_chain] of initial state samples
+ *         - prec_1: Vector [n_chain] of precision samples
+ *         - alpha: Matrix [n_chain x n] of success probability samples
+ *         - log_sigma: Matrix [n_chain x n] of proposal scales (if requested)
+ *         - accrate: Matrix [n_chain x n] of acceptance rates (if requested)
+ *
+ * @note Supports flexible parameter fixing by checking for NULL values
+ * @note Initializes parameters appropriately when not fixed
+ * @note Manages extensive memory allocation for full MCMC simulation
+ * @note Returns samples in matrix format compatible with R analysis
+ * @note Validates binomial constraints: 0 <= y[i] <= n_trials
+ * @note Enforces minimum sample size n >= 3 for numerical stability
+ * @warning Large memory requirements for long chains
+ * @warning Requires careful memory management with R_Calloc/R_Free
+ * @warning Invalid precision parameters may cause numerical instability
+ *
+ * @complexity O(n_iter * n) for full MCMC simulation
+ * @memory Allocates arrays proportional to n_iter * n for state storage
+ *
+ * @see mcmc_binomial_locallevel functions
+ * @see C_MCMC_logit_binomial_locallevel
+ * @since version 1.2
+ */
 SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
                                                 SEXP theta_1_true_, SEXP theta_01_true_, SEXP prec_1_true_,
                                                 SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
                                                 SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
                                                 SEXP lag_update_, SEXP max_step_size_, SEXP base_adaptation_rate_,
-                                                SEXP decay_exponent_, SEXP target_acceptance_) {
+                                                SEXP decay_exponent_, SEXP target_acceptance_,
+                                                SEXP return_log_sigma_, SEXP return_accrate_) {
 
-  int n = LENGTH(coerceVector(y_, REALSXP));
+  /* Parse data vector and validate */
+  double *y = REAL(coerceVector(y_, REALSXP));
+  int n = LENGTH(y_);
+  if (n < 3) {
+    error("Sample size 'n' must be at least 3, got %d", n);
+  }
+
   double n_trials = REAL(coerceVector(n_trials_, REALSXP))[0];
+
+  /* Validate binomial constraints */
+  for (int i = 0; i < n; i++) {
+    if (y[i] < 0 || y[i] > n_trials) {
+      error("y[%d] = %f violates 0 <= y <= n_trials = %f", i, y[i], n_trials);
+    }
+  }
+
+  /* Parse MCMC settings */
   int burnin = INTEGER(coerceVector(burnin_, INTSXP))[0];
   int thinning = INTEGER(coerceVector(thinning_, INTSXP))[0];
   int n_chain = INTEGER(coerceVector(n_chain_, INTSXP))[0];
   int n_iter = burnin + (n_chain - 1) * thinning + 1;
 
-  double *y = REAL(coerceVector(y_, REALSXP));
+  /* Validate MCMC parameters */
+  if (burnin < 0) error("Burnin must be non-negative");
+  if (thinning <= 0) error("Thinning must be positive");
+  if (n_chain <= 0) error("n_chain must be positive");
 
-  // True values (or NULL)
+  /* Parse fixed parameter flags and values */
   int fix_theta_1 = !isNull(theta_1_true_);
   int fix_theta_01 = !isNull(theta_01_true_);
   int fix_prec_1 = !isNull(prec_1_true_);
@@ -784,31 +857,59 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   double theta_01_true = fix_theta_01 ? REAL(coerceVector(theta_01_true_, REALSXP))[0] : 0.0;
   double prec_1_true = fix_prec_1 ? REAL(coerceVector(prec_1_true_, REALSXP))[0] : 0.0;
 
-  // Parse priors and MCMC parameters
+  /* Parse priors and validate */
   double prior_theta01_mean = REAL(coerceVector(prior_theta01_mean_, REALSXP))[0];
   double prior_theta01_prec = REAL(coerceVector(prior_theta01_prec_, REALSXP))[0];
   double prior_prec1_shape = REAL(coerceVector(prior_prec1_shape_, REALSXP))[0];
   double prior_prec1_rate = REAL(coerceVector(prior_prec1_rate_, REALSXP))[0];
+
+  if (prior_theta01_prec <= 0) error("Prior precision must be positive");
+  if (prior_prec1_shape <= 0 || prior_prec1_rate <= 0) {
+    error("Prior shape and rate must be positive");
+  }
+
+  /* Parse adaptation parameters */
   int lag_update = INTEGER(coerceVector(lag_update_, INTSXP))[0];
   double max_step_size = REAL(coerceVector(max_step_size_, REALSXP))[0];
   double base_adaptation_rate = REAL(coerceVector(base_adaptation_rate_, REALSXP))[0];
   double decay_exponent = REAL(coerceVector(decay_exponent_, REALSXP))[0];
   double target_acceptance = REAL(coerceVector(target_acceptance_, REALSXP))[0];
 
-  // Allocate memory for results
-  SEXP res_list = PROTECT(allocVector(VECSXP, 3));
+  /* Parse diagnostic output options */
+  int return_log_sigma = LOGICAL(coerceVector(return_log_sigma_, LGLSXP))[0];
+  int return_accrate = LOGICAL(coerceVector(return_accrate_, LGLSXP))[0];
+
+  /* Allocate storage for posterior samples */
   SEXP theta_1_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
   SEXP prec_1_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP alpha_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
 
-  // MCMC history arrays
+  /* Conditional allocation for diagnostics */
+  SEXP log_sigma_samples = R_NilValue;
+  SEXP accrate_samples = R_NilValue;
+  int n_outputs = 4;  // Base outputs: theta_1, theta_01, prec_1, alpha
+  int n_protect = 4;  // Base protection count
+
+  if (return_log_sigma) {
+    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    n_outputs++;
+    n_protect++;
+  }
+  if (return_accrate) {
+    accrate_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    n_outputs++;
+    n_protect++;
+  }
+
+  /* MCMC history arrays */
   double *theta_1_post = (double*) R_Calloc(n_iter * n, double);
   double *theta_01_post = (double*) R_Calloc(n_iter, double);
   double *prec_1_post = (double*) R_Calloc(n_iter, double);
-
-  // Unused but needed by function signature
   double *alpha_post = (double*) R_Calloc(n_iter * n, double);
   double *theta_1_updated = (double*) R_Calloc(n_iter * n, double);
+
+  /* Working arrays for CWMH algorithm */
   double *accrate = (double*) R_Calloc(n, double);
   double *log_sigma = (double*) R_Calloc(n, double);
   double *hat_theta_1 = (double*) R_Calloc(n, double);
@@ -816,11 +917,30 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   double *log_accept_prob = (double*) R_Calloc(n, double);
   int *updated = (int*) R_Calloc(n, int);
 
+  /* Initialize log_sigma with reasonable starting values */
+  for (int j = 0; j < n; j++) {
+    log_sigma[j] = log(0.1);  /* Initial proposal sd = 0.1 */
+  }
+
   GetRNGstate();
 
-  // Initialization (iter = 0), respecting fixed values
-  theta_01_post[0] = fix_theta_01 ? theta_01_true : rnorm(prior_theta01_mean, 1.0/sqrt(prior_theta01_prec));
-  prec_1_post[0]   = fix_prec_1 ? prec_1_true : rgamma(prior_prec1_shape, 1.0/prior_prec1_rate);
+  /* Initialization (iter = 0), respecting fixed values */
+  if (fix_theta_01) {
+    theta_01_post[0] = theta_01_true;
+  } else {
+    theta_01_post[0] = rnorm(prior_theta01_mean, 1.0/sqrt(prior_theta01_prec));
+    /* Truncate to avoid extreme values in logit scale */
+    theta_01_post[0] = fmax(-10.0, fmin(10.0, theta_01_post[0]));
+  }
+
+  if (fix_prec_1) {
+    prec_1_post[0] = prec_1_true;
+  } else {
+    prec_1_post[0] = rgamma(prior_prec1_shape, 1.0/prior_prec1_rate);
+    /* Ensure minimum precision for numerical stability */
+    prec_1_post[0] = fmax(prec_1_post[0], 1e-6);
+  }
+
   if (fix_theta_1) {
     memcpy(theta_1_post, theta_1_true, n * sizeof(double));
   } else {
@@ -831,11 +951,26 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
     }
   }
 
+  /* Initialize alpha (success probabilities) */
+  for (int j = 0; j < n; j++) {
+    alpha_post[j] = ilogit(theta_1_post[j]);
+  }
+
+  /* Main MCMC loop */
   int chain_idx = 0;
   for (int ii = 1; ii < n_iter; ii++) {
-    // Step 1: Sample theta_1
+    /* Check for user interruption periodically */
+    if (ii % 1000 == 0) {
+      R_CheckUserInterrupt();
+    }
+
+    /* Step 1: Sample theta_1 and alpha */
     if (fix_theta_1) {
       memcpy(theta_1_post + ii * n, theta_1_true, n * sizeof(double));
+      /* Update alpha even if theta_1 is fixed */
+      for (int j = 0; j < n; j++) {
+        alpha_post[ii * n + j] = ilogit(theta_1_true[j]);
+      }
     } else {
       generate_alpha_logit_binomial_locallevel(
         theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
@@ -844,26 +979,42 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
         decay_exponent, target_acceptance);
     }
 
-    // Step 2: Sample prec_1
+    /* Step 2: Sample prec_1 */
     if (fix_prec_1) {
       prec_1_post[ii] = prec_1_true;
     } else {
-      generate_precision_theta_p(theta_01_post, theta_1_post, prec_1_post, prior_prec1_shape, prior_prec1_rate, n, ii);
+      generate_precision_theta_p(theta_01_post, theta_1_post, prec_1_post,
+                                 prior_prec1_shape, prior_prec1_rate, n, ii);
+
+      /* Sanity check for precision */
+      if (prec_1_post[ii] <= 0 || !isfinite(prec_1_post[ii])) {
+        warning("Invalid precision value at iteration %d, using previous value", ii);
+        prec_1_post[ii] = prec_1_post[ii-1];
+      }
     }
 
-    // Step 3: Sample theta_01
+    /* Step 3: Sample theta_01 */
     if (fix_theta_01) {
       theta_01_post[ii] = theta_01_true;
     } else {
-      generate_theta_01_locallevel(theta_01_post, theta_1_post, prec_1_post, prior_theta01_mean, prior_theta01_prec, n, ii);
+      generate_theta_01_locallevel(theta_01_post, theta_1_post, prec_1_post,
+                                   prior_theta01_mean, prior_theta01_prec, n, ii);
     }
 
-    // Store samples
+    /* Store samples after burn-in with thinning */
     if (ii >= burnin && ((ii - burnin) % thinning) == 0) {
-      for(int j = 0; j < n; j++){
+      for (int j = 0; j < n; j++) {
         REAL(theta_1_samples)[chain_idx + j * n_chain] = theta_1_post[ii * n + j];
+        REAL(alpha_samples)[chain_idx + j * n_chain] = alpha_post[ii * n + j];
+
+        /* Store diagnostics if requested */
+        if (return_log_sigma) {
+          REAL(log_sigma_samples)[chain_idx + j * n_chain] = log_sigma[j];
+        }
+        if (return_accrate) {
+          REAL(accrate_samples)[chain_idx + j * n_chain] = accrate[j];
+        }
       }
-      //memcpy(REAL(theta_1_samples) + chain_idx * n, theta_1_post + ii * n, n * sizeof(double));
       REAL(theta_01_samples)[chain_idx] = theta_01_post[ii];
       REAL(prec_1_samples)[chain_idx] = prec_1_post[ii];
       chain_idx++;
@@ -872,23 +1023,44 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
 
   PutRNGstate();
 
-  // Free memory
+  /* Free memory */
   R_Free(theta_1_post); R_Free(theta_01_post); R_Free(prec_1_post);
   R_Free(alpha_post); R_Free(theta_1_updated); R_Free(accrate);
   R_Free(log_sigma); R_Free(hat_theta_1); R_Free(theta_1_new);
   R_Free(log_accept_prob); R_Free(updated);
 
-  SET_VECTOR_ELT(res_list, 0, theta_1_samples);
-  SET_VECTOR_ELT(res_list, 1, theta_01_samples);
-  SET_VECTOR_ELT(res_list, 2, prec_1_samples);
+  /* Package results into a named list */
+  SEXP result_list = PROTECT(allocVector(VECSXP, n_outputs));
+  SEXP names = PROTECT(allocVector(STRSXP, n_outputs));
 
-  SEXP nms = PROTECT(allocVector(STRSXP, 3));
-  SET_STRING_ELT(nms, 0, mkChar("theta_1"));
-  SET_STRING_ELT(nms, 1, mkChar("theta_01"));
-  SET_STRING_ELT(nms, 2, mkChar("prec_1"));
-  setAttrib(res_list, R_NamesSymbol, nms);
+  int output_idx = 0;
 
-  UNPROTECT(5);
-  return res_list;
+  /* Always include base outputs */
+  SET_VECTOR_ELT(result_list, output_idx, theta_1_samples);
+  SET_STRING_ELT(names, output_idx++, mkChar("theta_1"));
+
+  SET_VECTOR_ELT(result_list, output_idx, theta_01_samples);
+  SET_STRING_ELT(names, output_idx++, mkChar("theta_01"));
+
+  SET_VECTOR_ELT(result_list, output_idx, prec_1_samples);
+  SET_STRING_ELT(names, output_idx++, mkChar("prec_1"));
+
+  SET_VECTOR_ELT(result_list, output_idx, alpha_samples);
+  SET_STRING_ELT(names, output_idx++, mkChar("alpha"));
+
+  /* Conditionally add diagnostic outputs */
+  if (return_log_sigma) {
+    SET_VECTOR_ELT(result_list, output_idx, log_sigma_samples);
+    SET_STRING_ELT(names, output_idx++, mkChar("log_sigma"));
+  }
+  if (return_accrate) {
+    SET_VECTOR_ELT(result_list, output_idx, accrate_samples);
+    SET_STRING_ELT(names, output_idx++, mkChar("accrate"));
+  }
+
+  setAttrib(result_list, R_NamesSymbol, names);
+
+  /* Adjust UNPROTECT count: n_protect (samples) + 2 (result_list and names) */
+  UNPROTECT(n_protect + 2);
+  return result_list;
 }
-

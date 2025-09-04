@@ -38,7 +38,7 @@ CONFIG <- list(
   # Simulation parameters
   simulation = list(
     n = 500,                    # Number of time points
-    n_trials = 100,             # Number of trials per time point
+    n_trials = 10,             # Number of trials per time point
     theta_01_true = 0.5,        # Initial state value
     prec_1_true = 100.0,        # State precision
     seed = 404                  # Reproducibility seed
@@ -52,7 +52,7 @@ CONFIG <- list(
     target_acceptance = 0.44,   # Target acceptance rate
     lag_update = 50L,           # Adaptive update lag
     max_step_size = 0.1,        # Maximum step size
-    base_adaptation_rate = 1.0, # Base adaptation rate
+    base_adaptation_rate = 50.0,# Base adaptation rate
     decay_exponent = 0.5        # Decay exponent
   ),
 
@@ -281,45 +281,129 @@ generate_test_report <- function(test_results, config = CONFIG) {
 
   for (test_name in names(test_results)) {
     test_result <- test_results[[test_name]]
+    diag <- test_result$diagnostics
+
     cat("TEST", toupper(substr(test_name, nchar(test_name), nchar(test_name))),
-        "-", test_result$diagnostics$parameter, ":\n")
+        "-", diag$parameter, ":\n")
 
     # Bias assessment
-    rel_bias <- abs(test_result$diagnostics$relative_bias)
-    bias_status <- rel_bias < config$validation$max_rel_bias
-    cat("  Relative Bias:", sprintf("%.3f%%", rel_bias * 100))
-    cat(" [", ifelse(bias_status, "PASS", "FAIL"), "]\n")
+    if (length(diag$relative_bias) == 1) {
+      rel_bias <- abs(diag$relative_bias)
+      bias_status <- rel_bias < config$validation$max_rel_bias
+      cat("  Relative Bias:", sprintf("%.3f%%", rel_bias * 100))
+      cat(" [", ifelse(bias_status, "PASS", "FAIL"), "]\n")
+    } else {
+      mean_rel_bias <- mean(abs(diag$relative_bias), na.rm = TRUE)
+      max_rel_bias <- max(abs(diag$relative_bias), na.rm = TRUE)
+      bias_status <- mean_rel_bias < config$validation$max_rel_bias
+      cat("  Mean Relative Bias:", sprintf("%.3f%%", mean_rel_bias * 100),
+          "Max:", sprintf("%.3f%%", max_rel_bias * 100))
+      cat(" [", ifelse(bias_status, "PASS", "FAIL"), "]\n")
+    }
 
     # Effective sample size
-    eff_size <- test_result$diagnostics$effective_size
-    if (!is.na(eff_size)) {
-      eff_status <- eff_size > config$validation$min_eff_size
-      cat("  Effective Size:", sprintf("%.0f", eff_size))
-      cat(" [", ifelse(eff_status, "PASS", "FAIL"), "]\n")
+    eff_size <- diag$effective_size
+    if (!is.null(eff_size)) {
+      if (length(eff_size) == 1) {
+        eff_status <- eff_size > config$validation$min_eff_size
+        cat("  Effective Size:", sprintf("%.0f", eff_size))
+        cat(" [", ifelse(eff_status, "PASS", "FAIL"), "]\n")
+      } else {
+        mean_eff_size <- mean(eff_size, na.rm = TRUE)
+        min_eff_size <- min(eff_size, na.rm = TRUE)
+        eff_status <- mean_eff_size > config$validation$min_eff_size
+        cat("  Mean Effective Size:", sprintf("%.0f", mean_eff_size),
+            "Min:", sprintf("%.0f", min_eff_size))
+        cat(" [", ifelse(eff_status, "PASS", "FAIL"), "]\n")
+      }
     }
 
     # Geweke test
-    geweke_p <- test_result$diagnostics$geweke_pvalue
-    if (!is.na(geweke_p)) {
-      geweke_status <- geweke_p > config$validation$max_geweke_pvalue
-      cat("  Geweke p-value:", sprintf("%.4f", geweke_p))
-      cat(" [", ifelse(geweke_status, "PASS", "FAIL"), "]\n")
+    geweke_p <- diag$geweke_pvalue
+    if (!is.null(geweke_p) && !all(is.na(geweke_p))) {
+      if (length(geweke_p) == 1) {
+        geweke_status <- geweke_p > config$validation$max_geweke_pvalue
+        cat("  Geweke p-value:", sprintf("%.4f", geweke_p))
+        cat(" [", ifelse(geweke_status, "PASS", "FAIL"), "]\n")
+      } else {
+        mean_geweke_p <- mean(geweke_p, na.rm = TRUE)
+        min_geweke_p <- min(geweke_p, na.rm = TRUE)
+        geweke_status <- mean_geweke_p > config$validation$max_geweke_pvalue
+        cat("  Mean Geweke p-value:", sprintf("%.4f", mean_geweke_p),
+            "Min:", sprintf("%.4f", min_geweke_p))
+        cat(" [", ifelse(geweke_status, "PASS", "FAIL"), "]\n")
+      }
     }
 
     # Coverage (if available)
-    if (!is.null(test_result$diagnostics$coverage)) {
-      coverage <- test_result$diagnostics$coverage
-      coverage_status <- coverage > config$validation$min_coverage
-      cat("  Coverage:", sprintf("%.3f", coverage))
-      cat(" [", ifelse(coverage_status, "PASS", "FAIL"), "]\n")
+    if (!is.null(diag$coverage)) {
+      coverage <- diag$coverage
+      if (length(coverage) == 1) {
+        coverage_status <- coverage > config$validation$min_coverage
+        cat("  Coverage:", sprintf("%.3f", coverage))
+        cat(" [", ifelse(coverage_status, "PASS", "FAIL"), "]\n")
+      } else {
+        mean_coverage <- mean(coverage, na.rm = TRUE)
+        min_coverage <- min(coverage, na.rm = TRUE)
+        coverage_status <- mean_coverage > config$validation$min_coverage
+        cat("  Mean Coverage:", sprintf("%.3f", mean_coverage),
+            "Min:", sprintf("%.3f", min_coverage))
+        cat(" [", ifelse(coverage_status, "PASS", "FAIL"), "]\n")
+      }
     }
 
-    # Overall test status
-    test_status <- bias_status
-    if (!is.na(eff_size)) test_status <- test_status & eff_status
-    if (!is.na(geweke_p)) test_status <- test_status & geweke_status
-    if (!is.null(test_result$diagnostics$coverage)) {
-      test_status <- test_status & coverage_status
+    # RMSE (if available)
+    if (!is.null(diag$rmse)) {
+      if (length(diag$rmse) == 1) {
+        rmse_val <- diag$rmse
+        rmse_status <- rmse_val < config$validation$max_rmse
+        cat("  RMSE:", sprintf("%.4f", rmse_val))
+        cat(" [", ifelse(rmse_status, "PASS", "FAIL"), "]\n")
+      } else {
+        mean_rmse <- mean(diag$rmse, na.rm = TRUE)
+        max_rmse <- max(diag$rmse, na.rm = TRUE)
+        rmse_status <- mean_rmse < config$validation$max_rmse
+        cat("  Mean RMSE:", sprintf("%.4f", mean_rmse),
+            "Max:", sprintf("%.4f", max_rmse))
+        cat(" [", ifelse(rmse_status, "PASS", "FAIL"), "]\n")
+      }
+    }
+
+    # Overall test status (use AND for all scalar statuses)
+    test_status <- TRUE
+    # Bias
+    test_status <- test_status & bias_status
+    # Effective size
+    if (!is.null(eff_size)) {
+      if (length(eff_size) == 1) {
+        test_status <- test_status & (eff_size > config$validation$min_eff_size)
+      } else {
+        test_status <- test_status & (mean(eff_size, na.rm = TRUE) > config$validation$min_eff_size)
+      }
+    }
+    # Geweke
+    if (!is.null(geweke_p) && !all(is.na(geweke_p))) {
+      if (length(geweke_p) == 1) {
+        test_status <- test_status & (geweke_p > config$validation$max_geweke_pvalue)
+      } else {
+        test_status <- test_status & (mean(geweke_p, na.rm = TRUE) > config$validation$max_geweke_pvalue)
+      }
+    }
+    # Coverage
+    if (!is.null(diag$coverage)) {
+      if (length(diag$coverage) == 1) {
+        test_status <- test_status & (diag$coverage > config$validation$min_coverage)
+      } else {
+        test_status <- test_status & (mean(diag$coverage, na.rm = TRUE) > config$validation$min_coverage)
+      }
+    }
+    # RMSE
+    if (!is.null(diag$rmse)) {
+      if (length(diag$rmse) == 1) {
+        test_status <- test_status & (diag$rmse < config$validation$max_rmse)
+      } else {
+        test_status <- test_status & (mean(diag$rmse, na.rm = TRUE) < config$validation$max_rmse)
+      }
     }
 
     cat("  Status:", ifelse(test_status, "PASS", "FAIL"), "\n\n")
@@ -799,7 +883,7 @@ if (CONFIG$test$verbose) {
   # Sample trajectory visualization (subset for clarity)
   n_show <- min(100, n)
   idx_show <- seq(1, n, length.out = n_show)
-  matplot(idx_show, t(mcmc_out_C$theta_1[1:min(5, nrow(mcmc_out_C$theta_1)), idx_show]),
+  matplot(idx_show, t(mcmc_out_C$theta_1[1:min(50, nrow(mcmc_out_C$theta_1)), idx_show]),
           type = "l", lty = 1, col = rgb(0, 0, 1, 0.3),
           main = "Sample Trajectories (first 5)",
           xlab = "Time", ylab = "theta_1")

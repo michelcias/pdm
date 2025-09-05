@@ -1,13 +1,27 @@
 #-------------------------------------------------------------------------------
 # Test Script for Local Level Model Auxiliary Functions
 #
-# Objective: Validate the C auxiliary functions (exposed in test_helpers.c)
+# Objective: Validate the auxiliary C functions (exposed in test_helpers.c)
 #           by replicating the Gibbs sampler loop in R following mcmc_locallevel.c
 #-------------------------------------------------------------------------------
+
+# Clean environment
 rm(list = ls())
-# Load the package to access compiled C functions
-devtools::load_all(".")
-library(pdm)
+
+# Ensure we're in the correct directory
+if (!file.exists("DESCRIPTION")) {
+  stop("This script must be run from the package root directory.")
+}
+
+# Load the package
+suppressPackageStartupMessages({
+  if (require(devtools, quietly = TRUE)) {
+    devtools::load_all(".", quiet = TRUE)
+  } else {
+    # Fallback to installed package
+    library(pdm)
+  }
+})
 
 # --- 1. Data Simulation ---
 n <- 1000  # Number of observations

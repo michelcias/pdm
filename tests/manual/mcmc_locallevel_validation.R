@@ -158,25 +158,243 @@ for (ii in 2:n_iter) {  # Start at 2 since iter=1 is already initialized
 
 cat("... MCMC loop completed.\n\n")
 
-# --- 6. Results Analysis ---
-cat("Summary of posterior estimates (Median):\n")
-cat("-----------------------------------------------\n")
-cat("Parameter        | True Value | Estimated  | Relative Error\n")
-cat("-----------------------------------------------\n")
-cat(sprintf("theta_01         | %10.4f | %10.4f | %10.2f%%\n",
-            theta0_true, median(theta_01_chain),
-            100*abs(median(theta_01_chain) - theta0_true)/theta0_true))
-cat(sprintf("prec_1           | %10.4f | %10.4f | %10.2f%%\n",
-            prec1_true, median(prec_1_chain),
-            100*abs(median(prec_1_chain) - prec1_true)/prec1_true))
-cat(sprintf("prec_y           | %10.4f | %10.4f | %10.2f%%\n",
-            prec_y_true, median(prec_y_chain),
-            100*abs(median(prec_y_chain) - prec_y_true)/prec_y_true))
-cat("-----------------------------------------------\n\n")
+# --- 6. Enhanced Results Analysis ---
+# Compute summary statistics for each parameter
+compute_summary_stats <- function(chain, true_value) {
+  list(
+    median = median(chain),
+    mean = mean(chain),
+    sd = sd(chain),
+    ci_lower = quantile(chain, 0.025),
+    ci_upper = quantile(chain, 0.975),
+    coverage = (true_value >= quantile(chain, 0.025) & true_value <= quantile(chain, 0.975)),
+    rel_error = 100 * abs(median(chain) - true_value) / abs(true_value),
+    abs_error = abs(median(chain) - true_value)
+  )
+}
 
-# Convergence diagnostics
-cat("Convergence diagnostics:\n")
-cat("-----------------------------\n")
+# Compute statistics for each parameter
+theta_01_stats <- compute_summary_stats(theta_01_chain, theta0_true)
+prec_1_stats <- compute_summary_stats(prec_1_chain, prec1_true)
+prec_y_stats <- compute_summary_stats(prec_y_chain, prec_y_true)
+
+cat("Enhanced Summary of Posterior Estimates:\n")
+cat("================================================================================\n")
+cat("Parameter   | True Value | Median Est | Post SD  | 95% CI        | Coverage | Rel Err | Abs Err\n")
+cat("================================================================================\n")
+cat(sprintf("theta_01    | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
+            theta0_true, theta_01_stats$median, theta_01_stats$sd,
+            theta_01_stats$ci_lower, theta_01_stats$ci_upper,
+            ifelse(theta_01_stats$coverage, "YES", "NO"),
+            theta_01_stats$rel_error, theta_01_stats$abs_error))
+cat(sprintf("prec_1      | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
+            prec1_true, prec_1_stats$median, prec_1_stats$sd,
+            prec_1_stats$ci_lower, prec_1_stats$ci_upper,
+            ifelse(prec_1_stats$coverage, "YES", "NO"),
+            prec_1_stats$rel_error, prec_1_stats$abs_error))
+cat(sprintf("prec_y      | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
+            prec_y_true, prec_y_stats$median, prec_y_stats$sd,
+            prec_y_stats$ci_lower, prec_y_stats$ci_upper,
+            ifelse(prec_y_stats$coverage, "YES", "NO"),
+            prec_y_stats$rel_error, prec_y_stats$abs_error))
+cat("================================================================================\n\n")
+
+# Additional quantile information
+cat("Detailed Posterior Quantiles:\n")
+cat("======================================================\n")
+cat("Parameter   |   2.5%   |  25%     |  50%     |  75%     |  97.5%\n")
+cat("======================================================\n")
+theta_01_quantiles <- quantile(theta_01_chain, c(0.025, 0.25, 0.5, 0.75, 0.975))
+prec_1_quantiles <- quantile(prec_1_chain, c(0.025, 0.25, 0.5, 0.75, 0.975))
+prec_y_quantiles <- quantile(prec_y_chain, c(0.025, 0.25, 0.5, 0.75, 0.975))
+
+cat(sprintf("theta_01    | %8.4f | %8.4f | %8.4f | %8.4f | %8.4f\n",
+            theta_01_quantiles[1], theta_01_quantiles[2], theta_01_quantiles[3],
+            theta_01_quantiles[4], theta_01_quantiles[5]))
+cat(sprintf("prec_1      | %8.4f | %8.4f | %8.4f | %8.4f | %8.4f\n",
+            prec_1_quantiles[1], prec_1_quantiles[2], prec_1_quantiles[3],
+            prec_1_quantiles[4], prec_1_quantiles[5]))
+cat(sprintf("prec_y      | %8.4f | %8.4f | %8.4f | %8.4f | %8.4f\n",
+            prec_y_quantiles[1], prec_y_quantiles[2], prec_y_quantiles[3],
+            prec_y_quantiles[4], prec_y_quantiles[5]))
+cat("======================================================\n\n")
+
+# --- 7. Latent State (theta_1) Analysis ---
+
+# Compute estimates and confidence intervals for theta_1
+theta_1_estimate <- apply(theta_1_chain, 2, median)
+theta_1_ci_lower <- apply(theta_1_chain, 2, quantile, 0.025)
+theta_1_ci_upper <- apply(theta_1_chain, 2, quantile, 0.975)
+
+# 1. Segmental Analysis
+cat("=== LATENT STATE (theta_1) ANALYSIS ===\n\n")
+cat("1. Analysis by Temporal Segments:\n")
+cat("==========================================\n")
+n_segments <- 5
+segment_size <- n %/% n_segments
+segment_stats <- data.frame(
+  Segment = 1:n_segments,
+  Time_Range = paste0("[", (0:(n_segments-1))*segment_size + 1, "-", 
+                     (1:n_segments)*segment_size, "]"),
+  True_Mean = NA,
+  Est_Mean = NA,
+  Est_SD = NA,
+  Coverage_95 = NA,
+  RMSE = NA
+)
+
+for (i in 1:n_segments) {
+  start_idx <- (i-1)*segment_size + 1
+  end_idx <- i*segment_size
+  
+  segment_stats$True_Mean[i] <- mean(theta1_true[start_idx:end_idx])
+  segment_stats$Est_Mean[i] <- mean(theta_1_estimate[start_idx:end_idx])
+  segment_stats$Est_SD[i] <- mean(apply(theta_1_chain[, start_idx:end_idx], 2, sd))
+  segment_stats$Coverage_95[i] <- mean((theta1_true[start_idx:end_idx] >= theta_1_ci_lower[start_idx:end_idx]) & 
+                                      (theta1_true[start_idx:end_idx] <= theta_1_ci_upper[start_idx:end_idx]))
+  segment_stats$RMSE[i] <- sqrt(mean((theta_1_estimate[start_idx:end_idx] - theta1_true[start_idx:end_idx])^2))
+}
+
+cat("Segment |  Time Range  | True Mean | Est Mean | Est SD  | Coverage | RMSE\n")
+cat("========================================================================\n")
+for (i in 1:n_segments) {
+  cat(sprintf("%7d | %12s | %9.4f | %8.4f | %7.4f | %8.2f%% | %6.4f\n",
+              segment_stats$Segment[i], segment_stats$Time_Range[i], 
+              segment_stats$True_Mean[i], segment_stats$Est_Mean[i], 
+              segment_stats$Est_SD[i], 100*segment_stats$Coverage_95[i], 
+              segment_stats$RMSE[i]))
+}
+cat("========================================================================\n\n")
+
+# 2. Global Quality Metrics
+cat("2. Global Quality Metrics for theta_1:\n")
+cat("======================================\n")
+abs_errors <- abs(theta_1_estimate - theta1_true)
+rel_errors <- abs_errors / abs(theta1_true)
+coverage <- (theta1_true >= theta_1_ci_lower) & (theta1_true <= theta_1_ci_upper)
+
+theta_1_global_metrics <- data.frame(
+  Metric = c("RMSE", "MAE", "MAPE (%)", "Coverage_95 (%)", "Correlation", "R²"),
+  Value = c(
+    sqrt(mean((theta_1_estimate - theta1_true)^2)),
+    mean(abs(theta_1_estimate - theta1_true)),
+    100 * mean(abs((theta_1_estimate - theta1_true) / theta1_true)),
+    100 * mean(coverage),
+    cor(theta_1_estimate, theta1_true),
+    cor(theta_1_estimate, theta1_true)^2
+  )
+)
+
+cat("Metric           | Value\n")
+cat("=========================\n")
+for (i in 1:nrow(theta_1_global_metrics)) {
+  cat(sprintf("%-15s | %10.6f\n", theta_1_global_metrics$Metric[i], theta_1_global_metrics$Value[i]))
+}
+cat("=========================\n\n")
+
+# 3. Outliers and Problematic Points
+cat("3. Outliers and Problematic Points:\n")
+cat("===================================\n")
+worst_abs_idx <- order(abs_errors, decreasing=TRUE)[1:10]
+worst_rel_idx <- order(rel_errors, decreasing=TRUE)[1:10]
+coverage_failures <- which(!coverage)
+
+outlier_analysis <- data.frame(
+  Category = c("Worst 10 Abs Errors", "Worst 10 Rel Errors", "Coverage Failures"),
+  Count = c(10, 10, length(coverage_failures)),
+  Mean_Error = c(
+    mean(abs_errors[worst_abs_idx]),
+    mean(rel_errors[worst_rel_idx]),
+    ifelse(length(coverage_failures) > 0, mean(abs_errors[coverage_failures]), NA)
+  ),
+  Max_Error = c(
+    max(abs_errors[worst_abs_idx]),
+    max(rel_errors[worst_rel_idx]),
+    ifelse(length(coverage_failures) > 0, max(abs_errors[coverage_failures]), NA)
+  ),
+  First_5_Points = c(
+    paste(worst_abs_idx[1:5], collapse=", "),
+    paste(worst_rel_idx[1:5], collapse=", "),
+    ifelse(length(coverage_failures) >= 5, 
+           paste(coverage_failures[1:5], collapse=", "), 
+           ifelse(length(coverage_failures) > 0, paste(coverage_failures, collapse=", "), "None"))
+  )
+)
+
+cat("Category            | Count | Mean Error | Max Error  | First 5 Points\n")
+cat("=====================================================================\n")
+for (i in 1:nrow(outlier_analysis)) {
+  cat(sprintf("%-18s | %5d | %10.6f | %10.6f | %s\n",
+              outlier_analysis$Category[i], outlier_analysis$Count[i], 
+              outlier_analysis$Mean_Error[i], outlier_analysis$Max_Error[i], 
+              outlier_analysis$First_5_Points[i]))
+}
+cat("=====================================================================\n\n")
+
+# 4. Temporal Autocorrelation Analysis
+cat("4. Temporal Autocorrelation Analysis:\n")
+cat("====================================\n")
+max_lag <- 10
+lag_analysis <- data.frame(
+  Lag = 1:max_lag,
+  True_ACF = sapply(1:max_lag, function(k) {
+    if(k < n) cor(theta1_true[1:(n-k)], theta1_true[(1+k):n]) else NA
+  }),
+  Est_ACF = sapply(1:max_lag, function(k) {
+    if(k < n) cor(theta_1_estimate[1:(n-k)], theta_1_estimate[(1+k):n]) else NA
+  }),
+  Error_ACF = sapply(1:max_lag, function(k) {
+    if(k < n) cor(abs_errors[1:(n-k)], abs_errors[(1+k):n]) else NA
+  })
+)
+
+cat("Lag | True ACF | Est ACF  | Error ACF\n")
+cat("===================================\n")
+for (i in 1:nrow(lag_analysis)) {
+  cat(sprintf("%3d | %8.4f | %8.4f | %9.4f\n",
+              lag_analysis$Lag[i], lag_analysis$True_ACF[i], 
+              lag_analysis$Est_ACF[i], lag_analysis$Error_ACF[i]))
+}
+cat("===================================\n\n")
+
+# 5. Effective Sample Size by Time Points
+cat("5. Effective Sample Size by Time Points:\n")
+cat("========================================\n")
+time_points <- seq(1, n, length.out = 10)
+ess_by_time <- sapply(time_points, function(t) {
+  t_idx <- round(t)
+  chain_t <- theta_1_chain[, t_idx]
+  acf_vals <- acf(chain_t, plot=FALSE, lag.max=min(100, length(chain_t)/4))$acf[-1]
+  max(1, length(chain_t) / (1 + 2 * sum(acf_vals[acf_vals > 0])))
+})
+
+ess_time_analysis <- data.frame(
+  Time_Point = round(time_points),
+  ESS = round(ess_by_time),
+  Efficiency = round(100 * ess_by_time / n_chain, 1)
+)
+
+cat("Time Point | ESS  | Efficiency (%)\n")
+cat("===============================\n")
+for (i in 1:nrow(ess_time_analysis)) {
+  cat(sprintf("%10d | %4d | %12.1f\n",
+              ess_time_analysis$Time_Point[i], ess_time_analysis$ESS[i], 
+              ess_time_analysis$Efficiency[i]))
+}
+cat("===============================\n")
+
+# Fix the problematic sprintf line - ensure all values are finite and numeric
+ess_min <- round(min(ess_by_time[is.finite(ess_by_time)]))
+ess_max <- round(max(ess_by_time[is.finite(ess_by_time)]))
+ess_mean <- round(mean(ess_by_time[is.finite(ess_by_time)]), 1)
+ess_efficiency <- round(100 * ess_mean / n_chain, 1)
+
+cat(sprintf("Overall ESS range: [%d, %d]\n", ess_min, ess_max))
+cat(sprintf("Mean ESS: %.1f (%.1f%% efficiency)\n\n", ess_mean, ess_efficiency))
+
+# Convergence diagnostics for scalar parameters
+cat("Convergence diagnostics (Scalar Parameters):\n")
+cat("--------------------------------------------\n")
 effective_sample_sizes <- sapply(list(theta_01_chain, prec_1_chain, prec_y_chain),
                                  function(x) {
                                    acf_vals <- acf(x, plot=FALSE, lag.max=min(100, length(x)/4))$acf[-1]
@@ -185,7 +403,7 @@ effective_sample_sizes <- sapply(list(theta_01_chain, prec_1_chain, prec_y_chain
 names(effective_sample_sizes) <- c("theta_01", "prec_1", "prec_y")
 print(round(effective_sample_sizes))
 
-# --- 7. Visualization ---
+# --- 8. Visualization ---
 op <- par(mfrow = c(2, 3))
 
 # Posterior histograms
@@ -214,10 +432,6 @@ plot(prec_1_chain, type = 'l', main = expression(paste("Trace plot: ", 1/W[1])),
 abline(h = prec1_true, col = "red", lty = 2)
 
 # Estimated vs true latent state
-theta_1_estimate <- apply(theta_1_chain, 2, median)
-theta_1_ci_lower <- apply(theta_1_chain, 2, quantile, 0.025)
-theta_1_ci_upper <- apply(theta_1_chain, 2, quantile, 0.975)
-
 plot(theta1_true, type = 'l', col = "red", lty = 2, lwd = .5,
      main = "Latent State: True vs. Estimated", ylab = expression(theta["t,1"]))
 lines(theta_1_estimate, col = "blue", lwd = 1)

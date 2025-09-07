@@ -23,6 +23,13 @@ suppressPackageStartupMessages({
   }
 })
 
+# Load required packages for enhanced diagnostics
+suppressPackageStartupMessages({
+  if (!require(coda, quietly = TRUE)) {
+    cat("Warning: 'coda' package not available. Some convergence diagnostics will be skipped.\n")
+  }
+})
+
 # --- 1. Data Simulation ---
 n <- 1000  # Number of observations
 
@@ -30,7 +37,7 @@ n <- 1000  # Number of observations
 theta01_true <- 0.1   # Initial level
 theta02_true <- 0.05  # Initial trend
 prec1_true   <- 10    # Level precision
-prec2_true   <- 20     # Trend precision
+prec2_true   <- 20    # Trend precision
 prec_y_true  <- 1     # Data precision
 
 # set.seed(123) # For reproducibility
@@ -116,6 +123,11 @@ for (j in 2:n) {
 
 # --- 5. MCMC Loop using Auxiliary Functions ---
 cat("Starting MCMC loop for Local Trend model...\n")
+
+# Initialize progress bar
+pb <- txtProgressBar(min = 2, max = n_iter, style = 3, width = 60, char = "\u27a4")
+cat("Progress: ", rep(" ", 60), "\n")
+
 chain_idx <- 0  # Counter for saved samples
 
 for (ii in 2:n_iter) {  # Start at 2 since iter=1 is already initialized
@@ -225,14 +237,17 @@ for (ii in 2:n_iter) {  # Start at 2 since iter=1 is already initialized
     prec_y_chain[chain_idx]   <- prec_y_post[ii]
   }
 
-  # Print progress
-  if (ii %% 1000 == 0) {
-    cat("  Iteration:", ii, "/", n_iter, "\n")
+  # Update progress bar every 100 iterations
+  if (ii %% 100 == 0) {
+    setTxtProgressBar(pb, ii)
   }
 }
 
+# Close progress bar
+close(pb)
+cat("\n... MCMC loop completed.\n\n")
 
-# --- 5. Enhanced Results Analysis ---
+# --- 6. Enhanced Results Analysis ---
 # Compute summary statistics for each parameter
 compute_summary_stats <- function(chain, true_value) {
   list(
@@ -313,7 +328,7 @@ cat(sprintf("prec_y      | %8.4f | %8.4f | %8.4f | %8.4f | %8.4f\n",
             prec_y_quantiles[4], prec_y_quantiles[5]))
 cat("======================================================\n\n")
 
-# --- 6. Latent State Analysis for theta_1 and theta_2 ---
+# --- 7. Latent State Analysis for theta_1 and theta_2 ---
 
 # Compute estimates and confidence intervals for both states
 theta_1_estimate <- apply(theta_1_chain, 2, median)
@@ -484,7 +499,6 @@ analyze_latent_state <- function(true_values, estimates, ci_lower, ci_upper, cha
   }
   cat("===============================\n")
 
-  # Fix the problematic sprintf line
   ess_min <- round(min(ess_by_time[is.finite(ess_by_time)]))
   ess_max <- round(max(ess_by_time[is.finite(ess_by_time)]))
   ess_mean <- round(mean(ess_by_time[is.finite(ess_by_time)]), 1)
@@ -498,72 +512,206 @@ analyze_latent_state <- function(true_values, estimates, ci_lower, ci_upper, cha
 analyze_latent_state(theta1_true, theta_1_estimate, theta_1_ci_lower, theta_1_ci_upper, theta_1_chain, "LEVEL STATE (theta_1)")
 analyze_latent_state(theta2_true, theta_2_estimate, theta_2_ci_lower, theta_2_ci_upper, theta_2_chain, "TREND STATE (theta_2)")
 
-# Convergence diagnostics for scalar parameters
-cat("Convergence diagnostics (Scalar Parameters):\n")
-cat("--------------------------------------------\n")
+# --- 8. Enhanced Convergence Diagnostics ---
+cat("=== ENHANCED CONVERGENCE DIAGNOSTICS ===\n\n")
+
+# Basic Effective Sample Size (as before)
+cat("Basic Effective Sample Size:\n")
+cat("============================\n")
 effective_sample_sizes <- sapply(list(theta_01_chain, theta_02_chain, prec_1_chain, prec_2_chain, prec_y_chain),
                                  function(x) {
                                    acf_vals <- acf(x, plot=FALSE, lag.max=min(100, length(x)/4))$acf[-1]
-                                   length(x) / (1 + 2 * sum(acf_vals[acf_vals > 0]))
+                                   max(1, length(x) / (1 + 2 * sum(acf_vals[acf_vals > 0])))
                                  })
 names(effective_sample_sizes) <- c("theta_01", "theta_02", "prec_1", "prec_2", "prec_y")
-print(round(effective_sample_sizes))
+for(i in 1:length(effective_sample_sizes)) {
+  cat(sprintf("%-10s: %6.1f (%5.1f%% efficiency)\n",
+              names(effective_sample_sizes)[i],
+              effective_sample_sizes[i],
+              100 * effective_sample_sizes[i] / n_chain))
+}
+cat("\n")
 
-# --- 7. Visualization ---
-op <- par(mfrow = c(3, 3))
+# Enhanced diagnostics if coda package is available
+if (requireNamespace("coda", quietly = TRUE)) {
 
-# Posterior histograms
-hist(theta_01_chain, main = expression(paste("Posterior of ", theta["0,1"])),
-     xlab = "", col = "lightblue", border = "white")
+  # Convert to mcmc objects
+  theta_01_mcmc <- coda::mcmc(theta_01_chain)
+  theta_02_mcmc <- coda::mcmc(theta_02_chain)
+  prec_chains_mcmc <- coda::mcmc(cbind(prec_1_chain, prec_2_chain, prec_y_chain))
+
+  # Geweke Diagnostic
+  cat("Geweke Convergence Diagnostic (|z-score| < 2 indicates convergence):\n")
+  cat("====================================================================\n")
+  geweke_results <- list(
+    theta_01 = coda::geweke.diag(theta_01_mcmc),
+    theta_02 = coda::geweke.diag(theta_02_mcmc),
+    prec_1 = coda::geweke.diag(coda::mcmc(prec_1_chain)),
+    prec_2 = coda::geweke.diag(coda::mcmc(prec_2_chain)),
+    prec_y = coda::geweke.diag(coda::mcmc(prec_y_chain))
+  )
+
+  for(param in names(geweke_results)) {
+    z_score <- geweke_results[[param]]$z
+    status <- ifelse(abs(z_score) < 2, "PASS", "FAIL")
+    cat(sprintf("%-10s: z = %7.3f (%s)\n", param, z_score, status))
+  }
+  cat("\n")
+
+  # Heidelberger-Welch Test
+  cat("Heidelberger-Welch Stationarity and Halfwidth Tests:\n")
+  cat("====================================================\n")
+  cat("Parameter   | Stationarity | Start | Halfwidth | Mean\n")
+  cat("====================================================\n")
+
+  heidel_params <- list(theta_01_mcmc, theta_02_mcmc,
+                        coda::mcmc(prec_1_chain), coda::mcmc(prec_2_chain),
+                        coda::mcmc(prec_y_chain))
+  heidel_names <- c("theta_01", "theta_02", "prec_1", "prec_2", "prec_y")
+
+  for(i in 1:length(heidel_params)) {
+    result <- coda::heidel.diag(heidel_params[[i]])
+    cat(sprintf("%-10s | %11s | %5d | %9s | %8.4f\n",
+                heidel_names[i],
+                ifelse(result[1,1], "PASS", "FAIL"),
+                result[1,2],
+                ifelse(result[1,3], "PASS", "FAIL"),
+                result[1,4]))
+  }
+  cat("\n")
+
+  # Raftery-Lewis Diagnostic (for selected parameters)
+  cat("Raftery-Lewis Diagnostic (for selected parameters):\n")
+  cat("===================================================\n")
+  raftery_params <- list(theta_01_mcmc, theta_02_mcmc)
+  raftery_names <- c("theta_01", "theta_02")
+
+  for(i in 1:length(raftery_params)) {
+    cat(paste0("--- ", raftery_names[i], " ---\n"))
+    print(coda::raftery.diag(raftery_params[[i]]))
+    cat("\n")
+  }
+
+} else {
+  cat("Note: Install 'coda' package for enhanced convergence diagnostics.\n\n")
+}
+
+# --- 9. Organized Visualization by Parameter Categories ---
+cat("=== GENERATING ORGANIZED VISUALIZATIONS ===\n\n")
+
+# 9.1 LOCAL LEVEL PARAMETERS
+cat("Generating plots: Local Level Parameters (theta_01, prec_1)...\n")
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+
+# theta_01: posterior + trace
+hist(theta_01_chain, main = expression(paste("Posterior: ", theta["0,1"])),
+     xlab = expression(theta["0,1"]), col = "lightblue", border = "white", probability = TRUE)
 abline(v = theta01_true, col = "red", lwd = 2, lty = 2)
 abline(v = median(theta_01_chain), col = "blue", lwd = 2)
+legend("topright", legend = c("True", "Median"), col = c("red", "blue"), lty = c(2, 1), lwd = 2, bty = "n")
 
-hist(theta_02_chain, main = expression(paste("Posterior of ", theta["0,2"])),
-     xlab = "", col = "lightgreen", border = "white")
-abline(v = theta02_true, col = "red", lwd = 2, lty = 2)
-abline(v = median(theta_02_chain), col = "blue", lwd = 2)
+plot(theta_01_chain, type = 'l', main = expression(paste("Trace: ", theta["0,1"])),
+     col = "blue", xlab = "Iteration", ylab = expression(theta["0,1"]))
+abline(h = theta01_true, col = "red", lty = 2, lwd = 2)
 
-hist(prec_1_chain, main = expression(paste("Posterior of ", 1/W[1])),
-     xlab = "", col = "lightcoral", border = "white")
+# prec_1: posterior + trace
+hist(prec_1_chain, main = expression(paste("Posterior: ", 1/W[1])),
+     xlab = expression(1/W[1]), col = "lightcoral", border = "white", probability = TRUE)
 abline(v = prec1_true, col = "red", lwd = 2, lty = 2)
 abline(v = median(prec_1_chain), col = "blue", lwd = 2)
+legend("topright", legend = c("True", "Median"), col = c("red", "blue"), lty = c(2, 1), lwd = 2, bty = "n")
 
-hist(prec_2_chain, main = expression(paste("Posterior of ", 1/W[2])),
-     xlab = "", col = "lightyellow", border = "white")
+plot(prec_1_chain, type = 'l', main = expression(paste("Trace: ", 1/W[1])),
+     col = "darkred", xlab = "Iteration", ylab = expression(1/W[1]))
+abline(h = prec1_true, col = "red", lty = 2, lwd = 2)
+
+# 9.2 LOCAL TREND PARAMETERS
+cat("Generating plots: Local Trend Parameters (theta_02, prec_2)...\n")
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+
+# theta_02: posterior + trace
+hist(theta_02_chain, main = expression(paste("Posterior: ", theta["0,2"])),
+     xlab = expression(theta["0,2"]), col = "lightgreen", border = "white", probability = TRUE)
+abline(v = theta02_true, col = "red", lwd = 2, lty = 2)
+abline(v = median(theta_02_chain), col = "blue", lwd = 2)
+legend("topright", legend = c("True", "Median"), col = c("red", "blue"), lty = c(2, 1), lwd = 2, bty = "n")
+
+plot(theta_02_chain, type = 'l', main = expression(paste("Trace: ", theta["0,2"])),
+     col = "darkgreen", xlab = "Iteration", ylab = expression(theta["0,2"]))
+abline(h = theta02_true, col = "red", lty = 2, lwd = 2)
+
+# prec_2: posterior + trace
+hist(prec_2_chain, main = expression(paste("Posterior: ", 1/W[2])),
+     xlab = expression(1/W[2]), col = "lightyellow", border = "white", probability = TRUE)
 abline(v = prec2_true, col = "red", lwd = 2, lty = 2)
 abline(v = median(prec_2_chain), col = "blue", lwd = 2)
+legend("topright", legend = c("True", "Median"), col = c("red", "blue"), lty = c(2, 1), lwd = 2, bty = "n")
 
-hist(prec_y_chain, main = expression(paste("Posterior of ", 1/V)),
-     xlab = "", col = "lightpink", border = "white")
+plot(prec_2_chain, type = 'l', main = expression(paste("Trace: ", 1/W[2])),
+     col = "darkgoldenrod", xlab = "Iteration", ylab = expression(1/W[2]))
+abline(h = prec2_true, col = "red", lty = 2, lwd = 2)
+
+# 9.3 DATA PRECISION
+cat("Generating plots: Data Precision (prec_y)...\n")
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+
+hist(prec_y_chain, main = expression(paste("Posterior: ", 1/V)),
+     xlab = expression(1/V), col = "lavender", border = "white", probability = TRUE)
 abline(v = prec_y_true, col = "red", lwd = 2, lty = 2)
 abline(v = median(prec_y_chain), col = "blue", lwd = 2)
+legend("topright", legend = c("True", "Median"), col = c("red", "blue"), lty = c(2, 1), lwd = 2, bty = "n")
 
-# Trace plots for diagnostics
-plot(theta_01_chain, type = 'l', main = expression(paste("Trace plot: ", theta["0,1"])),
-     ylab = "", col = "blue")
-abline(h = theta01_true, col = "red", lty = 2)
+plot(prec_y_chain, type = 'l', main = expression(paste("Trace: ", 1/V)),
+     col = "mediumpurple", xlab = "Iteration", ylab = expression(1/V))
+abline(h = prec_y_true, col = "red", lty = 2, lwd = 2)
 
-plot(theta_02_chain, type = 'l', main = expression(paste("Trace plot: ", theta["0,2"])),
-     ylab = "", col = "darkgreen")
-abline(h = theta02_true, col = "red", lty = 2)
+# 9.4 STATE ESTIMATES
+cat("Generating plots: State Estimates (theta_1, theta_2)...\n")
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
 
-# Level state: estimated vs true
-plot(theta1_true, type = 'l', col = "red", lty = 2, lwd = .5,
-     main = "Level State: True vs. Estimated", ylab = expression(theta["t,1"]))
-lines(theta_1_estimate, col = "blue", lwd = 1)
-polygon(c(1:n, rev(1:n)), c(theta_1_ci_lower, rev(theta_1_ci_upper)),
+n_plot <- min(200, n)
+time_idx <- 1:n_plot
+
+# Level state
+plot(time_idx, theta1_true[time_idx], type = 'l', col = "red", lty = 2, lwd = 2,
+     main = "Level State: True vs. Estimated", xlab = "Time", ylab = expression(theta["t,1"]),
+     ylim = range(c(theta1_true[time_idx], theta_1_ci_lower[time_idx], theta_1_ci_upper[time_idx])))
+lines(time_idx, theta_1_estimate[time_idx], col = "blue", lwd = 1.5)
+polygon(c(time_idx, rev(time_idx)),
+        c(theta_1_ci_lower[time_idx], rev(theta_1_ci_upper[time_idx])),
         col = rgb(0, 0, 1, 0.2), border = NA)
-legend("topleft", legend = c("True", "Estimated", "95% CI"),
-       col = c("red", "blue", rgb(0, 0, 1, 0.2)),
-       lty = c(2, 1, 1), lwd = c(2, 2, 8), bty = "n")
+legend("topleft", legend = c("True", "Est.", "95% CI"),
+       col = c("red", "blue", rgb(0,0,1,0.2)), lty = c(2,1,1), lwd = c(2,1.5,8), bty = "n")
 
-# Trend state: estimated vs true
-plot(theta2_true, type = 'l', col = "red", lty = 2, lwd = .5,
-     main = "Trend State: True vs. Estimated", ylab = expression(theta["t,2"]))
-lines(theta_2_estimate, col = "darkgreen", lwd = 1)
-polygon(c(1:n, rev(1:n)), c(theta_2_ci_lower, rev(theta_2_ci_upper)),
+# Trend state
+plot(time_idx, theta2_true[time_idx], type = 'l', col = "red", lty = 2, lwd = 2,
+     main = "Trend State: True vs. Estimated", xlab = "Time", ylab = expression(theta["t,2"]),
+     ylim = range(c(theta2_true[time_idx], theta_2_ci_lower[time_idx], theta_2_ci_upper[time_idx])))
+lines(time_idx, theta_2_estimate[time_idx], col = "darkgreen", lwd = 1.5)
+polygon(c(time_idx, rev(time_idx)),
+        c(theta_2_ci_lower[time_idx], rev(theta_2_ci_upper[time_idx])),
         col = rgb(0, 1, 0, 0.2), border = NA)
-legend("topleft", legend = c("True", "Estimated", "95% CI"),
-       col = c("red", "darkgreen", rgb(0, 1, 0, 0.2)),
-       lty = c(2, 1, 1), lwd = c(2, 2, 8), bty = "n")
-par(op)
+legend("topleft", legend = c("True", "Est.", "95% CI"),
+       col = c("red", "darkgreen", rgb(0,1,0,0.2)), lty = c(2,1,1), lwd = c(2,1.5,8), bty = "n")
+
+# Observed vs Level
+plot(time_idx, y[time_idx], type = 'p', col = "gray50", pch = 16, cex = 0.5,
+     main = "Observed Data vs. Level State", xlab = "Time", ylab = "Value",
+     ylim = range(c(y[time_idx], theta1_true[time_idx], theta_1_estimate[time_idx])))
+lines(time_idx, theta1_true[time_idx], col = "red", lty = 2, lwd = 2)
+lines(time_idx, theta_1_estimate[time_idx], col = "blue", lwd = 1.5)
+legend("topleft", legend = c("Observed", "True Level", "Est. Level"),
+       col = c("gray50", "red", "blue"), pch = c(16, NA, NA),
+       lty = c(NA, 2, 1), lwd = c(NA, 2, 1.5), bty = "n")
+
+# Reset plotting parameters
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1)
+
+cat("=== VISUALIZATION COMPLETED ===\n\n")
+cat("Summary: All visualizations have been organized into 4 logical categories:\n")
+cat("1. Local Level Parameters (theta_01, prec_1)\n")
+cat("2. Local Trend Parameters (theta_02, prec_2)\n")
+cat("3. Data Precision (prec_y)\n")
+cat("4. State Estimates (theta_1, theta_2, and observed data)\n\n")
+
+cat("=== VALIDATION SCRIPT COMPLETED SUCCESSFULLY ===\n")

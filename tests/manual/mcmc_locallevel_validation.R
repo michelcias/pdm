@@ -189,25 +189,26 @@ prec_1_stats <- compute_summary_stats(prec_1_chain, prec1_true)
 prec_y_stats <- compute_summary_stats(prec_y_chain, prec_y_true)
 
 cat("Enhanced Summary of Posterior Estimates:\n")
-cat("=======================================================================================================\n")
-cat("Parameter   | True Value | Median Est |  Post SD |               95% CI | Coverage | Rel Err | Abs Err\n")
-cat("=======================================================================================================\n")
-cat(sprintf("theta_01    | %10.4f | %10.4f | %8.4f | [%8.4f, %8.4f] | %8s | %6.2f%% | %7.4f\n",
-            theta0_true, theta_01_stats$median, theta_01_stats$sd,
+cat("========================================================================================================================\n")
+cat("Parameter   | True Value | Median Est |  Post SD | Monte Carlo SE |               95% CI | Coverage | Rel Err | Abs Err\n")
+cat("========================================================================================================================\n")
+cat(sprintf("theta_01    | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %6.2f%% | %7.4f\n",
+            theta0_true, theta_01_stats$median, theta_01_stats$sd, theta_01_stats$sd / sqrt(n_chain),
             theta_01_stats$ci_lower, theta_01_stats$ci_upper,
             ifelse(theta_01_stats$coverage, "YES", "NO"),
             theta_01_stats$rel_error, theta_01_stats$abs_error))
-cat(sprintf("prec_1      | %10.4f | %10.4f | %8.4f | [%8.4f, %8.4f] | %8s | %6.2f%% | %7.4f\n",
-            prec1_true, prec_1_stats$median, prec_1_stats$sd,
+cat(sprintf("prec_1      | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %6.2f%% | %7.4f\n",
+            prec1_true, prec_1_stats$median, prec_1_stats$sd, prec_1_stats$sd / sqrt(n_chain),
             prec_1_stats$ci_lower, prec_1_stats$ci_upper,
             ifelse(prec_1_stats$coverage, "YES", "NO"),
             prec_1_stats$rel_error, prec_1_stats$abs_error))
-cat(sprintf("prec_y      | %10.4f | %10.4f | %8.4f | [%8.4f, %8.4f] | %8s | %6.2f%% | %7.4f\n",
-            prec_y_true, prec_y_stats$median, prec_y_stats$sd,
+cat(sprintf("prec_y      | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %6.2f%% | %7.4f\n",
+            prec_y_true, prec_y_stats$median, prec_y_stats$sd, prec_y_stats$sd / sqrt(n_chain),
             prec_y_stats$ci_lower, prec_y_stats$ci_upper,
             ifelse(prec_y_stats$coverage, "YES", "NO"),
             prec_y_stats$rel_error, prec_y_stats$abs_error))
-cat("=======================================================================================================\n\n")
+cat("========================================================================================================================\n")
+cat("Note: Monte Carlo SE measures the precision of posterior mean estimates\n\n")
 
 # Additional quantile information
 cat("Detailed Posterior Quantiles:\n")
@@ -504,193 +505,176 @@ if (requireNamespace("coda", quietly = TRUE)) {
   cat("Note: Both Stationarity and Halfwidth tests should PASS for reliable convergence\n\n")
 
   # 4. Raftery-Lewis Diagnostic - Organized Table with Error Handling
-cat("4. Raftery-Lewis Diagnostic (Burn-in and Sample Size Requirements):\n")
-cat("==============================================================================================================\n")
-cat("Parameter   | Quantile | Accuracy | Probability | Burn-in (M) | Total (N) | Lower (Nmin) |     Dependence\n")
-cat("==============================================================================================================\n")
+  cat("4. Raftery-Lewis Diagnostic (Burn-in and Sample Size Requirements):\n")
+  cat("===============================================================================================================\n")
+  cat("Parameter   | Quantile | Accuracy | Probability | Burn-in (M) | Total (N) | Lower (Nmin) |     Dependence\n")
+  cat("===============================================================================================================\n")
 
-# Combine all parameters for Raftery-Lewis
-all_chains <- cbind("theta_01" = theta_01_mcmc,
-                    "prec_1" = prec_1_mcmc,
-                    "prec_y" = prec_y_mcmc)
+  # Combine all parameters for Raftery-Lewis
+  all_chains <- cbind("theta_01" = theta_01_mcmc,
+                      "prec_1" = prec_1_mcmc,
+                      "prec_y" = prec_y_mcmc)
 
-# Error handling for Raftery-Lewis diagnostic
-raftery_success <- FALSE
-raftery_result <- NULL
+  # Error handling for Raftery-Lewis diagnostic
+  raftery_success <- FALSE
+  raftery_result <- NULL
 
-# Try different accuracy levels if the original fails
-accuracy_levels <- c(0.005, 0.01, 0.02, 0.05)
-quantile_levels <- c(0.025, 0.05, 0.1)
+  # Try different accuracy levels if the original fails
+  accuracy_levels <- c(0.005, 0.01, 0.02, 0.05)
+  quantile_levels <- c(0.025, 0.05, 0.1)
 
-for(q_level in quantile_levels) {
-  for(acc_level in accuracy_levels) {
-    tryCatch({
-      raftery_result <- coda::raftery.diag(all_chains, q=q_level, r=acc_level, s=0.95)
-      raftery_success <- TRUE
-      cat(sprintf("Note: Using quantile=%.3f, accuracy=%.3f for analysis\n", q_level, acc_level))
-      break
-    }, error = function(e) {
-      # Continue to next accuracy level
-    })
-  }
-  if(raftery_success) break
-}
-
-if(raftery_success && !is.null(raftery_result)) {
-  for(i in 1:nrow(raftery_result$resmatrix)) {
-    param_name <- rownames(raftery_result$resmatrix)[i]
-    values <- raftery_result$resmatrix[i, ]
-    dependence_factor <- values["I"]
-    dependency_status <- ifelse(dependence_factor < 5, "Low",
-                                ifelse(dependence_factor < 10, "Moderate", "High"))
-
-    # Check if current chain size meets requirements
-    chain_adequate <- n_chain >= values["N"]
-    status_marker <- ifelse(chain_adequate, "", " *")
-
-    cat(sprintf("%-11s |    %.1f%% |     %.1f%% |         95%% | %11d | %9d | %12d | %8.2f (%s)%s\n",
-                param_name,
-                q_level*100, acc_level*100,
-                values["M"], values["N"], values["Nmin"],
-                dependence_factor, dependency_status, status_marker))
+  for(q_level in quantile_levels) {
+    for(acc_level in accuracy_levels) {
+      tryCatch({
+        raftery_result <- coda::raftery.diag(all_chains, q=q_level, r=acc_level, s=0.95)
+        raftery_success <- TRUE
+        cat(sprintf("Note: Using quantile=%.3f, accuracy=%.3f for analysis\n", q_level, acc_level))
+        break
+      }, error = function(e) {
+        # Continue to next accuracy level
+      })
+    }
+    if(raftery_success) break
   }
 
-  # Check if any parameter needs more samples
-  max_required <- max(raftery_result$resmatrix[, "N"])
-  if(n_chain < max_required) {
-    cat("==============================================================================================================\n")
-    cat(sprintf("WARNING: Current chain size (%d) is smaller than recommended (%d)\n",
-                n_chain, max_required))
-    cat("* Marked parameters may need longer chains for reliable estimates\n")
-    cat(sprintf("Recommendation: Increase chain size to at least %d samples\n", max_required))
-  }
-
-} else {
-  # If all attempts fail, provide alternative analysis
-  cat("Unable to compute Raftery-Lewis diagnostic with current chain size.\n")
-  cat("This typically indicates that the chain size is insufficient for the desired precision.\n")
-  cat("==============================================================================================================\n")
-
-  # Provide alternative chain size recommendations
-  cat("\nAlternative Chain Size Assessment:\n")
-  cat("=====================================\n")
-
-  # Simple rule-of-thumb recommendations
-  min_recommended <- 1000
-  good_size <- 5000
-  excellent_size <- 10000
-
-  current_status <- ifelse(n_chain >= excellent_size, "EXCELLENT",
-                           ifelse(n_chain >= good_size, "GOOD",
-                                  ifelse(n_chain >= min_recommended, "ADEQUATE", "INSUFFICIENT")))
-
-  cat(sprintf("Current chain size: %d (%s)\n", n_chain, current_status))
-  cat(sprintf("Minimum recommended: %d\n", min_recommended))
-  cat(sprintf("Good size: %d\n", good_size))
-  cat(sprintf("Excellent size: %d\n", excellent_size))
-
-  if(n_chain < min_recommended) {
-    cat(sprintf("\nRECOMMENDATION: Increase chain size to at least %d\n", min_recommended))
-  }
-}
-
-cat("==============================================================================================================\n")
-cat("Note: Dependence factor (I) < 5 indicates good mixing; I > 5 suggests high autocorrelation\n\n")
-
-# 5. Summary Assessment Table with Raftery-Lewis handling
-cat("5. Overall Convergence Assessment:\n")
-cat("=========================================================================================\n")
-cat("Parameter   |     ESS |   Efficiency | Geweke | Heidelberg | Raftery-Lewis |     Overall\n")
-cat("=========================================================================================\n")
-
-for(i in 1:length(heidel_names)) {
-  param <- heidel_names[i]
-  ess_val <- effective_sample_sizes[param]
-  efficiency <- 100 * ess_val / n_chain
-
-  # Get individual test results
-  geweke_pass <- abs(geweke_results[[param]]$z) < 1.96
-  heidel_result <- coda::heidel.diag(heidel_params[[i]])
-  heidel_pass <- heidel_result[1,1] && heidel_result[1,3]
-
-  # Raftery-Lewis assessment
   if(raftery_success && !is.null(raftery_result)) {
-    dependence_factor <- raftery_result$resmatrix[i, "I"]
-    raftery_pass <- dependence_factor < 5 && n_chain >= raftery_result$resmatrix[i, "N"]
-    raftery_status <- ifelse(raftery_pass, "PASS", "FAIL")
+    for(i in 1:nrow(raftery_result$resmatrix)) {
+      param_name <- rownames(raftery_result$resmatrix)[i]
+      values <- raftery_result$resmatrix[i, ]
+      dependence_factor <- values["I"]
+      dependency_status <- ifelse(dependence_factor < 5, "Low",
+                                  ifelse(dependence_factor < 10, "Moderate", "High"))
+
+      # Check if current chain size meets requirements
+      chain_adequate <- n_chain >= values["N"]
+      status_marker <- ifelse(chain_adequate, "", " *")
+
+      cat(sprintf("%-11s |    %.1f%% |     %.1f%% |         95%% | %11d | %9d | %12d | %8.2f (%s)%s\n",
+                  param_name,
+                  q_level*100, acc_level*100,
+                  values["M"], values["N"], values["Nmin"],
+                  dependence_factor, dependency_status, status_marker))
+    }
+
+    # Check if any parameter needs more samples
+    max_required <- max(raftery_result$resmatrix[, "N"])
+    if(n_chain < max_required) {
+      cat("===============================================================================================================\n")
+      cat(sprintf("WARNING: Current chain size (%d) is smaller than recommended (%d)\n",
+                  n_chain, max_required))
+      cat("* Marked parameters may need longer chains for reliable estimates\n")
+      cat(sprintf("Recommendation: Increase chain size to at least %d samples\n", max_required))
+    }
+
   } else {
-    raftery_pass <- FALSE
-    raftery_status <- "N/A"
+    # If all attempts fail, provide alternative analysis
+    cat("Unable to compute Raftery-Lewis diagnostic with current chain size.\n")
+    cat("This typically indicates that the chain size is insufficient for the desired precision.\n")
+    cat("==============================================================================================================\n")
+
+    # Provide alternative chain size recommendations
+    cat("\nAlternative Chain Size Assessment:\n")
+    cat("=====================================\n")
+
+    # Simple rule-of-thumb recommendations
+    min_recommended <- 1000
+    good_size <- 5000
+    excellent_size <- 10000
+
+    current_status <- ifelse(n_chain >= excellent_size, "EXCELLENT",
+                             ifelse(n_chain >= good_size, "GOOD",
+                                    ifelse(n_chain >= min_recommended, "ADEQUATE", "INSUFFICIENT")))
+
+    cat(sprintf("Current chain size: %d (%s)\n", n_chain, current_status))
+    cat(sprintf("Minimum recommended: %d\n", min_recommended))
+    cat(sprintf("Good size: %d\n", good_size))
+    cat(sprintf("Excellent size: %d\n", excellent_size))
+
+    if(n_chain < min_recommended) {
+      cat(sprintf("\nRECOMMENDATION: Increase chain size to at least %d\n", min_recommended))
+    }
   }
 
-  # Overall assessment (only count available tests)
-  available_tests <- c(geweke_pass, heidel_pass)
-  if(raftery_success) available_tests <- c(available_tests, raftery_pass)
+  cat("==============================================================================================================\n")
+  cat("Note: Dependence factor (I) < 5 indicates good mixing; I > 5 suggests high autocorrelation\n\n")
 
-  tests_passed <- sum(available_tests)
-  total_tests <- length(available_tests)
+  # 5. Summary Assessment Table with Raftery-Lewis handling
+  cat("5. Overall Convergence Assessment:\n")
+  cat("=========================================================================================\n")
+  cat("Parameter   |     ESS |   Efficiency | Geweke | Heidelberg | Raftery-Lewis |     Overall\n")
+  cat("=========================================================================================\n")
 
-  overall_status <- ifelse(tests_passed == total_tests, "EXCELLENT",
-                           ifelse(tests_passed >= total_tests * 0.75, "GOOD",
-                                  ifelse(tests_passed >= total_tests * 0.5, "ACCEPTABLE", "POOR")))
+  for(i in 1:length(heidel_names)) {
+    param <- heidel_names[i]
+    ess_val <- effective_sample_sizes[param]
+    efficiency <- 100 * ess_val / n_chain
 
-  cat(sprintf("%-11s | %7.1f | %11.1f%% | %6s | %10s | %13s | %11s\n",
-              param, ess_val, efficiency,
-              ifelse(geweke_pass, "PASS", "FAIL"),
-              ifelse(heidel_pass, "PASS", "FAIL"),
-              raftery_status,
-              overall_status))
-}
-cat("=========================================================================================\n")
+    # Get individual test results
+    geweke_pass <- abs(geweke_results[[param]]$z) < 1.96
+    heidel_result <- coda::heidel.diag(heidel_params[[i]])
+    heidel_pass <- heidel_result[1,1] && heidel_result[1,3]
 
-# Additional guidance for chain size optimization
-cat("\n=== CHAIN SIZE OPTIMIZATION GUIDANCE ===\n")
-cat("Current Configuration:\n")
-cat(sprintf("- Burn-in: %d\n", burnin))
-cat(sprintf("- Thinning: %d\n", thinning))
-cat(sprintf("- Chain size: %d\n", n_chain))
-cat(sprintf("- Total iterations: %d\n", n_iter))
+    # Raftery-Lewis assessment
+    if(raftery_success && !is.null(raftery_result)) {
+      dependence_factor <- raftery_result$resmatrix[i, "I"]
+      raftery_pass <- dependence_factor < 5 && n_chain >= raftery_result$resmatrix[i, "N"]
+      raftery_status <- ifelse(raftery_pass, "PASS", "FAIL")
+    } else {
+      raftery_pass <- FALSE
+      raftery_status <- "N/A"
+    }
 
-if(raftery_success && !is.null(raftery_result)) {
-  max_burnin <- max(raftery_result$resmatrix[, "M"])
-  max_total <- max(raftery_result$resmatrix[, "N"])
+    # Overall assessment (only count available tests)
+    available_tests <- c(geweke_pass, heidel_pass)
+    if(raftery_success) available_tests <- c(available_tests, raftery_pass)
 
-  cat("\nRaftery-Lewis Recommendations:\n")
-  cat(sprintf("- Recommended burn-in: %d\n", max_burnin))
-  cat(sprintf("- Recommended total samples: %d\n", max_total))
+    tests_passed <- sum(available_tests)
+    total_tests <- length(available_tests)
 
-  if(n_chain < max_total) {
-    suggested_iterations <- max_burnin + (max_total - 1) * thinning + 1
-    cat(sprintf("- Suggested total iterations: %d\n", suggested_iterations))
-    cat(sprintf("- Increase factor: %.1fx current size\n", max_total / n_chain))
+    overall_status <- ifelse(tests_passed == total_tests, "EXCELLENT",
+                             ifelse(tests_passed >= total_tests * 0.75, "GOOD",
+                                    ifelse(tests_passed >= total_tests * 0.5, "ACCEPTABLE", "POOR")))
+
+    cat(sprintf("%-11s | %7.1f | %11.1f%% | %6s | %10s | %13s | %11s\n",
+                param, ess_val, efficiency,
+                ifelse(geweke_pass, "PASS", "FAIL"),
+                ifelse(heidel_pass, "PASS", "FAIL"),
+                raftery_status,
+                overall_status))
   }
+  cat("=========================================================================================\n")
+
+  # Additional guidance for chain size optimization
+  cat("\n=== CHAIN SIZE OPTIMIZATION GUIDANCE ===\n")
+  cat("Current Configuration:\n")
+  cat(sprintf("- Burn-in: %d\n", burnin))
+  cat(sprintf("- Thinning: %d\n", thinning))
+  cat(sprintf("- Chain size: %d\n", n_chain))
+  cat(sprintf("- Total iterations: %d\n", n_iter))
+
+  if(raftery_success && !is.null(raftery_result)) {
+    max_burnin <- max(raftery_result$resmatrix[, "M"])
+    max_total <- max(raftery_result$resmatrix[, "N"])
+
+    cat("\nRaftery-Lewis Recommendations:\n")
+    cat(sprintf("- Recommended burn-in: %d\n", max_burnin))
+    cat(sprintf("- Recommended total samples: %d\n", max_total))
+
+    if(n_chain < max_total) {
+      suggested_iterations <- max_burnin + (max_total - 1) * thinning + 1
+      cat(sprintf("- Suggested total iterations: %d\n", suggested_iterations))
+      cat(sprintf("- Increase factor: %.1fx current size\n", max_total / n_chain))
+    }
+  }
+
+  cat("\nGeneral Recommendations:\n")
+  cat("- ESS > 400 for reliable posterior estimates\n")
+  cat("- ESS > 100 for basic convergence assessment\n")
+  cat("- Efficiency > 10% indicates reasonable mixing\n")
+  cat("- Consider increasing thinning if autocorrelation is high\n\n")
+} else {
+  cat("Note: Install 'coda' package for enhanced convergence diagnostics.\n\n")
 }
-
-cat("\nGeneral Recommendations:\n")
-cat("- ESS > 400 for reliable posterior estimates\n")
-cat("- ESS > 100 for basic convergence assessment\n")
-cat("- Efficiency > 10% indicates reasonable mixing\n")
-cat("- Consider increasing thinning if autocorrelation is high\n\n")
-
-# 6. Chain Quality Metrics
-cat("6. Chain Quality Metrics:\n")
-cat("===========================================================\n")
-cat("Metric                    | theta_01 |   prec_1 |   prec_y\n")
-cat("===========================================================\n")
-
-# Calculate additional metrics
-theta_metrics <- c(mean(theta_01_chain), sd(theta_01_chain), sd(theta_01_chain) / sqrt(length(theta_01_chain)))
-prec1_metrics <- c(mean(prec_1_chain), sd(prec_1_chain), sd(prec_1_chain) / sqrt(length(prec_1_chain)))
-precy_metrics <- c(mean(prec_y_chain), sd(prec_y_chain), sd(prec_y_chain) / sqrt(length(prec_y_chain)))
-
-cat(sprintf("Posterior Mean            | %8.4f | %8.4f | %8.4f\n",
-            theta_metrics[1], prec1_metrics[1], precy_metrics[1]))
-cat(sprintf("Posterior SD              | %8.4f | %8.4f | %8.4f\n",
-            theta_metrics[2], prec1_metrics[2], precy_metrics[2]))
-cat(sprintf("Monte Carlo SE            | %8.4f | %8.4f | %8.4f\n",
-            theta_metrics[3], prec1_metrics[3], precy_metrics[3]))
-cat("===========================================================\n")
-cat("Note: Monte Carlo SE measures the precision of posterior mean estimates\n\n")
 
 # --- 9. Organized Visualization by Parameter Categories ---
 cat("=== GENERATING ORGANIZED VISUALIZATIONS ===\n\n")

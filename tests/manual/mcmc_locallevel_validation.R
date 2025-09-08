@@ -49,9 +49,9 @@ theta1_true <- cumsum(c(theta0_true, u1))[-1]
 y <- theta1_true + e
 
 # --- 2. MCMC Configuration ---
-burnin   <- 1
+burnin   <- 1000
 thinning <- 1
-n_chain  <- 3800
+n_chain  <- 1000
 # Use the same formula as the C implementation
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
@@ -518,6 +518,8 @@ if (requireNamespace("coda", quietly = TRUE)) {
   # Error handling for Raftery-Lewis diagnostic
   raftery_success <- FALSE
   raftery_result <- NULL
+  q_level_used <- NA
+  acc_level_used <- NA
 
   # Try different accuracy levels if the original fails
   accuracy_levels <- c(0.005, 0.01, 0.02, 0.05)
@@ -527,17 +529,24 @@ if (requireNamespace("coda", quietly = TRUE)) {
     for(acc_level in accuracy_levels) {
       tryCatch({
         raftery_result <- coda::raftery.diag(all_chains, q=q_level, r=acc_level, s=0.95)
-        raftery_success <- TRUE
-        cat(sprintf("Note: Using quantile=%.3f, accuracy=%.3f for analysis\n", q_level, acc_level))
-        break
+        # Verificação robusta: matriz válida E com linhas
+        raftery_success <- ifelse(is.matrix(raftery_result$resmatrix) &&
+                                    nrow(raftery_result$resmatrix) > 0, TRUE, FALSE)
+        if(raftery_success) {
+          q_level_used <- q_level
+          acc_level_used <- acc_level
+          cat(sprintf("Note: Using quantile=%.3f, accuracy=%.3f for analysis\n", q_level, acc_level))
+          break
+        }
       }, error = function(e) {
-        # Continue to next accuracy level
+        # Continue to next accuracy level silently
+        # Uncomment for debugging: cat(sprintf("Failed with q=%.3f, r=%.3f: %s\n", q_level, acc_level, e$message))
       })
     }
     if(raftery_success) break
   }
 
-  if(raftery_success && !is.null(raftery_result)) {
+  if(raftery_success && !is.null(raftery_result) && is.matrix(raftery_result$resmatrix) && nrow(raftery_result$resmatrix) > 0) {
     for(i in 1:nrow(raftery_result$resmatrix)) {
       param_name <- rownames(raftery_result$resmatrix)[i]
       values <- raftery_result$resmatrix[i, ]
@@ -551,7 +560,7 @@ if (requireNamespace("coda", quietly = TRUE)) {
 
       cat(sprintf("%-11s |    %.1f%% |     %.1f%% |         95%% | %11d | %9d | %12d | %8.2f (%s)%s\n",
                   param_name,
-                  q_level*100, acc_level*100,
+                  q_level_used*100, acc_level_used*100,
                   values["M"], values["N"], values["Nmin"],
                   dependence_factor, dependency_status, status_marker))
     }
@@ -567,9 +576,19 @@ if (requireNamespace("coda", quietly = TRUE)) {
     }
 
   } else {
-    # If all attempts fail, provide alternative analysis
-    cat("Unable to compute Raftery-Lewis diagnostic with current chain size.\n")
-    cat("This typically indicates that the chain size is insufficient for the desired precision.\n")
+    # Enhanced fallback with specific diagnostic messages
+    cat("Unable to compute Raftery-Lewis diagnostic.\n")
+    if(!is.null(raftery_result)) {
+      if(!is.matrix(raftery_result$resmatrix)) {
+        cat("Diagnostic returned non-matrix results, indicating potential convergence issues.\n")
+      } else if(nrow(raftery_result$resmatrix) == 0) {
+        cat("Diagnostic returned empty results, likely due to insufficient chain size.\n")
+      } else {
+        cat("Unexpected diagnostic structure returned.\n")
+      }
+    } else {
+      cat("This typically indicates that the chain size is insufficient for the desired precision.\n")
+    }
     cat("==============================================================================================================\n")
 
     # Provide alternative chain size recommendations

@@ -71,9 +71,9 @@ for (t in 2:n) {
 y <- theta1_true + e
 
 # --- 2. MCMC Configuration ---
-burnin   <- 20000
-thinning <- 50
-n_chain  <- 1000
+burnin   <- 1000
+thinning <- 1
+n_chain  <- 5000
 # Use the same formula as the C implementation
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
@@ -341,51 +341,52 @@ prec_3_stats   <- compute_summary_stats(prec_3_chain, prec3_true)
 prec_y_stats   <- compute_summary_stats(prec_y_chain, prec_y_true)
 
 cat("Enhanced Summary of Posterior Estimates:\n")
-cat("================================================================================\n")
-cat("Parameter   | True Value | Median Est | Post SD  | 95% CI        | Coverage | Rel Err | Abs Err\n")
-cat("================================================================================\n")
-cat(sprintf("theta_01    | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
-            theta01_true, theta_01_stats$median, theta_01_stats$sd,
+cat("=========================================================================================================================\n")
+cat("Parameter   | True Value | Median Est |  Post SD | Monte Carlo SE |               95% CI | Coverage |  Rel Err | Abs Err\n")
+cat("=========================================================================================================================\n")
+cat(sprintf("theta_01    | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %7.2f%% | %7.4f\n",
+            theta01_true, theta_01_stats$median, theta_01_stats$sd, theta_01_stats$sd / sqrt(n_chain),
             theta_01_stats$ci_lower, theta_01_stats$ci_upper,
             ifelse(theta_01_stats$coverage, "YES", "NO"),
             theta_01_stats$rel_error, theta_01_stats$abs_error))
-cat(sprintf("theta_02    | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
-            theta02_true, theta_02_stats$median, theta_02_stats$sd,
+cat(sprintf("theta_02    | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %7.2f%% | %7.4f\n",
+            theta02_true, theta_02_stats$median, theta_02_stats$sd, theta_02_stats$sd / sqrt(n_chain),
             theta_02_stats$ci_lower, theta_02_stats$ci_upper,
             ifelse(theta_02_stats$coverage, "YES", "NO"),
             theta_02_stats$rel_error, theta_02_stats$abs_error))
-cat(sprintf("theta_03    | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
-            theta03_true, theta_03_stats$median, theta_03_stats$sd,
+cat(sprintf("theta_03    | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %7.2f%% | %7.4f\n",
+            theta03_true, theta_03_stats$median, theta_03_stats$sd, theta_03_stats$sd / sqrt(n_chain),
             theta_03_stats$ci_lower, theta_03_stats$ci_upper,
             ifelse(theta_03_stats$coverage, "YES", "NO"),
             theta_03_stats$rel_error, theta_03_stats$abs_error))
-cat(sprintf("prec_1      | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
-            prec1_true, prec_1_stats$median, prec_1_stats$sd,
+cat(sprintf("prec_1      | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %7.2f%% | %7.4f\n",
+            prec1_true, prec_1_stats$median, prec_1_stats$sd, prec_1_stats$sd / sqrt(n_chain),
             prec_1_stats$ci_lower, prec_1_stats$ci_upper,
             ifelse(prec_1_stats$coverage, "YES", "NO"),
             prec_1_stats$rel_error, prec_1_stats$abs_error))
-cat(sprintf("prec_2      | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
-            prec2_true, prec_2_stats$median, prec_2_stats$sd,
+cat(sprintf("prec_2      | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %7.2f%% | %7.4f\n",
+            prec2_true, prec_2_stats$median, prec_2_stats$sd, prec_2_stats$sd / sqrt(n_chain),
             prec_2_stats$ci_lower, prec_2_stats$ci_upper,
             ifelse(prec_2_stats$coverage, "YES", "NO"),
             prec_2_stats$rel_error, prec_2_stats$abs_error))
-cat(sprintf("prec_3      | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
-            prec3_true, prec_3_stats$median, prec_3_stats$sd,
+cat(sprintf("prec_3      | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %7.2f%% | %7.4f\n",
+            prec3_true, prec_3_stats$median, prec_3_stats$sd, prec_3_stats$sd / sqrt(n_chain),
             prec_3_stats$ci_lower, prec_3_stats$ci_upper,
             ifelse(prec_3_stats$coverage, "YES", "NO"),
             prec_3_stats$rel_error, prec_3_stats$abs_error))
-cat(sprintf("prec_y      | %10.4f | %10.4f | %8.4f | [%6.4f,%6.4f] | %8s | %6.2f%% | %7.4f\n",
-            prec_y_true, prec_y_stats$median, prec_y_stats$sd,
+cat(sprintf("prec_y      | %10.4f | %10.4f | %8.4f | %14.4f | [%8.4f, %8.4f] | %8s | %7.2f%% | %7.4f\n",
+            prec_y_true, prec_y_stats$median, prec_y_stats$sd, prec_y_stats$sd / sqrt(n_chain),
             prec_y_stats$ci_lower, prec_y_stats$ci_upper,
             ifelse(prec_y_stats$coverage, "YES", "NO"),
             prec_y_stats$rel_error, prec_y_stats$abs_error))
-cat("================================================================================\n\n")
+cat("=========================================================================================================================\n")
+cat("Note: Monte Carlo SE measures the precision of posterior mean estimates\n\n")
 
 # Additional quantile information
 cat("Detailed Posterior Quantiles:\n")
-cat("======================================================\n")
-cat("Parameter   |   2.5%   |  25%     |  50%     |  75%     |  97.5%\n")
-cat("======================================================\n")
+cat("===================================================================\n")
+cat("Parameter   |     2.5% |      25% |      50% |      75% |    97.5%\n")
+cat("===================================================================\n")
 theta_01_quantiles <- quantile(theta_01_chain, c(0.025, 0.25, 0.5, 0.75, 0.975))
 theta_02_quantiles <- quantile(theta_02_chain, c(0.025, 0.25, 0.5, 0.75, 0.975))
 theta_03_quantiles <- quantile(theta_03_chain, c(0.025, 0.25, 0.5, 0.75, 0.975))
@@ -415,7 +416,7 @@ cat(sprintf("prec_3      | %8.4f | %8.4f | %8.4f | %8.4f | %8.4f\n",
 cat(sprintf("prec_y      | %8.4f | %8.4f | %8.4f | %8.4f | %8.4f\n",
             prec_y_quantiles[1], prec_y_quantiles[2], prec_y_quantiles[3],
             prec_y_quantiles[4], prec_y_quantiles[5]))
-cat("======================================================\n\n")
+cat("===================================================================\n\n")
 
 # --- 7. Latent State Analysis for theta_1, theta_2 and theta_3 ---
 
@@ -432,13 +433,13 @@ theta_3_estimate <- apply(theta_3_chain, 2, median)
 theta_3_ci_lower <- apply(theta_3_chain, 2, quantile, 0.025)
 theta_3_ci_upper <- apply(theta_3_chain, 2, quantile, 0.975)
 
-# Function to analyze each latent state
+# Function to analyze latent state
 analyze_latent_state <- function(true_values, estimates, ci_lower, ci_upper, chain, state_name) {
   cat(sprintf("=== %s ANALYSIS ===\n\n", toupper(state_name)))
 
   # 1. Segmental Analysis
   cat("1. Analysis by Temporal Segments:\n")
-  cat("==========================================\n")
+  cat("=========================================================================================\n")
   n_segments <- 5
   segment_size <- n %/% n_segments
   segment_stats <- data.frame(
@@ -464,26 +465,26 @@ analyze_latent_state <- function(true_values, estimates, ci_lower, ci_upper, cha
     segment_stats$RMSE[i] <- sqrt(mean((estimates[start_idx:end_idx] - true_values[start_idx:end_idx])^2))
   }
 
-  cat("Segment |  Time Range  | True Mean | Est Mean | Est SD  | Coverage | RMSE\n")
-  cat("========================================================================\n")
+  cat("Segment |   Time Range |    True Mean |     Est Mean |     Est SD |  Coverage |    RMSE\n")
+  cat("=========================================================================================\n")
   for (i in 1:n_segments) {
-    cat(sprintf("%7d | %12s | %9.4f | %8.4f | %7.4f | %8.2f%% | %6.4f\n",
+    cat(sprintf("%7d | %12s | %12.4f | %12.4f | %10.4f | %8.2f%% | %7.4f\n",
                 segment_stats$Segment[i], segment_stats$Time_Range[i],
                 segment_stats$True_Mean[i], segment_stats$Est_Mean[i],
                 segment_stats$Est_SD[i], 100*segment_stats$Coverage_95[i],
                 segment_stats$RMSE[i]))
   }
-  cat("========================================================================\n\n")
+  cat("=========================================================================================\n\n")
 
   # 2. Global Quality Metrics
   cat("2. Global Quality Metrics:\n")
-  cat("======================================\n")
+  cat("==============================\n")
   abs_errors <- abs(estimates - true_values)
   rel_errors <- abs_errors / abs(true_values)
   coverage <- (true_values >= ci_lower) & (true_values <= ci_upper)
 
   global_metrics <- data.frame(
-    Metric = c("RMSE", "MAE", "MAPE (%)", "Coverage_95 (%)", "Correlation", "R²"),
+    Metric = c("RMSE", "MAE", "MAPE (%)", "Coverage_95 (%)", "Correlation", "R^2"),
     Value = c(
       sqrt(mean((estimates - true_values)^2)),
       mean(abs(estimates - true_values)),
@@ -494,16 +495,16 @@ analyze_latent_state <- function(true_values, estimates, ci_lower, ci_upper, cha
     )
   )
 
-  cat("Metric           | Value\n")
-  cat("=========================\n")
+  cat("Metric          |      Value\n")
+  cat("==============================\n")
   for (i in 1:nrow(global_metrics)) {
     cat(sprintf("%-15s | %10.6f\n", global_metrics$Metric[i], global_metrics$Value[i]))
   }
-  cat("=========================\n\n")
+  cat("==============================\n\n")
 
   # 3. Outliers and Problematic Points
   cat("3. Outliers and Problematic Points:\n")
-  cat("===================================\n")
+  cat("==================================================================================\n")
   worst_abs_idx <- order(abs_errors, decreasing=TRUE)[1:10]
   worst_rel_idx <- order(rel_errors, decreasing=TRUE)[1:10]
   coverage_failures <- which(!coverage)
@@ -530,19 +531,19 @@ analyze_latent_state <- function(true_values, estimates, ci_lower, ci_upper, cha
     )
   )
 
-  cat("Category            | Count | Mean Error | Max Error  | First 5 Points\n")
-  cat("=====================================================================\n")
+  cat("Category             | Count | Mean Error |  Max Error |          First 5 Points\n")
+  cat("==================================================================================\n")
   for (i in 1:nrow(outlier_analysis)) {
-    cat(sprintf("%-18s | %5d | %10.6f | %10.6f | %s\n",
+    cat(sprintf("%-20s | %5d | %10.6f | %10.6f | %s\n",
                 outlier_analysis$Category[i], outlier_analysis$Count[i],
                 outlier_analysis$Mean_Error[i], outlier_analysis$Max_Error[i],
                 outlier_analysis$First_5_Points[i]))
   }
-  cat("=====================================================================\n\n")
+  cat("=================================================================================\n\n")
 
   # 4. Temporal Autocorrelation Analysis
   cat("4. Temporal Autocorrelation Analysis:\n")
-  cat("====================================\n")
+  cat("======================================\n")
   max_lag <- 10
   lag_analysis <- data.frame(
     Lag = 1:max_lag,
@@ -557,18 +558,18 @@ analyze_latent_state <- function(true_values, estimates, ci_lower, ci_upper, cha
     })
   )
 
-  cat("Lag | True ACF | Est ACF  | Error ACF\n")
-  cat("===================================\n")
+  cat("Lag | True ACF |  Est ACF | Error ACF\n")
+  cat("======================================\n")
   for (i in 1:nrow(lag_analysis)) {
     cat(sprintf("%3d | %8.4f | %8.4f | %9.4f\n",
                 lag_analysis$Lag[i], lag_analysis$True_ACF[i],
                 lag_analysis$Est_ACF[i], lag_analysis$Error_ACF[i]))
   }
-  cat("===================================\n\n")
+  cat("======================================\n\n")
 
   # 5. Effective Sample Size by Time Points
   cat("5. Effective Sample Size by Time Points:\n")
-  cat("========================================\n")
+  cat("====================================\n")
   time_points <- seq(1, n, length.out = 10)
   ess_by_time <- sapply(time_points, function(t) {
     t_idx <- round(t)
@@ -583,14 +584,14 @@ analyze_latent_state <- function(true_values, estimates, ci_lower, ci_upper, cha
     Efficiency = round(100 * ess_by_time / n_chain, 1)
   )
 
-  cat("Time Point | ESS  | Efficiency (%)\n")
-  cat("===============================\n")
+  cat("Time Point |   ESS | Efficiency (%)\n")
+  cat("====================================\n")
   for (i in 1:nrow(ess_time_analysis)) {
-    cat(sprintf("%10d | %4d | %12.1f\n",
+    cat(sprintf("%10d | %5d | %9.1f\n",
                 ess_time_analysis$Time_Point[i], ess_time_analysis$ESS[i],
                 ess_time_analysis$Efficiency[i]))
   }
-  cat("===============================\n")
+  cat("====================================\n")
 
   ess_min <- round(min(ess_by_time[is.finite(ess_by_time)]))
   ess_max <- round(max(ess_by_time[is.finite(ess_by_time)]))
@@ -609,22 +610,36 @@ analyze_latent_state(theta3_true, theta_3_estimate, theta_3_ci_lower, theta_3_ci
 # --- 8. Enhanced Convergence Diagnostics ---
 cat("=== ENHANCED CONVERGENCE DIAGNOSTICS ===\n\n")
 
-# Basic Effective Sample Size (as before)
-cat("Basic Effective Sample Size:\n")
-cat("============================\n")
+# Calculate effective sample sizes OUTSIDE the functions (global scope)
 effective_sample_sizes <- sapply(list(theta_01_chain, theta_02_chain, theta_03_chain, prec_1_chain, prec_2_chain, prec_3_chain, prec_y_chain),
                                  function(x) {
                                    acf_vals <- acf(x, plot=FALSE, lag.max=min(100, length(x)/4))$acf[-1]
                                    max(1, length(x) / (1 + 2 * sum(acf_vals[acf_vals > 0])))
                                  })
 names(effective_sample_sizes) <- c("theta_01", "theta_02", "theta_03", "prec_1", "prec_2", "prec_3", "prec_y")
+
+# 1. Basic Effective Sample Size - Improved Table
+cat("1. Effective Sample Size Analysis:\n")
+cat("==========================================================================\n")
+cat("Parameter   |   Chain Size |        ESS |  Efficiency (%) |       Status\n")
+cat("==========================================================================\n")
+
 for(i in 1:length(effective_sample_sizes)) {
-  cat(sprintf("%-10s: %6.1f (%5.1f%% efficiency)\n",
+  efficiency <- 100 * effective_sample_sizes[i] / n_chain
+  status <- ifelse(efficiency > 50, "EXCELLENT",
+                   ifelse(efficiency > 25, "GOOD",
+                          ifelse(efficiency > 10, "ACCEPTABLE", "POOR")))
+
+  cat(sprintf("%-11s | %12d | %10.1f | %15.1f | %12s\n",
               names(effective_sample_sizes)[i],
+              n_chain,
               effective_sample_sizes[i],
-              100 * effective_sample_sizes[i] / n_chain))
+              efficiency,
+              status))
 }
-cat("\n")
+cat("==========================================================================\n")
+cat(sprintf("Overall Assessment: Min ESS = %.1f, Mean ESS = %.1f\n\n",
+            min(effective_sample_sizes), mean(effective_sample_sizes)))
 
 # Enhanced diagnostics if coda package is available
 if (requireNamespace("coda", quietly = TRUE)) {
@@ -633,62 +648,240 @@ if (requireNamespace("coda", quietly = TRUE)) {
   theta_01_mcmc <- coda::mcmc(theta_01_chain)
   theta_02_mcmc <- coda::mcmc(theta_02_chain)
   theta_03_mcmc <- coda::mcmc(theta_03_chain)
-  prec_chains_mcmc <- coda::mcmc(cbind(prec_1_chain, prec_2_chain, prec_3_chain, prec_y_chain))
+  prec_1_mcmc <- coda::mcmc(prec_1_chain)
+  prec_2_mcmc <- coda::mcmc(prec_2_chain)
+  prec_3_mcmc <- coda::mcmc(prec_3_chain)
+  prec_y_mcmc <- coda::mcmc(prec_y_chain)
 
-  # Geweke Diagnostic
-  cat("Geweke Convergence Diagnostic (|z-score| < 2 indicates convergence):\n")
-  cat("====================================================================\n")
+  # 2. Geweke Convergence Diagnostic - Improved Table
+  cat("2. Geweke Convergence Diagnostic:\n")
+  cat("=============================================================================\n")
+  cat("Parameter   |    Z-Score |  |Z| < 2.0 |      Status |       Interpretation\n")
+  cat("=============================================================================\n")
+
   geweke_results <- list(
     theta_01 = coda::geweke.diag(theta_01_mcmc),
     theta_02 = coda::geweke.diag(theta_02_mcmc),
     theta_03 = coda::geweke.diag(theta_03_mcmc),
-    prec_1 = coda::geweke.diag(coda::mcmc(prec_1_chain)),
-    prec_2 = coda::geweke.diag(coda::mcmc(prec_2_chain)),
-    prec_3 = coda::geweke.diag(coda::mcmc(prec_3_chain)),
-    prec_y = coda::geweke.diag(coda::mcmc(prec_y_chain))
+    prec_1 = coda::geweke.diag(prec_1_mcmc),
+    prec_2 = coda::geweke.diag(prec_2_mcmc),
+    prec_3 = coda::geweke.diag(prec_3_mcmc),
+    prec_y = coda::geweke.diag(prec_y_mcmc)
   )
 
   for(param in names(geweke_results)) {
     z_score <- geweke_results[[param]]$z
-    status <- ifelse(abs(z_score) < 2, "PASS", "FAIL")
-    cat(sprintf("%-10s: z = %7.3f (%s)\n", param, z_score, status))
+    abs_z <- abs(z_score)
+    status <- ifelse(abs_z < 1.96, "PASS", "FAIL")
+    interpretation <- ifelse(abs_z < 1.96, "Converged",
+                             ifelse(abs_z < 2.58, "Marginal", "Not Converged"))
+
+    cat(sprintf("%-11s | %10.4f | %10s | %11s | %17s\n",
+                param, z_score,
+                ifelse(abs_z < 2.0, "YES", "NO"),
+                status, interpretation))
   }
-  cat("\n")
+  cat("=============================================================================\n")
+  cat("Note: |Z-score| < 1.96 indicates convergence at 95% confidence level\n\n")
 
-  # Heidelberger-Welch Test
-  cat("Heidelberger-Welch Stationarity and Halfwidth Tests:\n")
-  cat("====================================================\n")
-  cat("Parameter   | Stationarity | Start | Halfwidth | Mean\n")
-  cat("====================================================\n")
+  # 3. Heidelberger-Welch Test - Improved Table
+  cat("3. Heidelberger-Welch Stationarity and Halfwidth Tests:\n")
+  cat("=====================================================================================\n")
+  cat("Parameter   | Stationarity | Start Iter |  Halfwidth |     Mean |    Status Summary\n")
+  cat("=====================================================================================\n")
 
-  heidel_params <- list(theta_01_mcmc, theta_02_mcmc, theta_03_mcmc,
-                        coda::mcmc(prec_1_chain), coda::mcmc(prec_2_chain),
-                        coda::mcmc(prec_3_chain), coda::mcmc(prec_y_chain))
+  heidel_params <- list(theta_01_mcmc, theta_02_mcmc, theta_03_mcmc, prec_1_mcmc, prec_2_mcmc, prec_3_mcmc, prec_y_mcmc)
   heidel_names <- c("theta_01", "theta_02", "theta_03", "prec_1", "prec_2", "prec_3", "prec_y")
 
   for(i in 1:length(heidel_params)) {
     result <- coda::heidel.diag(heidel_params[[i]])
-    cat(sprintf("%-10s | %11s | %5d | %9s | %8.4f\n",
+    stationarity_status <- ifelse(result[1,1], "PASS", "FAIL")
+    halfwidth_status <- ifelse(result[1,3], "PASS", "FAIL")
+    overall_status <- ifelse(result[1,1] && result[1,3], "CONVERGED", "CHECK NEEDED")
+
+    cat(sprintf("%-11s | %12s | %10d | %10s | %8.4f | %15s\n",
                 heidel_names[i],
-                ifelse(result[1,1], "PASS", "FAIL"),
+                stationarity_status,
                 result[1,2],
-                ifelse(result[1,3], "PASS", "FAIL"),
-                result[1,4]))
+                halfwidth_status,
+                result[1,4],
+                overall_status))
   }
-  cat("\n")
+  cat("=====================================================================================\n")
+  cat("Note: Both Stationarity and Halfwidth tests should PASS for reliable convergence\n\n")
 
-  # Raftery-Lewis Diagnostic (for selected parameters)
-  cat("Raftery-Lewis Diagnostic (for selected parameters):\n")
-  cat("===================================================\n")
-  raftery_params <- list(theta_01_mcmc, theta_02_mcmc, theta_03_mcmc)
-  raftery_names <- c("theta_01", "theta_02", "theta_03")
+  # 4. Raftery-Lewis Diagnostic - Organized Table with Error Handling
+  cat("4. Raftery-Lewis Diagnostic (Burn-in and Sample Size Requirements):\n")
+  cat("===============================================================================================================\n")
+  cat("Parameter   | Quantile | Accuracy | Probability | Burn-in (M) | Total (N) | Lower (Nmin) |     Dependence\n")
+  cat("===============================================================================================================\n")
 
-  for(i in 1:length(raftery_params)) {
-    cat(paste0("--- ", raftery_names[i], " ---\n"))
-    print(coda::raftery.diag(raftery_params[[i]]))
-    cat("\n")
+  # Combine all parameters for Raftery-Lewis
+  all_chains <- cbind("theta_01" = theta_01_mcmc,
+                      "theta_02" = theta_02_mcmc,
+                      "theta_03" = theta_03_mcmc,
+                      "prec_1" = prec_1_mcmc,
+                      "prec_2" = prec_2_mcmc,
+                      "prec_3" = prec_3_mcmc,
+                      "prec_y" = prec_y_mcmc)
+
+  # Error handling for Raftery-Lewis diagnostic
+  raftery_success <- FALSE
+  raftery_result <- NULL
+
+  # Try different accuracy levels if the original fails
+  accuracy_levels <- c(0.005, 0.01, 0.02, 0.05)
+  quantile_levels <- c(0.025, 0.05, 0.1)
+
+  for(q_level in quantile_levels) {
+    for(acc_level in accuracy_levels) {
+      tryCatch({
+        raftery_result <- coda::raftery.diag(all_chains, q=q_level, r=acc_level, s=0.95)
+        raftery_success <- TRUE
+        cat(sprintf("Note: Using quantile=%.3f, accuracy=%.3f for analysis\n", q_level, acc_level))
+        break
+      }, error = function(e) {
+        # Continue to next accuracy level
+      })
+    }
+    if(raftery_success) break
   }
 
+  if(raftery_success && !is.null(raftery_result)) {
+    for(i in 1:nrow(raftery_result$resmatrix)) {
+      param_name <- rownames(raftery_result$resmatrix)[i]
+      values <- raftery_result$resmatrix[i, ]
+      dependence_factor <- values["I"]
+      dependency_status <- ifelse(dependence_factor < 5, "Low",
+                                  ifelse(dependence_factor < 10, "Moderate", "High"))
+
+      # Check if current chain size meets requirements
+      chain_adequate <- n_chain >= values["N"]
+      status_marker <- ifelse(chain_adequate, "", " *")
+
+      cat(sprintf("%-11s |    %.1f%% |     %.1f%% |         95%% | %11d | %9d | %12d | %8.2f (%s)%s\n",
+                  param_name,
+                  q_level*100, acc_level*100,
+                  values["M"], values["N"], values["Nmin"],
+                  dependence_factor, dependency_status, status_marker))
+    }
+
+    # Check if any parameter needs more samples
+    max_required <- max(raftery_result$resmatrix[, "N"])
+    if(n_chain < max_required) {
+      cat("===============================================================================================================\n")
+      cat(sprintf("WARNING: Current chain size (%d) is smaller than recommended (%d)\n",
+                  n_chain, max_required))
+      cat("* Marked parameters may need longer chains for reliable estimates\n")
+      cat(sprintf("Recommendation: Increase chain size to at least %d samples\n", max_required))
+    }
+
+  } else {
+    # If all attempts fail, provide alternative analysis
+    cat("Unable to compute Raftery-Lewis diagnostic with current chain size.\n")
+    cat("This typically indicates that the chain size is insufficient for the desired precision.\n")
+    cat("==============================================================================================================\n")
+
+    # Provide alternative chain size recommendations
+    cat("\nAlternative Chain Size Assessment:\n")
+    cat("=====================================\n")
+
+    # Simple rule-of-thumb recommendations
+    min_recommended <- 1000
+    good_size <- 5000
+    excellent_size <- 10000
+
+    current_status <- ifelse(n_chain >= excellent_size, "EXCELLENT",
+                             ifelse(n_chain >= good_size, "GOOD",
+                                    ifelse(n_chain >= min_recommended, "ADEQUATE", "INSUFFICIENT")))
+
+    cat(sprintf("Current chain size: %d (%s)\n", n_chain, current_status))
+    cat(sprintf("Minimum recommended: %d\n", min_recommended))
+    cat(sprintf("Good size: %d\n", good_size))
+    cat(sprintf("Excellent size: %d\n", excellent_size))
+
+    if(n_chain < min_recommended) {
+      cat(sprintf("\nRECOMMENDATION: Increase chain size to at least %d\n", min_recommended))
+    }
+  }
+
+  cat("==============================================================================================================\n")
+  cat("Note: Dependence factor (I) < 5 indicates good mixing; I > 5 suggests high autocorrelation\n\n")
+
+  # 5. Summary Assessment Table with Raftery-Lewis handling
+  cat("5. Overall Convergence Assessment:\n")
+  cat("=========================================================================================\n")
+  cat("Parameter   |     ESS |   Efficiency | Geweke | Heidelberg | Raftery-Lewis |     Overall\n")
+  cat("=========================================================================================\n")
+
+  for(i in 1:length(heidel_names)) {
+    param <- heidel_names[i]
+    ess_val <- effective_sample_sizes[param]
+    efficiency <- 100 * ess_val / n_chain
+
+    # Get individual test results
+    geweke_pass <- abs(geweke_results[[param]]$z) < 1.96
+    heidel_result <- coda::heidel.diag(heidel_params[[i]])
+    heidel_pass <- heidel_result[1,1] && heidel_result[1,3]
+
+    # Raftery-Lewis assessment
+    if(raftery_success && !is.null(raftery_result)) {
+      dependence_factor <- raftery_result$resmatrix[i, "I"]
+      raftery_pass <- dependence_factor < 5 && n_chain >= raftery_result$resmatrix[i, "N"]
+      raftery_status <- ifelse(raftery_pass, "PASS", "FAIL")
+    } else {
+      raftery_pass <- FALSE
+      raftery_status <- "N/A"
+    }
+
+    # Overall assessment (only count available tests)
+    available_tests <- c(geweke_pass, heidel_pass)
+    if(raftery_success) available_tests <- c(available_tests, raftery_pass)
+
+    tests_passed <- sum(available_tests)
+    total_tests <- length(available_tests)
+
+    overall_status <- ifelse(tests_passed == total_tests, "EXCELLENT",
+                             ifelse(tests_passed >= total_tests * 0.75, "GOOD",
+                                    ifelse(tests_passed >= total_tests * 0.5, "ACCEPTABLE", "POOR")))
+
+    cat(sprintf("%-11s | %7.1f | %11.1f%% | %6s | %10s | %13s | %11s\n",
+                param, ess_val, efficiency,
+                ifelse(geweke_pass, "PASS", "FAIL"),
+                ifelse(heidel_pass, "PASS", "FAIL"),
+                raftery_status,
+                overall_status))
+  }
+  cat("=========================================================================================\n")
+
+  # Additional guidance for chain size optimization
+  cat("\n=== CHAIN SIZE OPTIMIZATION GUIDANCE ===\n")
+  cat("Current Configuration:\n")
+  cat(sprintf("- Burn-in: %d\n", burnin))
+  cat(sprintf("- Thinning: %d\n", thinning))
+  cat(sprintf("- Chain size: %d\n", n_chain))
+  cat(sprintf("- Total iterations: %d\n", n_iter))
+
+  if(raftery_success && !is.null(raftery_result)) {
+    max_burnin <- max(raftery_result$resmatrix[, "M"])
+    max_total <- max(raftery_result$resmatrix[, "N"])
+
+    cat("\nRaftery-Lewis Recommendations:\n")
+    cat(sprintf("- Recommended burn-in: %d\n", max_burnin))
+    cat(sprintf("- Recommended total samples: %d\n", max_total))
+
+    if(n_chain < max_total) {
+      suggested_iterations <- max_burnin + (max_total - 1) * thinning + 1
+      cat(sprintf("- Suggested total iterations: %d\n", suggested_iterations))
+      cat(sprintf("- Increase factor: %.1fx current size\n", max_total / n_chain))
+    }
+  }
+
+  cat("\nGeneral Recommendations:\n")
+  cat("- ESS > 400 for reliable posterior estimates\n")
+  cat("- ESS > 100 for basic convergence assessment\n")
+  cat("- Efficiency > 10% indicates reasonable mixing\n")
+  cat("- Consider increasing thinning if autocorrelation is high\n\n")
 } else {
   cat("Note: Install 'coda' package for enhanced convergence diagnostics.\n\n")
 }

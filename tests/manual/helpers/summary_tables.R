@@ -26,20 +26,20 @@ compute_summary_stats <- function(chain, true_value) {
 print_posterior_estimates_table <- function(param_list, true_values, n_chain) {
   cat("Enhanced Summary of Posterior Estimates:\n")
   cat("=====================================================================================================================\n")
-  cat("Parameter | True Value | Median Est |   Post SD | Monte Carlo SE |                   95% CI | Coverage | Rel Err | Abs Err\n")
+  cat("Parameter | True Value | Median Est |  Post SD |     MCSE |          95% CI        | Coverage |   Rel Err |  Abs Err\n")
   cat("=====================================================================================================================\n")
 
   for (param_name in names(param_list)) {
     if (param_name %in% names(true_values)) {
       stats <- compute_summary_stats(param_list[[param_name]], true_values[param_name])
-      cat(sprintf("%-9s | %10.3f | %10.3f | %9.3f | %14.3f | [%10.3f, %10.3f] | %6s | %6.2f%% | %6.4f\n",
+      cat(sprintf("%-9s | %10.4f | %10.4f | %8.4f | %8.4f | [%9.4f, %9.4f] | %8s | %8.2f%% | %8.4f\n",
                   param_name, true_values[param_name], stats$median, stats$sd,
                   stats$sd / sqrt(n_chain), stats$ci_lower, stats$ci_upper,
                   ifelse(stats$coverage, "YES", "NO"), stats$rel_error, stats$abs_error))
     }
   }
   cat("=====================================================================================================================\n")
-  cat("Note: Monte Carlo SE measures the precision of posterior mean estimates\n\n")
+  cat("Note: MCSE (Monte Carlo Standard Errors) measures the precision of posterior mean estimates\n\n")
 }
 
 #' Generate quantiles table

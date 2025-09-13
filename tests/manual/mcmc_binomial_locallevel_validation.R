@@ -61,7 +61,7 @@ source("tests/manual/helpers/adaptation_diagnostics.R")
 # 1) Data Simulation
 #-------------------------------------------------------------------------------
 n <- 1000          # Number of observations
-n_trials <- 20     # Binomial trials per time (fixed for all t)
+n_trials <- 40     # Binomial trials per time (fixed for all t)
 
 # True parameters (logit scale)
 theta01_true <- 0.1   # Initial level (theta_{0,1} on logit scale)
@@ -85,8 +85,8 @@ y <- rbinom(n, size = n_trials, prob = alpha_true)
 # 2) MCMC Configuration
 #-------------------------------------------------------------------------------
 burnin   <- 1000
-thinning <- 10
-n_chain  <- 1000
+thinning <- 1
+n_chain  <- 100000
 # Total iterations: same formula as in C implementations
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
@@ -99,7 +99,7 @@ eta_01       <- 1.0     # prior_prec1_rate
 # Adaptation parameters (CWMH)
 lag_update           <- 50
 max_step_size        <- 0.1
-base_adaptation_rate <- 50.0
+base_adaptation_rate <- 1.0
 decay_exponent       <- 0.5
 target_acceptance    <- 0.44
 
@@ -191,13 +191,17 @@ for (ii in 2:n_iter) {
   #    affect diagnostics. To close the loop, use a wrapper that reads/writes
   #    the external log_sigma used here.
   if (lag_update > 0 && ii >= lag_update && (ii %% lag_update == 0)) {
+
+    row_start  <- max(1L, ii - lag_update + 1L)
+    window_len <- ii - row_start + 1L
+
     adapt_res <- .Call(
       "_pdm_test_adapt_cwmh_parameters",
-      as.double(t(theta_1_updated[1:ii, , drop = FALSE])),  # row-major: c(row1, row2, ...)
+      as.double(t(theta_1_updated[row_start:ii, , drop = FALSE])),
       as.numeric(log_sigma),
       as.integer(lag_update),
       as.integer(n),         # number of components (columns)
-      as.integer(ii),        # number of iterations (rows)
+      as.integer(window_len),
       as.numeric(max_step_size),
       as.numeric(base_adaptation_rate),
       as.numeric(decay_exponent),

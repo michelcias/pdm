@@ -92,8 +92,8 @@ y <- theta1_true + e
 # 2) MCMC Configuration
 #-------------------------------------------------------------------------------
 burnin   <- 1000
-thinning <- 1
-n_chain  <- 1000
+thinning <- 10
+n_chain  <- 10000
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
 # Priors (C naming)

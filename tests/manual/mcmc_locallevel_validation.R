@@ -48,7 +48,7 @@ suppressPackageStartupMessages({
 # Load helper functions
 source("tests/manual/helpers/summary_tables.R")
 source("tests/manual/helpers/convergence_diagnostics.R")
-source("tests/manual/helpers/visualization_utils.R")  # atualizado
+source("tests/manual/helpers/visualization_utils.R")
 source("tests/manual/helpers/state_analysis.R")
 source("tests/manual/helpers/observed_vs_state_plot.R")
 

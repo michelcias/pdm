@@ -8,6 +8,7 @@
 #        • Row 2: prec_k    -> Histogram, Trace, ACF
 #   (c) Improved state labels using expression for theta[t,k] with robust k-detection
 #   (d) Figure titles for per-level panels positioned above all subplots (outer mtext)
+#   (e) New: dedicated triptych for data precision 1/V (hist, trace, ACF)
 #-------------------------------------------------------------------------------
 
 #------------------------------#
@@ -21,10 +22,9 @@
 #'  - "prec_y"    -> 1/V
 #' Returns an expression object, or NULL if not recognized.
 .param_label_expr <- function(param_name) {
-  # theta_0k
+  # theta_0k (single subscript "0k", e.g., theta[01])
   if (grepl("^theta_0[0-9]+$", param_name)) {
     k <- as.integer(sub("^theta_0([0-9]+)$", "\\1", param_name))
-    # Use single subscript "0k" (e.g., theta[01]) as requested
     return(bquote(theta[.(paste0("0", k))]))
   }
   # prec_k
@@ -47,7 +47,6 @@
   m <- regexpr("theta\\s*(?:\\[|_)?\\s*([0-9]+)", txt, perl = TRUE, ignore.case = TRUE)
   if (m[1] > 0) {
     k_str <- regmatches(txt, m)
-    # Keep only the captured group (the digits)
     k <- as.integer(sub(".*?(\\d+).*", "\\1", k_str))
     if (is.finite(k)) return(k)
   }
@@ -63,8 +62,10 @@
   if (!is.finite(k)) k <- .extract_k_from_text(state_name)
   if (!is.finite(k)) k <- .extract_k_from_text(nm)
   if (is.finite(k)) {
-    # Use substitute to robustly build theta[t, k] so k is never dropped
-    return(as.expression(substitute(theta[t, kk], list(kk = k))))
+    # Build expression(theta[t,k]) and return as expression vector of length 1
+    # Observação: se você ajustou algo localmente (ex.: "t,k" como string),
+    # mantenha esse comportamento. A linha abaixo é o padrão consistente com plotmath:
+    return(as.expression(substitute(theta["t," * kk], list(kk = k))))
   }
   NULL
 }
@@ -148,8 +149,12 @@ plot_state_with_ci <- function(state_name,
   n <- length(true_states)
   time_idx <- 1:min(n_plot, n)
 
-  # Build title and y-label
-  if (!is.null(label_expr)) {
+  # If an expression is provided, use its first element (the call) for plotmath
+  if (!is.null(label_expr) && is.expression(label_expr)) {
+    lab <- label_expr[[1]]
+    ttl <- if (is.null(title)) bquote("State: " ~ .(lab) ~ " (True vs. Estimated)") else title
+    ylab_final <- lab
+  } else if (!is.null(label_expr)) {
     ttl <- if (is.null(title)) bquote("State: " ~ .(label_expr) ~ " (True vs. Estimated)") else title
     ylab_final <- label_expr
   } else {
@@ -266,6 +271,63 @@ generate_state_plots <- function(states, n_plot = 200, use_state_expressions = T
   .draw_acf(chain, label_expr, max_lag_acf)
 }
 
+#' Public: generic 1x3 triptych for any parameter (hist, trace, acf)
+#' @param chain numeric vector of MCMC samples
+#' @param true_value numeric; optional reference line
+#' @param label_expr plotmath expression for labels (e.g., bquote(1/V))
+#' @param max_lag_acf maximum lag for ACF
+#' @param col_fill histogram fill color
+#' @param col_line trace color
+#' @param title optional global title above the 3 subplots; if NULL, auto-build with label_expr
+generate_parameter_triptych <- function(chain,
+                                        true_value = NA_real_,
+                                        label_expr,
+                                        max_lag_acf = 60,
+                                        col_fill = "lightblue",
+                                        col_line = "blue",
+                                        title = NULL) {
+  stopifnot(is.numeric(chain), length(chain) > 0)
+
+  op <- par(no.readonly = TRUE); on.exit(par(op), add = TRUE)
+  par(mfrow = c(1, 3), mar = c(4, 4, 3, 1), oma = c(0, 0, 3, 0))
+
+  .param_triptych(chain, true_value, label_expr,
+                  col_fill = col_fill, col_line = col_line,
+                  max_lag_acf = max_lag_acf)
+
+  if (is.null(title)) {
+    mtext(text = bquote("Parameter: " ~ .(label_expr) ~ " (Posterior, Trace, ACF)"),
+          side = 3, outer = TRUE, line = 1, cex = 1.0)
+  } else {
+    mtext(text = title, side = 3, outer = TRUE, line = 1, cex = 1.0)
+  }
+
+  invisible(NULL)
+}
+
+#' Public: convenience triptych for data precision 1/V
+#' @param prec_y_chain numeric vector for 1/V samples
+#' @param true_value numeric; optional true 1/V
+#' @param max_lag_acf ACF lag
+#' @param palette list(fill, line) optional
+generate_data_precision_triptych <- function(prec_y_chain,
+                                             true_value = NA_real_,
+                                             max_lag_acf = 60,
+                                             palette = NULL) {
+  if (is.null(palette)) {
+    palette <- list(fill = "palegreen", line = "darkgreen")
+  }
+  generate_parameter_triptych(
+    chain       = prec_y_chain,
+    true_value  = true_value,
+    label_expr  = bquote(1/V),
+    max_lag_acf = max_lag_acf,
+    col_fill    = palette$fill,
+    col_line    = palette$line,
+    title       = NULL
+  )
+}
+
 #' Generate one figure (2x3) per level k with theta_0k and prec_k triptychs
 #' The figure title is drawn above all six subplots (using outer margins).
 #' @param param_chains named list of numeric chains (theta_01, theta_02, ..., prec_1, prec_2, ...)
@@ -278,7 +340,6 @@ generate_level_parameter_triptychs <- function(param_chains,
                                                palette = NULL) {
   stopifnot(is.list(param_chains), length(param_chains) > 0)
 
-  # Default colors
   if (is.null(palette)) {
     palette <- list(
       theta_fill = "lightblue",
@@ -288,7 +349,6 @@ generate_level_parameter_triptychs <- function(param_chains,
     )
   }
 
-  # Detect available levels by chain names
   theta_names <- grep("^theta_0[0-9]+$", names(param_chains), value = TRUE)
   prec_names  <- grep("^prec_[0-9]+$",     names(param_chains), value = TRUE)
 
@@ -304,7 +364,6 @@ generate_level_parameter_triptychs <- function(param_chains,
   for (k in levels_k) {
     theta_key <- sprintf("theta_0%d", k)
     prec_key  <- sprintf("prec_%d", k)
-
     if (!all(c(theta_key, prec_key) %in% names(param_chains))) next
 
     theta_chain <- param_chains[[theta_key]]
@@ -315,25 +374,21 @@ generate_level_parameter_triptychs <- function(param_chains,
     prec_true  <- if (!is.null(true_values) && prec_key %in% names(true_values))
       true_values[[prec_key]] else NA_real_
 
-    # Set per-figure layout with outer margins for a global title
     op <- par(no.readonly = TRUE); on.exit(par(op), add = TRUE)
     par(mfrow = c(2, 3), mar = c(4, 4, 3, 1), oma = c(0, 0, 4, 0))
 
-    # Row 1: theta_0k (single subscript "0k")
     theta_expr <- bquote(theta[.(paste0("0", k))])
     .param_triptych(theta_chain, theta_true, theta_expr,
                     col_fill = palette$theta_fill,
                     col_line = palette$theta_line,
                     max_lag_acf = max_lag_acf)
 
-    # Row 2: prec_k
     prec_expr <- bquote(1/W[.(k)])
     .param_triptych(prec_chain, prec_true, prec_expr,
                     col_fill = palette$prec_fill,
                     col_line = palette$prec_line,
                     max_lag_acf = max_lag_acf)
 
-    # Common title above all subplots (expression-based)
     mtext(
       text = bquote("Level k = " ~ .(k) ~ " (" ~ theta[.(paste0("0", k))] ~ " and " ~ 1/W[.(k)] ~ ")"),
       side = 3, outer = TRUE, line = 1.2, cex = 1.1
@@ -349,15 +404,17 @@ generate_level_parameter_triptychs <- function(param_chains,
 
 #' Organized visualization suite:
 #' - Optional individual parameter plots (disabled by default)
-#' - Per-level triptychs (theta_0k & prec_k) with a single title above all subplots
-#' - State plots with improved labels (expression(theta[t,k])) that distinguish k
+#' - Per-level triptychs (theta_0k & prec_k)
+#' - State plots with improved labels (expression(theta[t,k]))
+#' - New: data precision triptych (1/V) auto-rendered if available
 #' @param param_chains named list of parameter chains
 #' @param true_values named vector of true values
 #' @param states named list (see generate_state_plots); optional
 #' @param use_expressions if TRUE, use expression labels in parameter plots
 #' @param per_level_panels if TRUE, produce per-level triptychs (2x3 by level)
 #' @param show_individual_param_plots if TRUE, also show simple hist+trace by parameter (default FALSE)
-#' @param max_lag_acf maximum lag for ACF in per-level panels
+#' @param show_data_precision_panel if TRUE, produce a 1x3 panel for 1/V when present (default TRUE)
+#' @param max_lag_acf maximum lag for ACF in per-level/data-precision panels
 #' @param level_palette color palette for per-level triptychs
 #' @param use_state_expressions if TRUE, use expression(theta[t,k]) in state plots
 generate_organized_plots <- function(param_chains,
@@ -366,6 +423,7 @@ generate_organized_plots <- function(param_chains,
                                      use_expressions = TRUE,
                                      per_level_panels = TRUE,
                                      show_individual_param_plots = FALSE,
+                                     show_data_precision_panel = TRUE,
                                      max_lag_acf = 60,
                                      level_palette = NULL,
                                      use_state_expressions = TRUE) {
@@ -387,7 +445,7 @@ generate_organized_plots <- function(param_chains,
     }
   }
 
-  # Per-level triptychs (theta_0k and prec_k), each with a global title above all subplots
+  # Per-level triptychs (theta_0k and prec_k)
   if (per_level_panels && !is.null(param_chains) && length(param_chains) > 0) {
     cat("Generating per-level triptychs: theta_0k and prec_k (Histogram, Trace, ACF)...\n")
     generate_level_parameter_triptychs(
@@ -398,7 +456,19 @@ generate_organized_plots <- function(param_chains,
     )
   }
 
-  # States (with improved expression labels that distinguish the level k)
+  # Data precision 1/V triptych (auto if available)
+  if (show_data_precision_panel &&
+      !is.null(param_chains) &&
+      "prec_y" %in% names(param_chains)) {
+    cat("Generating data precision triptych: 1/V (Histogram, Trace, ACF)...\n")
+    generate_data_precision_triptych(
+      prec_y_chain = param_chains[["prec_y"]],
+      true_value   = if (!is.null(true_values) && "prec_y" %in% names(true_values)) true_values[["prec_y"]] else NA_real_,
+      max_lag_acf  = max_lag_acf
+    )
+  }
+
+  # States
   if (!is.null(states) && length(states) > 0) {
     cat("Generating plots: State Estimates...\n")
     generate_state_plots(states, use_state_expressions = use_state_expressions)

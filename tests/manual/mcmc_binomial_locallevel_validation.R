@@ -84,9 +84,9 @@ y <- rbinom(n, size = n_trials, prob = alpha_true)
 #-------------------------------------------------------------------------------
 # 2) MCMC Configuration
 #-------------------------------------------------------------------------------
-burnin   <- 1
-thinning <- 1
-n_chain  <- 10000
+burnin   <- 1000
+thinning <- 10
+n_chain  <- 1000
 # Total iterations: same formula as in C implementations
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
@@ -99,7 +99,7 @@ eta_01       <- 1.0     # prior_prec1_rate
 # Adaptation parameters (CWMH)
 lag_update           <- 50
 max_step_size        <- 0.1
-base_adaptation_rate <- 1.0
+base_adaptation_rate <- 50.0
 decay_exponent       <- 0.5
 target_acceptance    <- 0.44
 

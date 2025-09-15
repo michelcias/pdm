@@ -76,14 +76,14 @@ y <- theta1_true + e
 # 2) MCMC Configuration
 #-------------------------------------------------------------------------------
 burnin   <- 1000
-thinning <- 1
+thinning <- 100
 n_chain  <- 1000
 # Total iterations: same formula as in C implementations
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
 # Priors (matching naming from C implementations)
 mean_theta01 <- 0       # prior_theta01_mean
-prec_theta01 <- 0.01    # prior_theta01_prec
+prec_theta01 <- 0.1    # prior_theta01_prec
 nu_01        <- 1e-1    # prior_prec1_shape
 eta_01       <- 1e-1    # prior_prec1_rate
 nu_y         <- 1e-1    # prior_prec_y_shape
@@ -132,6 +132,7 @@ chain_idx <- 0  # Counter for saved samples
 for (ii in 2:n_iter) {
 
   # 1) State vector theta_1
+  # theta_1_new <- theta1_true
   theta_1_new <- .Call(
     "_pdm_test_generate_theta_1_locallevel",
     as.numeric(y),
@@ -147,6 +148,7 @@ for (ii in 2:n_iter) {
   }
 
   # 2) Innovation precision 1/W_1
+  # prec_1_post[ii] <- prec1_true
   prec_1_post[ii] <- .Call(
     "_pdm_test_generate_precision_theta_p",
     as.numeric(theta_01_post[ii-1]),
@@ -156,6 +158,7 @@ for (ii in 2:n_iter) {
   )
 
   # 3) Initial state theta_01
+  # theta_01_post[ii] <- theta0_true
   theta_01_post[ii] <- .Call(
     "_pdm_test_generate_theta_01_locallevel",
     as.numeric(theta_1_post[ii, ]),
@@ -165,6 +168,7 @@ for (ii in 2:n_iter) {
   )
 
   # 4) Data precision 1/V
+  # prec_y_post[ii] <- prec_y_true
   prec_y_post[ii] <- .Call(
     "_pdm_test_generate_precision_data",
     as.numeric(y),

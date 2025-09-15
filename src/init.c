@@ -51,7 +51,7 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SE
 SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
                                                    SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
 SEXP test_CWMH_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_,
-                                               SEXP y_, SEXP n_trials_);
+                                               SEXP y_, SEXP n_trials_, SEXP log_sigma_in_);
 SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
                                         SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
 SEXP test_CWMH_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
@@ -145,7 +145,7 @@ static const R_CallMethodDef CallEntries[] = {
 
   // --- Binomial model component tests ---
   {"_pdm_test_generate_alpha_logit_binomial_locallevel", (DL_FUNC) &test_generate_alpha_logit_binomial_locallevel, 5},
-  {"_pdm_test_CWMH_alpha_logit_binomial_locallevel", (DL_FUNC) &test_CWMH_alpha_logit_binomial_locallevel, 5},
+  {"_pdm_test_CWMH_alpha_logit_binomial_locallevel", (DL_FUNC) &test_CWMH_alpha_logit_binomial_locallevel, 6},
   {"_pdm_test_generate_alpha_logit_binomial", (DL_FUNC) &test_generate_alpha_logit_binomial, 7},
   {"_pdm_test_CWMH_alpha_logit_binomial", (DL_FUNC) &test_CWMH_alpha_logit_binomial, 7},
 

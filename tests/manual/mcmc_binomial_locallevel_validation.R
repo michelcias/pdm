@@ -61,7 +61,7 @@ source("tests/manual/helpers/adaptation_diagnostics.R")
 # 1) Data Simulation
 #-------------------------------------------------------------------------------
 n <- 1000          # Number of observations
-n_trials <- 40     # Binomial trials per time (fixed for all t)
+n_trials <- 1     # Binomial trials per time (fixed for all t)
 
 # True parameters (logit scale)
 theta01_true <- 0.1   # Initial level (theta_{0,1} on logit scale)
@@ -86,7 +86,7 @@ y <- rbinom(n, size = n_trials, prob = alpha_true)
 #-------------------------------------------------------------------------------
 burnin   <- 1000
 thinning <- 1
-n_chain  <- 100000
+n_chain  <- 10000
 # Total iterations: same formula as in C implementations
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
@@ -160,7 +160,8 @@ for (ii in 2:n_iter) {
     as.numeric(theta_01_post[ii-1]),
     as.numeric(prec_1_post[ii-1]),
     as.numeric(y),
-    as.numeric(n_trials)
+    as.numeric(n_trials),
+    as.numeric(log_sigma)
   )
   theta_1_post[ii, ] <- as.numeric(upd$theta_1)
   alpha_post[ii, ]   <- as.numeric(upd$alpha)

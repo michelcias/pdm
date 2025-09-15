@@ -8,6 +8,10 @@
  * @details This file contains wrapper functions that expose internal C
  * functions to R's .Call interface, specifically for the purpose of
  * unit testing with packages like 'testthat'.
+ *
+ * @changelog
+ * - v1.3 (2025-09-15): Modified test_CWMH_alpha_logit_binomial_locallevel
+ * to accept log_sigma as an argument to close the adaptive MCMC loop.
  */
 
 #include <R.h>
@@ -509,7 +513,7 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SE
 
 
 /* --- Wrappers for functions in cwmh_binomial.c --- */
-SEXP test_CWMH_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
+SEXP test_CWMH_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_, SEXP log_sigma_in_) {
   int n = LENGTH(coerceVector(y_, REALSXP));
   double n_trials = REAL(coerceVector(n_trials_, REALSXP))[0];
 
@@ -529,8 +533,7 @@ SEXP test_CWMH_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
   double *alpha_post = (double*) R_alloc(2 * n, sizeof(double));
 
   // CWMH working arrays
-  double *log_sigma = (double*) R_alloc(n, sizeof(double));
-  for(int i = 0; i < n; i++) log_sigma[i] = log(0.1); // Initialize
+  double *log_sigma = REAL(coerceVector(log_sigma_in_, REALSXP)); // Use log_sigma from R
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));

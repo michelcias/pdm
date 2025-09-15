@@ -41,7 +41,7 @@
  *
  *          The adaptation follows a diminishing adaptation schedule and is executed
  *          periodically over a sliding window of size lag_update. The actual state
- *          update is delegated to CWMH_alpha_logit_binomial, which handles boundary
+ *          update is delegated to cwmh_alpha_logit_binomial, which handles boundary
  *          conditions and log-acceptance.
  *
  *          Adaptation cadence:
@@ -92,7 +92,7 @@
  *          history (iter < 1).
  *
  * @see adapt_cwmh_parameters
- * @see CWMH_alpha_logit_binomial_locallevel
+ * @see cwmh_alpha_logit_binomial_locallevel
  */
 void generate_alpha_logit_binomial_locallevel(double *theta_1,
                                               double *theta_01,
@@ -116,7 +116,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
                                               double target_acceptance) {
 
   /* ========== Prerequisites and Safety Checks ========== */
-  // CWMH_alpha_logit_binomial_locallevel uses prev_iter = iter - 1 for theta_01 and prec_theta_1
+  // cwmh_alpha_logit_binomial_locallevel uses prev_iter = iter - 1 for theta_01 and prec_theta_1
   if (iter <= 0) {
     // Nothing to do in iteration 0; typically used to initialize storage.
     return;
@@ -139,9 +139,9 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
     );
   }
 
-  /* ========== CWMH Update for Current Iteration ========== */
+  /* ========== cwmh Update for Current Iteration ========== */
   // Updates theta_1 block for 'iter', logs acceptance, and stores alpha = ilogit(theta_1)
-  CWMH_alpha_logit_binomial_locallevel(
+  cwmh_alpha_logit_binomial_locallevel(
     theta_1,           /* theta_1 */
     theta_01,          /* theta_01 */
     theta_1_updated,   /* theta_1_updated */
@@ -185,7 +185,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *
  *          The adaptation follows a diminishing adaptation schedule and is executed
  *          periodically over a sliding window of size lag_update. The actual state
- *          update is delegated to CWMH_alpha_logit_binomial, which handles boundary
+ *          update is delegated to cwmh_alpha_logit_binomial, which handles boundary
  *          conditions and log-acceptance.
  *
  *          Adaptation cadence:
@@ -236,7 +236,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *          history (iter < 1).
  *
  * @see adapt_cwmh_parameters
- * @see CWMH_alpha_logit_binomial
+ * @see cwmh_alpha_logit_binomial
  */
 void generate_alpha_logit_binomial(double *theta_1,
                                    double *theta_2,
@@ -262,7 +262,7 @@ void generate_alpha_logit_binomial(double *theta_1,
                                    double target_acceptance) {
 
   /* ========== Prerequisites and Safety Checks ========== */
-  // CWMH_alpha_logit_binomial uses prev_iter = iter - 1 for theta_01 and prec_theta_1
+  // cwmh_alpha_logit_binomial uses prev_iter = iter - 1 for theta_01 and prec_theta_1
   if (iter <= 0) {
     // Nothing to do in iteration 0; typically used to initialize storage.
     return;
@@ -285,9 +285,9 @@ void generate_alpha_logit_binomial(double *theta_1,
     );
   }
 
-  /* ========== CWMH Update for Current Iteration ========== */
+  /* ========== cwmh Update for Current Iteration ========== */
   // Updates theta_1 block for 'iter', logs acceptance, and stores alpha = ilogit(theta_1)
-  CWMH_alpha_logit_binomial(
+  cwmh_alpha_logit_binomial(
     theta_1,           /* theta_1 */
     theta_2,           /* theta_2 */
     theta_01,          /* theta_01 */

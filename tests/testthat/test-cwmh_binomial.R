@@ -3,11 +3,11 @@ library(testthat)
 # This file contains unit tests for the core CWMH sampling functions
 # defined in 'src/cwmh_binomial.c'.
 
-test_that("CWMH_alpha_logit_binomial_locallevel runs and is reproducible", {
+test_that("cwmh_alpha_logit_binomial_locallevel runs and is reproducible", {
 
   # R wrapper for the C test function
   test_C <- function(theta_1_in, theta_01_in, prec_1_in, y, n_trials) {
-    .Call("_pdm_test_CWMH_alpha_logit_binomial_locallevel",
+    .Call("_pdm_test_cwmh_alpha_logit_binomial_locallevel",
           theta_1_in, theta_01_in, prec_1_in, y, n_trials)
   }
 
@@ -42,11 +42,11 @@ test_that("CWMH_alpha_logit_binomial_locallevel runs and is reproducible", {
 })
 
 
-test_that("CWMH_alpha_logit_binomial (local trend) runs and is reproducible", {
+test_that("cwmh_alpha_logit_binomial (local trend) runs and is reproducible", {
 
   # R wrapper
   test_C <- function(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_1_in, y, n_trials) {
-    .Call("_pdm_test_CWMH_alpha_logit_binomial",
+    .Call("_pdm_test_cwmh_alpha_logit_binomial",
           theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_1_in, y, n_trials)
   }
 

@@ -76,7 +76,7 @@
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
  */
-void CWMH_alpha_logit_binomial_locallevel(double *theta_1,
+void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
                                           double *theta_01,
                                           double *theta_1_updated,
                                           double *alpha,
@@ -246,7 +246,7 @@ void CWMH_alpha_logit_binomial_locallevel(double *theta_1,
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
  */
-void CWMH_alpha_logit_binomial(double *theta_1,
+void cwmh_alpha_logit_binomial(double *theta_1,
                                double *theta_2,
                                double *theta_01,
                                double *theta_02,

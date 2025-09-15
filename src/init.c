@@ -50,11 +50,11 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SE
                             SEXP prec_p_, SEXP mean_0p_, SEXP prec_0p_);
 SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
                                                    SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
-SEXP test_CWMH_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_,
+SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_,
                                                SEXP y_, SEXP n_trials_, SEXP log_sigma_in_);
 SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
                                         SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
-SEXP test_CWMH_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
+SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
                                     SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
 SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP burnin_, SEXP thinning_,
                                                 SEXP n_chain_, SEXP theta_1_true_, SEXP theta_01_true_,
@@ -94,7 +94,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          - test_generate_precision_*: Precision parameter sampling testing (4-6 arguments)
  *          - test_generate_theta_*: State parameter sampling testing (4-8 arguments)
  *          - test_generate_alpha_*: Alpha parameter sampling testing (5-7 arguments)
- *          - test_CWMH_alpha_*: CWMH algorithm testing (5-7 arguments)
+ *          - test_cwmh_alpha_*: CWMH algorithm testing (5-7 arguments)
  *          - test_mcmc_binomial_locallevel_fixed_params: Full MCMC testing with diagnostics (19 arguments)
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
@@ -145,9 +145,9 @@ static const R_CallMethodDef CallEntries[] = {
 
   // --- Binomial model component tests ---
   {"_pdm_test_generate_alpha_logit_binomial_locallevel", (DL_FUNC) &test_generate_alpha_logit_binomial_locallevel, 5},
-  {"_pdm_test_CWMH_alpha_logit_binomial_locallevel", (DL_FUNC) &test_CWMH_alpha_logit_binomial_locallevel, 6},
+  {"_pdm_test_cwmh_alpha_logit_binomial_locallevel", (DL_FUNC) &test_cwmh_alpha_logit_binomial_locallevel, 6},
   {"_pdm_test_generate_alpha_logit_binomial", (DL_FUNC) &test_generate_alpha_logit_binomial, 7},
-  {"_pdm_test_CWMH_alpha_logit_binomial", (DL_FUNC) &test_CWMH_alpha_logit_binomial, 7},
+  {"_pdm_test_cwmh_alpha_logit_binomial", (DL_FUNC) &test_cwmh_alpha_logit_binomial, 7},
 
   // --- Complete MCMC simulation tests ---
   {"_pdm_test_mcmc_binomial_locallevel_fixed_params", (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params, 19},

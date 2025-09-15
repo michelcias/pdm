@@ -4,7 +4,7 @@
 # Objective:
 # - Validate and replicate the Gibbs/CWMH sampler loop in R for the
 #   binomial local level model using the C helpers:
-#     * _pdm_test_CWMH_alpha_logit_binomial_locallevel (state update)
+#     * _pdm_test_cwmh_alpha_logit_binomial_locallevel (state update)
 #     * _pdm_test_generate_precision_theta_p          (precision update)
 #     * _pdm_test_generate_theta_01_locallevel        (initial state update)
 #     * _pdm_test_adapt_cwmh_parameters               (proposal adaptation)
@@ -65,7 +65,7 @@ n_trials <- 1     # Binomial trials per time (fixed for all t)
 
 # True parameters (logit scale)
 theta01_true <- 0.1   # Initial level (theta_{0,1} on logit scale)
-prec1_true   <- 10    # Innovation precision 1/W_1
+prec1_true   <- 1    # Innovation precision 1/W_1
 
 # set.seed(123) # For reproducibility
 
@@ -84,17 +84,17 @@ y <- rbinom(n, size = n_trials, prob = alpha_true)
 #-------------------------------------------------------------------------------
 # 2) MCMC Configuration
 #-------------------------------------------------------------------------------
-burnin   <- 1000
+burnin   <- 10000
 thinning <- 1
-n_chain  <- 10000
+n_chain  <- 100000
 # Total iterations: same formula as in C implementations
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
 # Priors (matching naming from C implementations)
 mean_theta01 <- 0       # prior_theta01_mean
 prec_theta01 <- 0.01    # prior_theta01_prec
-nu_01        <- 1.0     # prior_prec1_shape
-eta_01       <- 1.0     # prior_prec1_rate
+nu_01        <- 1e3     # prior_prec1_shape
+eta_01       <- 1e3     # prior_prec1_rate
 
 # Adaptation parameters (CWMH)
 lag_update           <- 50
@@ -153,9 +153,9 @@ chain_idx <- 0  # Counter for saved samples
 for (ii in 2:n_iter) {
 
   # 1) CWMH state update (logit scale) + alpha
-  #    _pdm_test_CWMH_alpha_logit_binomial_locallevel(theta_1_in, theta_01_in, prec_1_in, y, n_trials)
+  #    _pdm_test_cwmh_alpha_logit_binomial_locallevel(theta_1_in, theta_01_in, prec_1_in, y, n_trials)
   upd <- .Call(
-    "_pdm_test_CWMH_alpha_logit_binomial_locallevel",
+    "_pdm_test_cwmh_alpha_logit_binomial_locallevel",
     as.numeric(theta_1_post[ii-1, ]),
     as.numeric(theta_01_post[ii-1]),
     as.numeric(prec_1_post[ii-1]),

@@ -36,7 +36,7 @@
  *
  *          The adaptation follows a diminishing adaptation schedule and is executed
  *          periodically over a sliding window of size lag_update. The actual state
- *          update is delegated to CWMH_alpha_logit_binomial, which handles boundary
+ *          update is delegated to cwmh_alpha_logit_binomial, which handles boundary
  *          conditions and log-acceptance.
  *
  *          Adaptation cadence:
@@ -83,7 +83,7 @@
  *          history (iter < 1).
  *
  * @see adapt_cwmh_parameters
- * @see CWMH_alpha_logit_binomial_locallevel
+ * @see cwmh_alpha_logit_binomial_locallevel
  */
 void generate_alpha_logit_binomial_locallevel(double *theta_1,
                                               double *theta_01,
@@ -132,7 +132,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *
  *          The adaptation follows a diminishing adaptation schedule and is executed
  *          periodically over a sliding window of size lag_update. The actual state
- *          update is delegated to CWMH_alpha_logit_binomial, which handles boundary
+ *          update is delegated to cwmh_alpha_logit_binomial, which handles boundary
  *          conditions and log-acceptance.
  *
  *          Adaptation cadence:
@@ -183,7 +183,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *          history (iter < 1).
  *
  * @see adapt_cwmh_parameters
- * @see CWMH_alpha_logit_binomial
+ * @see cwmh_alpha_logit_binomial
  */
 void generate_alpha_logit_binomial(double *theta_1,
                                    double *theta_2,

@@ -38,7 +38,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
           prior_theta01_mean, prior_theta01_prec,
           prior_prec1_shape, prior_prec1_rate,
           lag_update, max_step_size, base_adaptation_rate,
-          decay_exponent, target_acceptance)
+          decay_exponent, target_acceptance, FALSE, FALSE)
   }
 
   # --- 3. Run Tests for Each Conditional ---

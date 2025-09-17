@@ -28,13 +28,13 @@
  *          The adaptation step size is computed as:
  *              step_size = min(max_step_size, base_adaptation_rate / iter^decay_exponent)
  *          The log_sigma update rule is:
- *              log_sigma[k] += sign(acceptance_probs[k] - target_acceptance) * step_size
- *          where acceptance_probs[k] is the observed acceptance rate for component k in the last
+ *              log_sigma[k] += sign(accept_prop[k] - target_acceptance) * step_size
+ *          where accept_prop[k] is the observed acceptance rate for component k in the last
  *          lag_update iterations.
  *
  * @param theta_updated   Vectorized (B x n) matrix of acceptance indicators (1 if accepted,
  *                        0 if not).
- * @param acceptance_probs Output vector (size n) of acceptance rates for each parameter component.
+ * @param acceptance_probs Output vector (size n) of acceptance proportions for each parameter component.
  * @param log_sigma       Input/output vector (size n) of log proposal standard deviations
  *                        (updated in-place).
  * @param lag_update      Number of recent iterations to use for acceptance rate calculation
@@ -47,7 +47,7 @@
  *                        (e.g. 0.5 = sqrt, 1.0 = linear).
  * @param target_acceptance     Target acceptance rate for parameter optimization (e.g. 0.44
  *                        univariate, 0.234 multivariate).
- * @return None (results are written to acceptance_probs and log_sigma).
+ * @return None (results are written to accept_prop and log_sigma).
  *
  * @note Complexity: O(n * lag_update) per call.
  * @note Requires iter >= lag_update for valid adaptation history.
@@ -61,7 +61,7 @@
  *
  */
 void adapt_cwmh_parameters(double *theta_updated,
-                           double *acceptance_probs,
+                           double *accept_prop,
                            double *log_sigma,
                            int lag_update,
                            int n,

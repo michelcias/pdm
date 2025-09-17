@@ -201,7 +201,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
   double *theta_1_updated  = (double *) R_Calloc(n_iter * n, double);
 
   /* Working arrays for CWMH algorithm */
-  double *acceptance_probs = (double *) R_Calloc(n, double);
+  double *accept_prop = (double *) R_Calloc(n, double);
   double *log_sigma        = (double *) R_Calloc(n, double);
   double *hat_theta_1      = (double *) R_Calloc(n, double);
   double *theta_1_new      = (double *) R_Calloc(n, double);
@@ -287,7 +287,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
       alpha_post,
       prec_1_post,
       y,
-      acceptance_probs,
+      accept_prop,
       log_sigma,
       hat_theta_1,
       theta_1_new,
@@ -341,7 +341,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
           REAL(log_sigma_samples)[idx + j * n_chain] = log_sigma[j];
         }
         if (return_accept_prop) {
-          REAL(accept_prop_samples)[idx + j * n_chain] = acceptance_probs[j];
+          REAL(accept_prop_samples)[idx + j * n_chain] = accept_prop[j];
         }
       }
       REAL(theta_01_samples)[idx] = theta_01_post[ii];
@@ -363,7 +363,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
   R_Free(prec_2_post);
   R_Free(alpha_post);
   R_Free(theta_1_updated);
-  R_Free(acceptance_probs);
+  R_Free(accept_prop);
   R_Free(log_sigma);
   R_Free(hat_theta_1);
   R_Free(theta_1_new);

@@ -48,21 +48,21 @@ test_that("adapt_cwmh_parameters C function correctly adapts parameters", {
   )
 
   # Test 1: Check calculated acceptance rates
-  expected_accrate <- c(1.0, 0.5, 0.0, 0.0, 0.0)
-  expect_equal(results$accrate, expected_accrate)
+  expected_acceptance_probs <- c(1.0, 0.5, 0.0, 0.0, 0.0)
+  expect_equal(results$acceptance_probs, expected_acceptance_probs)
 
   # Test 2: Check log_sigma update direction and magnitude
   step_size <- min(0.1, 1.0 / (iter^0.5))
 
-  # Component 1: accrate (1.0) > target (0.44) -> log_sigma should increase
+  # Component 1: acceptance_probs (1.0) > target (0.44) -> log_sigma should increase
   expect_true(results$log_sigma[1] > log_sigma_in[1])
   expect_equal(results$log_sigma[1], log_sigma_in[1] + step_size)
 
-  # Component 2: accrate (0.5) > target (0.44) -> log_sigma should increase
+  # Component 2: acceptance_probs (0.5) > target (0.44) -> log_sigma should increase
   expect_true(results$log_sigma[2] > log_sigma_in[2])
   expect_equal(results$log_sigma[2], log_sigma_in[2] + step_size)
 
-  # Component 3: accrate (0.0) < target (0.44) -> log_sigma should decrease
+  # Component 3: acceptance_probs (0.0) < target (0.44) -> log_sigma should decrease
   expect_true(results$log_sigma[3] < log_sigma_in[3])
   expect_equal(results$log_sigma[3], log_sigma_in[3] - step_size)
 

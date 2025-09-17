@@ -35,7 +35,7 @@
  *          those are sampled later in the Gibbs sequence.
  *
  *          This routine glues together:
- *          - Adaptive proposal tuning (log_sigma) via recent acceptance rates (accrate)
+ *          - Adaptive proposal tuning (log_sigma) via recent acceptance rates (acceptance_probs)
  *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
  *            with logit link)
  *
@@ -56,7 +56,7 @@
  * @param prec_theta_1         Vector of level precision parameters (size B).
  * @param y                    Vector of observed binomial counts (size n).
  *                             Each y[k] must satisfy 0 <= y[k] <= n_trials.
- * @param accrate              Vector of acceptance rates for each component (size n).
+ * @param acceptance_probs     Vector of acceptance rates for each component (size n).
  *                             Used to monitor MCMC performance and guide adaptive tuning.
  * @param log_sigma            Vector of log proposal standard deviations (size n).
  * @param hat_theta_1          Temporary vector for conditional means (size n).
@@ -100,7 +100,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
                                               double *alpha,
                                               double *prec_theta_1,
                                               double *y,
-                                              double *accrate,
+                                              double *acceptance_probs,
                                               double *log_sigma,
                                               double *hat_theta_1,
                                               double *theta_1_new,
@@ -127,7 +127,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
   if (lag_update > 0 && iter >= lag_update && (iter % lag_update == 0)) {
     adapt_cwmh_parameters(
       theta_1_updated,       /* theta_updated */
-      accrate,               /* accrate */
+      acceptance_probs,      /* acceptance_probs */
       log_sigma,             /* log_sigma */
       lag_update,            /* lag_update */
       n,                     /* n */
@@ -179,7 +179,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *          those are sampled later in the Gibbs sequence.
  *
  *          This routine glues together:
- *          - Adaptive proposal tuning (log_sigma) via recent acceptance rates (accrate)
+ *          - Adaptive proposal tuning (log_sigma) via recent acceptance rates (acceptance_probs)
  *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
  *            with logit link)
  *
@@ -200,7 +200,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
  * @param prec_theta_1         Vector of level precision parameters (size B).
  * @param y                    Vector of observed binomial counts (size n).
- * @param accrate              Vector of acceptance rates for each component (size n).
+ * @param acceptance_probs     Vector of acceptance rates for each component (size n).
  *                             Used to monitor MCMC performance and guide adaptive tuning.
  * @param log_sigma            Vector of log proposal standard deviations (size n).
  * @param hat_theta_1          Temporary vector for conditional means (size n).
@@ -246,7 +246,7 @@ void generate_alpha_logit_binomial(double *theta_1,
                                    double *alpha,
                                    double *prec_theta_1,
                                    double *y,
-                                   double *accrate,
+                                   double *acceptance_probs,
                                    double *log_sigma,
                                    double *hat_theta_1,
                                    double *theta_1_new,
@@ -273,7 +273,7 @@ void generate_alpha_logit_binomial(double *theta_1,
   if (lag_update > 0 && iter >= lag_update && (iter % lag_update == 0)) {
     adapt_cwmh_parameters(
       theta_1_updated,       /* theta_updated */
-      accrate,               /* accrate */
+      acceptance_probs,      /* acceptance_probs */
       log_sigma,             /* log_sigma */
       lag_update,            /* lag_update */
       n,                     /* n */

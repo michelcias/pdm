@@ -1,0 +1,677 @@
+
+R version 4.3.3 (2024-02-29) -- "Angel Food Cake"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # =============================================================================
+> # Enhanced MCMC Testing Suite for Binomial Local Level Model
+> # =============================================================================
+> #
+> #' @title Enhanced MCMC Testing Suite for Binomial Local Level Model
+> #' @author Michel H. Montoril
+> #' @date 2025-09-02
+> #' @description
+> #' This script provides comprehensive testing for the MCMC implementation
+> #' of the binomial local level model with fixed parameters. It validates
+> #' individual conditional distributions and overall sampler performance
+> #' with enhanced diagnostics and formal statistical tests.
+> #'
+> #' @details
+> #' The testing suite includes:
+> #' - Formal convergence diagnostics using the coda package
+> #' - Enhanced input validation and error handling
+> #' - Structured configuration system
+> #' - Consolidated diagnostic functions
+> #' - Formal statistical tests for validation
+> #' - Improved visualization and reporting
+> # =============================================================================
+> 
+> # Load required packages
+> required_packages <- c("coda", "parallel")
+> for (pkg in required_packages) {
++   if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
++     warning(paste("Package", pkg, "not available. Some diagnostics may be limited."))
++   }
++ }
+Warning message:
+Package coda not available. Some diagnostics may be limited. 
+> 
+> # =============================================================================
+> # 1. STRUCTURED CONFIGURATION SYSTEM
+> # =============================================================================
+> 
+> #' Global configuration for MCMC testing
+> CONFIG <- list(
++   # Simulation parameters
++   simulation = list(
++     n = 500,                    # Number of time points
++     n_trials = 10,             # Number of trials per time point
++     theta_01_true = 0.5,        # Initial state value
++     prec_1_true = 100.0,        # State precision
++     seed = 404                  # Reproducibility seed
++   ),
++ 
++   # MCMC parameters
++   mcmc = list(
++     burnin = 5000,              # Burn-in iterations
++     thinning = 25,              # Thinning interval
++     n_chain = 2000,             # Posterior samples
++     target_acceptance = 0.44,   # Target acceptance rate
++     lag_update = 50L,           # Adaptive update lag
++     max_step_size = 0.1,        # Maximum step size
++     base_adaptation_rate = 50.0,# Base adaptation rate
++     decay_exponent = 0.5        # Decay exponent
++   ),
++ 
++   # Validation thresholds
++   validation = list(
++     max_rel_bias = 0.05,        # Maximum acceptable relative bias
++     min_coverage = 0.90,        # Minimum coverage probability
++     max_rmse = 0.5,             # Maximum RMSE for theta_1
++     min_eff_size = 400,         # Minimum effective sample size
++     max_geweke_pvalue = 0.05    # Geweke test p-value threshold
++   ),
++ 
++   # Test configuration
++   test = list(
++     quick_test = FALSE,         # Enable quick testing mode
++     save_results = TRUE,        # Save test results
++     parallel = FALSE,           # Enable parallel processing
++     n_cores = 2,                # Number of cores for parallel processing
++     verbose = TRUE              # Verbose output
++   )
++ )
+> 
+> # Quick test configuration (for development/CI)
+> if (CONFIG$test$quick_test) {
++   CONFIG$simulation$n <- 100
++   CONFIG$mcmc$burnin <- 1000
++   CONFIG$mcmc$n_chain <- 500
++   CONFIG$mcmc$thinning <- 10
++ }
+> 
+> # =============================================================================
+> # 2. ENHANCED INPUT VALIDATION FUNCTIONS
+> # =============================================================================
+> 
+> #' Comprehensive input validation for MCMC testing
+> #' @param y Numeric vector of observations
+> #' @param n_trials Number of trials
+> #' @param ... Additional parameters to validate
+> validate_inputs <- function(y, n_trials, burnin = NULL, thinning = NULL,
++                             n_chain = NULL, theta_1_true = NULL, ...) {
++ 
++   # Basic input checks
++   if (!is.numeric(y) || length(y) == 0) {
++     stop("'y' must be a non-empty numeric vector")
++   }
++ 
++   if (any(is.na(y)) || any(is.infinite(y))) {
++     stop("'y' cannot contain NA or infinite values")
++   }
++ 
++   if (!is.numeric(n_trials) || length(n_trials) != 1 || n_trials <= 0) {
++     stop("'n_trials' must be a positive numeric scalar")
++   }
++ 
++   # Binomial observation validation
++   if (any(y < 0) || any(y > n_trials)) {
++     stop("Invalid binomial observations: all y values must be between 0 and n_trials")
++   }
++ 
++   if (any(y != round(y))) {
++     stop("Binomial observations must be integers")
++   }
++ 
++   # MCMC parameter validation
++   if (!is.null(burnin)) {
++     if (!is.numeric(burnin) || burnin < 0 || burnin != round(burnin)) {
++       stop("'burnin' must be a non-negative integer")
++     }
++   }
++ 
++   if (!is.null(thinning)) {
++     if (!is.numeric(thinning) || thinning < 1 || thinning != round(thinning)) {
++       stop("'thinning' must be a positive integer")
++     }
++   }
++ 
++   if (!is.null(n_chain)) {
++     if (!is.numeric(n_chain) || n_chain < 1 || n_chain != round(n_chain)) {
++       stop("'n_chain' must be a positive integer")
++     }
++   }
++ 
++   # Fixed parameter validation
++   if (!is.null(theta_1_true)) {
++     if (!is.numeric(theta_1_true) || length(theta_1_true) != length(y)) {
++       stop("'theta_1_true' must be numeric with same length as y")
++     }
++   }
++ 
++   if (CONFIG$test$verbose) {
++     cat("✓ Input validation passed\n")
++   }
++ 
++   return(TRUE)
++ }
+> 
+> # =============================================================================
+> # 3. MCMC DIAGNOSTIC FUNCTIONS
+> # =============================================================================
+> 
+> #' Comprehensive MCMC diagnostics
+> #' @param samples MCMC samples (vector or matrix)
+> #' @param true_value True parameter value(s)
+> #' @param param_name Parameter name for reporting
+> #' @param ... Additional arguments
+> mcmc_diagnostics <- function(samples, true_value = NULL, param_name = "parameter", ...) {
++ 
++   diagnostics <- list()
++ 
++   # Convert to coda mcmc object if available
++   if (requireNamespace("coda", quietly = TRUE)) {
++     if (is.matrix(samples)) {
++       mcmc_obj <- coda::mcmc(samples)
++     } else {
++       mcmc_obj <- coda::mcmc(as.matrix(samples))
++     }
++ 
++     # Effective sample size
++     diagnostics$effective_size <- coda::effectiveSize(mcmc_obj)
++ 
++     # Geweke convergence diagnostic
++     tryCatch({
++       geweke_result <- coda::geweke.diag(mcmc_obj)
++       diagnostics$geweke_z <- geweke_result$z
++       diagnostics$geweke_pvalue <- 2 * pnorm(-abs(geweke_result$z))
++     }, error = function(e) {
++       diagnostics$geweke_z <- NA
++       diagnostics$geweke_pvalue <- NA
++     })
++ 
++     # Autocorrelation
++     tryCatch({
++       autocorr_result <- coda::autocorr(mcmc_obj, lags = c(1, 5, 10, 50))
++ 
++       if (is.matrix(autocorr_result)) {
++         autocorr_vector <- drop(autocorr_result)
++         lag_names <- names(autocorr_vector)
++         lag_numbers <- as.numeric(gsub("Lag ", "", lag_names))
++ 
++         # Fallback se extração falhar
++         if (any(is.na(lag_numbers))) {
++           lag_numbers <- c(1, 5, 10, 50)[1:length(autocorr_vector)]
++         }
++ 
++         diagnostics$autocorr <- autocorr_vector
++         diagnostics$autocorr_lags <- lag_numbers
++       } else {
++         diagnostics$autocorr <- autocorr_result
++         diagnostics$autocorr_lags <- c(1, 5, 10, 50)[1:length(autocorr_result)]
++       }
++     }, error = function(e) {
++       diagnostics$autocorr <- NULL
++       diagnostics$autocorr_lags <- NULL
++     })
++ 
++   } else {
++     # Basic diagnostics without coda
++     diagnostics$effective_size <- length(samples)  # Conservative estimate
++     diagnostics$geweke_z <- NA
++     diagnostics$geweke_pvalue <- NA
++     diagnostics$autocorr <- NA
++   }
++ 
++   # Basic statistics
++   if (is.matrix(samples)) {
++     diagnostics$mean <- colMeans(samples)
++     diagnostics$sd <- apply(samples, 2, sd)
++     diagnostics$quantiles <- apply(samples, 2, quantile, probs = c(0.025, 0.25, 0.5, 0.75, 0.975))
++   } else {
++     diagnostics$mean <- mean(samples)
++     diagnostics$sd <- sd(samples)
++     diagnostics$quantiles <- quantile(samples, probs = c(0.025, 0.25, 0.5, 0.75, 0.975))
++   }
++ 
++   # Monte Carlo standard error
++   if (is.matrix(samples)) {
++     diagnostics$mc_se <- apply(samples, 2, function(x) sd(x) / sqrt(length(x)))
++   } else {
++     diagnostics$mc_se <- sd(samples) / sqrt(length(samples))
++   }
++ 
++   # Bias and accuracy (if true value provided)
++   if (!is.null(true_value)) {
++     diagnostics$bias <- diagnostics$mean - true_value
++     diagnostics$relative_bias <- abs(diagnostics$bias) / abs(true_value)
++     diagnostics$rmse <- sqrt(mean((diagnostics$mean - true_value)^2))
++ 
++     # Coverage probability (approximate 95% CI)
++     if (is.matrix(samples)) {
++       lower_ci <- diagnostics$quantiles[1, ]
++       upper_ci <- diagnostics$quantiles[5, ]
++       diagnostics$coverage <- mean((true_value >= lower_ci) & (true_value <= upper_ci))
++     } else {
++       lower_ci <- diagnostics$quantiles[1]
++       upper_ci <- diagnostics$quantiles[5]
++       diagnostics$coverage <- (true_value >= lower_ci) & (true_value <= upper_ci)
++     }
++   }
++ 
++   # Add parameter name
++   diagnostics$parameter <- param_name
++ 
++   return(diagnostics)
++ }
+> 
+> #' Generate comprehensive test report
+> #' @param test_results List of test results
+> #' @param config Configuration used
+> generate_test_report <- function(test_results, config = CONFIG) {
++ 
++   cat("\n", strrep("=", 80), "\n")
++   cat("ENHANCED MCMC VALIDATION REPORT\n")
++   cat("Generated:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), "\n")
++   cat(strrep("=", 80), "\n\n")
++ 
++   # Configuration summary
++   cat("CONFIGURATION SUMMARY:\n")
++   cat("  Sample size (n):", config$simulation$n, "\n")
++   cat("  Binomial trials:", config$simulation$n_trials, "\n")
++   cat("  MCMC samples:", config$mcmc$n_chain, "\n")
++   cat("  Burn-in:", config$mcmc$burnin, "\n")
++   cat("  Thinning:", config$mcmc$thinning, "\n\n")
++ 
++   # Test results summary
++   overall_status <- TRUE
++ 
++   for (test_name in names(test_results)) {
++     test_result <- test_results[[test_name]]
++     diag <- test_result$diagnostics
++ 
++     cat("TEST", toupper(substr(test_name, nchar(test_name), nchar(test_name))),
++         "-", diag$parameter, ":\n")
++ 
++     # Bias assessment
++     if (length(diag$relative_bias) == 1) {
++       rel_bias <- abs(diag$relative_bias)
++       bias_status <- rel_bias < config$validation$max_rel_bias
++       cat("  Relative Bias:", sprintf("%.3f%%", rel_bias * 100))
++       cat(" [", ifelse(bias_status, "PASS", "FAIL"), "]\n")
++     } else {
++       mean_rel_bias <- mean(abs(diag$relative_bias), na.rm = TRUE)
++       max_rel_bias <- max(abs(diag$relative_bias), na.rm = TRUE)
++       bias_status <- mean_rel_bias < config$validation$max_rel_bias
++       cat("  Mean Relative Bias:", sprintf("%.3f%%", mean_rel_bias * 100),
++           "Max:", sprintf("%.3f%%", max_rel_bias * 100))
++       cat(" [", ifelse(bias_status, "PASS", "FAIL"), "]\n")
++     }
++ 
++     # Effective sample size
++     eff_size <- diag$effective_size
++     if (!is.null(eff_size)) {
++       if (length(eff_size) == 1) {
++         eff_status <- eff_size > config$validation$min_eff_size
++         cat("  Effective Size:", sprintf("%.0f", eff_size))
++         cat(" [", ifelse(eff_status, "PASS", "FAIL"), "]\n")
++       } else {
++         mean_eff_size <- mean(eff_size, na.rm = TRUE)
++         min_eff_size <- min(eff_size, na.rm = TRUE)
++         eff_status <- mean_eff_size > config$validation$min_eff_size
++         cat("  Mean Effective Size:", sprintf("%.0f", mean_eff_size),
++             "Min:", sprintf("%.0f", min_eff_size))
++         cat(" [", ifelse(eff_status, "PASS", "FAIL"), "]\n")
++       }
++     }
++ 
++     # Geweke test
++     geweke_p <- diag$geweke_pvalue
++     if (!is.null(geweke_p) && !all(is.na(geweke_p))) {
++       if (length(geweke_p) == 1) {
++         geweke_status <- geweke_p > config$validation$max_geweke_pvalue
++         cat("  Geweke p-value:", sprintf("%.4f", geweke_p))
++         cat(" [", ifelse(geweke_status, "PASS", "FAIL"), "]\n")
++       } else {
++         mean_geweke_p <- mean(geweke_p, na.rm = TRUE)
++         min_geweke_p <- min(geweke_p, na.rm = TRUE)
++         geweke_status <- mean_geweke_p > config$validation$max_geweke_pvalue
++         cat("  Mean Geweke p-value:", sprintf("%.4f", mean_geweke_p),
++             "Min:", sprintf("%.4f", min_geweke_p))
++         cat(" [", ifelse(geweke_status, "PASS", "FAIL"), "]\n")
++       }
++     }
++ 
++     # Coverage (if available)
++     if (!is.null(diag$coverage)) {
++       coverage <- diag$coverage
++       if (length(coverage) == 1) {
++         coverage_status <- coverage > config$validation$min_coverage
++         cat("  Coverage:", sprintf("%.3f", coverage))
++         cat(" [", ifelse(coverage_status, "PASS", "FAIL"), "]\n")
++       } else {
++         mean_coverage <- mean(coverage, na.rm = TRUE)
++         min_coverage <- min(coverage, na.rm = TRUE)
++         coverage_status <- mean_coverage > config$validation$min_coverage
++         cat("  Mean Coverage:", sprintf("%.3f", mean_coverage),
++             "Min:", sprintf("%.3f", min_coverage))
++         cat(" [", ifelse(coverage_status, "PASS", "FAIL"), "]\n")
++       }
++     }
++ 
++     # RMSE (if available)
++     if (!is.null(diag$rmse)) {
++       if (length(diag$rmse) == 1) {
++         rmse_val <- diag$rmse
++         rmse_status <- rmse_val < config$validation$max_rmse
++         cat("  RMSE:", sprintf("%.4f", rmse_val))
++         cat(" [", ifelse(rmse_status, "PASS", "FAIL"), "]\n")
++       } else {
++         mean_rmse <- mean(diag$rmse, na.rm = TRUE)
++         max_rmse <- max(diag$rmse, na.rm = TRUE)
++         rmse_status <- mean_rmse < config$validation$max_rmse
++         cat("  Mean RMSE:", sprintf("%.4f", mean_rmse),
++             "Max:", sprintf("%.4f", max_rmse))
++         cat(" [", ifelse(rmse_status, "PASS", "FAIL"), "]\n")
++       }
++     }
++ 
++     # Overall test status (use AND for all scalar statuses)
++     test_status <- TRUE
++     # Bias
++     test_status <- test_status & bias_status
++     # Effective size
++     if (!is.null(eff_size)) {
++       if (length(eff_size) == 1) {
++         test_status <- test_status & (eff_size > config$validation$min_eff_size)
++       } else {
++         test_status <- test_status & (mean(eff_size, na.rm = TRUE) > config$validation$min_eff_size)
++       }
++     }
++     # Geweke
++     if (!is.null(geweke_p) && !all(is.na(geweke_p))) {
++       if (length(geweke_p) == 1) {
++         test_status <- test_status & (geweke_p > config$validation$max_geweke_pvalue)
++       } else {
++         test_status <- test_status & (mean(geweke_p, na.rm = TRUE) > config$validation$max_geweke_pvalue)
++       }
++     }
++     # Coverage
++     if (!is.null(diag$coverage)) {
++       if (length(diag$coverage) == 1) {
++         test_status <- test_status & (diag$coverage > config$validation$min_coverage)
++       } else {
++         test_status <- test_status & (mean(diag$coverage, na.rm = TRUE) > config$validation$min_coverage)
++       }
++     }
++     # RMSE
++     if (!is.null(diag$rmse)) {
++       if (length(diag$rmse) == 1) {
++         test_status <- test_status & (diag$rmse < config$validation$max_rmse)
++       } else {
++         test_status <- test_status & (mean(diag$rmse, na.rm = TRUE) < config$validation$max_rmse)
++       }
++     }
++ 
++     cat("  Status:", ifelse(test_status, "PASS", "FAIL"), "\n\n")
++     overall_status <- overall_status & test_status
++   }
++ 
++   # Overall assessment
++   cat("OVERALL STATUS:", ifelse(overall_status, "ALL TESTS PASS", "SOME TESTS FAILED"), "\n")
++   cat(strrep("=", 80), "\n")
++ 
++   # Return structured report
++   report <- list(
++     timestamp = Sys.time(),
++     config = config,
++     results = test_results,
++     overall_status = overall_status
++   )
++ 
++   if (config$test$save_results) {
++     saveRDS(report, paste0("mcmc_validation_report_",
++                            format(Sys.time(), "%Y%m%d_%H%M%S"), ".rds"))
++     cat("Report saved to: mcmc_validation_report_",
++         format(Sys.time(), "%Y%m%d_%H%M%S"), ".rds\n")
++   }
++ 
++   return(report)
++ }
+> 
+> # =============================================================================
+> # 4. ENHANCED R WRAPPER FOR C MCMC FUNCTION
+> # =============================================================================
+> 
+> #' Enhanced MCMC Sampler for Binomial Local Level Model with Fixed Parameters
+> #'
+> #' This function provides an R interface to the C implementation of the MCMC
+> #' sampler for the binomial local level model. It allows selective fixing of
+> #' parameters for testing individual conditional distributions with enhanced
+> #' validation and error handling.
+> #'
+> #' @param y Numeric vector of observed binomial counts
+> #' @param n_trials Number of trials for each binomial observation
+> #' @param burnin Number of burn-in iterations
+> #' @param thinning Thinning interval for stored samples
+> #' @param n_chain Number of samples to store after burn-in and thinning
+> #' @param theta_1_true Optional: fixed values for latent states (testing only)
+> #' @param theta_01_true Optional: fixed value for initial state (testing only)
+> #' @param prec_1_true Optional: fixed value for state precision (testing only)
+> #' @param prior_theta01_mean Prior mean for theta_01
+> #' @param prior_theta01_prec Prior precision for theta_01
+> #' @param prior_prec1_shape Prior shape parameter for precision
+> #' @param prior_prec1_rate Prior rate parameter for precision
+> #' @param lag_update Window size for adaptive tuning
+> #' @param max_step_size Maximum step size for proposal adaptation
+> #' @param base_adaptation_rate Base rate for proposal adaptation
+> #' @param decay_exponent Decay exponent for adaptation schedule
+> #' @param target_acceptance Target acceptance rate for adaptive MCMC
+> #' @param validate_inputs Whether to perform input validation
+> #'
+> #' @return List with MCMC samples and diagnostics:
+> #'   - theta_1: Matrix of latent state samples (n_chain x n)
+> #'   - theta_01: Vector of initial state samples (n_chain)
+> #'   - prec_1: Vector of precision samples (n_chain)
+> #'   - diagnostics: List of convergence diagnostics
+> #'
+> #' @examples
+> #' \dontrun{
+> #' # Simulate data
+> #' y <- rbinom(100, 50, 0.3)
+> #'
+> #' # Run MCMC
+> #' result <- enhanced_test_sampler(y, n_trials = 50, burnin = 1000,
+> #'                                thinning = 10, n_chain = 500)
+> #' }
+> enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
++                                   theta_1_true = NULL, theta_01_true = NULL, prec_1_true = NULL,
++                                   prior_theta01_mean = 0.0, prior_theta01_prec = 1.0,
++                                   prior_prec1_shape = 1.0, prior_prec1_rate = 1.0,
++                                   lag_update = 50L, max_step_size = 0.1,
++                                   base_adaptation_rate = 1.0, decay_exponent = 0.5,
++                                   target_acceptance = 0.44,
++                                   return_log_sigma = FALSE,    # Argumento 18
++                                   return_accrate = FALSE,      # Argumento 19
++                                   validate_inputs = TRUE) {
++ 
++   # Input validation
++   if (validate_inputs) {
++     validate_inputs(y, n_trials, burnin, thinning, n_chain, theta_1_true)
++   }
++ 
++   # Progress indicator
++   if (CONFIG$test$verbose) {
++     total_iter <- burnin + (n_chain - 1) * thinning + 1
++     cat("Starting MCMC with", total_iter, "total iterations...\n")
++   }
++ 
++   # Call C function with ALL 19 ARGUMENTS
++   tryCatch({
++     result <- .Call("_pdm_test_mcmc_binomial_locallevel_fixed_params",
++                     y,                          # 1
++                     n_trials,                   # 2
++                     as.integer(burnin),         # 3
++                     as.integer(thinning),       # 4
++                     as.integer(n_chain),        # 5
++                     theta_1_true,               # 6
++                     theta_01_true,              # 7
++                     prec_1_true,                # 8
++                     prior_theta01_mean,         # 9
++                     prior_theta01_prec,         # 10
++                     prior_prec1_shape,          # 11
++                     prior_prec1_rate,           # 12
++                     as.integer(lag_update),     # 13
++                     max_step_size,              # 14
++                     base_adaptation_rate,       # 15
++                     decay_exponent,             # 16
++                     target_acceptance,          # 17
++                     return_log_sigma,           # 18 ← AGORA INCLUÍDO!
++                     return_accrate)             # 19 ← AGORA INCLUÍDO!
++   }, error = function(e) {
++     stop("C function call failed: ", e$message,
++          "\nCheck that the pdm package is properly installed and loaded.")
++   })
++ 
++   if (CONFIG$test$verbose) {
++     cat("✓ MCMC completed successfully\n")
++   }
++ 
++   return(result)
++ }
+> 
+> # Legacy wrapper for backward compatibility
+> test_sampler <- enhanced_test_sampler
+> 
+> # =============================================================================
+> # 5. DATA SIMULATION AND SETUP
+> # =============================================================================
+> 
+> cat(strrep("=", 80), "\n")
+================================================================================ 
+> cat("ENHANCED MCMC TESTING SUITE FOR BINOMIAL LOCAL LEVEL MODEL\n")
+ENHANCED MCMC TESTING SUITE FOR BINOMIAL LOCAL LEVEL MODEL
+> cat(strrep("=", 80), "\n")
+================================================================================ 
+> 
+> # Set reproducible seed
+> set.seed(CONFIG$simulation$seed)
+> 
+> # Extract configuration
+> n <- CONFIG$simulation$n
+> n_trials <- CONFIG$simulation$n_trials
+> theta_01_true <- CONFIG$simulation$theta_01_true
+> prec_1_true <- CONFIG$simulation$prec_1_true
+> 
+> cat("=== DATA SIMULATION ===\n")
+=== DATA SIMULATION ===
+> cat("Time series length (n):", n, "\n")
+Time series length (n): 500 
+> cat("Binomial trials per period:", n_trials, "\n")
+Binomial trials per period: 10 
+> cat("True initial state (theta_01):", theta_01_true, "\n")
+True initial state (theta_01): 0.5 
+> cat("True state precision:", prec_1_true, "\n")
+True state precision: 100 
+> cat("Quick test mode:", ifelse(CONFIG$test$quick_test, "ENABLED", "DISABLED"), "\n\n")
+Quick test mode: DISABLED 
+
+> 
+> # Generate true latent states (random walk)
+> u1 <- rnorm(n, mean = 0, sd = sqrt(1 / prec_1_true))
+> theta_1_true <- cumsum(c(theta_01_true, u1))[-1]
+> 
+> # Transform to probability scale via logit link
+> alpha_true <- plogis(theta_1_true)
+> 
+> # Generate observed binomial data
+> y <- rbinom(n, size = n_trials, prob = alpha_true)
+> 
+> # Enhanced diagnostic plots
+> if (CONFIG$test$verbose) {
++   cat("Generating enhanced diagnostic plots...\n")
++ 
++   par(mfrow = c(2, 3), mar = c(4, 4, 2, 1))
++ 
++   # True latent states
++   plot.ts(theta_1_true, main = "True Latent States (theta_1)",
++           ylab = "theta_1", col = "blue", lwd = 2)
++   grid()
++ 
++   # True probabilities
++   plot.ts(alpha_true, main = "True Probabilities (alpha)",
++           ylab = "Probability", col = "red", lwd = 2, ylim = c(0, 1))
++   grid()
++ 
++   # Observed data
++   plot.ts(y, main = "Observed Binomial Counts",
++           ylab = "Count", type = "o", pch = 16, cex = 0.7)
++   grid()
++ 
++   # Empirical vs true probabilities
++   plot(alpha_true, y/n_trials, main = "True vs Empirical Probabilities",
++        xlab = "True Probability", ylab = "Empirical Probability",
++        pch = 16, col = rgb(0, 0, 1, 0., alpha = 0.66))
++   abline(0, 1, col = "red", lty = 2, lwd = 2)
++   grid()
++ 
++   # Data distribution
++   hist(y, breaks = 30, main = "Distribution of Observed Counts",
++        xlab = "Count", col = "lightblue", border = "white")
++ 
++   # Time series of empirical probabilities
++   plot.ts(y/n_trials, main = "Empirical Probabilities",
++           ylab = "Empirical Probability", col = "purple", lwd = 1)
++   lines(alpha_true, col = "red", lwd = 2, lty = 2)
++   legend("topright", c("Empirical", "True"), col = c("purple", "red"),
++          lwd = c(1, 2), lty = c(1, 2))
++   grid()
++ 
++   par(mfrow = c(1, 1))
++ }
+Generating enhanced diagnostic plots...
+> 
+> # =============================================================================
+> # 6. TEST A: CONDITIONAL DISTRIBUTION OF THETA_01
+> # =============================================================================
+> 
+> cat("\n=== TEST A: Sampling theta_01 (fixing theta_1 and prec_1) ===\n")
+
+=== TEST A: Sampling theta_01 (fixing theta_1 and prec_1) ===
+> cat("Purpose: Validate conditional posterior for initial state parameter\n")
+Purpose: Validate conditional posterior for initial state parameter
+> 
+> # Set seed for reproducibility
+> set.seed(CONFIG$simulation$seed + 1)
+> 
+> # Run MCMC with enhanced wrapper
+> mcmc_out_A <- enhanced_test_sampler(
++   y = y,
++   n_trials = n_trials,
++   burnin = CONFIG$mcmc$burnin,
++   thinning = CONFIG$mcmc$thinning,
++   n_chain = CONFIG$mcmc$n_chain,
++   theta_1_true = theta_1_true,    # Fixed at true values
++   prec_1_true = prec_1_true,      # Fixed at true values
++   prior_theta01_mean = 0.0,       # Weakly informative prior
++   prior_theta01_prec = 1.0
++ )
+✓ Input validation passed
+Starting MCMC with 54976 total iterations...
+Error in value[[3L]](cond) : 
+  C function call failed: C symbol name "_pdm_test_mcmc_binomial_locallevel_fixed_params" not in load table
+Check that the pdm package is properly installed and loaded.
+Calls: enhanced_test_sampler ... tryCatch -> tryCatchList -> tryCatchOne -> <Anonymous>
+Execution halted

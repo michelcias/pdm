@@ -1,0 +1,14 @@
+mcmc_binomial_localacceleration
+                        Gibbs Sampler for a Local-Acceleration Binomial
+                        Dynamic Model
+mcmc_binomial_locallevel
+                        Gibbs Sampler for a Local-Level Binomial
+                        Dynamic Model
+mcmc_binomial_localtrend
+                        Gibbs Sampler for a Local-Trend Binomial
+                        Dynamic Model
+mcmc_localacceleration
+                        Gibbs Sampler for a Local-Acceleration Dynamic
+                        Model
+mcmc_locallevel         Gibbs Sampler for a Local-Level Dynamic Model
+mcmc_localtrend         Gibbs Sampler for a Local-Trend Dynamic Model

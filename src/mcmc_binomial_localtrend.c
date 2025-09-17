@@ -33,7 +33,7 @@
  *          theta_{2,t} = theta_{2,t-1} + u_{2,t},                  u_{2,t} ~ N(0, W_2)
  *
  *          The algorithm employs component-wise Metropolis-Hastings for the non-linear
- *          observation model, with adaptive proposal tuning based on acceptance rates.
+ *          observation model, with adaptive proposal tuning based on acceptance proportions.
  *          Innovation precisions are sampled from conjugate Gamma posteriors.
  *
  *          Sampling sequence per iteration:
@@ -69,9 +69,9 @@
  * @param max_step_size_        SEXP Double scalar, maximum proposal step size
  * @param base_adaptation_rate_ SEXP Double scalar, base adaptation rate
  * @param decay_exponent_       SEXP Double scalar, adaptation decay exponent
- * @param target_acceptance_    SEXP Double scalar, target acceptance rate
+ * @param target_acceptance_    SEXP Double scalar, target acceptance proportion
  * @param return_log_sigma_     SEXP Logical scalar, whether to return log_sigma diagnostics
- * @param return_accrate_       SEXP Logical scalar, whether to return accrate diagnostics
+ * @param return_accept_prop_   SEXP Logical scalar, whether to return accept_prop diagnostics
  *
  * @return SEXP R list containing posterior samples with named components:
  *         - theta_1: Numeric matrix [n_chain x n] of level state trajectory samples
@@ -82,13 +82,13 @@
  *         - prec_2: Numeric vector [n_chain] of trend innovation precision samples
  *         - alpha: Numeric matrix [n_chain x n] of success probability samples
  *         - log_sigma: Numeric matrix [n_chain x n] of proposal scales (if requested)
- *         - accrate: Numeric matrix [n_chain x n] of acceptance rates (if requested)
+ *         - accept_prop: Numeric matrix [n_chain x n] of acceptance proportions (if requested)
  *
  * @note Computational complexity: O(n_iter x n) where n_iter = burnin + (n_chain-1)*thinning + 1
  * @note Memory allocation: Requires O(n_iter x n) temporary storage for full MCMC trajectory
  * @note Numerical stability: Uses R's built-in random number generators with proper state management
  * @note Thread safety: Not thread-safe due to shared RNG state; use GetRNGstate()/PutRNGstate()
- * @note Adaptation: Uses diminishing adaptation with sliding window acceptance rates
+ * @note Adaptation: Uses diminishing adaptation with sliding window acceptance proportions
  *
  * @warning Minimum sample size n >= 3 required for numerical stability
  * @warning Each y[i] must satisfy 0 <= y[i] <= n_trials
@@ -113,7 +113,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
                                       SEXP lag_update_, SEXP max_step_size_,
                                       SEXP base_adaptation_rate_, SEXP decay_exponent_,
                                       SEXP target_acceptance_,
-                                      SEXP return_log_sigma_, SEXP return_accrate_) {
+                                      SEXP return_log_sigma_, SEXP return_accept_prop_) {
 
   /* Parse data vector and check its length */
   double   *y    = REAL(y_);
@@ -162,7 +162,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
 
   /* Parse diagnostic output options */
   int return_log_sigma = LOGICAL(return_log_sigma_)[0];
-  int return_accrate   = LOGICAL(return_accrate_)[0];
+  int return_accept_prop = LOGICAL(return_accept_prop_)[0];
 
   /* Allocate storage for posterior samples */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -175,7 +175,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples = R_NilValue;
-  SEXP accrate_samples   = R_NilValue;
+  SEXP accept_prop_samples = R_NilValue;
   int n_outputs = 7;  // Base outputs
   int n_protect = 7;  // Base protection count
 
@@ -184,8 +184,8 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
     n_outputs++;
     n_protect++;
   }
-  if (return_accrate) {
-    accrate_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  if (return_accept_prop) {
+    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
     n_outputs++;
     n_protect++;
   }
@@ -340,8 +340,8 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
         if (return_log_sigma) {
           REAL(log_sigma_samples)[idx + j * n_chain] = log_sigma[j];
         }
-        if (return_accrate) {
-          REAL(accrate_samples)[idx + j * n_chain] = acceptance_probs[j];
+        if (return_accept_prop) {
+          REAL(accept_prop_samples)[idx + j * n_chain] = acceptance_probs[j];
         }
       }
       REAL(theta_01_samples)[idx] = theta_01_post[ii];
@@ -403,9 +403,9 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
     SET_VECTOR_ELT(out, output_idx, log_sigma_samples);
     SET_STRING_ELT(nms, output_idx++, mkChar("log_sigma"));
   }
-  if (return_accrate) {
-    SET_VECTOR_ELT(out, output_idx, accrate_samples);
-    SET_STRING_ELT(nms, output_idx++, mkChar("accrate"));
+  if (return_accept_prop) {
+    SET_VECTOR_ELT(out, output_idx, accept_prop_samples);
+    SET_STRING_ELT(nms, output_idx++, mkChar("accept_prop"));
   }
 
   setAttrib(out, R_NamesSymbol, nms);

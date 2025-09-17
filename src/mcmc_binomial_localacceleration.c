@@ -34,7 +34,7 @@
  *          theta_{3,t} = theta_{3,t-1} + u_{3,t},                  u_{3,t} ~ N(0, W_3)
  *
  *          The algorithm employs component-wise Metropolis-Hastings for the non-linear
- *          observation model, with adaptive proposal tuning based on acceptance rates.
+ *          observation model, with adaptive proposal tuning based on acceptance proportions.
  *          Innovation precisions are sampled from conjugate Gamma posteriors.
  *
  *          Sampling sequence per iteration:
@@ -69,7 +69,7 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
                                             SEXP lag_update_, SEXP max_step_size_,
                                             SEXP base_adaptation_rate_, SEXP decay_exponent_,
                                             SEXP target_acceptance_,
-                                            SEXP return_log_sigma_, SEXP return_accrate_) {
+                                            SEXP return_log_sigma_, SEXP return_accept_prop_) {
 
   /* Parse data vector and check its length */
   double   *y    = REAL(y_);
@@ -122,13 +122,13 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
 
   /* Parse diagnostic flags */
   int return_log_sigma = LOGICAL(return_log_sigma_)[0];
-  int return_accrate   = LOGICAL(return_accrate_)[0];
+  int return_accept_prop = LOGICAL(return_accept_prop_)[0];
 
   /* Calculate number of outputs and protections */
   int n_base_outputs = 10;  /* theta_1, theta_2, theta_3, theta_01, theta_02, theta_03, prec_1, prec_2, prec_3, alpha */
   int n_outputs = n_base_outputs;
   if (return_log_sigma) n_outputs++;
-  if (return_accrate) n_outputs++;
+  if (return_accept_prop) n_outputs++;
   int n_protect = n_base_outputs;  /* Base matrices/vectors to protect */
 
   /* Allocate storage for posterior samples */
@@ -145,13 +145,13 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples = R_NilValue;
-  SEXP accrate_samples   = R_NilValue;
+  SEXP accept_prop_samples = R_NilValue;
   if (return_log_sigma) {
     log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
     n_protect++;
   }
-  if (return_accrate) {
-    accrate_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  if (return_accept_prop) {
+    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
     n_protect++;
   }
 
@@ -357,9 +357,9 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
           REAL(log_sigma_samples)[idx + j * n_chain] = log_sigma[j];
         }
       }
-      if (return_accrate) {
+      if (return_accept_prop) {
         for (int j = 0; j < n; j++) {
-          REAL(accrate_samples)[idx + j * n_chain] = acceptance_probs[j];
+          REAL(accept_prop_samples)[idx + j * n_chain] = acceptance_probs[j];
         }
       }
       REAL(theta_01_samples)[idx] = theta_01_post[ii];
@@ -435,9 +435,9 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
     SET_VECTOR_ELT(out, output_idx, log_sigma_samples);
     SET_STRING_ELT(nms, output_idx++, mkChar("log_sigma"));
   }
-  if (return_accrate) {
-    SET_VECTOR_ELT(out, output_idx, accrate_samples);
-    SET_STRING_ELT(nms, output_idx++, mkChar("accrate"));
+  if (return_accept_prop) {
+    SET_VECTOR_ELT(out, output_idx, accept_prop_samples);
+    SET_STRING_ELT(nms, output_idx++, mkChar("accept_prop"));
   }
 
   setAttrib(out, R_NamesSymbol, nms);

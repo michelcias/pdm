@@ -8,3 +8,6 @@
 .httr-oauth
 .DS_Store
 .quarto
+*.Rcheck/
+..Rcheck/
+src/symbols.rds

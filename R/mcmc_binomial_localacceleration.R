@@ -59,7 +59,7 @@
 #'
 #' Due to the non-linear observation model with logit link, the algorithm
 #' employs component-wise Metropolis-Hastings for sampling the latent states
-#' \eqn{\theta_{t,1}}, with adaptive proposal tuning based on acceptance rates.
+#' \eqn{\theta_{t,1}}, with adaptive proposal tuning based on acceptance proportions.
 #' Innovation precisions are sampled from conjugate Gamma posteriors.
 #'
 #' Burn‐in and thinning are applied so that exactly `n_chain` posterior samples
@@ -87,9 +87,9 @@
 #' @param max_step_size Numeric > 0, maximum proposal step size for adaptive algorithm.
 #' @param base_adaptation_rate Numeric > 0, base adaptation rate for proposal scaling.
 #' @param decay_exponent Numeric > 0, adaptation decay exponent for diminishing adaptation.
-#' @param target_acceptance Numeric in (0,1), target acceptance rate for Metropolis-Hastings.
+#' @param target_acceptance Numeric in (0,1), target acceptance proportion for Metropolis-Hastings.
 #' @param return_log_sigma Logical, whether to return proposal scale diagnostics. Default is `FALSE`.
-#' @param return_accrate Logical, whether to return acceptance rate diagnostics. Default is `FALSE`.
+#' @param return_accept_prop Logical, whether to return acceptance proportion diagnostics. Default is `FALSE`.
 #' @param seed Optional integer used to set the random number generator seed. Default is `NULL`.
 #'
 #' @return A list with components:
@@ -105,7 +105,7 @@
 #'   \item{`prec_3`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_3}.}
 #'   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
 #'   \item{`log_sigma`}{Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics (if requested).}
-#'   \item{`accrate`}{Numeric matrix \eqn{[n_{chain} \times n]} of acceptance rate diagnostics (if requested).}
+#'   \item{`accept_prop`}{Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion diagnostics (if requested).}
 #' }
 #'
 #' @examples
@@ -177,7 +177,7 @@
 #'   decay_exponent       = 0.6,
 #'   target_acceptance    = 0.44,
 #'   return_log_sigma     = FALSE,
-#'   return_accrate       = TRUE,
+#'   return_accept_prop   = TRUE,
 #'   seed                 = 456
 #' )
 #'
@@ -196,9 +196,9 @@
 #'     cex = 0.7
 #'   )
 #'
-#'   # --- 1. Metropolis-Hastings Acceptance Rate Diagnostics ---
-#'   # Extract acceptance rate statistics for adaptive MCMC performance evaluation
-#'   acc <- out$accrate
+#'   # --- 1. Metropolis-Hastings Acceptance Proportion Diagnostics ---
+#'   # Extract acceptance proportion statistics for adaptive MCMC performance evaluation
+#'   acc <- out$accept_prop
 #'   min_acc <- apply(X = acc, MARGIN = 2, FUN = min)
 #'   max_acc <- apply(X = acc, MARGIN = 2, FUN = max)
 #'   med_acc <- apply(X = acc, MARGIN = 2, FUN = median)
@@ -208,7 +208,7 @@
 #'   r1_acc <- range_acc[1] - 0.05
 #'   r2_acc <- range_acc[2] + 0.15 * diff(range_acc)
 #'
-#'   # Plot acceptance rates with target reference line and confidence bands
+#'   # Plot acceptance proportions with target reference line and confidence bands
 #'   plot(
 #'     med_acc,
 #'     type = "l",
@@ -228,13 +228,13 @@
 #'     border = NA
 #'   )
 #'
-#'   # Overlay target acceptance rate
+#'   # Overlay target acceptance proportion
 #'   abline(h = 0.44, col = "red", lty = 2, lwd = 2)
 #'
 #'   # Add informative legend positioned in the expanded y-range
 #'   legend(
 #'     "topright",
-#'     legend = c("Median acceptance rate", "Min-Max range", "Target rate (0.44)"),
+#'     legend = c("Median acceptance proportion", "Min-Max range", "Target proportion (0.44)"),
 #'     col = c("black", "gray", "red"),
 #'     lty = c(1, 1, 2),
 #'     lwd = c(2, 8, 2),
@@ -878,7 +878,7 @@ mcmc_binomial_localacceleration <- function(y,
                                             decay_exponent = 0.6,
                                             target_acceptance = 0.44,
                                             return_log_sigma = FALSE,
-                                            return_accrate = FALSE,
+                                            return_accept_prop = FALSE,
                                             seed = NULL) {
 
   # --- Input Validation ---
@@ -957,8 +957,8 @@ mcmc_binomial_localacceleration <- function(y,
   if (!is.logical(return_log_sigma) || length(return_log_sigma) != 1) {
     stop("`return_log_sigma` must be a single logical value")
   }
-  if (!is.logical(return_accrate) || length(return_accrate) != 1) {
-    stop("`return_accrate` must be a single logical value")
+  if (!is.logical(return_accept_prop) || length(return_accept_prop) != 1) {
+    stop("`return_accept_prop` must be a single logical value")
   }
 
   if (!is.null(seed)) {
@@ -995,6 +995,6 @@ mcmc_binomial_localacceleration <- function(y,
     as.numeric(decay_exponent),
     as.numeric(target_acceptance),
     as.logical(return_log_sigma),
-    as.logical(return_accrate)
+    as.logical(return_accept_prop)
   )
 }

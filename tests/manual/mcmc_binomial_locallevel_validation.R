@@ -120,7 +120,7 @@ alpha_post    <- matrix(NA_real_, nrow = n_iter, ncol = n)
 # Adaptation diagnostics
 theta_1_updated <- matrix(0, nrow = n_iter, ncol = n)    # acceptance indicators
 log_sigma_hist  <- matrix(NA_real_, nrow = n_iter, ncol = n)
-acceptance_probs_hist <- matrix(NA_real_, nrow = n_iter, ncol = n)
+accept_prop_hist <- matrix(NA_real_, nrow = n_iter, ncol = n)
 log_sigma       <- rep(log(0.1), n)  # diagnostic tracking of proposal scale (log)
 
 #-------------------------------------------------------------------------------
@@ -208,9 +208,9 @@ for (ii in 2:n_iter) {
       as.numeric(decay_exponent),
       as.numeric(target_acceptance)
     )
-    acceptance_probs <- as.numeric(adapt_res$acceptance_probs)
+    accept_prop <- as.numeric(adapt_res$accept_prop)
     log_sigma    <- as.numeric(adapt_res$log_sigma)
-    acceptance_probs_hist[ii, ] <- acceptance_probs
+    accept_prop_hist[ii, ] <- accept_prop
     log_sigma_hist[ii, ] <- log_sigma
   }
 

@@ -129,7 +129,7 @@ SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_) {
  *
  * @details Exposes the C function 'adapt_cwmh_parameters' to R for testing.
  *          This wrapper takes all necessary parameters from R, calls the
- *          adaptation function, and returns the updated 'acceptance_probs' and 'log_sigma'
+ *          adaptation function, and returns the updated 'accept_prop' and 'log_sigma'
  *          vectors in a named list. Critical for validating adaptive MCMC behavior.
  *
  * @param theta_updated_ SEXP: A numeric vector representing the acceptance history.
@@ -141,10 +141,10 @@ SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_) {
  * @param base_adaptation_rate_ SEXP: A numeric scalar for the base adaptation rate.
  * @param decay_exponent_ SEXP: A numeric scalar for the decay exponent.
  * @param target_acceptance_ SEXP: A numeric scalar for the target acceptance rate.
- * @return A named list (VECSXP) with two elements: 'acceptance_probs' and 'log_sigma'.
+ * @return A named list (VECSXP) with two elements: 'accept_prop' and 'log_sigma'.
  *
  * @note Computational complexity: O(n) for component-wise adaptation
- * @note Memory access: Allocates vectors for acceptance_probs and log_sigma outputs
+ * @note Memory access: Allocates vectors for accept_prop and log_sigma outputs
  * @note Algorithm: Implements adaptive step size tuning for MCMC proposals
  *
  * @warning Requires positive adaptation parameters for numerical stability
@@ -182,10 +182,10 @@ SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
 
   // Allocate memory for outputs and the list to hold them
   SEXP result_list = PROTECT(allocVector(VECSXP, 2));
-  SEXP acceptance_probs_sexp = PROTECT(allocVector(REALSXP, n));
+  SEXP accept_prop_sexp = PROTECT(allocVector(REALSXP, n));
   SEXP log_sigma_sexp = PROTECT(allocVector(REALSXP, n));
 
-  double *acceptance_probs_out = REAL(acceptance_probs_sexp);
+  double *accept_prop_out = REAL(accept_prop_sexp);
   double *log_sigma_out = REAL(log_sigma_sexp);
 
   // Copy input log_sigma to output log_sigma, as it is modified in place
@@ -194,18 +194,18 @@ SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
   }
 
   // Call the C function
-  adapt_cwmh_parameters(theta_updated, acceptance_probs_out, log_sigma_out,
+  adapt_cwmh_parameters(theta_updated, accept_prop_out, log_sigma_out,
                         lag_update, n, iter, max_step_size,
                         base_adaptation_rate, decay_exponent, target_acceptance);
 
   // Set names for the list elements
   SEXP names = PROTECT(allocVector(STRSXP, 2));
-  SET_STRING_ELT(names, 0, mkChar("acceptance_probs"));
+  SET_STRING_ELT(names, 0, mkChar("accept_prop"));
   SET_STRING_ELT(names, 1, mkChar("log_sigma"));
   setAttrib(result_list, R_NamesSymbol, names);
 
   // Populate the list with the results
-  SET_VECTOR_ELT(result_list, 0, acceptance_probs_sexp);
+  SET_VECTOR_ELT(result_list, 0, accept_prop_sexp);
   SET_VECTOR_ELT(result_list, 1, log_sigma_sexp);
 
   // Unprotect all SEXPs (9 inputs + 1 list + 2 vectors + 1 names = 13)
@@ -1047,7 +1047,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   double *alpha_post = (double*) R_alloc(2 * n, sizeof(double));
 
   // CWMH working arrays
-  double *acceptance_probs = (double*) R_alloc(n, sizeof(double));
+  double *accept_prop = (double*) R_alloc(n, sizeof(double));
   double *log_sigma = (double*) R_alloc(n, sizeof(double));
   for(int i = 0; i < n; i++) log_sigma[i] = log(0.1); // Initialize
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
@@ -1058,7 +1058,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   GetRNGstate();
   generate_alpha_logit_binomial_locallevel(
     theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
-    acceptance_probs, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
+    accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
     0, n_trials, n, 1, 0.1, 1.0, 0.5, 0.44
   );
   PutRNGstate();
@@ -1100,7 +1100,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
  * @param prec_1_in_ SEXP: Input state precision parameter
  * @param y_ SEXP: Binomial count observations
  * @param n_trials_ SEXP: Number of trials for binomial model
- * @return Named list with theta_1, alpha, log_sigma, acceptance_probs, and updated components
+ * @return Named list with theta_1, alpha, log_sigma, accept_prop, and updated components
  *
  * @note Computational complexity: O(n) for adaptive MCMC with tuning
  * @note Memory access: Manages adaptive arrays and working memory
@@ -1138,7 +1138,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   double *alpha_post = (double*) R_alloc(2 * n, sizeof(double));
 
   // CWMH working arrays
-  double *acceptance_probs = (double*) R_alloc(n, sizeof(double));
+  double *accept_prop = (double*) R_alloc(n, sizeof(double));
   double *log_sigma = (double*) R_alloc(n, sizeof(double));
   for(int i = 0; i < n; i++) log_sigma[i] = log(0.1); // Initialize
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
@@ -1150,7 +1150,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   generate_alpha_logit_binomial(
     theta_1_post, theta_2_post, theta_01_post, theta_02_post,
     theta_1_updated, alpha_post, prec_1_post, y,
-    acceptance_probs, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
+    accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
     0, n_trials, n, 1, 0.1, 1.0, 0.5, 0.44
   );
   PutRNGstate();
@@ -1211,7 +1211,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
  * @param decay_exponent_ SEXP: Adaptation decay exponent (scalar)
  * @param target_acceptance_ SEXP: Target acceptance rate (scalar)
  * @param return_log_sigma_ SEXP: Logical scalar, whether to return log_sigma diagnostics
- * @param return_accrate_ SEXP: Logical scalar, whether to return accrate diagnostics
+ * @param return_accept_prop_ SEXP: Logical scalar, whether to return accrate diagnostics
  * @return Named list with MCMC samples and diagnostics:
  *         - theta_1: Matrix [n_chain x n] of state samples
  *         - theta_01: Vector [n_chain] of initial state samples
@@ -1243,7 +1243,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
                                                 SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
                                                 SEXP lag_update_, SEXP max_step_size_, SEXP base_adaptation_rate_,
                                                 SEXP decay_exponent_, SEXP target_acceptance_,
-                                                SEXP return_log_sigma_, SEXP return_accrate_) {
+                                                SEXP return_log_sigma_, SEXP return_accept_prop_) {
 
   /* Parse data vector and validate */
   double *y = REAL(coerceVector(y_, REALSXP));
@@ -1301,7 +1301,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
 
   /* Parse diagnostic output options */
   int return_log_sigma = LOGICAL(coerceVector(return_log_sigma_, LGLSXP))[0];
-  int return_accrate = LOGICAL(coerceVector(return_accrate_, LGLSXP))[0];
+  int return_accept_prop = LOGICAL(coerceVector(return_accept_prop_, LGLSXP))[0];
 
   /* Allocate storage for posterior samples */
   SEXP theta_1_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -1311,7 +1311,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples = R_NilValue;
-  SEXP accrate_samples = R_NilValue;
+  SEXP accept_prop_samples = R_NilValue;
   int n_outputs = 4;  // Base outputs: theta_1, theta_01, prec_1, alpha
   int n_protect = 4;  // Base protection count
 
@@ -1320,8 +1320,8 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
     n_outputs++;
     n_protect++;
   }
-  if (return_accrate) {
-    accrate_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  if (return_accept_prop) {
+    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
     n_outputs++;
     n_protect++;
   }
@@ -1334,7 +1334,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   double *theta_1_updated = (double*) R_Calloc(n_iter * n, double);
 
   /* Working arrays for CWMH algorithm */
-  double *acceptance_probs = (double*) R_Calloc(n, double);
+  double *accept_prop = (double*) R_Calloc(n, double);
   double *log_sigma = (double*) R_Calloc(n, double);
   double *hat_theta_1 = (double*) R_Calloc(n, double);
   double *theta_1_new = (double*) R_Calloc(n, double);
@@ -1398,7 +1398,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
     } else {
       generate_alpha_logit_binomial_locallevel(
         theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
-        acceptance_probs, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
+        accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
         lag_update, n_trials, n, ii, max_step_size, base_adaptation_rate,
         decay_exponent, target_acceptance);
     }
@@ -1435,8 +1435,8 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
         if (return_log_sigma) {
           REAL(log_sigma_samples)[chain_idx + j * n_chain] = log_sigma[j];
         }
-        if (return_accrate) {
-          REAL(accrate_samples)[chain_idx + j * n_chain] = acceptance_probs[j];
+        if (return_accept_prop) {
+          REAL(accept_prop_samples)[chain_idx + j * n_chain] = accept_prop[j];
         }
       }
       REAL(theta_01_samples)[chain_idx] = theta_01_post[ii];
@@ -1449,7 +1449,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
 
   /* Free memory */
   R_Free(theta_1_post); R_Free(theta_01_post); R_Free(prec_1_post);
-  R_Free(alpha_post); R_Free(theta_1_updated); R_Free(acceptance_probs);
+  R_Free(alpha_post); R_Free(theta_1_updated); R_Free(accept_prop);
   R_Free(log_sigma); R_Free(hat_theta_1); R_Free(theta_1_new);
   R_Free(log_accept_prob); R_Free(updated);
 
@@ -1477,9 +1477,9 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
     SET_VECTOR_ELT(result_list, output_idx, log_sigma_samples);
     SET_STRING_ELT(names, output_idx++, mkChar("log_sigma"));
   }
-  if (return_accrate) {
-    SET_VECTOR_ELT(result_list, output_idx, accrate_samples);
-    SET_STRING_ELT(names, output_idx++, mkChar("accrate"));
+  if (return_accept_prop) {
+    SET_VECTOR_ELT(result_list, output_idx, accept_prop_samples);
+    SET_STRING_ELT(names, output_idx++, mkChar("accept_prop"));
   }
 
   setAttrib(result_list, R_NamesSymbol, names);

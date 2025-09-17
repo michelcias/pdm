@@ -30,7 +30,7 @@
  *          those are sampled later in the Gibbs sequence.
  *
  *          This routine glues together:
- *          - Adaptive proposal tuning (log_sigma) via recent acceptance rates (acceptance_probs)
+ *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
  *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
  *            with logit link)
  *
@@ -91,7 +91,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
                                               double *alpha,
                                               double *prec_theta_1,
                                               double *y,
-                                              double *acceptance_probs,
+                                              double *accept_prop,
                                               double *log_sigma,
                                               double *hat_theta_1,
                                               double *theta_1_new,
@@ -126,7 +126,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *          those are sampled later in the Gibbs sequence.
  *
  *          This routine glues together:
- *          - Adaptive proposal tuning (log_sigma) via recent acceptance rates (acceptance_probs)
+ *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
  *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
  *            with logit link)
  *
@@ -193,7 +193,7 @@ void generate_alpha_logit_binomial(double *theta_1,
                                    double *alpha,
                                    double *prec_theta_1,
                                    double *y,
-                                   double *acceptance_probs,
+                                   double *accept_prop,
                                    double *log_sigma,
                                    double *hat_theta_1,
                                    double *theta_1_new,

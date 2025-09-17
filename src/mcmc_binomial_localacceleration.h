@@ -30,7 +30,7 @@
  *          theta_{3,t} = theta_{3,t-1} + u_{3,t},                  u_{3,t} ~ N(0, W_3)
  *
  *          Uses component-wise Metropolis-Hastings for non-linear observation model
- *          with adaptive proposal tuning based on acceptance rates.
+ *          with adaptive proposal tuning based on acceptance proportions.
  *
  *          The sampler cycles through conditional posteriors in the following order:
  *          1. State vector theta_3 | theta_2, theta_0, W_3 -> Gaussian posterior
@@ -72,9 +72,9 @@
  * @param max_step_size_        SEXP Double scalar, maximum proposal step size
  * @param base_adaptation_rate_ SEXP Double scalar, base adaptation rate
  * @param decay_exponent_       SEXP Double scalar, adaptation decay exponent
- * @param target_acceptance_    SEXP Double scalar, target acceptance rate
+ * @param target_acceptance_    SEXP Double scalar, target acceptance proportion
  * @param return_log_sigma_     SEXP Logical scalar, whether to return log_sigma diagnostics
- * @param return_accrate_       SEXP Logical scalar, whether to return accrate diagnostics
+ * @param return_accept_prop_   SEXP Logical scalar, whether to return accept_prop diagnostics
  *
  * @return SEXP R list containing posterior samples with named components:
  *         - theta_1: Numeric matrix [n_chain x n] of level state trajectory samples
@@ -88,13 +88,13 @@
  *         - prec_3: Numeric vector [n_chain] of acceleration innovation precision samples
  *         - alpha: Numeric matrix [n_chain x n] of success probability samples
  *         - log_sigma: Numeric matrix [n_chain x n] of proposal scales (if requested)
- *         - accrate: Numeric matrix [n_chain x n] of acceptance rates (if requested)
+ *         - accept_prop: Numeric matrix [n_chain x n] of acceptance proportions (if requested)
  *
  * @note Computational complexity: O(n_iter x n) for n_iter total iterations
  * @note Memory requirements: O(n_iter x n) for trajectory and adaptation storage
  * @note Each y[i] must satisfy 0 <= y[i] <= n_trials
  * @note Sample size n >= 3 required for numerical stability
- * @note Uses diminishing adaptation with sliding window acceptance rates
+ * @note Uses diminishing adaptation with sliding window acceptance proportions
  *
  * @warning Prior parameters must be positive for proper Gamma distributions
  * @warning Large sample sizes may require substantial memory allocation
@@ -118,6 +118,6 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
                                             SEXP lag_update_, SEXP max_step_size_,
                                             SEXP base_adaptation_rate_, SEXP decay_exponent_,
                                             SEXP target_acceptance_,
-                                            SEXP return_log_sigma_, SEXP return_accrate_);
+                                            SEXP return_log_sigma_, SEXP return_accept_prop_);
 
 #endif /* MCMC_BINOMIAL_LOCALACCELERATION_H */

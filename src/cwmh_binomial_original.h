@@ -1,10 +1,10 @@
 /**
  * @file cwmh_binomial.h
- * @brief Component-wise Metropolis-Hastings sampling for logit-binomial state-space
- *        models (local level and local trend) - Optimized version.
+ * @brief Header for component-wise Metropolis-Hastings sampling routines for logit-binomial
+ *        state-space models (local level and local trend).
  * @author Michel H. Montoril
- * @date 2025-09-22
- * @version 1.1
+ * @date 2025-08-10
+ * @version 1.0
  *
  * @details This header declares functions for MCMC updates in state-space models with binomial
  *          observations and logit link, including:
@@ -17,10 +17,10 @@
 
 /**
  * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
- *        local level model - Optimized version.
+ *        local level model.
  *
- * @details This function implements an optimized component-wise Metropolis-Hastings algorithm
- *          to sample the level state vector theta_1 in a binomial observation model with
+ * @details This function implements a component-wise Metropolis-Hastings algorithm to
+ *          sample the level state vector theta_1 in a binomial observation model with
  *          logit link:
  *          y_t ~ Binomial(n_trials, alpha_t),
  *          where alpha_t = logit^{-1}(theta_{1,t}).
@@ -28,19 +28,12 @@
  *          State equation (local level):
  *              theta_{1,t} = theta_{1,t-1} + u_{1,t}, u_{1,t} ~ N(0, 1/prec_theta_1)
  *
- *          **Optimizations implemented:**
- *          - Cached precision computations to avoid repeated sqrt/division
- *          - Reduced memory allocation by eliminating redundant arrays
- *          - Numerically stable ilogit function from utils.c
- *          - Improved memory locality through sequential access patterns
- *          - Stable log-probability computations
- *
- *          **Memory optimization:** theta_1_updated now uses sliding window of size
- *          lag_update x n instead of full B x n matrix.
+ *          **Iteration timing:** Uses theta_01[iter-1] and prec_theta_1[iter-1] because
+ *          these parameters are sampled later in the Gibbs sequence.
  *
  *          **Precision structure:**
- *          - Regular elements (k=0..n-2): sd_regular = 1/sqrt(prec_theta_1 * 2)
- *          - Last element (k=n-1):        sd_last    = 1/sqrt(prec_theta_1)
+ *          - Interior (k=0..n-2): sd = 1/sqrt(prec_theta_1 * 2)
+ *          - Boundary (k=n-1):    sd = 1/sqrt(prec_theta_1)
  *
  *          **Conditional means for proposal:**
  *          - First:
@@ -52,8 +45,7 @@
  *
  * @param theta_1            Matrix of level states (vectorized B x n), input/output.
  * @param theta_01           Vector of initial level states (size B).
- * @param theta_1_updated    Sliding window matrix of acceptance indicators
- *                           (vectorized lag_update x n), output. Uses circular indexing.
+ * @param theta_1_updated    Matrix of acceptance indicators (vectorized B x n), output.
  * @param alpha              Matrix of transformed probabilities (vectorized B x n), output.
  *                           Each alpha[t] = logit^{-1}(theta_1[t]) represents the binomial
  *                           success probability at time t.
@@ -64,24 +56,22 @@
  * @param hat_theta_1        Temporary vector for conditional means (size n).
  * @param theta_1_new        Temporary vector for proposed values (size n).
  * @param log_accept_prob    Temporary vector for log acceptance probabilities (size n).
- * @param lag_update         Sliding window size for theta_1_updated indexing.
+ * @param updated            Temporary vector for acceptance indicators (size n).
  * @param n_trials           Number of Bernoulli trials for binomial distribution (double).
  * @param n                  Length of the time series.
  * @param iter               Current MCMC iteration (0-based).
  *
  * @note Computational complexity: O(n) per MCMC iteration due to component-wise updates.
- * @note Memory requirements: O(n) temporary storage + O(lag_update * n) for sliding window.
- * @note Numerical stability: Uses optimized log-probabilities and stable ilogit function.
+ * @note Memory requirements: O(n) temporary storage for proposal and acceptance vectors.
+ * @note Numerical stability: Uses log-probabilities throughout to avoid underflow issues.
  * @note Forward sampling: Components are updated sequentially using previously updated
  *       values within the same iteration, which can improve mixing compared to
  *       simultaneous updates.
  * @note Model specification: Implements a local level binomial model (random walk only).
- * @note Cache optimization: Precision-dependent calculations are cached between iterations.
  *
  * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
- * @warning lag_update must be > 0 for theta_1_updated indexing.
  */
 void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
                                           double *theta_01,
@@ -93,7 +83,7 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
                                           double *hat_theta_1,
                                           double *theta_1_new,
                                           double *log_accept_prob,
-                                          int lag_update,
+                                          int *updated,
                                           double n_trials,
                                           int n,
                                           int iter);
@@ -102,10 +92,10 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
 
 /**
  * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
- *        dynamic model (local trend) - Optimized version.
+ *        dynamic model (local trend).
  *
- * @details This function implements an optimized component-wise Metropolis-Hastings algorithm
- *          to sample the level state vector theta_1 in a binomial observation model with
+ * @details This function implements a component-wise Metropolis-Hastings algorithm to
+ *          sample the level state vector theta_1 in a binomial observation model with
  *          logit link:
  *          y_t ~ Binomial(n_trials, alpha_t),
  *          where alpha_t = logit^{-1}(theta_{1,t}).
@@ -114,19 +104,12 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
  *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},
  *          with u_{1,t} ~ N(0, 1/prec_theta_1).
  *
- *          **Optimizations implemented:**
- *          - Cached precision computations to avoid repeated sqrt/division
- *          - Reduced memory allocation by eliminating redundant arrays
- *          - Numerically stable ilogit function from utils.c
- *          - Improved memory locality through sequential access patterns
- *          - Stable log-probability computations
- *
- *          **Memory optimization:** theta_1_updated now uses sliding window of size
- *          lag_update x n instead of full B x n matrix.
+ *          **Iteration timing:** Uses theta_01[iter-1] and prec_theta_1[iter-1] because
+ *          these parameters are sampled later in the Gibbs sequence.
  *
  *          **Precision structure:**
- *          - Regular elements (k=0..n-2): sd_regular = 1/sqrt(prec_theta_1 * 2)
- *          - Last element (k=n-1):        sd_last    = 1/sqrt(prec_theta_1)
+ *          - Interior (k=0..n-2): sd = 1/sqrt(prec_theta_1 * 2)
+ *          - Boundary (k=n-1):    sd = 1/sqrt(prec_theta_1)
  *
  *          **Conditional means for proposal:**
  *          - First:
@@ -142,8 +125,7 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
  * @param theta_2            Matrix of trend states (vectorized B x n), input only.
  * @param theta_01           Vector of initial level states (size B).
  * @param theta_02           Vector of initial trend states (size B).
- * @param theta_1_updated    Sliding window matrix of acceptance indicators
- *                           (vectorized lag_update x n), output. Uses circular indexing.
+ * @param theta_1_updated    Matrix of acceptance indicators (vectorized B x n), output.
  * @param alpha              Matrix of transformed probabilities (vectorized B x n), output.
  * @param prec_theta_1       Vector of level precision parameters (size B).
  * @param y                  Vector of observed binomial counts (size n).
@@ -152,24 +134,22 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
  * @param hat_theta_1        Temporary vector for conditional means (size n).
  * @param theta_1_new        Temporary vector for proposed values (size n).
  * @param log_accept_prob    Temporary vector for log acceptance probabilities (size n).
- * @param lag_update         Sliding window size for theta_1_updated indexing.
+ * @param updated            Temporary vector for acceptance indicators (size n).
  * @param n_trials           Number of Bernoulli trials for binomial distribution (double).
  * @param n                  Length of the time series.
  * @param iter               Current MCMC iteration (0-based).
  *
  * @note Computational complexity: O(n) per MCMC iteration due to component-wise updates.
- * @note Memory requirements: O(n) temporary storage + O(lag_update * n) for sliding window.
- * @note Numerical stability: Uses optimized log-probabilities and stable ilogit function.
+ * @note Memory requirements: O(n) temporary storage for proposal and acceptance vectors.
+ * @note Numerical stability: Uses log-probabilities throughout to avoid underflow issues.
  * @note Forward sampling: Components are updated sequentially using previously updated
  *       values within the same iteration, which can improve mixing compared to
  *       simultaneous updates.
  * @note Model specification: Implements a local trend binomial model (random walk + trend).
- * @note Cache optimization: Precision-dependent calculations are cached between iterations.
  *
  * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
- * @warning lag_update must be > 0 for theta_1_updated indexing.
  */
 void cwmh_alpha_logit_binomial(double *theta_1,
                                double *theta_2,
@@ -183,7 +163,7 @@ void cwmh_alpha_logit_binomial(double *theta_1,
                                double *hat_theta_1,
                                double *theta_1_new,
                                double *log_accept_prob,
-                               int lag_update,
+                               int *updated,
                                double n_trials,
                                int n,
                                int iter);

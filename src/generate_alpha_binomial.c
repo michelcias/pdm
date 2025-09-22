@@ -1,14 +1,15 @@
 /**
  * @file generate_alpha_binomial.c
  * @brief Component-wise Metropolis-Hastings sampling for logit-binomial state-space
- *        models.
+ *        models - Optimized version.
  * @author Michel H. Montoril
- * @date 2025-08-10
- * @version 1.0
+ * @date 2025-09-22
+ * @version 1.1
  *
- * @details This file contains functions for adaptive MCMC algorithms, including:
+ * @details This file contains optimized functions for adaptive MCMC algorithms, including:
  *          - Component-wise MH updates for local level binomial models
  *          - Component-wise MH updates for local trend binomial models
+ *          - Memory optimizations and computational efficiency improvements
  */
 
 #include <R.h>
@@ -20,9 +21,9 @@
 
 /**
  * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
- *        local level model.
+ *        local level model - Optimized version.
  *
- * @details Implements a component-wise Metropolis-Hastings algorithm to sample the
+ * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
  *          level state vector theta_1 in a binomial observation model with logit link:
  *          y_t ~ Binomial(n_trials, alpha_t),
  *          where alpha_t = logit^{-1}(theta_{1,t}).
@@ -34,6 +35,12 @@
  *          Iteration timing: Uses theta_01[iter-1] and prec_theta_1[iter-1] because
  *          those are sampled later in the Gibbs sequence.
  *
+ *          **Optimizations implemented:**
+ *          - Cached precision computations to avoid repeated sqrt/division
+ *          - Reduced memory allocation by eliminating redundant arrays
+ *          - Sliding window memory optimization for theta_1_updated
+ *          - Stable log-probability computations
+ *
  *          This routine glues together:
  *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
  *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
@@ -41,7 +48,7 @@
  *
  *          The adaptation follows a diminishing adaptation schedule and is executed
  *          periodically over a sliding window of size lag_update. The actual state
- *          update is delegated to cwmh_alpha_logit_binomial, which handles boundary
+ *          update is delegated to cwmh_alpha_logit_binomial_locallevel, which handles boundary
  *          conditions and log-acceptance.
  *
  *          Adaptation cadence:
@@ -50,7 +57,8 @@
  *
  * @param theta_1              Matrix of level states (vectorized B x n), input/output.
  * @param theta_01             Vector of initial level states (size B).
- * @param theta_1_updated      Matrix of acceptance indicators (vectorized B x n), output.
+ * @param theta_1_updated      Sliding window matrix of acceptance indicators
+ *                             (vectorized lag_update x n), output. Uses circular indexing.
  * @param alpha                Matrix of transformed probabilities (vectorized B x n),
  *                             output. Each alpha[t] = logit^{-1}(theta_1[t]).
  * @param prec_theta_1         Vector of level precision parameters (size B).
@@ -62,7 +70,6 @@
  * @param hat_theta_1          Temporary vector for conditional means (size n).
  * @param theta_1_new          Temporary vector for proposed values (size n).
  * @param log_accept_prob      Temporary vector for log acceptance probabilities (size n).
- * @param updated              Temporary vector for acceptance indicators (size n).
  * @param lag_update           Integer scalar, sliding window size for adaptation frequency.
  *                             Adaptation occurs every lag_update iterations when
  *                             iter >= lag_update. Set to 0 to disable adaptation.
@@ -86,10 +93,12 @@
  * @note Forward sampling for better mixing.
  * @note Model is local level (no trend).
  * @note Adaptive tuning performed every lag_update iterations if iter >= lag_update.
+ * @note Memory optimization: theta_1_updated uses sliding window instead of full matrix.
  *
  * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
+ * @warning lag_update must be > 0 for theta_1_updated indexing.
  *
  * @see adapt_cwmh_parameters
  * @see cwmh_alpha_logit_binomial_locallevel
@@ -105,15 +114,14 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
                                               double *hat_theta_1,
                                               double *theta_1_new,
                                               double *log_accept_prob,
-                                              int *updated,
-                                              int lag_update,
-                                              double n_trials,
-                                              int n,
-                                              int iter,
-                                              double max_step_size,
-                                              double base_adaptation_rate,
-                                              double decay_exponent,
-                                              double target_acceptance) {
+                                              int     lag_update,
+                                              double  n_trials,
+                                              int     n,
+                                              int     iter,
+                                              double  max_step_size,
+                                              double  base_adaptation_rate,
+                                              double  decay_exponent,
+                                              double  target_acceptance) {
 
   /* ========== Prerequisites and Safety Checks ========== */
   // cwmh_alpha_logit_binomial_locallevel uses prev_iter = iter - 1 for theta_01 and prec_theta_1
@@ -139,7 +147,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
     );
   }
 
-  /* ========== cwmh Update for Current Iteration ========== */
+  /* ========== CWMH Update for Current Iteration ========== */
   // Updates theta_1 block for 'iter', logs acceptance, and stores alpha = ilogit(theta_1)
   cwmh_alpha_logit_binomial_locallevel(
     theta_1,           /* theta_1 */
@@ -152,7 +160,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
     hat_theta_1,       /* hat_theta_1 */
     theta_1_new,       /* theta_1_new */
     log_accept_prob,   /* log_accept_prob */
-    updated,           /* updated */
+    lag_update,        /* lag_update */
     n_trials,          /* n_trials */
     n,                 /* n */
     iter               /* iter */
@@ -163,9 +171,9 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
 
 /**
  * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
- *        dynamic model (with local trend).
+ *        dynamic model (with local trend) - Optimized version.
  *
- * @details Implements a component-wise Metropolis-Hastings algorithm to sample the
+ * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
  *          level state vector theta_1 with a binomial observation model and local
  *          trend state-space evolution:
  *          y_t ~ Binomial(n_trials, alpha_t),
@@ -177,6 +185,12 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *
  *          Iteration timing: Uses theta_01[iter-1] and prec_theta_1[iter-1] because
  *          those are sampled later in the Gibbs sequence.
+ *
+ *          **Optimizations implemented:**
+ *          - Cached precision computations to avoid repeated sqrt/division
+ *          - Reduced memory allocation by eliminating redundant arrays
+ *          - Sliding window memory optimization for theta_1_updated
+ *          - Stable log-probability computations
  *
  *          This routine glues together:
  *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
@@ -196,7 +210,8 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  * @param theta_2              Matrix of trend states (vectorized B x n), input only.
  * @param theta_01             Vector of initial level states (size B).
  * @param theta_02             Vector of initial trend states (size B).
- * @param theta_1_updated      Matrix of acceptance indicators (vectorized B x n), output.
+ * @param theta_1_updated      Sliding window matrix of acceptance indicators
+ *                             (vectorized lag_update x n), output. Uses circular indexing.
  * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
  * @param prec_theta_1         Vector of level precision parameters (size B).
  * @param y                    Vector of observed binomial counts (size n).
@@ -206,7 +221,6 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  * @param hat_theta_1          Temporary vector for conditional means (size n).
  * @param theta_1_new          Temporary vector for proposed values (size n).
  * @param log_accept_prob      Temporary vector for log acceptance probabilities (size n).
- * @param updated              Temporary vector for acceptance indicators (size n).
  * @param lag_update           Integer scalar, sliding window size for adaptation frequency.
  *                             Adaptation occurs every lag_update iterations when
  *                             iter >= lag_update. Set to 0 to disable adaptation.
@@ -230,10 +244,12 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  * @note Forward sampling for better mixing.
  * @note Model is local trend (random walk + trend).
  * @note Adaptive tuning performed every lag_update iterations if iter >= lag_update.
+ * @note Memory optimization: theta_1_updated uses sliding window instead of full matrix.
  *
  * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
+ * @warning lag_update must be > 0 for theta_1_updated indexing.
  *
  * @see adapt_cwmh_parameters
  * @see cwmh_alpha_logit_binomial
@@ -251,15 +267,14 @@ void generate_alpha_logit_binomial(double *theta_1,
                                    double *hat_theta_1,
                                    double *theta_1_new,
                                    double *log_accept_prob,
-                                   int *updated,
-                                   int lag_update,
-                                   double n_trials,
-                                   int n,
-                                   int iter,
-                                   double max_step_size,
-                                   double base_adaptation_rate,
-                                   double decay_exponent,
-                                   double target_acceptance) {
+                                   int     lag_update,
+                                   double  n_trials,
+                                   int     n,
+                                   int     iter,
+                                   double  max_step_size,
+                                   double  base_adaptation_rate,
+                                   double  decay_exponent,
+                                   double  target_acceptance) {
 
   /* ========== Prerequisites and Safety Checks ========== */
   // cwmh_alpha_logit_binomial uses prev_iter = iter - 1 for theta_01 and prec_theta_1
@@ -285,7 +300,7 @@ void generate_alpha_logit_binomial(double *theta_1,
     );
   }
 
-  /* ========== cwmh Update for Current Iteration ========== */
+  /* ========== CWMH Update for Current Iteration ========== */
   // Updates theta_1 block for 'iter', logs acceptance, and stores alpha = ilogit(theta_1)
   cwmh_alpha_logit_binomial(
     theta_1,           /* theta_1 */
@@ -300,7 +315,7 @@ void generate_alpha_logit_binomial(double *theta_1,
     hat_theta_1,       /* hat_theta_1 */
     theta_1_new,       /* theta_1_new */
     log_accept_prob,   /* log_accept_prob */
-    updated,           /* updated */
+    lag_update,        /* lag_update */
     n_trials,          /* n_trials */
     n,                 /* n */
     iter               /* iter */

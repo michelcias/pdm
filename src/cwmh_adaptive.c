@@ -39,7 +39,7 @@
  *          where accept_prop[k] is the observed acceptance rate for component k in the last
  *          lag_update iterations.
  *
- * @param theta_updated   Vectorized (B x n) matrix of acceptance indicators (1 if accepted,
+ * @param theta_updated   Vectorized (lag_update x n) matrix of acceptance indicators (1 if accepted,
  *                        0 if not).
  * @param acceptance_probs Output vector (size n) of acceptance proportions for each parameter component.
  * @param log_sigma       Input/output vector (size n) of log proposal standard deviations
@@ -70,13 +70,13 @@
 void adapt_cwmh_parameters(double *theta_updated,
                            double *accept_prop,
                            double *log_sigma,
-                           int lag_update,
-                           int n,
-                           int iter,
-                           double max_step_size,
-                           double base_adaptation_rate,
-                           double decay_exponent,
-                           double target_acceptance) {
+                           int     lag_update,
+                           int     n,
+                           int     iter,
+                           double  max_step_size,
+                           double  base_adaptation_rate,
+                           double  decay_exponent,
+                           double  target_acceptance) {
 
   // Robust input validation
   if (theta_updated == NULL) {
@@ -110,8 +110,8 @@ void adapt_cwmh_parameters(double *theta_updated,
     error("target_acceptance must be in (0,1), got %f", target_acceptance);
   }
 
-  int start_idx = (iter - lag_update) * n;
-  int end_idx = iter * n;
+  //int start_idx = (iter - lag_update) * n;
+  //int end_idx = iter * n;
   int k, row;
 
   // Compute step_size only once per call
@@ -122,7 +122,7 @@ void adapt_cwmh_parameters(double *theta_updated,
     accept_prop[k] = 0.0;
 
     // Sum acceptances over the sliding window
-    for (row = start_idx; row < end_idx; row += n) {
+    for (row = 0; row < lag_update; row += n) {
       accept_prop[k] += theta_updated[row + k];
     }
 
@@ -131,7 +131,7 @@ void adapt_cwmh_parameters(double *theta_updated,
 
     // Update log_sigma towards target acceptance
     double deviation = accept_prop[k] - target_acceptance;
-    
+
     // Only update log_sigma when |deviation| > 1e-12 to avoid numerically insignificant updates
     if (fabs(deviation) > MIN_DEVIATION_THRESHOLD) {
       log_sigma[k] += (deviation > 0 ? POSITIVE_STEP_DIRECTION : NEGATIVE_STEP_DIRECTION) * step_size;

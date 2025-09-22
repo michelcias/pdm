@@ -1,12 +1,12 @@
 /**
  * @file mcmc_binomial_locallevel.c
- * @brief Implementation of MCMC sampling for local-level binomial dynamic models
- * @details Provides a complete Gibbs sampler for Bayesian estimation of binomial
+ * @brief Implementation of MCMC sampling for local-level binomial dynamic models - Optimized version
+ * @details Provides a complete optimized Gibbs sampler for Bayesian estimation of binomial
  *          dynamic models with logit link and local-level structure, utilizing
  *          component-wise Metropolis-Hastings for non-linear state sampling.
  * @author Michel H. Montoril
- * @date 2025-08-12
- * @version 1.0
+ * @date 2025-09-22
+ * @version 1.1
  */
 
 #include <R.h>
@@ -19,9 +19,9 @@
 #include "mcmc_binomial_locallevel.h"
 
 /**
- * @brief Gibbs sampler for local-level binomial dynamic model with logit link
+ * @brief Gibbs sampler for local-level binomial dynamic model with logit link - Optimized version
  *
- * @details Implements a complete Gibbs MCMC algorithm for the local-level binomial model:
+ * @details Implements a complete optimized Gibbs MCMC algorithm for the local-level binomial model:
  *
  *          Observation equation:
  *          y_t ~ Binomial(n_trials, alpha_t)
@@ -30,9 +30,15 @@
  *          State equation:
  *          theta_{1,t} = theta_{1,t-1} + u_{1,t},  u_{1,t} ~ N(0, W_1)
  *
- *          The algorithm employs component-wise Metropolis-Hastings for the non-linear
+ *          The algorithm employs optimized component-wise Metropolis-Hastings for the non-linear
  *          observation model, with adaptive proposal tuning based on acceptance proportions.
  *          Innovation precision is sampled from conjugate Gamma posterior.
+ *
+ *          **Optimizations implemented:**
+ *          - Cached precision computations to avoid repeated sqrt/division
+ *          - Reduced memory allocation by eliminating redundant arrays
+ *          - Sliding window memory optimization for theta_1_updated
+ *          - Stable log-probability computations
  *
  *          Sampling sequence per iteration:
  *          1. theta_1 | y, theta_0, W_1 -> Component-wise Metropolis-Hastings
@@ -67,9 +73,10 @@
  *         - accept_prop: Numeric matrix [n_chain x n] of acceptance proportions (if requested)
  *
  * @note Computational complexity: O(n_iter x n) for n_iter total iterations
- * @note Memory requirements: O(n_iter x n) for trajectory and adaptation storage
+ * @note Memory requirements: O(lag_update x n) for optimized sliding window + O(n_iter x n) for trajectory storage
  * @note RNG management: Proper GetRNGstate()/PutRNGstate() bracket for R integration
  * @note Adaptation: Uses diminishing adaptation with sliding window acceptance proportions
+ * @note Memory optimization: theta_1_updated uses sliding window instead of full B x n matrix
  *
  * @warning Minimum sample size n >= 3 enforced for numerical stability
  * @warning Each y[i] must satisfy 0 <= y[i] <= n_trials
@@ -161,15 +168,16 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
   double *theta_01_post    = (double *) R_Calloc(n_iter,     double);
   double *prec_1_post      = (double *) R_Calloc(n_iter,     double);
   double *alpha_post       = (double *) R_Calloc(n_iter * n, double);
-  double *theta_1_updated  = (double *) R_Calloc(n_iter * n, double);
+
+  /* Optimized sliding window buffer for theta_1_updated */
+  double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
 
   /* Working arrays for CWMH algorithm */
-  double *accept_prop = (double *) R_Calloc(n, double);
+  double *accept_prop      = (double *) R_Calloc(n, double);
   double *log_sigma        = (double *) R_Calloc(n, double);
   double *hat_theta_1      = (double *) R_Calloc(n, double);
   double *theta_1_new      = (double *) R_Calloc(n, double);
   double *log_accept_prob  = (double *) R_Calloc(n, double);
-  int    *updated          = (int *)    R_Calloc(n, int);
 
   /* Initialize log_sigma with reasonable starting values */
   for (int j = 0; j < n; j++) {
@@ -212,7 +220,6 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
       hat_theta_1,
       theta_1_new,
       log_accept_prob,
-      updated,
       lag_update,
       n_trials,
       n,
@@ -279,7 +286,6 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
   R_Free(hat_theta_1);
   R_Free(theta_1_new);
   R_Free(log_accept_prob);
-  R_Free(updated);
 
   /* Package results into a named list */
   SEXP out = PROTECT(allocVector(VECSXP, n_outputs));

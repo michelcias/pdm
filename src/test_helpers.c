@@ -6,10 +6,14 @@
  *          unit testing with packages like 'testthat'. Each wrapper handles
  *          proper memory management, input validation, and R object protection.
  * @author Michel H. Montoril
- * @date 2025-08-30
- * @version 1.3
+ * @date 2025-09-23
+ * @version 1.4
  *
  * @changelog
+ * - v1.4 (2025-09-23): Updated test_adapt_cwmh_parameters to include
+ *   min_deviation_threshold parameter for optimized adaptive MCMC testing.
+ *   Added test_adapt_cwmh_parameters_legacy for backward compatibility
+ *   comparison testing. Enhanced documentation for adaptive function testing.
  * - v1.3 (2025-09-15): Modified test_cwmh_alpha_logit_binomial_locallevel
  *   to accept log_sigma as an argument to close the adaptive MCMC loop.
  */
@@ -125,16 +129,132 @@ SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_) {
 //==============================================================================
 
 /**
- * @brief Test wrapper for the adapt_cwmh_parameters function
+ * @brief Test wrapper for the optimized adapt_cwmh_parameters function
  *
- * @details Exposes the C function 'adapt_cwmh_parameters' to R for testing.
- *          This wrapper takes all necessary parameters from R, calls the
- *          adaptation function, and returns the updated 'accept_prop' and 'log_sigma'
- *          vectors in a named list. Critical for validating adaptive MCMC behavior.
+ * @details Exposes the optimized C function 'adapt_cwmh_parameters' to R for testing.
+ *          This wrapper takes all necessary parameters from R, including the new
+ *          min_deviation_threshold parameter, calls the adaptation function, and returns
+ *          the updated 'accept_prop' and 'log_sigma' vectors in a named list.
+ *          Critical for validating optimized adaptive MCMC behavior with configurable
+ *          threshold sensitivity.
  *
- * @param theta_updated_ SEXP: A numeric vector representing the acceptance history.
+ *          **Version 1.4 enhancements:**
+ *          Updated to include min_deviation_threshold parameter, enabling comprehensive
+ *          testing of threshold-based adaptation logic. This allows validation of the
+ *          practical 1/lag_update threshold recommendation and comparison with other
+ *          threshold values for sensitivity analysis.
+ *
+ * @param theta_updated_ SEXP: A numeric vector representing the acceptance history
+ *                       in sliding window format (lag_update x n, row-major).
  * @param log_sigma_ SEXP: A numeric vector of the current log proposal standard deviations.
- * @param lag_update_ SEXP: An integer scalar for the window size.
+ * @param lag_update_ SEXP: An integer scalar for the sliding window size.
+ * @param n_ SEXP: An integer scalar for the number of components.
+ * @param iter_ SEXP: An integer scalar for the current MCMC iteration.
+ * @param max_step_size_ SEXP: A numeric scalar for the maximum step size.
+ * @param base_adaptation_rate_ SEXP: A numeric scalar for the base adaptation rate.
+ * @param decay_exponent_ SEXP: A numeric scalar for the decay exponent.
+ * @param target_acceptance_ SEXP: A numeric scalar for the target acceptance rate.
+ * @param min_deviation_threshold_ SEXP: A numeric scalar for the minimum deviation
+ *                       threshold to trigger adaptation updates.
+ * @return A named list (VECSXP) with two elements: 'accept_prop' and 'log_sigma'.
+ *
+ * @note Computational complexity: O(n) for component-wise adaptation with optimizations
+ * @note Memory access: Allocates vectors for accept_prop and log_sigma outputs
+ * @note Algorithm: Implements optimized adaptive step size tuning with configurable threshold
+ * @note Testing focus: Validates threshold-based filtering and cache performance
+ *
+ * @warning Requires positive adaptation parameters for numerical stability
+ * @warning min_deviation_threshold must be non-negative
+ * @warning Sliding window format must match C function expectations (row-major)
+ *
+ * @see adapt_cwmh_parameters
+ * @since version 1.4
+ */
+SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
+                                SEXP lag_update_, SEXP n_, SEXP iter_,
+                                SEXP max_step_size_, SEXP base_adaptation_rate_,
+                                SEXP decay_exponent_, SEXP target_acceptance_,
+                                SEXP min_deviation_threshold_) {
+
+  // Protect and coerce inputs (10 parameters)
+  PROTECT(theta_updated_ = coerceVector(theta_updated_, REALSXP));
+  PROTECT(log_sigma_ = coerceVector(log_sigma_, REALSXP));
+  PROTECT(lag_update_ = coerceVector(lag_update_, INTSXP));
+  PROTECT(n_ = coerceVector(n_, INTSXP));
+  PROTECT(iter_ = coerceVector(iter_, INTSXP));
+  PROTECT(max_step_size_ = coerceVector(max_step_size_, REALSXP));
+  PROTECT(base_adaptation_rate_ = coerceVector(base_adaptation_rate_, REALSXP));
+  PROTECT(decay_exponent_ = coerceVector(decay_exponent_, REALSXP));
+  PROTECT(target_acceptance_ = coerceVector(target_acceptance_, REALSXP));
+  PROTECT(min_deviation_threshold_ = coerceVector(min_deviation_threshold_, REALSXP));
+
+  // Extract C types from SEXPs
+  double *theta_updated = REAL(theta_updated_);
+  double *log_sigma_in = REAL(log_sigma_);
+  int lag_update = INTEGER(lag_update_)[0];
+  int n = INTEGER(n_)[0];
+  int iter = INTEGER(iter_)[0];
+  double max_step_size = REAL(max_step_size_)[0];
+  double base_adaptation_rate = REAL(base_adaptation_rate_)[0];
+  double decay_exponent = REAL(decay_exponent_)[0];
+  double target_acceptance = REAL(target_acceptance_)[0];
+  double min_deviation_threshold = REAL(min_deviation_threshold_)[0];
+
+  // Allocate memory for outputs and the list to hold them
+  SEXP result_list = PROTECT(allocVector(VECSXP, 2));
+  SEXP accept_prop_sexp = PROTECT(allocVector(REALSXP, n));
+  SEXP log_sigma_sexp = PROTECT(allocVector(REALSXP, n));
+
+  double *accept_prop_out = REAL(accept_prop_sexp);
+  double *log_sigma_out = REAL(log_sigma_sexp);
+
+  // Copy input log_sigma to output log_sigma, as it is modified in place
+  for(int i = 0; i < n; i++) {
+    log_sigma_out[i] = log_sigma_in[i];
+  }
+
+  // Call the optimized C function
+  adapt_cwmh_parameters(theta_updated, accept_prop_out, log_sigma_out,
+                        lag_update, n, iter, max_step_size,
+                        base_adaptation_rate, decay_exponent, target_acceptance,
+                        min_deviation_threshold);
+
+  // Set names for the list elements
+  SEXP names = PROTECT(allocVector(STRSXP, 2));
+  SET_STRING_ELT(names, 0, mkChar("accept_prop"));
+  SET_STRING_ELT(names, 1, mkChar("log_sigma"));
+  setAttrib(result_list, R_NamesSymbol, names);
+
+  // Populate the list with the results
+  SET_VECTOR_ELT(result_list, 0, accept_prop_sexp);
+  SET_VECTOR_ELT(result_list, 1, log_sigma_sexp);
+
+  // Unprotect all SEXPs (10 inputs + 1 list + 2 vectors + 1 names = 14)
+  UNPROTECT(14);
+
+  return result_list;
+}
+
+/**
+ * @brief Test wrapper for the legacy adapt_cwmh_parameters function for comparison testing
+ *
+ * @details Exposes the legacy C function 'adapt_cwmh_parameters_legacy' to R for
+ *          backward compatibility testing and performance comparison. This wrapper
+ *          provides the same interface as the original function, using a practical
+ *          default threshold of 1.0/lag_update internally. Essential for validating
+ *          that optimizations maintain equivalent behavior and for benchmarking
+ *          performance improvements.
+ *
+ *          **Testing applications:**
+ *          - Comparison of results between optimized and legacy versions
+ *          - Performance benchmarking to quantify optimization benefits
+ *          - Regression testing to ensure backward compatibility
+ *          - Validation of threshold behavior with practical defaults
+ *
+ * @param theta_updated_ SEXP: A numeric vector representing the acceptance history
+ *                       in sliding window format (lag_update x n, row-major).
+ * @param log_sigma_ SEXP: A numeric vector of the current log proposal standard deviations.
+ * @param lag_update_ SEXP: An integer scalar for the sliding window size.
  * @param n_ SEXP: An integer scalar for the number of components.
  * @param iter_ SEXP: An integer scalar for the current MCMC iteration.
  * @param max_step_size_ SEXP: A numeric scalar for the maximum step size.
@@ -143,22 +263,25 @@ SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_) {
  * @param target_acceptance_ SEXP: A numeric scalar for the target acceptance rate.
  * @return A named list (VECSXP) with two elements: 'accept_prop' and 'log_sigma'.
  *
- * @note Computational complexity: O(n) for component-wise adaptation
- * @note Memory access: Allocates vectors for accept_prop and log_sigma outputs
- * @note Algorithm: Implements adaptive step size tuning for MCMC proposals
+ * @note Computational complexity: O(n * lag_update) with standard implementation
+ * @note Memory access: Standard allocation patterns without optimization
+ * @note Algorithm: Uses practical default threshold of 1.0/lag_update
+ * @note Testing focus: Provides baseline for performance and correctness comparison
  *
- * @warning Requires positive adaptation parameters for numerical stability
- * @warning No validation of parameter ranges - caller responsibility
+ * @warning This is a legacy function intended primarily for testing
+ * @warning Performance may be significantly slower than optimized version
+ * @warning Future versions may deprecate this function
  *
- * @see adapt_cwmh_parameters
- * @since version 1.2
+ * @see adapt_cwmh_parameters_legacy
+ * @see test_adapt_cwmh_parameters
+ * @since version 1.4
  */
-SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
-                                SEXP lag_update_, SEXP n_, SEXP iter_,
-                                SEXP max_step_size_, SEXP base_adaptation_rate_,
-                                SEXP decay_exponent_, SEXP target_acceptance_) {
+SEXP test_adapt_cwmh_parameters_legacy(SEXP theta_updated_, SEXP log_sigma_,
+                                       SEXP lag_update_, SEXP n_, SEXP iter_,
+                                       SEXP max_step_size_, SEXP base_adaptation_rate_,
+                                       SEXP decay_exponent_, SEXP target_acceptance_) {
 
-  // Protect and coerce inputs
+  // Protect and coerce inputs (9 parameters)
   PROTECT(theta_updated_ = coerceVector(theta_updated_, REALSXP));
   PROTECT(log_sigma_ = coerceVector(log_sigma_, REALSXP));
   PROTECT(lag_update_ = coerceVector(lag_update_, INTSXP));
@@ -193,10 +316,10 @@ SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
     log_sigma_out[i] = log_sigma_in[i];
   }
 
-  // Call the C function
-  adapt_cwmh_parameters(theta_updated, accept_prop_out, log_sigma_out,
-                        lag_update, n, iter, max_step_size,
-                        base_adaptation_rate, decay_exponent, target_acceptance);
+  // Call the legacy C function (uses practical default threshold internally)
+  adapt_cwmh_parameters_legacy(theta_updated, accept_prop_out, log_sigma_out,
+                               lag_update, n, iter, max_step_size,
+                               base_adaptation_rate, decay_exponent, target_acceptance);
 
   // Set names for the list elements
   SEXP names = PROTECT(allocVector(STRSXP, 2));

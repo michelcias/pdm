@@ -136,44 +136,33 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
  * @param prec_theta_1         Vector of level precision parameters (size B).
  * @param y                    Vector of observed binomial counts (size n).
- * @param acceptance_probs     Vector of acceptance proportions for each component (size n).
- *                             Used to monitor MCMC performance and guide adaptive tuning.
+ * @param accept_prop          Vector of acceptance proportions for each component (size n).
  * @param log_sigma            Vector of log proposal standard deviations (size n).
  * @param hat_theta_1          Temporary vector for conditional means (size n).
  * @param theta_1_new          Temporary vector for proposed values (size n).
  * @param log_accept_prob      Temporary vector for log acceptance probabilities (size n).
  * @param lag_update           Integer scalar, sliding window size for adaptation frequency.
- *                             Adaptation occurs every lag_update iterations when
- *                             iter >= lag_update. Set to 0 to disable adaptation.
  * @param n_trials             Number of Bernoulli trials (double).
  * @param n                    Length of the time series.
  * @param iter                 Current MCMC iteration (0-based).
- * @param max_step_size        Double scalar, maximum adaptation step size for log_sigma
- *                             updates. Prevents excessive proposal variance changes during
- *                             adaptation.
+ * @param max_step_size        Double scalar, maximum adaptation step size.
  * @param base_adaptation_rate Double scalar, initial adaptation rate before decay.
- *                             Controls the magnitude of log_sigma adjustments.
  * @param decay_exponent       Double scalar, exponent for diminishing adaptation schedule.
- *                             Step size = min(max_step_size, base_adaptation_rate / iter^decay_exponent).
- *                             Typical values: 0.3-0.8 for robust convergence.
  * @param target_acceptance    Double scalar, target acceptance rate for adaptive tuning.
- *                             Typical values: 0.44 (univariate) or 0.234 (multivariate).
- *                             Adaptation adjusts log_sigma to achieve this rate.
+ * @param min_deviation_threshold Double scalar, minimum absolute deviation from target_acceptance
+ *                             required to trigger log_sigma updates. Must be >= 0.
  *
- * @note Complexity: O(n) per iteration (component-wise updates).
- * @note Uses log-probabilities for numerical stability.
- * @note Forward sampling for better mixing.
- * @note Model is local trend (random walk + trend).
- * @note Adaptive tuning performed every lag_update iterations if iter >= lag_update.
- * @note Memory optimization: theta_1_updated uses sliding window instead of full matrix.
+ * @note Model is local trend (random walk + trend component).
+ * @note Uses sliding window memory optimization.
+ * @note Configurable threshold allows fine-tuned adaptation sensitivity.
+ * @note Recommended threshold: 1.0/lag_update for practical applications.
  *
- * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
- * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
- *          history (iter < 1).
- * @warning lag_update must be > 0 for theta_1_updated indexing.
+ * @warning min_deviation_threshold must be >= 0.0.
+ * @warning lag_update must be > 0 for sliding window indexing.
  *
  * @see adapt_cwmh_parameters
  * @see cwmh_alpha_logit_binomial
+ * @since version 1.2
  */
 void generate_alpha_logit_binomial(double *theta_1,
                                    double *theta_2,
@@ -195,6 +184,7 @@ void generate_alpha_logit_binomial(double *theta_1,
                                    double  max_step_size,
                                    double  base_adaptation_rate,
                                    double  decay_exponent,
-                                   double  target_acceptance);
+                                   double  target_acceptance,
+                                   double  min_deviation_threshold);
 
 #endif /* GENERATE_ALPHA_BINOMIAL_H */

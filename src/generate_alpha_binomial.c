@@ -187,7 +187,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
 
 /**
  * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
- *        dynamic model (with local trend) - Optimized version.
+ *        dynamic model (with local trend) - Optimized version with configurable threshold.
  *
  * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
  *          level state vector theta_1 with a binomial observation model and local
@@ -207,6 +207,7 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *          - Reduced memory allocation by eliminating redundant arrays
  *          - Sliding window memory optimization for theta_1_updated
  *          - Stable log-probability computations
+ *          - Configurable threshold for adaptation sensitivity control
  *
  *          This routine glues together:
  *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
@@ -221,6 +222,12 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *          Adaptation cadence:
  *          - Performed when iter > lag_update and (iter - 1) % lag_update == 0, i.e.,
  *          at iterations (lag_update + 1), (2*lag_update + 1), (3*lag_update + 1), ...
+ *
+ *          **Version 1.2 updates:**
+ *          Enhanced flexibility by exposing min_deviation_threshold parameter, allowing
+ *          fine-grained control over adaptation sensitivity. Recommended values include
+ *          1.0/lag_update for practical applications, smaller values for sensitive adaptation,
+ *          and larger values for conservative behavior.
  *
  * @param theta_1              Matrix of level states (vectorized B x n), input/output.
  * @param theta_2              Matrix of trend states (vectorized B x n), input only.
@@ -254,6 +261,10 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  * @param target_acceptance    Double scalar, target acceptance rate for adaptive tuning.
  *                             Typical values: 0.44 (univariate) or 0.234 (multivariate).
  *                             Adaptation adjusts log_sigma to achieve this rate.
+ * @param min_deviation_threshold Double scalar, minimum absolute deviation from target_acceptance
+ *                             required to trigger log_sigma updates. Must be >= 0. Recommended
+ *                             values: 1.0/lag_update for practical applications, smaller values
+ *                             for sensitive adaptation, 0.0 to disable threshold filtering.
  *
  * @note Complexity: O(n) per iteration (component-wise updates).
  * @note Uses log-probabilities for numerical stability.
@@ -261,11 +272,13 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  * @note Model is local trend (random walk + trend).
  * @note Adaptive tuning performed every lag_update iterations if iter >= lag_update.
  * @note Memory optimization: theta_1_updated uses sliding window instead of full matrix.
+ * @note Threshold flexibility: Caller can specify any non-negative threshold value.
  *
  * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
  * @warning lag_update must be > 0 for theta_1_updated indexing.
+ * @warning min_deviation_threshold must be >= 0.0.
  *
  * @see adapt_cwmh_parameters
  * @see cwmh_alpha_logit_binomial
@@ -290,7 +303,8 @@ void generate_alpha_logit_binomial(double *theta_1,
                                    double  max_step_size,
                                    double  base_adaptation_rate,
                                    double  decay_exponent,
-                                   double  target_acceptance) {
+                                   double  target_acceptance,
+                                   double  min_deviation_threshold) {
 
   /* ========== Prerequisites and Safety Checks ========== */
   // cwmh_alpha_logit_binomial uses prev_iter = iter - 1 for theta_01 and prec_theta_1
@@ -302,17 +316,19 @@ void generate_alpha_logit_binomial(double *theta_1,
   /* ========== Adaptive Tuning (periodic, sliding window) ========== */
   // Trigger adaptation every 'lag_update' iterations once sufficient history exists
   if (lag_update > 0 && iter >= lag_update && (iter % lag_update == 0)) {
+
     adapt_cwmh_parameters(
-      theta_1_updated,       /* theta_updated */
-      accept_prop,           /* accept_prop */
-      log_sigma,             /* log_sigma */
-      lag_update,            /* lag_update */
-      n,                     /* n */
-      iter,                  /* iter */
-      max_step_size,         /* max_step_size */
-      base_adaptation_rate,  /* base_adaptation_rate */
-      decay_exponent,        /* decay_exponent */
-      target_acceptance      /* target_acceptance */
+      theta_1_updated,        /* theta_updated */
+      accept_prop,            /* accept_prop */
+      log_sigma,              /* log_sigma */
+      lag_update,             /* lag_update */
+      n,                      /* n */
+      iter,                   /* iter */
+      max_step_size,          /* max_step_size */
+      base_adaptation_rate,   /* base_adaptation_rate */
+      decay_exponent,         /* decay_exponent */
+      target_acceptance,      /* target_acceptance */
+      min_deviation_threshold /* min_deviation_threshold */
     );
   }
 

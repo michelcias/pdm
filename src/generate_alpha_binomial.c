@@ -3,13 +3,19 @@
  * @brief Component-wise Metropolis-Hastings sampling for logit-binomial state-space
  *        models - Optimized version.
  * @author Michel H. Montoril
- * @date 2025-09-22
- * @version 1.1
+ * @date 2025-09-23
+ * @version 1.2
  *
  * @details This file contains optimized functions for adaptive MCMC algorithms, including:
  *          - Component-wise MH updates for local level binomial models
  *          - Component-wise MH updates for local trend binomial models
  *          - Memory optimizations and computational efficiency improvements
+ *          - Integration with configurable adaptive threshold parameters
+ *
+ * @changelog
+ * - v1.2 (2025-09-23): Updated function signatures to include min_deviation_threshold
+ *   parameter, providing flexible control over adaptation sensitivity while maintaining
+ *   optimal performance characteristics.
  */
 
 #include <R.h>

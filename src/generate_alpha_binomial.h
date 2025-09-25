@@ -115,46 +115,17 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
                                               double  max_step_size,
                                               double  base_adaptation_rate,
                                               double  decay_exponent,
-                                              double  target_acceptance);
-
-//----------------------------------------------------------------------
+                                              double  target_acceptance,
+                                              double  min_deviation_threshold);
 
 /**
  * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
- *        dynamic model (with local trend) - Optimized version.
+ *        local trend model with configurable adaptation threshold.
  *
  * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
- *          level state vector theta_1 with a binomial observation model and local
- *          trend state-space evolution:
- *          y_t ~ Binomial(n_trials, alpha_t),
- *          where alpha_t = logit^{-1}(theta_{1,t}).
- *
- *          State equation:
- *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},
- *          with u_{1,t} ~ N(0, 1/prec_theta_1).
- *
- *          Iteration timing: Uses theta_01[iter-1] and prec_theta_1[iter-1] because
- *          those are sampled later in the Gibbs sequence.
- *
- *          **Optimizations implemented:**
- *          - Cached precision computations to avoid repeated sqrt/division
- *          - Reduced memory allocation by eliminating redundant arrays
- *          - Sliding window memory optimization for theta_1_updated
- *          - Stable log-probability computations
- *
- *          This routine glues together:
- *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
- *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
- *            with logit link)
- *
- *          The adaptation follows a diminishing adaptation schedule and is executed
- *          periodically over a sliding window of size lag_update. The actual state
- *          update is delegated to cwmh_alpha_logit_binomial, which handles boundary
- *          conditions and log-acceptance.
- *
- *          Adaptation cadence:
- *          - Performed when iter > lag_update and (iter - 1) % lag_update == 0, i.e.,
- *          at iterations (lag_update + 1), (2*lag_update + 1), (3*lag_update + 1), ...
+ *          level state vector theta_1 in a binomial observation model with local trend
+ *          state-space evolution. The adaptation threshold parameter provides flexible
+ *          control over when proposal variance adjustments are triggered.
  *
  * @param theta_1              Matrix of level states (vectorized B x n), input/output.
  * @param theta_2              Matrix of trend states (vectorized B x n), input only.

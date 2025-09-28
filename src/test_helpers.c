@@ -6,10 +6,13 @@
  *          unit testing with packages like 'testthat'. Each wrapper handles
  *          proper memory management, input validation, and R object protection.
  * @author Michel H. Montoril
- * @date 2025-09-23
+ * @date 2025-09-28
  * @version 1.4
  *
  * @changelog
+ * - v1.4 (2025-09-28): Fixed function signatures to match updated
+ *   generate_alpha_logit_binomial functions with min_deviation_threshold parameter.
+ *   Corrected CWMH function calls to use proper lag_update parameter.
  * - v1.4 (2025-09-23): Updated test_adapt_cwmh_parameters to include
  *   min_deviation_threshold parameter for optimized adaptive MCMC testing.
  *   Added test_adapt_cwmh_parameters_legacy for backward compatibility
@@ -996,13 +999,12 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));
-  int *updated = (int*) R_alloc(n, sizeof(int));
 
   GetRNGstate();
   cwmh_alpha_logit_binomial_locallevel(
     theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
-    log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
-    n_trials, n, 1
+    log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
+    2, n_trials, n, 1  // lag_update = 2
   );
   PutRNGstate();
 
@@ -1181,8 +1183,8 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   GetRNGstate();
   generate_alpha_logit_binomial_locallevel(
     theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
-    accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
-    0, n_trials, n, 1, 0.1, 1.0, 0.5, 0.44
+    accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
+    0, n_trials, n, 1, 0.1, 1.0, 0.5, 0.44, 0.02  // min_deviation_threshold
   );
   PutRNGstate();
 
@@ -1273,8 +1275,8 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   generate_alpha_logit_binomial(
     theta_1_post, theta_2_post, theta_01_post, theta_02_post,
     theta_1_updated, alpha_post, prec_1_post, y,
-    accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
-    0, n_trials, n, 1, 0.1, 1.0, 0.5, 0.44
+    accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
+    0, n_trials, n, 1, 0.1, 1.0, 0.5, 0.44, 0.02  // min_deviation_threshold
   );
   PutRNGstate();
 
@@ -1521,9 +1523,9 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
     } else {
       generate_alpha_logit_binomial_locallevel(
         theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
-        accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
+        accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
         lag_update, n_trials, n, ii, max_step_size, base_adaptation_rate,
-        decay_exponent, target_acceptance);
+        decay_exponent, target_acceptance, 1.0/(double)lag_update);
     }
 
     /* Step 2: Sample prec_1 */

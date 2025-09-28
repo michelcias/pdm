@@ -1,7 +1,7 @@
 #' @title Gibbs Sampler for a Local-Level Binomial Dynamic Model
 #'
 #' @description Runs a Gibbs sampler for the local-level binomial dynamic model
-#'   with logit link.
+#'   with logit link and configurable adaptation threshold.
 #'
 #' @details The model is defined as:
 #' \deqn{
@@ -48,7 +48,15 @@
 #' \eqn{\theta_{t,1}}, with adaptive proposal tuning based on acceptance proportions.
 #' The innovation precision is sampled from its conjugate Gamma posterior.
 #'
-#' Burn‐in and thinning are applied so that exactly `n_chain` posterior
+#' **Version 1.2 Enhancement:**
+#' This version introduces a configurable adaptation threshold parameter
+#' `min_deviation_threshold` that controls the sensitivity of proposal variance
+#' adjustments. The default value of `NULL` computes a practical threshold of
+#' `1.0/lag_update`, which triggers adaptation when the observed acceptance
+#' proportion deviates from the target by at least the amount corresponding
+#' to one additional acceptance/rejection in the sliding window.
+#'
+#' Burn‑in and thinning are applied so that exactly `n_chain` posterior
 #' samples are returned.
 #'
 #' @param y Numeric vector of observed binomial counts (length \eqn{n}). Each
@@ -76,6 +84,11 @@
 #'   adaptation.
 #' @param target_acceptance Numeric in (0,1), target acceptance proportion for
 #'   Metropolis-Hastings.
+#' @param min_deviation_threshold Numeric \eqn{\geq 0}, minimum absolute deviation
+#'   from `target_acceptance` required to trigger log_sigma updates. If `NULL`
+#'   (default), computes practical threshold as `1.0/lag_update`. Set to `0.0`
+#'   for maximum sensitivity (update for any deviation). Larger values make
+#'   adaptation more conservative.
 #' @param return_log_sigma Logical, whether to return proposal scale
 #'   diagnostics. Default is `FALSE`.
 #' @param return_accept_prop Logical, whether to return acceptance proportion diagnostics.
@@ -104,8 +117,9 @@
 #' # This example demonstrates how to:
 #' # 1. Simulate data from a local-level binomial dynamic model
 #' # 2. Use `mcmc_binomial_locallevel` to estimate parameters and latent states
-#' # 3. Perform a detailed posterior analysis with visualizations
-#' # 4. Set a seed for reproducibility
+#' # 3. Show different adaptation threshold behaviors
+#' # 4. Perform a detailed posterior analysis with visualizations
+#' # 5. Set a seed for reproducibility
 #'
 #' ## Simulation of data
 #' n <- 500        # Number of observations to simulate
@@ -126,26 +140,27 @@
 #' alpha_true <- plogis(theta1_true)              # Success probabilities
 #' y <- rbinom(n, size = n_trials, prob = alpha_true)  # Observed binomial counts
 #'
-#' ## Running the Gibbs sampler
-#' # Run the Gibbs sampler with specified priors and a seed
+#' ## Running the Gibbs sampler with default adaptation threshold
+#' # Default behavior: practical threshold = 1.0/lag_update
 #' out <- mcmc_binomial_locallevel(
 #'   y,
-#'   n_trials             = n_trials,
-#'   burnin               = 1000,
-#'   thinning             = 50,
-#'   n_chain              = 1000,
-#'   prior_theta01_mean   = 0,
-#'   prior_theta01_prec   = 1,
-#'   prior_prec1_shape    = 100,
-#'   prior_prec1_rate     = 1,
-#'   lag_update           = 50,
-#'   max_step_size        = 0.1,
-#'   base_adaptation_rate = 1,
-#'   decay_exponent       = 0.6,
-#'   target_acceptance    = 0.44,
-#'   return_log_sigma     = FALSE,
-#'   return_accept_prop   = TRUE,
-#'   seed                 = 456
+#'   n_trials                = n_trials,
+#'   burnin                  = 1000,
+#'   thinning                = 50,
+#'   n_chain                 = 1000,
+#'   prior_theta01_mean      = 0,
+#'   prior_theta01_prec      = 1,
+#'   prior_prec1_shape       = 100,
+#'   prior_prec1_rate        = 1,
+#'   lag_update              = 50,
+#'   max_step_size           = 0.1,
+#'   base_adaptation_rate    = 1,
+#'   decay_exponent          = 0.6,
+#'   target_acceptance       = 0.44,
+#'   min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
+#'   return_log_sigma        = FALSE,
+#'   return_accept_prop      = TRUE,
+#'   seed                    = 456
 #' )
 #'
 #' ## Posterior analysis and visualization
@@ -462,6 +477,7 @@ mcmc_binomial_locallevel <- function(y,
                                      base_adaptation_rate = 0.01,
                                      decay_exponent = 0.6,
                                      target_acceptance = 0.44,
+                                     min_deviation_threshold = NULL,
                                      return_log_sigma = FALSE,
                                      return_accept_prop = FALSE,
                                      seed = NULL) {
@@ -531,6 +547,17 @@ mcmc_binomial_locallevel <- function(y,
     stop("`target_acceptance` must be a single numeric value in (0,1)")
   }
 
+  # Validate min_deviation_threshold parameter
+  if (is.null(min_deviation_threshold)) {
+    # Compute practical default threshold
+    min_deviation_threshold <- 1.0 / lag_update
+  } else {
+    if (!is.numeric(min_deviation_threshold) || length(min_deviation_threshold) != 1 ||
+        min_deviation_threshold < 0) {
+      stop("`min_deviation_threshold` must be a single non-negative numeric value or NULL")
+    }
+  }
+
   # Validate logical parameters
   if (!is.logical(return_log_sigma) || length(return_log_sigma) != 1) {
     stop("`return_log_sigma` must be a single logical value")
@@ -548,7 +575,7 @@ mcmc_binomial_locallevel <- function(y,
   }
   # --- End Input Validation ---
 
-  # Call the C function
+  # Call the C function with new parameter
   .Call(
     "_pdm_C_MCMC_logit_binomial_locallevel",
     as.numeric(y),
@@ -565,6 +592,7 @@ mcmc_binomial_locallevel <- function(y,
     as.numeric(base_adaptation_rate),
     as.numeric(decay_exponent),
     as.numeric(target_acceptance),
+    as.numeric(min_deviation_threshold),
     as.logical(return_log_sigma),
     as.logical(return_accept_prop)
   )

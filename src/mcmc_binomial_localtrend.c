@@ -1,12 +1,18 @@
 /**
  * @file mcmc_binomial_localtrend.c
- * @brief Implementation of MCMC sampling for local-trend binomial dynamic models
- * @details Provides a complete Gibbs sampler for Bayesian estimation of binomial
+ * @brief Implementation of MCMC sampling for local-trend binomial dynamic models - Optimized version
+ * @details Provides a complete optimized Gibbs sampler for Bayesian estimation of binomial
  *          dynamic models with logit link and local-trend structure, utilizing
- *          component-wise Metropolis-Hastings for non-linear state sampling.
+ *          component-wise Metropolis-Hastings for non-linear state sampling with
+ *          configurable adaptation threshold.
  * @author Michel H. Montoril
- * @date 2025-08-18
- * @version 1.0
+ * @date 2025-09-27
+ * @version 1.2
+ *
+ * @changelog
+ * - v1.2 (2025-09-27): Updated generate_alpha_logit_binomial calls to include
+ *   configurable min_deviation_threshold parameter. Enhanced flexibility while
+ *   maintaining optimal default behavior and sliding window memory optimization.
  */
 
 #include <R.h>
@@ -20,9 +26,9 @@
 #include "mcmc_binomial_localtrend.h"
 
 /**
- * @brief Gibbs sampler for local-trend binomial dynamic model with logit link
+ * @brief Gibbs sampler for local-trend binomial dynamic model with logit link - Optimized version
  *
- * @details Implements a complete Gibbs MCMC algorithm for the local-trend binomial model:
+ * @details Implements a complete optimized Gibbs MCMC algorithm for the local-trend binomial model:
  *
  *          Observation equation:
  *          y_t ~ Binomial(n_trials, alpha_t)
@@ -32,15 +38,27 @@
  *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},  u_{1,t} ~ N(0, W_1)
  *          theta_{2,t} = theta_{2,t-1} + u_{2,t},                  u_{2,t} ~ N(0, W_2)
  *
- *          The algorithm employs component-wise Metropolis-Hastings for the non-linear
+ *          The algorithm employs optimized component-wise Metropolis-Hastings for the non-linear
  *          observation model, with adaptive proposal tuning based on acceptance proportions.
  *          Innovation precisions are sampled from conjugate Gamma posteriors.
+ *
+ *          **Optimizations implemented:**
+ *          - Cached precision computations to avoid repeated sqrt/division
+ *          - Reduced memory allocation by eliminating redundant arrays
+ *          - Sliding window memory optimization for theta_1_updated
+ *          - Stable log-probability computations
+ *          - Configurable adaptation threshold with practical default (1.0/lag_update)
+ *
+ *          **Version 1.2 enhancements:**
+ *          Enhanced flexibility by computing and passing practical adaptation threshold
+ *          to component-wise sampling functions. This ensures optimal adaptation behavior
+ *          while maintaining interface compatibility.
  *
  *          Sampling sequence per iteration:
  *          1. theta_2 | theta_1, theta_0, W_2 -> Gaussian posterior (conditional state)
  *          2. 1/W_2 | theta_2, theta_02 -> Gamma posterior
  *          3. theta_{0,2} | theta_2, theta_01, W_2 -> Gaussian posterior
- *          4. theta_1 | y, theta_2, theta_0, W_1 -> Component-wise Metropolis-Hastings
+ *          4. theta_1 | y, theta_2, theta_0, W_1 -> Component-wise Metropolis-Hastings with adaptive threshold
  *          5. 1/W_1 | theta_1, theta_01, theta_02 -> Gamma posterior
  *          6. theta_{0,1} | theta_1, theta_02, W_1 -> Gaussian posterior
  *
@@ -52,49 +70,51 @@
  *          - 1/W_1 ~ Gamma(nu_1, eta_1)
  *          - 1/W_2 ~ Gamma(nu_2, eta_2)
  *
- * @param y_                    SEXP Numeric vector of observed binomial counts [length n]
- * @param n_trials_             SEXP Double scalar, number of trials per observation
- * @param burnin_               SEXP Integer scalar, number of burn-in iterations
- * @param thinning_             SEXP Integer scalar, thinning interval
- * @param n_chain_              SEXP Integer scalar, target number of retained samples
- * @param prior_theta01_mean_   SEXP Double scalar, prior mean mu_01 for initial state theta_{0,1}
- * @param prior_theta01_prec_   SEXP Double scalar, prior precision tau_01 for initial state theta_{0,1}
- * @param prior_theta02_mean_   SEXP Double scalar, prior mean mu_02 for initial state theta_{0,2}
- * @param prior_theta02_prec_   SEXP Double scalar, prior precision tau_02 for initial state theta_{0,2}
- * @param prior_prec1_shape_    SEXP Double scalar, shape parameter nu_1 for Gamma prior on 1/W_1
- * @param prior_prec1_rate_     SEXP Double scalar, rate parameter eta_1 for Gamma prior on 1/W_1
- * @param prior_prec2_shape_    SEXP Double scalar, shape parameter nu_2 for Gamma prior on 1/W_2
- * @param prior_prec2_rate_     SEXP Double scalar, rate parameter eta_2 for Gamma prior on 1/W_2
- * @param lag_update_           SEXP Integer scalar, adaptation frequency (iterations)
- * @param max_step_size_        SEXP Double scalar, maximum proposal step size
- * @param base_adaptation_rate_ SEXP Double scalar, base adaptation rate
- * @param decay_exponent_       SEXP Double scalar, adaptation decay exponent
- * @param target_acceptance_    SEXP Double scalar, target acceptance proportion
- * @param return_log_sigma_     SEXP Logical scalar, whether to return log_sigma diagnostics
- * @param return_accept_prop_   SEXP Logical scalar, whether to return accept_prop diagnostics
+ * @param y_                       SEXP Numeric vector of observed binomial counts [length n]
+ * @param n_trials_                SEXP Double scalar, number of trials per observation
+ * @param burnin_                  SEXP Integer scalar, number of burn-in iterations
+ * @param thinning_                SEXP Integer scalar, thinning interval
+ * @param n_chain_                 SEXP Integer scalar, target number of retained samples
+ * @param prior_theta01_mean_      SEXP Double scalar, prior mean mu_01 for initial state theta_{0,1}
+ * @param prior_theta01_prec_      SEXP Double scalar, prior precision tau_01 for initial state theta_{0,1}
+ * @param prior_theta02_mean_      SEXP Double scalar, prior mean mu_02 for initial state theta_{0,2}
+ * @param prior_theta02_prec_      SEXP Double scalar, prior precision tau_02 for initial state theta_{0,2}
+ * @param prior_prec1_shape_       SEXP Double scalar, shape parameter nu_1 for Gamma prior on 1/W_1
+ * @param prior_prec1_rate_        SEXP Double scalar, rate parameter eta_1 for Gamma prior on 1/W_1
+ * @param prior_prec2_shape_       SEXP Double scalar, shape parameter nu_2 for Gamma prior on 1/W_2
+ * @param prior_prec2_rate_        SEXP Double scalar, rate parameter eta_2 for Gamma prior on 1/W_2
+ * @param lag_update_              SEXP Integer scalar, adaptation frequency (iterations)
+ * @param max_step_size_           SEXP Double scalar, maximum proposal step size
+ * @param base_adaptation_rate_    SEXP Double scalar, base adaptation rate
+ * @param decay_exponent_          SEXP Double scalar, adaptation decay exponent
+ * @param target_acceptance_       SEXP Double scalar, target acceptance proportion
+ * @param min_deviation_threshold_ SEXP Double scalar, minimum absolute deviation from
+ *                                      target_acceptance required to trigger log_sigma updates.
+ *                                      Values >= 0.
+ * @param return_log_sigma_        SEXP Logical scalar, whether to return log_sigma diagnostics
+ * @param return_accept_prop_      SEXP Logical scalar, whether to return accept_prop diagnostics
  *
  * @return SEXP R list containing posterior samples with named components:
- *         - theta_1: Numeric matrix [n_chain x n] of level state trajectory samples
- *         - theta_2: Numeric matrix [n_chain x n] of trend state trajectory samples
- *         - theta_01: Numeric vector [n_chain] of initial level state samples
- *         - theta_02: Numeric vector [n_chain] of initial trend state samples
- *         - prec_1: Numeric vector [n_chain] of level innovation precision samples
- *         - prec_2: Numeric vector [n_chain] of trend innovation precision samples
- *         - alpha: Numeric matrix [n_chain x n] of success probability samples
- *         - log_sigma: Numeric matrix [n_chain x n] of proposal scales (if requested)
+ *         - theta_1:     Numeric matrix [n_chain x n] of level state trajectory samples
+ *         - theta_2:     Numeric matrix [n_chain x n] of trend state trajectory samples
+ *         - theta_01:    Numeric vector [n_chain] of initial level state samples
+ *         - theta_02:    Numeric vector [n_chain] of initial trend state samples
+ *         - prec_1:      Numeric vector [n_chain] of level innovation precision samples
+ *         - prec_2:      Numeric vector [n_chain] of trend innovation precision samples
+ *         - alpha:       Numeric matrix [n_chain x n] of success probability samples
+ *         - log_sigma:   Numeric matrix [n_chain x n] of proposal scales (if requested)
  *         - accept_prop: Numeric matrix [n_chain x n] of acceptance proportions (if requested)
  *
  * @note Computational complexity: O(n_iter x n) where n_iter = burnin + (n_chain-1)*thinning + 1
- * @note Memory allocation: Requires O(n_iter x n) temporary storage for full MCMC trajectory
- * @note Numerical stability: Uses R's built-in random number generators with proper state management
- * @note Thread safety: Not thread-safe due to shared RNG state; use GetRNGstate()/PutRNGstate()
- * @note Adaptation: Uses diminishing adaptation with sliding window acceptance proportions
+ * @note Memory requirements: O(lag_update x n) for optimized sliding window + O(n_iter x n) for trajectory storage
+ * @note RNG management: Proper GetRNGstate()/PutRNGstate() bracket for R integration
+ * @note Adaptation: Uses practical threshold for optimal sensitivity control
+ * @note Memory optimization: theta_1_updated uses sliding window instead of full matrix
  *
  * @warning Minimum sample size n >= 3 required for numerical stability
  * @warning Each y[i] must satisfy 0 <= y[i] <= n_trials
  * @warning Large sample sizes (n > INT_MAX) not supported due to R integer limitations
  * @warning Prior parameters must be positive for proper Gamma distributions
- * @warning No convergence diagnostics implemented; user must assess chain convergence
  * @warning Memory allocation failures will terminate R session via R_Calloc errors
  *
  * @see generate_theta_p
@@ -112,7 +132,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
                                       SEXP prior_prec2_shape_, SEXP prior_prec2_rate_,
                                       SEXP lag_update_, SEXP max_step_size_,
                                       SEXP base_adaptation_rate_, SEXP decay_exponent_,
-                                      SEXP target_acceptance_,
+                                      SEXP target_acceptance_, SEXP min_deviation_threshold_,
                                       SEXP return_log_sigma_, SEXP return_accept_prop_) {
 
   /* Parse data vector and check its length */
@@ -154,14 +174,15 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
   double eta_02       = REAL(prior_prec2_rate_)[0];
 
   /* Parse adaptation parameters */
-  int    lag_update           = INTEGER(lag_update_)[0];
-  double max_step_size        = REAL(max_step_size_)[0];
-  double base_adaptation_rate = REAL(base_adaptation_rate_)[0];
-  double decay_exponent       = REAL(decay_exponent_)[0];
-  double target_acceptance    = REAL(target_acceptance_)[0];
+  int    lag_update              = INTEGER(lag_update_)[0];
+  double max_step_size           = REAL(max_step_size_)[0];
+  double base_adaptation_rate    = REAL(base_adaptation_rate_)[0];
+  double decay_exponent          = REAL(decay_exponent_)[0];
+  double target_acceptance       = REAL(target_acceptance_)[0];
+  double min_deviation_threshold = REAL(min_deviation_threshold_)[0];
 
   /* Parse diagnostic output options */
-  int return_log_sigma = LOGICAL(return_log_sigma_)[0];
+  int return_log_sigma   = LOGICAL(return_log_sigma_)[0];
   int return_accept_prop = LOGICAL(return_accept_prop_)[0];
 
   /* Allocate storage for posterior samples */
@@ -174,7 +195,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
   SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
 
   /* Conditional allocation for diagnostics */
-  SEXP log_sigma_samples = R_NilValue;
+  SEXP log_sigma_samples   = R_NilValue;
   SEXP accept_prop_samples = R_NilValue;
   int n_outputs = 7;  // Base outputs
   int n_protect = 7;  // Base protection count
@@ -198,15 +219,16 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
   double *prec_1_post      = (double *) R_Calloc(n_iter,     double);
   double *prec_2_post      = (double *) R_Calloc(n_iter,     double);
   double *alpha_post       = (double *) R_Calloc(n_iter * n, double);
-  double *theta_1_updated  = (double *) R_Calloc(n_iter * n, double);
+
+  /* Optimized sliding window buffer for theta_1_updated */
+  double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
 
   /* Working arrays for CWMH algorithm */
-  double *accept_prop = (double *) R_Calloc(n, double);
+  double *accept_prop      = (double *) R_Calloc(n, double);
   double *log_sigma        = (double *) R_Calloc(n, double);
   double *hat_theta_1      = (double *) R_Calloc(n, double);
   double *theta_1_new      = (double *) R_Calloc(n, double);
   double *log_accept_prob  = (double *) R_Calloc(n, double);
-  int    *updated          = (int *)    R_Calloc(n, int);
 
   /* Initialize log_sigma with reasonable starting values */
   for (int j = 0; j < n; j++) {
@@ -240,7 +262,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
   /*--- Main Gibbs sampling loop ---*/
   int chain = 0;
   for (int ii = 1; ii < n_iter; ii++) {
-    
+
     /* 1) Sample trend state vector theta_2 */
     generate_theta_p(
       theta_1_post,      // theta_pm1_post
@@ -292,7 +314,6 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
       hat_theta_1,
       theta_1_new,
       log_accept_prob,
-      updated,
       lag_update,
       n_trials,
       n,
@@ -300,7 +321,8 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
       max_step_size,
       base_adaptation_rate,
       decay_exponent,
-      target_acceptance
+      target_acceptance,
+      min_deviation_threshold
     );
 
     /* 5) Sample innovation precision 1/W_1 */
@@ -319,8 +341,8 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
     /* 6) Sample initial level state theta_01 */
     generate_theta_01(
       theta_01_post,     // theta_01_post (output)
-      theta_02_post,     // theta_02_post (initial trend)
       theta_1_post,      // theta_1_post (level states)
+      theta_02_post,     // theta_02_post (initial trend)
       prec_1_post,       // prec_theta_1_post (level precision)
       theta01_mean,      // mean_theta_01 (prior mean)
       theta01_prec,      // prec_theta_01 (prior precision)
@@ -368,7 +390,6 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
   R_Free(hat_theta_1);
   R_Free(theta_1_new);
   R_Free(log_accept_prob);
-  R_Free(updated);
 
   /* Package results into a named list */
   SEXP out = PROTECT(allocVector(VECSXP, n_outputs));

@@ -82,20 +82,14 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          argument counts. This table is used by R's dynamic loading system
  *          to properly route .Call() invocations to the correct C functions.
  *
- *          Registration structure:
- *          - First element: R function name (string used in .Call())
- *          - Second element: C function pointer (DL_FUNC cast)
- *          - Third element: Number of expected arguments
- *          - Final element: NULL terminator for array
- *
  *          Registered functions include:
  *          **Main MCMC Functions:**
  *          - C_MCMC_locallevel: Local level model MCMC sampler (10 arguments)
  *          - C_MCMC_localtrend: Local trend model MCMC sampler (14 arguments)
  *          - C_MCMC_localacceleration: Local acceleration model MCMC sampler (18 arguments)
- *          - C_MCMC_logit_binomial_locallevel: Binomial local level model MCMC (16 arguments)
- *          - C_MCMC_logit_binomial_localtrend: Binomial local trend model MCMC (20 arguments)
- *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration MCMC (24 arguments)
+ *          - C_MCMC_logit_binomial_locallevel: Binomial local level model MCMC (17 arguments)
+ *          - C_MCMC_logit_binomial_localtrend: Binomial local trend model MCMC (21 arguments)
+ *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration MCMC (25 arguments)
  *
  *          **Test Helper Functions (Utility and Basic):**
  *          - test_ilogit: Inverse logit transformation testing (1 argument)
@@ -134,6 +128,10 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          for comprehensive comparison testing. The optimized version includes configurable
  *          deviation threshold parameter, while legacy version maintains backward compatibility.
  *
+ *          **Version 1.2 Updates:**
+ *          Updated C_MCMC_logit_binomial_locallevel argument count from 15 to 16
+ *          to accommodate the new min_deviation_threshold parameter.
+ *
  * note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism
  * @note NULL terminator is required for proper array traversal
@@ -156,9 +154,9 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_locallevel",               (DL_FUNC) &C_MCMC_locallevel,      10},
   {"_pdm_C_MCMC_localtrend",               (DL_FUNC) &C_MCMC_localtrend,      14},
   {"_pdm_C_MCMC_localacceleration",        (DL_FUNC) &C_MCMC_localacceleration, 18},
-  {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel, 16},
-  {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend, 20},
-  {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 24},
+  {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel, 17},
+  {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend, 21},
+  {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 25},
 
   // --- Utility and basic function tests ---
   {"_pdm_test_ilogit",                     (DL_FUNC)   &test_ilogit,                  1},

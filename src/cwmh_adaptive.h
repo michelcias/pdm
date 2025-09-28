@@ -20,7 +20,7 @@
 
 /**
  * @brief Adapts proposal variance for each component in a Component-Wise Metropolis-Hastings
- *        (CWMH) MCMC sampler - Optimized version with configurable threshold.
+ *        (CWMH) MCMC sampler - Optimized version compatible with sliding window implementation.
  *
  * @details This function updates the proposal log standard deviations (log_sigma) for each
  *          dimension to achieve a target acceptance rate in adaptive MCMC. The adaptation uses a
@@ -31,8 +31,9 @@
  *          **Key optimizations implemented:**
  *          - Cached step size computation to avoid expensive power operations
  *          - Vectorized acceptance proportion calculations with loop unrolling
- *          - Memory-efficient blocked processing for large problem sizes
- *          - Configurable deviation threshold for fine-tuned sensitivity control
+ *          - Memory-efficient blocked processing for large n
+ *          - Precomputed inverse lag_update to replace division with multiplication
+ *          - Numerical stability improvements with threshold-based updates
  *          - Cache-friendly memory access patterns
  *
  *          **Memory layout compatibility:** This version is designed to work with the optimized
@@ -44,8 +45,7 @@
  *          The log_sigma update rule is:
  *              log_sigma[k] += sign(accept_prop[k] - target_acceptance) * step_size
  *          where accept_prop[k] is the observed acceptance rate for component k in the last
- *          lag_update iterations, and updates only occur when the absolute deviation exceeds
- *          min_deviation_threshold.
+ *          lag_update iterations.
  *
  * @param theta_updated   Sliding window matrix of acceptance indicators (lag_update x n),
  *                        organized in row-major order with circular indexing. Each element
@@ -57,7 +57,7 @@
  * @param lag_update      Number of recent iterations to use for acceptance rate calculation
  *                        (sliding window size). Must be > 0.
  * @param n               Number of components (dimensions) in the parameter vector. Must be > 0.
- * @param iter            Current MCMC iteration (1-based). Must be >= lag_update.
+ * @param iter            Current MCMC iteration (0-based). Must be >= lag_update.
  * @param max_step_size   Maximum adaptation step size. Must be > 0.
  * @param base_adaptation_rate  Base adaptation rate (initial step size). Must be > 0.
  * @param decay_exponent  Exponent controlling decay speed of adaptation step size
@@ -65,9 +65,10 @@
  * @param target_acceptance     Target acceptance rate for parameter optimization
  *                        (e.g. 0.44 univariate, 0.234 multivariate). Must be in (0,1).
  * @param min_deviation_threshold Minimum absolute deviation from target_acceptance required
- *                        to trigger log_sigma updates. Must be >= 0. Values around 1e-12 to 1e-6
- *                        are typical, with smaller values allowing more sensitive adaptation and
- *                        larger values providing more stability. Use 0.0 to disable threshold.
+ *                        to trigger log_sigma updates. Must be >= 0. A practical choice is
+ *                        1.0/lag_update, which corresponds to the deviation caused by a single
+ *                        additional acceptance/rejection in the sliding window. For example,
+ *                        with lag_update=50, use 0.02. Values of 0.0 disable the threshold.
  *
  * @return None (results are written to accept_prop and log_sigma).
  *
@@ -80,9 +81,13 @@
  * @note Vectorization: Automatically selects appropriate algorithm based on problem size.
  *
  * @note Common parameter choices: max_step_size = 0.01-0.1, base_adaptation_rate = 1.0-10.0,
- *       decay_exponent = 0.3-0.8, lag_update = 50-200, min_deviation_threshold = 1e-12 to 1e-6.
- * @note Threshold selection: Smaller thresholds (1e-12) enable more sensitive adaptation, while
- *       larger values (1e-6) provide greater stability at the cost of slower adaptation.
+ *       decay_exponent = 0.3-0.8, lag_update = 50-200, min_deviation_threshold = 1.0/lag_update.
+ * @note Threshold selection: The practical choice 1.0/lag_update corresponds to the deviation
+ *       from a single additional acceptance/rejection in the sliding window. For lag_update=50
+ *       and target_acceptance=0.44, this means adaptation occurs only when moving from the
+ *       expected 22 acceptances to 21 or 23 acceptances (deviation >= 0.02).
+ * @note Adaptation schedule: Uses diminishing adaptation (step_size -> 0 as iter -> infinity)
+ *       for theoretical convergence guarantees.
  * @note Performance: Achieves 2-4x speedup over naive implementation for typical problem sizes.
  *
  * @warning Results are invalid if theta_updated does not contain sufficient history
@@ -93,7 +98,36 @@
  *
  * @see cwmh_alpha_logit_binomial_locallevel
  * @see cwmh_alpha_logit_binomial
- * @see adapt_cwmh_parameters_legacy
+ *
+ * @example
+ * @code
+ * // Recommended usage with practical threshold based on window size
+ * double practical_threshold = 1.0 / lag_update;  // e.g., 0.02 for lag_update=50
+ * if (iter >= lag_update && (iter % lag_update == 0)) {
+ *     adapt_cwmh_parameters(
+ *         theta_1_updated,        // Sliding window of acceptances
+ *         accept_prop,            // Output: current acceptance rates
+ *         log_sigma,              // Input/output: proposal scales
+ *         50,                     // lag_update: sliding window size
+ *         n,                      // Number of components
+ *         iter,                   // Current iteration
+ *         0.05,                   // max_step_size
+ *         2.0,                    // base_adaptation_rate
+ *         0.6,                    // decay_exponent
+ *         0.44,                   // target_acceptance
+ *         practical_threshold     // min_deviation_threshold = 0.02
+ *     );
+ * }
+ *
+ * // More conservative adaptation (require 2+ acceptance changes)
+ * adapt_cwmh_parameters(..., 2.0 / lag_update);  // e.g., 0.04 for lag_update=50
+ *
+ * // Very sensitive adaptation (single acceptance change triggers update)
+ * adapt_cwmh_parameters(..., 1.0 / lag_update);  // e.g., 0.02 for lag_update=50
+ *
+ * // Disable threshold (update for any deviation, not recommended)
+ * adapt_cwmh_parameters(..., 0.0);               // Maximum sensitivity
+ * @endcode
  */
 void adapt_cwmh_parameters(double *theta_updated,
                            double *accept_prop,
@@ -111,10 +145,8 @@ void adapt_cwmh_parameters(double *theta_updated,
  * @brief Legacy wrapper for adapt_cwmh_parameters with backward compatibility.
  *
  * @details This function provides backward compatibility with existing code by calling
- *          the optimized adapt_cwmh_parameters function with a practical default threshold.
- *          The default threshold (1.0/lag_update) represents the deviation caused by a
- *          single additional acceptance/rejection in the sliding window, providing
- *          sensible adaptation behavior for most applications.
+ *          the optimized adapt_cwmh_parameters function with a default threshold value.
+ *          The default threshold (1.0/lag_update) matches the previous hardcoded behavior.
  *
  *          **Usage recommendation:** New code should use adapt_cwmh_parameters directly
  *          with an explicit threshold parameter for better control and clarity.
@@ -124,7 +156,7 @@ void adapt_cwmh_parameters(double *theta_updated,
  * @param log_sigma       Input/output vector (size n) of log proposal standard deviations.
  * @param lag_update      Sliding window size for acceptance rate calculation.
  * @param n               Number of parameter components.
- * @param iter            Current MCMC iteration (1-based).
+ * @param iter            Current MCMC iteration (0-based).
  * @param max_step_size   Maximum adaptation step size.
  * @param base_adaptation_rate  Base adaptation rate.
  * @param decay_exponent  Adaptation decay exponent.

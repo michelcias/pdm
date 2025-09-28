@@ -232,7 +232,7 @@ static inline void update_log_sigma_optimized(double *accept_prop,
  * @param lag_update      Number of recent iterations to use for acceptance rate calculation
  *                        (sliding window size). Must be > 0.
  * @param n               Number of components (dimensions) in the parameter vector. Must be > 0.
- * @param iter            Current MCMC iteration (1-based). Must be >= lag_update.
+ * @param iter            Current MCMC iteration (0-based). Must be >= lag_update.
  * @param max_step_size   Maximum adaptation step size. Must be > 0.
  * @param base_adaptation_rate  Base adaptation rate (initial step size). Must be > 0.
  * @param decay_exponent  Exponent controlling decay speed of adaptation step size
@@ -374,9 +374,29 @@ void adapt_cwmh_parameters(double *theta_updated,
 }
 
 /**
- * @brief Reset adaptation cache (utility function for testing and debugging)
- * @details Clears internal caches to ensure fresh computations
- * @note Primarily intended for unit testing and debugging scenarios
+ * @brief Reset adaptation cache (utility function for testing and debugging).
+ *
+ * @details Clears internal caches to ensure fresh computations. This function is primarily
+ *          intended for unit testing and debugging scenarios where predictable behavior
+ *          is required across multiple function calls.
+ *
+ *          **Usage scenarios:**
+ *          - Unit testing that requires deterministic cache behavior
+ *          - Debugging adaptation issues by forcing cache regeneration
+ *          - Performance benchmarking with controlled cache states
+ *          - Switching between different parameter sets in the same session
+ *
+ * @return None.
+ *
+ * @note This function is thread-safe as it only modifies static cache variables.
+ * @note Calling this function will cause the next adapt_cwmh_parameters call to
+ *       recompute all cached values.
+ * @note Performance impact is minimal as cache recomputation is fast.
+ *
+ * @warning Only call this function when necessary, as it removes performance benefits
+ *          of caching until values are recomputed.
+ *
+ * @see adapt_cwmh_parameters
  */
 void reset_adaptation_cache(void) {
   adapt_cache.cached_step_size = -1.0;
@@ -392,7 +412,7 @@ void reset_adaptation_cache(void) {
  *
  * @details This function provides backward compatibility with existing code by calling
  *          the optimized adapt_cwmh_parameters function with a default threshold value.
- *          The default threshold (1e-12) matches the previous hardcoded behavior.
+ *          The default threshold (1.0/lag_update) matches the previous hardcoded behavior.
  *
  *          **Usage recommendation:** New code should use adapt_cwmh_parameters directly
  *          with an explicit threshold parameter for better control and clarity.
@@ -402,7 +422,7 @@ void reset_adaptation_cache(void) {
  * @param log_sigma       Input/output vector (size n) of log proposal standard deviations.
  * @param lag_update      Sliding window size for acceptance rate calculation.
  * @param n               Number of parameter components.
- * @param iter            Current MCMC iteration (1-based).
+ * @param iter            Current MCMC iteration (0-based).
  * @param max_step_size   Maximum adaptation step size.
  * @param base_adaptation_rate  Base adaptation rate.
  * @param decay_exponent  Adaptation decay exponent.
@@ -410,7 +430,7 @@ void reset_adaptation_cache(void) {
  *
  * @return None (results are written to accept_prop and log_sigma).
  *
- * @note This function uses a default min_deviation_threshold of 1e-12.
+ * @note This function uses a default min_deviation_threshold of 1.0/lag_update.
  * @note All other parameters and behavior are identical to adapt_cwmh_parameters.
  * @note Consider migrating to adapt_cwmh_parameters for explicit threshold control.
  *

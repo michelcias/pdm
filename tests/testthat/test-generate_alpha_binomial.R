@@ -25,10 +25,9 @@ test_that("generate_alpha_logit_binomial_locallevel runs and is reproducible", {
   result <- test_C(theta_1_in, theta_01_in, prec_1_in, y, n_trials)
 
   expect_true(is.list(result))
-  expect_equal(names(result), c("theta_1", "alpha", "updated"))
+  expect_equal(names(result), c("theta_1", "alpha"))
   expect_true(is.numeric(result$theta_1))
   expect_true(is.numeric(result$alpha))
-  expect_true(is.logical(result$updated))
   expect_equal(length(result$theta_1), n)
 
   # Test 2: Verify reproducibility
@@ -65,10 +64,9 @@ test_that("generate_alpha_logit_binomial (local trend) runs and is reproducible"
   result <- test_C(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_1_in, y, n_trials)
 
   expect_true(is.list(result))
-  expect_equal(names(result), c("theta_1", "alpha", "updated"))
+  expect_equal(names(result), c("theta_1", "alpha"))
   expect_true(is.numeric(result$theta_1))
   expect_true(is.numeric(result$alpha))
-  expect_true(is.logical(result$updated))
   expect_equal(length(result$theta_1), n)
 
   # Test 2: Verify reproducibility

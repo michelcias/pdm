@@ -9,11 +9,12 @@ test_that("adapt_cwmh_parameters C function correctly adapts parameters", {
   # R wrapper for the C test function
   test_adapt_C <- function(theta_updated, log_sigma, lag_update, n, iter,
                            max_step_size, base_adaptation_rate,
-                           decay_exponent, target_acceptance) {
+                           decay_exponent, target_acceptance,
+                           min_deviation_threshold = 0) {
     .Call("_pdm_test_adapt_cwmh_parameters",
           theta_updated, log_sigma, lag_update, n, iter,
           max_step_size, base_adaptation_rate,
-          decay_exponent, target_acceptance)
+          decay_exponent, target_acceptance, min_deviation_threshold)
   }
 
   # --- Test Case 1: Acceptance rate is too high/low ---
@@ -44,7 +45,8 @@ test_that("adapt_cwmh_parameters C function correctly adapts parameters", {
     max_step_size = 0.1,
     base_adaptation_rate = 1.0,
     decay_exponent = 0.5,
-    target_acceptance = 0.44
+    target_acceptance = 0.44,
+    min_deviation_threshold = 0.0
   )
 
   # Test 1: Check calculated acceptance rates

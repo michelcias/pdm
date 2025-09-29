@@ -73,7 +73,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
                                                 SEXP prior_prec1_rate_, SEXP lag_update_,
                                                 SEXP max_step_size_, SEXP base_adaptation_rate_,
                                                 SEXP decay_exponent_, SEXP target_acceptance_,
-                                                SEXP return_log_sigma_, SEXP return_accrate_);
+                                                SEXP return_log_sigma_, SEXP return_accept_prop_);
 
 /**
  * @brief Static table defining .Call method entries for R-C interface

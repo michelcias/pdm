@@ -133,7 +133,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          to accommodate the min_deviation_threshold and return_accept_prop
  *          parameters now registered in the table below.
  *
- * note Function pointers must be cast to DL_FUNC for R compatibility
+ * @note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism
  * @note NULL terminator is required for proper array traversal
  * @note Names must match exactly those used in R wrapper functions

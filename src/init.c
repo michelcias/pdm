@@ -129,8 +129,9 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          deviation threshold parameter, while legacy version maintains backward compatibility.
  *
  *          **Version 1.2 Updates:**
- *          Updated C_MCMC_logit_binomial_locallevel argument count from 15 to 16
- *          to accommodate the new min_deviation_threshold parameter.
+ *          Updated C_MCMC_logit_binomial_locallevel argument count from 15 to 17
+ *          to accommodate the min_deviation_threshold and return_accept_prop
+ *          parameters now registered in the table below.
  *
  * note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism

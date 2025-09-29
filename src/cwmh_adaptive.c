@@ -26,18 +26,21 @@
 
 /**
  * @brief Cache structure for expensive adaptation computations
- * @details Stores frequently computed values to avoid redundant calculations
+ * @details Stores frequently computed values to avoid redundant calculations.
+ *          Enhanced to track lag_update parameter for proper cache invalidation
+ *          when window size changes between function calls.
  */
 typedef struct {
   double cached_step_size;
-  int cached_iter;
+  int    cached_iter;
   double cached_base_rate;
   double cached_max_step;
   double cached_decay_exp;
   double inv_lag_update;  /* Precomputed 1.0 / lag_update */
+  int    cached_lag_update;  /* Cached lag_update value for validation */
 } adaptation_cache_t;
 
-static adaptation_cache_t adapt_cache = {-1.0, -1, -1.0, -1.0, -1.0, 0.0};
+static adaptation_cache_t adapt_cache = {-1.0, -1, -1.0, -1.0, -1.0, 0.0, -1};
 
 /**
  * @brief Compute adaptation step size with caching optimization
@@ -370,9 +373,11 @@ void adapt_cwmh_parameters(double *theta_updated,
   double step_size = compute_step_size_cached(iter, max_step_size,
                                               base_adaptation_rate, decay_exponent);
 
-  /* ========== Precompute Inverse for Efficient Division ========== */
-  if (adapt_cache.inv_lag_update == 0.0) {  /* Cache miss or first call */
-  adapt_cache.inv_lag_update = 1.0 / (double)lag_update;
+  /* ========== Precompute Inverse for Efficient Division with Validation ========== */
+  if (adapt_cache.inv_lag_update == 0.0 || adapt_cache.cached_lag_update != lag_update) {
+    /* Cache miss, first call, or lag_update changed - recompute inverse */
+    adapt_cache.inv_lag_update = 1.0 / (double)lag_update;
+    adapt_cache.cached_lag_update = lag_update;
   }
   double inv_lag_update = adapt_cache.inv_lag_update;
 

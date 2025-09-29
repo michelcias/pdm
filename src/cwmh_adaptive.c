@@ -42,6 +42,11 @@ static adaptation_cache_t adapt_cache = {-1.0, -1, -1.0, -1.0, -1.0, 0.0};
 /**
  * @brief Compute adaptation step size with caching optimization
  * @details Avoids expensive power operations when parameters haven't changed
+ * @param iter                  Current adaptation iteration used for diminishing step size.
+ * @param max_step_size         Maximum allowable adaptation step size to enforce stability.
+ * @param base_adaptation_rate  Base learning rate that scales the diminishing schedule.
+ * @param decay_exponent        Exponent controlling how quickly the adaptation rate decays.
+ * @return Computed adaptation step size retrieved from cache when possible.
  */
 static inline double compute_step_size_cached(int iter, double max_step_size,
                                               double base_adaptation_rate,
@@ -65,6 +70,11 @@ static inline double compute_step_size_cached(int iter, double max_step_size,
 /**
  * @brief Vectorized acceptance proportion computation for small to medium n
  * @details Uses loop unrolling and memory prefetching for better cache performance
+ * @param theta_updated   Sliding window matrix of acceptance indicators (lag_update x n).
+ * @param accept_prop     Output vector (size n) receiving acceptance proportions per component.
+ * @param lag_update      Sliding window length governing the number of rows to aggregate.
+ * @param n               Number of parameter dimensions processed in the current block.
+ * @param inv_lag_update  Precomputed reciprocal of lag_update for efficient normalization.
  */
 static inline void compute_acceptance_vectorized(double *theta_updated,
                                                  double *accept_prop,
@@ -109,6 +119,11 @@ static inline void compute_acceptance_vectorized(double *theta_updated,
 /**
  * @brief Memory-efficient acceptance computation for large n using blocking
  * @details Processes data in cache-friendly blocks to minimize memory traffic
+ * @param theta_updated   Sliding window matrix of acceptance indicators (lag_update x n).
+ * @param accept_prop     Output vector (size n) receiving acceptance proportions per component.
+ * @param lag_update      Sliding window length governing the number of rows to aggregate.
+ * @param n               Number of parameter dimensions processed in the current block.
+ * @param inv_lag_update  Precomputed reciprocal of lag_update for efficient normalization.
  */
 static inline void compute_acceptance_blocked(double *theta_updated,
                                               double *accept_prop,

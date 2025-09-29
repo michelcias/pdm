@@ -23,6 +23,12 @@
 /**
  * @brief Numerically stable log acceptance probability computation
  * @details Prevents overflow/underflow in acceptance probability calculations
+ *
+ * @param lp1n Log-likelihood contribution of the first component at the new state.
+ * @param lp2n Log-likelihood contribution of the second component at the new state.
+ * @param lp1o Log-likelihood contribution of the first component at the old state.
+ * @param lp2o Log-likelihood contribution of the second component at the old state.
+ * @return Log of the acceptance probability truncated at 0 to cap the probability at 1.
  */
 static inline double stable_log_accept_prob(double lp1n, double lp2n, double lp1o, double lp2o) {
   double log_ratio = (lp1n + lp2n) - (lp1o + lp2o);

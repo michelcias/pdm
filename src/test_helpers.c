@@ -957,20 +957,27 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SE
  *          the adaptive MCMC sampling of state parameters and success probabilities
  *          in non-Gaussian observation models.
  *
+ *          **Version 1.4 corrections:**
+ *          Removed references to non-existent 'updated' parameter and corrected
+ *          return structure to match actual CWMH function output. The function
+ *          now properly returns only theta_1 and alpha components.
+ *
  * @param theta_1_in_ SEXP: Input first-order state vector
  * @param theta_01_in_ SEXP: Input initial state value
  * @param prec_1_in_ SEXP: Input state precision parameter
  * @param y_ SEXP: Binomial count observations
  * @param n_trials_ SEXP: Number of trials for binomial model
  * @param log_sigma_in_ SEXP: Input log proposal standard deviations
- * @return Named list with theta_1, alpha, and updated components
+ * @return Named list with theta_1 and alpha components only
  *
  * @note Computational complexity: O(n) for component-wise MH updates
  * @note Memory access: Manages MCMC state arrays and working memory
  * @note Algorithm: Adaptive CWMH with logit transform for binomial likelihood
+ * @note Return structure: Only theta_1 and alpha (no individual acceptance indicators)
  *
  * @warning Uses external log_sigma input for adaptation loop closure
  * @warning Requires proper initialization of proposal variances
+ * @warning Uses fixed lag_update=2 for testing purposes
  *
  * @see cwmh_alpha_logit_binomial_locallevel
  * @since version 1.3
@@ -1008,26 +1015,22 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
   );
   PutRNGstate();
 
-  SEXP res = PROTECT(allocVector(VECSXP, 3));
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
   SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
   SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
-  SEXP updated_out = PROTECT(allocVector(LGLSXP, n));
 
   memcpy(REAL(theta_1_out), theta_1_post + n, n * sizeof(double));
   memcpy(REAL(alpha_out), alpha_post + n, n * sizeof(double));
-  for(int i = 0; i < n; i++) LOGICAL(updated_out)[i] = updated[i];
 
   SET_VECTOR_ELT(res, 0, theta_1_out);
   SET_VECTOR_ELT(res, 1, alpha_out);
-  SET_VECTOR_ELT(res, 2, updated_out);
 
-  SEXP nms = PROTECT(allocVector(STRSXP, 3));
+  SEXP nms = PROTECT(allocVector(STRSXP, 2));
   SET_STRING_ELT(nms, 0, mkChar("theta_1"));
   SET_STRING_ELT(nms, 1, mkChar("alpha"));
-  SET_STRING_ELT(nms, 2, mkChar("updated"));
   setAttrib(res, R_NamesSymbol, nms);
 
-  UNPROTECT(5);
+  UNPROTECT(4);
   return res;
 }
 
@@ -1039,6 +1042,11 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
  *          the MCMC sampling in polynomial dynamic models with non-Gaussian
  *          observation structures.
  *
+ *          **Version 1.4 corrections:**
+ *          Removed references to non-existent 'updated' parameter and corrected
+ *          return structure to match actual CWMH function output. Added proper
+ *          lag_update parameter to function call.
+ *
  * @param theta_1_in_ SEXP: Input first-order state vector
  * @param theta_2_in_ SEXP: Input second-order state vector
  * @param theta_01_in_ SEXP: Input initial first-order state value
@@ -1046,14 +1054,16 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
  * @param prec_1_in_ SEXP: Input state precision parameter
  * @param y_ SEXP: Binomial count observations
  * @param n_trials_ SEXP: Number of trials for binomial model
- * @return Named list with theta_1, alpha, and updated components
+ * @return Named list with theta_1 and alpha components only
  *
  * @note Computational complexity: O(n) for component-wise MH in trend model
  * @note Memory access: Coordinates multiple state vectors and parameters
  * @note Algorithm: CWMH for polynomial state space with binomial observations
+ * @note Return structure: Only theta_1 and alpha (no individual acceptance indicators)
  *
  * @warning Initializes log_sigma internally with default values
  * @warning Requires consistent state vector dimensions
+ * @warning Uses fixed lag_update=2 for testing purposes
  *
  * @see cwmh_alpha_logit_binomial
  * @since version 1.0
@@ -1089,37 +1099,32 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));
-  int *updated = (int*) R_alloc(n, sizeof(int));
 
   GetRNGstate();
   cwmh_alpha_logit_binomial(
     theta_1_post, theta_2_post, theta_01_post, theta_02_post,
     theta_1_updated, alpha_post, prec_1_post, y,
-    log_sigma, hat_theta_1, theta_1_new, log_accept_prob, updated,
-    n_trials, n, 1
+    log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
+    2, n_trials, n, 1  // lag_update = 2
   );
   PutRNGstate();
 
-  SEXP res = PROTECT(allocVector(VECSXP, 3));
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
   SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
   SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
-  SEXP updated_out = PROTECT(allocVector(LGLSXP, n));
 
   memcpy(REAL(theta_1_out), theta_1_post + n, n * sizeof(double));
   memcpy(REAL(alpha_out), alpha_post + n, n * sizeof(double));
-  for(int i = 0; i < n; i++) LOGICAL(updated_out)[i] = updated[i];
 
   SET_VECTOR_ELT(res, 0, theta_1_out);
   SET_VECTOR_ELT(res, 1, alpha_out);
-  SET_VECTOR_ELT(res, 2, updated_out);
 
-  SEXP nms = PROTECT(allocVector(STRSXP, 3));
+  SEXP nms = PROTECT(allocVector(STRSXP, 2));
   SET_STRING_ELT(nms, 0, mkChar("theta_1"));
   SET_STRING_ELT(nms, 1, mkChar("alpha"));
-  SET_STRING_ELT(nms, 2, mkChar("updated"));
   setAttrib(res, R_NamesSymbol, nms);
 
-  UNPROTECT(5);
+  UNPROTECT(4);
   return res;
 }
 
@@ -1135,19 +1140,26 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
  *          Component-Wise Metropolis-Hastings with automatic proposal tuning
  *          for success probability parameters.
  *
+ *          **Version 1.4 corrections:**
+ *          Removed references to non-existent 'updated' parameter, added proper
+ *          min_deviation_threshold parameter, and corrected return structure to
+ *          match actual function output.
+ *
  * @param theta_1_in_ SEXP: Input first-order state vector
  * @param theta_01_in_ SEXP: Input initial state value
  * @param prec_1_in_ SEXP: Input state precision parameter
  * @param y_ SEXP: Binomial count observations
  * @param n_trials_ SEXP: Number of trials for binomial model
- * @return Named list with theta_1, alpha, and updated components
+ * @return Named list with theta_1 and alpha components only
  *
  * @note Computational complexity: O(n) for adaptive MCMC with tuning
  * @note Memory access: Manages adaptive arrays and working memory
  * @note Algorithm: Adaptive CWMH with automatic proposal variance tuning
+ * @note Return structure: Only theta_1 and alpha (no individual acceptance indicators)
  *
  * @warning Uses fixed adaptation parameters for testing
  * @warning Initializes proposal variances with default values
+ * @warning Uses practical threshold of 0.02 for min_deviation_threshold
  *
  * @see generate_alpha_logit_binomial_locallevel
  * @since version 1.0
@@ -1178,7 +1190,6 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));
-  int *updated = (int*) R_alloc(n, sizeof(int));
 
   GetRNGstate();
   generate_alpha_logit_binomial_locallevel(
@@ -1188,26 +1199,22 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   );
   PutRNGstate();
 
-  SEXP res = PROTECT(allocVector(VECSXP, 3));
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
   SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
   SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
-  SEXP updated_out = PROTECT(allocVector(LGLSXP, n));
 
   memcpy(REAL(theta_1_out), theta_1_post + n, n * sizeof(double));
   memcpy(REAL(alpha_out), alpha_post + n, n * sizeof(double));
-  for(int i = 0; i < n; i++) LOGICAL(updated_out)[i] = updated[i];
 
   SET_VECTOR_ELT(res, 0, theta_1_out);
   SET_VECTOR_ELT(res, 1, alpha_out);
-  SET_VECTOR_ELT(res, 2, updated_out);
 
-  SEXP nms = PROTECT(allocVector(STRSXP, 3));
+  SEXP nms = PROTECT(allocVector(STRSXP, 2));
   SET_STRING_ELT(nms, 0, mkChar("theta_1"));
   SET_STRING_ELT(nms, 1, mkChar("alpha"));
-  SET_STRING_ELT(nms, 2, mkChar("updated"));
   setAttrib(res, R_NamesSymbol, nms);
 
-  UNPROTECT(5);
+  UNPROTECT(4);
   return res;
 }
 
@@ -1218,6 +1225,11 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
  *          This function validates the adaptive CWMH workflow for a trend model,
  *          including proposal tuning and component-wise updates.
  *
+ *          **Version 1.4 corrections:**
+ *          Removed references to non-existent 'updated' parameter, added proper
+ *          min_deviation_threshold parameter, and corrected return structure to
+ *          match actual function output.
+ *
  * @param theta_1_in_ SEXP: Input first-order state vector
  * @param theta_2_in_ SEXP: Input second-order state vector
  * @param theta_01_in_ SEXP: Input initial first-order state value
@@ -1225,14 +1237,16 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
  * @param prec_1_in_ SEXP: Input state precision parameter
  * @param y_ SEXP: Binomial count observations
  * @param n_trials_ SEXP: Number of trials for binomial model
- * @return Named list with theta_1, alpha, log_sigma, accept_prop, and updated components
+ * @return Named list with theta_1 and alpha components only
  *
  * @note Computational complexity: O(n) for adaptive MCMC with tuning
  * @note Memory access: Manages adaptive arrays and working memory
  * @note Algorithm: Adaptive CWMH with automatic proposal variance tuning (trend)
+ * @note Return structure: Only theta_1 and alpha (no individual acceptance indicators)
  *
  * @warning Uses fixed adaptation parameters for testing
  * @warning Initializes proposal variances with default values
+ * @warning Uses practical threshold of 0.02 for min_deviation_threshold
  *
  * @see generate_alpha_logit_binomial
  * @since version 1.0
@@ -1269,7 +1283,6 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));
-  int *updated = (int*) R_alloc(n, sizeof(int));
 
   GetRNGstate();
   generate_alpha_logit_binomial(
@@ -1280,26 +1293,22 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   );
   PutRNGstate();
 
-  SEXP res = PROTECT(allocVector(VECSXP, 3));
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
   SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
   SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
-  SEXP updated_out = PROTECT(allocVector(LGLSXP, n));
 
   memcpy(REAL(theta_1_out), theta_1_post + n, n * sizeof(double));
   memcpy(REAL(alpha_out), alpha_post + n, n * sizeof(double));
-  for(int i = 0; i < n; i++) LOGICAL(updated_out)[i] = updated[i];
 
   SET_VECTOR_ELT(res, 0, theta_1_out);
   SET_VECTOR_ELT(res, 1, alpha_out);
-  SET_VECTOR_ELT(res, 2, updated_out);
 
-  SEXP nms = PROTECT(allocVector(STRSXP, 3));
+  SEXP nms = PROTECT(allocVector(STRSXP, 2));
   SET_STRING_ELT(nms, 0, mkChar("theta_1"));
   SET_STRING_ELT(nms, 1, mkChar("alpha"));
-  SET_STRING_ELT(nms, 2, mkChar("updated"));
   setAttrib(res, R_NamesSymbol, nms);
 
-  UNPROTECT(5);
+  UNPROTECT(4);
   return res;
 }
 

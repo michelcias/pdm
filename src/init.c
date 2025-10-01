@@ -40,6 +40,7 @@ SEXP test_adapt_cwmh_parameters_legacy(SEXP theta_updated_, SEXP log_sigma_,
                                        SEXP lag_update_, SEXP n_, SEXP iter_,
                                        SEXP max_step_size_, SEXP base_adaptation_rate_,
                                        SEXP decay_exponent_, SEXP target_acceptance_);
+SEXP reset_adaptation_cache_wrapper(void);
 SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y_);
 SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP theta_k_,
                                      SEXP theta_kp1_, SEXP nu_0k_, SEXP eta_0k_);
@@ -152,18 +153,19 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  */
 static const R_CallMethodDef CallEntries[] = {
   // --- Main MCMC algorithm functions ---
-  {"_pdm_C_MCMC_locallevel",               (DL_FUNC) &C_MCMC_locallevel,      10},
-  {"_pdm_C_MCMC_localtrend",               (DL_FUNC) &C_MCMC_localtrend,      14},
-  {"_pdm_C_MCMC_localacceleration",        (DL_FUNC) &C_MCMC_localacceleration, 18},
-  {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel, 17},
-  {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend, 21},
+  {"_pdm_C_MCMC_locallevel",               (DL_FUNC) &C_MCMC_locallevel,                              10},
+  {"_pdm_C_MCMC_localtrend",               (DL_FUNC) &C_MCMC_localtrend,                              14},
+  {"_pdm_C_MCMC_localacceleration",        (DL_FUNC) &C_MCMC_localacceleration,                       18},
+  {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel,               17},
+  {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend,               21},
   {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 25},
 
   // --- Utility and basic function tests ---
-  {"_pdm_test_ilogit",                     (DL_FUNC)   &test_ilogit,                  1},
-  {"_pdm_test_generate_normal_vector",     (DL_FUNC)   &test_generate_normal_vector,  4},
-  {"_pdm_test_adapt_cwmh_parameters",      (DL_FUNC)   &test_adapt_cwmh_parameters,   10},  // Updated argument count
-  {"_pdm_test_adapt_cwmh_parameters_legacy", (DL_FUNC) &test_adapt_cwmh_parameters_legacy, 9},  // New legacy function
+  {"_pdm_test_ilogit",                       (DL_FUNC)   &test_ilogit,                       1},
+  {"_pdm_test_generate_normal_vector",       (DL_FUNC)   &test_generate_normal_vector,       4},
+  {"_pdm_test_adapt_cwmh_parameters",        (DL_FUNC)   &test_adapt_cwmh_parameters,       10},
+  {"_pdm_test_adapt_cwmh_parameters_legacy", (DL_FUNC)   &test_adapt_cwmh_parameters_legacy, 9},
+  {"_pdm_reset_adaptation_cache",            (DL_FUNC)   &reset_adaptation_cache_wrapper,    0},
 
   // --- Precision parameter sampling tests ---
   {"_pdm_test_generate_precision_data",    (DL_FUNC) &test_generate_precision_data,    4},
@@ -172,9 +174,9 @@ static const R_CallMethodDef CallEntries[] = {
 
   // --- State parameter sampling tests ---
   {"_pdm_test_generate_theta_1_locallevel", (DL_FUNC) &test_generate_theta_1_locallevel, 4},
-  {"_pdm_test_generate_theta_1",           (DL_FUNC) &test_generate_theta_1,           6},
-  {"_pdm_test_generate_theta_k",           (DL_FUNC) &test_generate_theta_k,           6},
-  {"_pdm_test_generate_theta_p",           (DL_FUNC) &test_generate_theta_p,           4},
+  {"_pdm_test_generate_theta_1",            (DL_FUNC) &test_generate_theta_1,            6},
+  {"_pdm_test_generate_theta_k",            (DL_FUNC) &test_generate_theta_k,            6},
+  {"_pdm_test_generate_theta_p",            (DL_FUNC) &test_generate_theta_p,            4},
 
   // --- Initial state parameter sampling tests ---
   {"_pdm_test_generate_theta_01_locallevel", (DL_FUNC) &test_generate_theta_01_locallevel, 4},
@@ -184,9 +186,9 @@ static const R_CallMethodDef CallEntries[] = {
 
   // --- Binomial model component tests ---
   {"_pdm_test_generate_alpha_logit_binomial_locallevel", (DL_FUNC) &test_generate_alpha_logit_binomial_locallevel, 5},
-  {"_pdm_test_cwmh_alpha_logit_binomial_locallevel", (DL_FUNC) &test_cwmh_alpha_logit_binomial_locallevel, 6},
-  {"_pdm_test_generate_alpha_logit_binomial", (DL_FUNC) &test_generate_alpha_logit_binomial, 7},
-  {"_pdm_test_cwmh_alpha_logit_binomial", (DL_FUNC) &test_cwmh_alpha_logit_binomial, 7},
+  {"_pdm_test_cwmh_alpha_logit_binomial_locallevel",     (DL_FUNC) &test_cwmh_alpha_logit_binomial_locallevel,     6},
+  {"_pdm_test_generate_alpha_logit_binomial",            (DL_FUNC) &test_generate_alpha_logit_binomial,            7},
+  {"_pdm_test_cwmh_alpha_logit_binomial",                (DL_FUNC) &test_cwmh_alpha_logit_binomial,                7},
 
   // --- Complete MCMC simulation tests ---
   {"_pdm_test_mcmc_binomial_locallevel_fixed_params", (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params, 19},

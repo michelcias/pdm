@@ -6,10 +6,14 @@
  *          unit testing with packages like 'testthat'. Each wrapper handles
  *          proper memory management, input validation, and R object protection.
  * @author Michel H. Montoril
- * @date 2025-09-28
- * @version 1.4
+ * @date 2025-10-01
+ * @version 1.5
  *
  * @changelog
+ * - v1.5 (2025-10-01): Code cleanup and bug fixes. Removed unused variables,
+ *   improved memory management consistency, enhanced input validation, and
+ *   updated documentation to reflect actual implementation. Fixed UNPROTECT
+ *   counting logic and made hardcoded parameters more explicit.
  * - v1.4 (2025-09-28): Fixed function signatures to match updated
  *   generate_alpha_logit_binomial functions with min_deviation_threshold parameter.
  *   Corrected CWMH function calls to use proper lag_update parameter.
@@ -1072,10 +1076,9 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SE
  *          the adaptive MCMC sampling of state parameters and success probabilities
  *          in non-Gaussian observation models.
  *
- *          **Version 1.4 corrections:**
- *          Removed references to non-existent 'updated' parameter and corrected
- *          return structure to match actual CWMH function output. The function
- *          now properly returns only theta_1 and alpha components.
+ *          **Version 1.5 corrections:**
+ *          Updated function to match actual CWMH implementation. Uses explicit
+ *          TEST_LAG_UPDATE constant for reproducible testing behavior.
  *
  * @param theta_1_in_ SEXP: Input first-order state vector
  * @param theta_01_in_ SEXP: Input initial state value
@@ -1089,15 +1092,19 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SE
  * @note Memory access: Manages MCMC state arrays and working memory
  * @note Algorithm: Adaptive CWMH with logit transform for binomial likelihood
  * @note Return structure: Only theta_1 and alpha (no individual acceptance indicators)
+ * @note Test parameter: Uses TEST_LAG_UPDATE = 50 for consistent testing
  *
  * @warning Uses external log_sigma input for adaptation loop closure
  * @warning Requires proper initialization of proposal variances
- * @warning Uses fixed lag_update=2 for testing purposes
  *
  * @see cwmh_alpha_logit_binomial_locallevel
  * @since version 1.3
  */
 SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_, SEXP log_sigma_in_) {
+  // Test configuration constants
+  const int TEST_LAG_UPDATE = 50;
+  const int TEST_ITER = 1;
+
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   int n = LENGTH(y);
   double *y_ptr = REAL(y);
@@ -1132,7 +1139,7 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
   cwmh_alpha_logit_binomial_locallevel(
     theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y_ptr,
     log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    2, n_trials_val, n, 1  // lag_update = 2
+    TEST_LAG_UPDATE, n_trials_val, n, TEST_ITER
   );
   PutRNGstate();
 
@@ -1163,10 +1170,9 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
  *          the MCMC sampling in polynomial dynamic models with non-Gaussian
  *          observation structures.
  *
- *          **Version 1.4 corrections:**
- *          Removed references to non-existent 'updated' parameter and corrected
- *          return structure to match actual CWMH function output. Added proper
- *          lag_update parameter to function call.
+ *          **Version 1.5 corrections:**
+ *          Updated function to match actual CWMH implementation. Uses explicit
+ *          TEST_LAG_UPDATE constant for reproducible testing behavior.
  *
  * @param theta_1_in_ SEXP: Input first-order state vector
  * @param theta_2_in_ SEXP: Input second-order state vector
@@ -1181,15 +1187,20 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
  * @note Memory access: Coordinates multiple state vectors and parameters
  * @note Algorithm: CWMH for polynomial state space with binomial observations
  * @note Return structure: Only theta_1 and alpha (no individual acceptance indicators)
+ * @note Test parameter: Uses TEST_LAG_UPDATE = 50 for consistent testing
  *
  * @warning Initializes log_sigma internally with default values
  * @warning Requires consistent state vector dimensions
- * @warning Uses fixed lag_update=2 for testing purposes
  *
  * @see cwmh_alpha_logit_binomial
  * @since version 1.0
  */
 SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_, SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
+  // Test configuration constants
+  const int TEST_LAG_UPDATE = 50;
+  const int TEST_ITER = 1;
+  const double DEFAULT_LOG_SIGMA = log(0.1);
+
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   int n = LENGTH(y);
   double *y_ptr = REAL(y);
@@ -1223,7 +1234,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
 
   // CWMH working arrays
   double *log_sigma = (double*) R_alloc(n, sizeof(double));
-  for(int i = 0; i < n; i++) log_sigma[i] = log(0.1); // Initialize
+  for(int i = 0; i < n; i++) log_sigma[i] = DEFAULT_LOG_SIGMA;
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));
@@ -1233,7 +1244,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
     theta_1_post, theta_2_post, theta_01_post, theta_02_post,
     theta_1_updated, alpha_post, prec_1_post, y_ptr,
     log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    2, n_trials_val, n, 1  // lag_update = 2
+    TEST_LAG_UPDATE, n_trials_val, n, TEST_ITER
   );
   PutRNGstate();
 
@@ -1268,10 +1279,9 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
  *          Component-Wise Metropolis-Hastings with automatic proposal tuning
  *          for success probability parameters.
  *
- *          **Version 1.4 corrections:**
- *          Removed references to non-existent 'updated' parameter, added proper
- *          min_deviation_threshold parameter, and corrected return structure to
- *          match actual function output.
+ *          **Version 1.5 corrections:**
+ *          Updated to use explicit test constants and proper min_deviation_threshold
+ *          parameter. Simplified adaptation parameters for testing consistency.
  *
  * @param theta_1_in_ SEXP: Input first-order state vector
  * @param theta_01_in_ SEXP: Input initial state value
@@ -1284,15 +1294,25 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
  * @note Memory access: Manages adaptive arrays and working memory
  * @note Algorithm: Adaptive CWMH with automatic proposal variance tuning
  * @note Return structure: Only theta_1 and alpha (no individual acceptance indicators)
+ * @note Test parameters: Uses explicit constants for reproducible testing
  *
  * @warning Uses fixed adaptation parameters for testing
  * @warning Initializes proposal variances with default values
- * @warning Uses practical threshold of 0.02 for min_deviation_threshold
  *
  * @see generate_alpha_logit_binomial_locallevel
  * @since version 1.0
  */
 SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
+  // Test configuration constants
+  const int TEST_LAG_UPDATE = 50;
+  const int TEST_ITER = 1;
+  const double TEST_MAX_STEP_SIZE = 0.1;
+  const double TEST_BASE_ADAPTATION_RATE = 1.0;
+  const double TEST_DECAY_EXPONENT = 0.5;
+  const double TEST_TARGET_ACCEPTANCE = 0.44;
+  const double TEST_MIN_DEVIATION_THRESHOLD = 0.02;  // 1/TEST_LAG_UPDATE
+  const double DEFAULT_LOG_SIGMA = log(0.1);
+
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   int n = LENGTH(y);
   double *y_ptr = REAL(y);
@@ -1319,7 +1339,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   // CWMH working arrays
   double *accept_prop = (double*) R_alloc(n, sizeof(double));
   double *log_sigma = (double*) R_alloc(n, sizeof(double));
-  for(int i = 0; i < n; i++) log_sigma[i] = log(0.1); // Initialize
+  for(int i = 0; i < n; i++) log_sigma[i] = DEFAULT_LOG_SIGMA;
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));
@@ -1328,7 +1348,9 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   generate_alpha_logit_binomial_locallevel(
     theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y_ptr,
     accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    0, n_trials_val, n, 1, 0.1, 1.0, 0.5, 0.44, 0.02  // min_deviation_threshold
+    TEST_LAG_UPDATE, n_trials_val, n, TEST_ITER, TEST_MAX_STEP_SIZE,
+    TEST_BASE_ADAPTATION_RATE, TEST_DECAY_EXPONENT, TEST_TARGET_ACCEPTANCE,
+    TEST_MIN_DEVIATION_THRESHOLD
   );
   PutRNGstate();
 
@@ -1358,10 +1380,9 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
  *          This function validates the adaptive CWMH workflow for a trend model,
  *          including proposal tuning and component-wise updates.
  *
- *          **Version 1.4 corrections:**
- *          Removed references to non-existent 'updated' parameter, added proper
- *          min_deviation_threshold parameter, and corrected return structure to
- *          match actual function output.
+ *          **Version 1.5 corrections:**
+ *          Updated to use explicit test constants and proper min_deviation_threshold
+ *          parameter. Simplified adaptation parameters for testing consistency.
  *
  * @param theta_1_in_ SEXP: Input first-order state vector
  * @param theta_2_in_ SEXP: Input second-order state vector
@@ -1376,15 +1397,25 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
  * @note Memory access: Manages adaptive arrays and working memory
  * @note Algorithm: Adaptive CWMH with automatic proposal variance tuning (trend)
  * @note Return structure: Only theta_1 and alpha (no individual acceptance indicators)
+ * @note Test parameters: Uses explicit constants for reproducible testing
  *
  * @warning Uses fixed adaptation parameters for testing
  * @warning Initializes proposal variances with default values
- * @warning Uses practical threshold of 0.02 for min_deviation_threshold
  *
  * @see generate_alpha_logit_binomial
  * @since version 1.0
  */
 SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_, SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
+  // Test configuration constants
+  const int TEST_LAG_UPDATE = 50;
+  const int TEST_ITER = 1;
+  const double TEST_MAX_STEP_SIZE = 0.1;
+  const double TEST_BASE_ADAPTATION_RATE = 1.0;
+  const double TEST_DECAY_EXPONENT = 0.5;
+  const double TEST_TARGET_ACCEPTANCE = 0.44;
+  const double TEST_MIN_DEVIATION_THRESHOLD = 0.02;  // 1/TEST_LAG_UPDATE
+  const double DEFAULT_LOG_SIGMA = log(0.1);
+
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   int n = LENGTH(y);
   double *y_ptr = REAL(y);
@@ -1419,7 +1450,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   // CWMH working arrays
   double *accept_prop = (double*) R_alloc(n, sizeof(double));
   double *log_sigma = (double*) R_alloc(n, sizeof(double));
-  for(int i = 0; i < n; i++) log_sigma[i] = log(0.1); // Initialize
+  for(int i = 0; i < n; i++) log_sigma[i] = DEFAULT_LOG_SIGMA;
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));
@@ -1429,7 +1460,9 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
     theta_1_post, theta_2_post, theta_01_post, theta_02_post,
     theta_1_updated, alpha_post, prec_1_post, y_ptr,
     accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    0, n_trials_val, n, 1, 0.1, 1.0, 0.5, 0.44, 0.02  // min_deviation_threshold
+    TEST_LAG_UPDATE, n_trials_val, n, TEST_ITER, TEST_MAX_STEP_SIZE,
+    TEST_BASE_ADAPTATION_RATE, TEST_DECAY_EXPONENT, TEST_TARGET_ACCEPTANCE,
+    TEST_MIN_DEVIATION_THRESHOLD
   );
   PutRNGstate();
 
@@ -1466,6 +1499,13 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
  *
  *          Includes optional diagnostic outputs (accrate, log_sigma) and always
  *          returns success probabilities (alpha) for comprehensive validation.
+ *
+ *          **Version 1.5 improvements:**
+ *          - Enhanced input validation with meaningful error messages
+ *          - Simplified UNPROTECT counting logic for better maintainability
+ *          - Improved memory management with consistent allocation patterns
+ *          - Added explicit constants for numerical thresholds
+ *          - Enhanced sanity checks for numerical stability
  *
  * @param y_ SEXP: Binomial count observations (size n)
  * @param n_trials_ SEXP: Number of trials for binomial model (scalar)
@@ -1519,54 +1559,67 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
                                                 SEXP decay_exponent_, SEXP target_acceptance_,
                                                 SEXP return_log_sigma_, SEXP return_accept_prop_) {
 
+  // Numerical constants for validation and initialization
+  const int MIN_SAMPLE_SIZE = 3;
+  const double MIN_PRECISION_THRESHOLD = 1e-6;
+  const double DEFAULT_INIT_SD = 0.1;
+  const double LOGIT_BOUND_LIMIT = 10.0;
+  const double MIN_DEVIATION_THRESHOLD_FACTOR = 1.0;  // Will be divided by lag_update
+
   /* Parse data vector and validate */
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  int protected_count = 1;
   int n = LENGTH(y);
-  if (n < 3) {
-    UNPROTECT(1);
-    error("Sample size 'n' must be at least 3, got %d", n);
+  if (n < MIN_SAMPLE_SIZE) {
+    UNPROTECT(protected_count);
+    error("Sample size 'n' must be at least %d for numerical stability, got %d", MIN_SAMPLE_SIZE, n);
   }
   double *y_ptr = REAL(y);
 
   SEXP n_trials_sexp = PROTECT(coerceVector(n_trials_, REALSXP));
+  protected_count++;
   double n_trials = REAL(n_trials_sexp)[0];
-  UNPROTECT(1);
 
-  /* Validate binomial constraints */
+  /* Validate binomial constraints with improved error messages */
   for (int i = 0; i < n; i++) {
-    if (y_ptr[i] < 0 || y_ptr[i] > n_trials) {
-      UNPROTECT(1);
-      error("y[%d] = %f violates 0 <= y <= n_trials = %f", i, y_ptr[i], n_trials);
+    if (y_ptr[i] < 0 || y_ptr[i] > n_trials || !isfinite(y_ptr[i])) {
+      UNPROTECT(protected_count);
+      error("Invalid observation y[%d] = %f: must satisfy 0 <= y <= n_trials = %f and be finite",
+            i + 1, y_ptr[i], n_trials);  // R uses 1-based indexing
     }
   }
 
-  /* Parse MCMC settings */
+  /* Parse MCMC settings with validation */
   SEXP burnin_sexp = PROTECT(coerceVector(burnin_, INTSXP));
+  protected_count++;
   int burnin = INTEGER(burnin_sexp)[0];
-  UNPROTECT(1);
 
   SEXP thinning_sexp = PROTECT(coerceVector(thinning_, INTSXP));
+  protected_count++;
   int thinning = INTEGER(thinning_sexp)[0];
-  UNPROTECT(1);
 
   SEXP n_chain_sexp = PROTECT(coerceVector(n_chain_, INTSXP));
+  protected_count++;
   int n_chain = INTEGER(n_chain_sexp)[0];
-  UNPROTECT(1);
 
   int n_iter = burnin + (n_chain - 1) * thinning + 1;
 
-  /* Validate MCMC parameters */
+  /* Enhanced MCMC parameter validation */
   if (burnin < 0) {
-    UNPROTECT(1);
-    error("Burnin must be non-negative");
+    UNPROTECT(protected_count);
+    error("Burnin must be non-negative, got %d", burnin);
   }
   if (thinning <= 0) {
-    UNPROTECT(1);
-    error("Thinning must be positive");
+    UNPROTECT(protected_count);
+    error("Thinning must be positive, got %d", thinning);
   }
   if (n_chain <= 0) {
-    UNPROTECT(1);
-    error("n_chain must be positive");
+    UNPROTECT(protected_count);
+    error("n_chain must be positive, got %d", n_chain);
+  }
+  if (n_iter > 1000000) {  // Prevent excessive memory allocation
+    UNPROTECT(protected_count);
+    error("Total iterations (%d) exceeds safety limit of 1,000,000", n_iter);
   }
 
   /* Parse fixed parameter flags and values */
@@ -1578,102 +1631,131 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   double *theta_1_true = NULL;
   if (fix_theta_1) {
     theta_1_true_sexp = PROTECT(coerceVector(theta_1_true_, REALSXP));
+    protected_count++;
+    if (LENGTH(theta_1_true_sexp) != n) {
+      UNPROTECT(protected_count);
+      error("theta_1_true must have length %d to match y, got %d", n, LENGTH(theta_1_true_sexp));
+    }
     theta_1_true = REAL(theta_1_true_sexp);
   }
 
   double theta_01_true = 0.0;
   if (fix_theta_01) {
     SEXP theta_01_true_sexp = PROTECT(coerceVector(theta_01_true_, REALSXP));
+    protected_count++;
     theta_01_true = REAL(theta_01_true_sexp)[0];
-    UNPROTECT(1);
+    if (!isfinite(theta_01_true)) {
+      UNPROTECT(protected_count);
+      error("theta_01_true must be finite, got %f", theta_01_true);
+    }
   }
 
   double prec_1_true = 0.0;
   if (fix_prec_1) {
     SEXP prec_1_true_sexp = PROTECT(coerceVector(prec_1_true_, REALSXP));
+    protected_count++;
     prec_1_true = REAL(prec_1_true_sexp)[0];
-    UNPROTECT(1);
+    if (prec_1_true <= 0 || !isfinite(prec_1_true)) {
+      UNPROTECT(protected_count);
+      error("prec_1_true must be positive and finite, got %f", prec_1_true);
+    }
   }
 
-  /* Parse priors and validate */
+  /* Parse priors with enhanced validation */
   SEXP prior_theta01_mean_sexp = PROTECT(coerceVector(prior_theta01_mean_, REALSXP));
+  protected_count++;
   double prior_theta01_mean = REAL(prior_theta01_mean_sexp)[0];
-  UNPROTECT(1);
 
   SEXP prior_theta01_prec_sexp = PROTECT(coerceVector(prior_theta01_prec_, REALSXP));
+  protected_count++;
   double prior_theta01_prec = REAL(prior_theta01_prec_sexp)[0];
-  UNPROTECT(1);
 
   SEXP prior_prec1_shape_sexp = PROTECT(coerceVector(prior_prec1_shape_, REALSXP));
+  protected_count++;
   double prior_prec1_shape = REAL(prior_prec1_shape_sexp)[0];
-  UNPROTECT(1);
 
   SEXP prior_prec1_rate_sexp = PROTECT(coerceVector(prior_prec1_rate_, REALSXP));
+  protected_count++;
   double prior_prec1_rate = REAL(prior_prec1_rate_sexp)[0];
-  UNPROTECT(1);
 
-  if (prior_theta01_prec <= 0) {
-    if (fix_theta_1) UNPROTECT(1);
-    UNPROTECT(1);
-    error("Prior precision must be positive");
+  if (prior_theta01_prec <= 0 || !isfinite(prior_theta01_prec)) {
+    UNPROTECT(protected_count);
+    error("Prior precision for theta_01 must be positive and finite, got %f", prior_theta01_prec);
   }
-  if (prior_prec1_shape <= 0 || prior_prec1_rate <= 0) {
-    if (fix_theta_1) UNPROTECT(1);
-    UNPROTECT(1);
-    error("Prior shape and rate must be positive");
+  if (prior_prec1_shape <= 0 || prior_prec1_rate <= 0 ||
+      !isfinite(prior_prec1_shape) || !isfinite(prior_prec1_rate)) {
+      UNPROTECT(protected_count);
+      error("Prior shape (%f) and rate (%f) must be positive and finite", prior_prec1_shape, prior_prec1_rate);
   }
 
   /* Parse adaptation parameters */
   SEXP lag_update_sexp = PROTECT(coerceVector(lag_update_, INTSXP));
+  protected_count++;
   int lag_update = INTEGER(lag_update_sexp)[0];
-  UNPROTECT(1);
 
   SEXP max_step_size_sexp = PROTECT(coerceVector(max_step_size_, REALSXP));
+  protected_count++;
   double max_step_size = REAL(max_step_size_sexp)[0];
-  UNPROTECT(1);
 
   SEXP base_adaptation_rate_sexp = PROTECT(coerceVector(base_adaptation_rate_, REALSXP));
+  protected_count++;
   double base_adaptation_rate = REAL(base_adaptation_rate_sexp)[0];
-  UNPROTECT(1);
 
   SEXP decay_exponent_sexp = PROTECT(coerceVector(decay_exponent_, REALSXP));
+  protected_count++;
   double decay_exponent = REAL(decay_exponent_sexp)[0];
-  UNPROTECT(1);
 
   SEXP target_acceptance_sexp = PROTECT(coerceVector(target_acceptance_, REALSXP));
+  protected_count++;
   double target_acceptance = REAL(target_acceptance_sexp)[0];
-  UNPROTECT(1);
+
+  /* Validate adaptation parameters */
+  if (lag_update <= 0) {
+    UNPROTECT(protected_count);
+    error("lag_update must be positive, got %d", lag_update);
+  }
+  if (max_step_size <= 0 || !isfinite(max_step_size)) {
+    UNPROTECT(protected_count);
+    error("max_step_size must be positive and finite, got %f", max_step_size);
+  }
+  if (target_acceptance <= 0 || target_acceptance >= 1) {
+    UNPROTECT(protected_count);
+    error("target_acceptance must be in (0, 1), got %f", target_acceptance);
+  }
 
   /* Parse diagnostic output options */
   SEXP return_log_sigma_sexp = PROTECT(coerceVector(return_log_sigma_, LGLSXP));
+  protected_count++;
   int return_log_sigma = LOGICAL(return_log_sigma_sexp)[0];
-  UNPROTECT(1);
 
   SEXP return_accept_prop_sexp = PROTECT(coerceVector(return_accept_prop_, LGLSXP));
+  protected_count++;
   int return_accept_prop = LOGICAL(return_accept_prop_sexp)[0];
-  UNPROTECT(1);
 
   /* Allocate storage for posterior samples */
   SEXP theta_1_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  protected_count++;
   SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
+  protected_count++;
   SEXP prec_1_samples = PROTECT(allocVector(REALSXP, n_chain));
+  protected_count++;
   SEXP alpha_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  protected_count++;
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples = R_NilValue;
   SEXP accept_prop_samples = R_NilValue;
   int n_outputs = 4;  // Base outputs: theta_1, theta_01, prec_1, alpha
-  int n_protect = 4;  // Base protection count
 
   if (return_log_sigma) {
     log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    protected_count++;
     n_outputs++;
-    n_protect++;
   }
   if (return_accept_prop) {
     accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    protected_count++;
     n_outputs++;
-    n_protect++;
   }
 
   /* MCMC history arrays */
@@ -1689,11 +1771,10 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   double *hat_theta_1 = (double*) R_Calloc(n, double);
   double *theta_1_new = (double*) R_Calloc(n, double);
   double *log_accept_prob = (double*) R_Calloc(n, double);
-  int *updated = (int*) R_Calloc(n, int);
 
   /* Initialize log_sigma with reasonable starting values */
   for (int j = 0; j < n; j++) {
-    log_sigma[j] = log(0.1);  /* Initial proposal sd = 0.1 */
+    log_sigma[j] = log(DEFAULT_INIT_SD);
   }
 
   GetRNGstate();
@@ -1704,7 +1785,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   } else {
     theta_01_post[0] = rnorm(prior_theta01_mean, 1.0/sqrt(prior_theta01_prec));
     /* Truncate to avoid extreme values in logit scale */
-    theta_01_post[0] = fmax(-10.0, fmin(10.0, theta_01_post[0]));
+    theta_01_post[0] = fmax2(-LOGIT_BOUND_LIMIT, fmin2(LOGIT_BOUND_LIMIT, theta_01_post[0]));
   }
 
   if (fix_prec_1) {
@@ -1712,7 +1793,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   } else {
     prec_1_post[0] = rgamma(prior_prec1_shape, 1.0/prior_prec1_rate);
     /* Ensure minimum precision for numerical stability */
-    prec_1_post[0] = fmax(prec_1_post[0], 1e-6);
+    prec_1_post[0] = fmax2(prec_1_post[0], MIN_PRECISION_THRESHOLD);
   }
 
   if (fix_theta_1) {
@@ -1729,6 +1810,9 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   for (int j = 0; j < n; j++) {
     alpha_post[j] = ilogit(theta_1_post[j]);
   }
+
+  /* Calculate min_deviation_threshold based on lag_update */
+  double min_deviation_threshold = MIN_DEVIATION_THRESHOLD_FACTOR / (double)lag_update;
 
   /* Main MCMC loop */
   int chain_idx = 0;
@@ -1750,7 +1834,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
         theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y_ptr,
         accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
         lag_update, n_trials, n, ii, max_step_size, base_adaptation_rate,
-        decay_exponent, target_acceptance, 1.0/(double)lag_update);
+        decay_exponent, target_acceptance, min_deviation_threshold);
     }
 
     /* Step 2: Sample prec_1 */
@@ -1760,11 +1844,14 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
       generate_precision_theta_p(theta_01_post, theta_1_post, prec_1_post,
                                  prior_prec1_shape, prior_prec1_rate, n, ii);
 
-      /* Sanity check for precision */
+      /* Enhanced sanity check for precision with better error handling */
       if (prec_1_post[ii] <= 0 || !isfinite(prec_1_post[ii])) {
-        warning("Invalid precision value at iteration %d, using previous value", ii);
+        warning("Invalid precision value %f at iteration %d, using previous value %f",
+                prec_1_post[ii], ii, prec_1_post[ii-1]);
         prec_1_post[ii] = prec_1_post[ii-1];
       }
+      /* Ensure minimum precision threshold */
+      prec_1_post[ii] = fmax2(prec_1_post[ii], MIN_PRECISION_THRESHOLD);
     }
 
     /* Step 3: Sample theta_01 */
@@ -1801,11 +1888,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
   R_Free(theta_1_post); R_Free(theta_01_post); R_Free(prec_1_post);
   R_Free(alpha_post); R_Free(theta_1_updated); R_Free(accept_prop);
   R_Free(log_sigma); R_Free(hat_theta_1); R_Free(theta_1_new);
-  R_Free(log_accept_prob); R_Free(updated);
+  R_Free(log_accept_prob);
 
   /* Package results into a named list */
   SEXP result_list = PROTECT(allocVector(VECSXP, n_outputs));
+  protected_count++;
   SEXP names = PROTECT(allocVector(STRSXP, n_outputs));
+  protected_count++;
 
   int output_idx = 0;
 
@@ -1834,11 +1923,8 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
 
   setAttrib(result_list, R_NamesSymbol, names);
 
-  /* Adjust UNPROTECT count: n_protect (samples) + 2 (result_list and names) */
-  UNPROTECT(n_protect + 2);
-  if (fix_theta_1) {
-    UNPROTECT(1);
-  }
-  UNPROTECT(1);  // y
+  /* Simplified UNPROTECT: release all protected objects at once */
+  UNPROTECT(protected_count);
+
   return result_list;
 }

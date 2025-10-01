@@ -340,6 +340,41 @@ SEXP test_adapt_cwmh_parameters_legacy(SEXP theta_updated_, SEXP log_sigma_,
   return result_list;
 }
 
+/**
+ * @brief R interface wrapper for reset_adaptation_cache utility function
+ *
+ * @details Provides R access to the internal cache reset function for testing purposes.
+ *          This wrapper enables test isolation by clearing cached values between test
+ *          cases, particularly important when testing with different lag_update values.
+ *
+ *          **Testing importance:**
+ *          Version 1.2 of cwmh_adaptive.c includes automatic cache validation for
+ *          lag_update changes. However, explicit cache reset between tests ensures
+ *          complete isolation and validates that the automatic mechanism works correctly.
+ *
+ *          **Usage in tests:**
+ *          Call at the beginning of each test case that uses adapt_cwmh_parameters
+ *          to ensure deterministic behavior independent of test execution order.
+ *
+ * @return R_NilValue (invisible NULL in R).
+ *
+ * @note Computational complexity: O(1) - simply resets static variables
+ * @note No arguments required - function signature matches R's .Call interface
+ * @note Safe to call multiple times - idempotent operation
+ * @note Thread-safe as it only modifies static cache variables
+ *
+ * @warning Should only be used in testing contexts
+ * @warning Not necessary in production code due to automatic cache validation
+ *
+ * @see reset_adaptation_cache
+ * @see adapt_cwmh_parameters
+ * @since version 1.2
+ */
+SEXP reset_adaptation_cache_wrapper(void) {
+  reset_adaptation_cache();
+  return R_NilValue;
+}
+
 //==============================================================================
 // CONDITIONAL PRECISION WRAPPERS
 //==============================================================================

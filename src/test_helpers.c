@@ -368,23 +368,28 @@ SEXP test_adapt_cwmh_parameters_legacy(SEXP theta_updated_, SEXP log_sigma_,
  * @since version 1.0
  */
 SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y_) {
-  double *y = REAL(coerceVector(y_, REALSXP));
-  int n = LENGTH(y_);
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  int n = LENGTH(y);
+  double *y_ptr = REAL(y);
 
   // Simulate the MCMC history array required by the C function
   double *theta_1_post = (double *) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_1_post + n, REAL(coerceVector(theta_1_, REALSXP)), n * sizeof(double));
+  SEXP theta_1 = PROTECT(coerceVector(theta_1_, REALSXP));
+  memcpy(theta_1_post + n, REAL(theta_1), n * sizeof(double));
 
-  double nu_y = REAL(coerceVector(nu_y_, REALSXP))[0];
-  double eta_y = REAL(coerceVector(eta_y_, REALSXP))[0];
+  SEXP nu_y = PROTECT(coerceVector(nu_y_, REALSXP));
+  double nu_y_val = REAL(nu_y)[0];
+  SEXP eta_y = PROTECT(coerceVector(eta_y_, REALSXP));
+  double eta_y_val = REAL(eta_y)[0];
 
   double *prec_y_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
   // Call the function for iter = 1 (the second position)
-  generate_precision_data(y, theta_1_post, prec_y_post, nu_y, eta_y, n, 1);
+  generate_precision_data(y_ptr, theta_1_post, prec_y_post, nu_y_val, eta_y_val, n, 1);
   PutRNGstate();
 
+  UNPROTECT(4);
   return ScalarReal(prec_y_post[1]);
 }
 
@@ -415,32 +420,39 @@ SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y
  */
 SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP theta_k_, SEXP theta_kp1_,
                                      SEXP nu_0k_, SEXP eta_0k_) {
-  int n = LENGTH(coerceVector(theta_k_, REALSXP));
+  SEXP theta_k = PROTECT(coerceVector(theta_k_, REALSXP));
+  int n = LENGTH(theta_k);
 
   // Simulate MCMC history arrays
   double *theta_0k_post = (double *) R_alloc(2, sizeof(double));
-  theta_0k_post[0] = REAL(coerceVector(theta_0k_, REALSXP))[0];
+  SEXP theta_0k = PROTECT(coerceVector(theta_0k_, REALSXP));
+  theta_0k_post[0] = REAL(theta_0k)[0];
 
   double *theta_0kp1_post = (double *) R_alloc(2, sizeof(double));
-  theta_0kp1_post[1] = REAL(coerceVector(theta_0kp1_, REALSXP))[0];
+  SEXP theta_0kp1 = PROTECT(coerceVector(theta_0kp1_, REALSXP));
+  theta_0kp1_post[1] = REAL(theta_0kp1)[0];
 
   double *theta_k_post = (double *) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_k_post + n, REAL(coerceVector(theta_k_, REALSXP)), n * sizeof(double));
+  memcpy(theta_k_post + n, REAL(theta_k), n * sizeof(double));
 
   double *theta_kp1_post = (double *) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_kp1_post + n, REAL(coerceVector(theta_kp1_, REALSXP)), n * sizeof(double));
+  SEXP theta_kp1 = PROTECT(coerceVector(theta_kp1_, REALSXP));
+  memcpy(theta_kp1_post + n, REAL(theta_kp1), n * sizeof(double));
 
-  double nu_0k = REAL(coerceVector(nu_0k_, REALSXP))[0];
-  double eta_0k = REAL(coerceVector(eta_0k_, REALSXP))[0];
+  SEXP nu_0k = PROTECT(coerceVector(nu_0k_, REALSXP));
+  double nu_0k_val = REAL(nu_0k)[0];
+  SEXP eta_0k = PROTECT(coerceVector(eta_0k_, REALSXP));
+  double eta_0k_val = REAL(eta_0k)[0];
 
   double *prec_theta_k_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
   // Call for iter = 1
   generate_precision_theta_k(theta_0k_post, theta_0kp1_post, theta_k_post, theta_kp1_post,
-                             prec_theta_k_post, nu_0k, eta_0k, n, 1);
+                             prec_theta_k_post, nu_0k_val, eta_0k_val, n, 1);
   PutRNGstate();
 
+  UNPROTECT(6);
   return ScalarReal(prec_theta_k_post[1]);
 }
 
@@ -468,25 +480,31 @@ SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP thet
  * @since version 1.0
  */
 SEXP test_generate_precision_theta_p(SEXP theta_0p_, SEXP theta_p_, SEXP nu_0p_, SEXP eta_0p_) {
-  int n = LENGTH(coerceVector(theta_p_, REALSXP));
+  SEXP theta_p = PROTECT(coerceVector(theta_p_, REALSXP));
+  int n = LENGTH(theta_p);
+  double *theta_p_ptr = REAL(theta_p);
 
   // Simulate MCMC history arrays
   double *theta_0p_post = (double *) R_alloc(2, sizeof(double));
-  theta_0p_post[0] = REAL(coerceVector(theta_0p_, REALSXP))[0];
+  SEXP theta_0p = PROTECT(coerceVector(theta_0p_, REALSXP));
+  theta_0p_post[0] = REAL(theta_0p)[0];
 
   double *theta_p_post = (double *) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_p_post + n, REAL(coerceVector(theta_p_, REALSXP)), n * sizeof(double));
+  memcpy(theta_p_post + n, theta_p_ptr, n * sizeof(double));
 
-  double nu_0p = REAL(coerceVector(nu_0p_, REALSXP))[0];
-  double eta_0p = REAL(coerceVector(eta_0p_, REALSXP))[0];
+  SEXP nu_0p = PROTECT(coerceVector(nu_0p_, REALSXP));
+  double nu_0p_val = REAL(nu_0p)[0];
+  SEXP eta_0p = PROTECT(coerceVector(eta_0p_, REALSXP));
+  double eta_0p_val = REAL(eta_0p)[0];
 
   double *prec_theta_p_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
   // Call for iter = 1
-  generate_precision_theta_p(theta_0p_post, theta_p_post, prec_theta_p_post, nu_0p, eta_0p, n, 1);
+  generate_precision_theta_p(theta_0p_post, theta_p_post, prec_theta_p_post, nu_0p_val, eta_0p_val, n, 1);
   PutRNGstate();
 
+  UNPROTECT(4);
   return ScalarReal(prec_theta_p_post[1]);
 }
 
@@ -518,29 +536,34 @@ SEXP test_generate_precision_theta_p(SEXP theta_0p_, SEXP theta_p_, SEXP nu_0p_,
  * @since version 1.0
  */
 SEXP test_generate_theta_1_locallevel(SEXP data_, SEXP prec_data_, SEXP prec_theta_1_, SEXP theta_01_) {
-  double *data = REAL(coerceVector(data_, REALSXP));
-  int n = LENGTH(data_);
-  double prec_data = REAL(coerceVector(prec_data_, REALSXP))[0];
-  double prec_theta_1 = REAL(coerceVector(prec_theta_1_, REALSXP))[0];
-  double theta_01 = REAL(coerceVector(theta_01_, REALSXP))[0];
+  SEXP data = PROTECT(coerceVector(data_, REALSXP));
+  int n = LENGTH(data);
+  double *data_ptr = REAL(data);
+
+  SEXP prec_data = PROTECT(coerceVector(prec_data_, REALSXP));
+  double prec_data_val = REAL(prec_data)[0];
+  SEXP prec_theta_1 = PROTECT(coerceVector(prec_theta_1_, REALSXP));
+  double prec_theta_1_val = REAL(prec_theta_1)[0];
+  SEXP theta_01 = PROTECT(coerceVector(theta_01_, REALSXP));
+  double theta_01_val = REAL(theta_01)[0];
 
   double *theta_1_post = (double *) R_alloc(2 * n, sizeof(double));
   double *prec_data_post = (double *) R_alloc(2, sizeof(double));
   double *prec_theta_1_post = (double *) R_alloc(2, sizeof(double));
   double *theta_01_post = (double *) R_alloc(2, sizeof(double));
 
-  prec_data_post[0] = prec_data;
-  prec_theta_1_post[0] = prec_theta_1;
-  theta_01_post[0] = theta_01;
+  prec_data_post[0] = prec_data_val;
+  prec_theta_1_post[0] = prec_theta_1_val;
+  theta_01_post[0] = theta_01_val;
 
   GetRNGstate();
-  generate_theta_1_locallevel(data, theta_1_post, prec_data_post, prec_theta_1_post, theta_01_post, n, 1);
+  generate_theta_1_locallevel(data_ptr, theta_1_post, prec_data_post, prec_theta_1_post, theta_01_post, n, 1);
   PutRNGstate();
 
   SEXP result_sexp = PROTECT(allocVector(REALSXP, n));
   memcpy(REAL(result_sexp), theta_1_post + n, n * sizeof(double));
 
-  UNPROTECT(1);
+  UNPROTECT(5);
   return result_sexp;
 }
 
@@ -570,39 +593,45 @@ SEXP test_generate_theta_1_locallevel(SEXP data_, SEXP prec_data_, SEXP prec_the
  * @since version 1.0
  */
 SEXP test_generate_theta_1(SEXP data_, SEXP theta_2_, SEXP prec_data_, SEXP prec_theta_1_, SEXP theta_01_, SEXP theta_02_) {
-  double *data = REAL(coerceVector(data_, REALSXP));
-  int n = LENGTH(data_);
+  SEXP data = PROTECT(coerceVector(data_, REALSXP));
+  int n = LENGTH(data);
+  double *data_ptr = REAL(data);
 
-  double *theta_2 = REAL(coerceVector(theta_2_, REALSXP));
-  double prec_data = REAL(coerceVector(prec_data_, REALSXP))[0];
-  double prec_theta_1 = REAL(coerceVector(prec_theta_1_, REALSXP))[0];
-  double theta_01 = REAL(coerceVector(theta_01_, REALSXP))[0];
-  double theta_02 = REAL(coerceVector(theta_02_, REALSXP))[0];
+  SEXP theta_2 = PROTECT(coerceVector(theta_2_, REALSXP));
+  double *theta_2_ptr = REAL(theta_2);
+  SEXP prec_data = PROTECT(coerceVector(prec_data_, REALSXP));
+  double prec_data_val = REAL(prec_data)[0];
+  SEXP prec_theta_1 = PROTECT(coerceVector(prec_theta_1_, REALSXP));
+  double prec_theta_1_val = REAL(prec_theta_1)[0];
+  SEXP theta_01 = PROTECT(coerceVector(theta_01_, REALSXP));
+  double theta_01_val = REAL(theta_01)[0];
+  SEXP theta_02 = PROTECT(coerceVector(theta_02_, REALSXP));
+  double theta_02_val = REAL(theta_02)[0];
 
   double *theta_1_post = (double *) R_alloc(2 * n, sizeof(double));
   double *theta_2_post = (double *) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_2_post + n, theta_2, n * sizeof(double));
+  memcpy(theta_2_post + n, theta_2_ptr, n * sizeof(double));
 
   double *prec_data_post = (double *) R_alloc(2, sizeof(double));
-  prec_data_post[0] = prec_data;
+  prec_data_post[0] = prec_data_val;
 
   double *prec_theta_1_post = (double *) R_alloc(2, sizeof(double));
-  prec_theta_1_post[0] = prec_theta_1;
+  prec_theta_1_post[0] = prec_theta_1_val;
 
   double *theta_01_post = (double *) R_alloc(2, sizeof(double));
-  theta_01_post[0] = theta_01;
+  theta_01_post[0] = theta_01_val;
 
   double *theta_02_post = (double *) R_alloc(2, sizeof(double));
-  theta_02_post[1] = theta_02;
+  theta_02_post[1] = theta_02_val;
 
   GetRNGstate();
-  generate_theta_1(data, theta_1_post, theta_2_post, prec_data_post, prec_theta_1_post, theta_01_post, theta_02_post, n, 1);
+  generate_theta_1(data_ptr, theta_1_post, theta_2_post, prec_data_post, prec_theta_1_post, theta_01_post, theta_02_post, n, 1);
   PutRNGstate();
 
   SEXP result_sexp = PROTECT(allocVector(REALSXP, n));
   memcpy(REAL(result_sexp), theta_1_post + n, n * sizeof(double));
 
-  UNPROTECT(1);
+  UNPROTECT(7);
   return result_sexp;
 }
 
@@ -632,34 +661,40 @@ SEXP test_generate_theta_1(SEXP data_, SEXP theta_2_, SEXP prec_data_, SEXP prec
  * @since version 1.0
  */
 SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEXP prec_k_, SEXP theta_0k_, SEXP theta_0kp1_) {
-  int n = LENGTH(coerceVector(theta_km1_, REALSXP));
+  SEXP theta_km1 = PROTECT(coerceVector(theta_km1_, REALSXP));
+  int n = LENGTH(theta_km1);
+  double *theta_km1_ptr = REAL(theta_km1);
 
-  double *theta_km1 = REAL(coerceVector(theta_km1_, REALSXP));
-  double *theta_kp1 = REAL(coerceVector(theta_kp1_, REALSXP));
-  double prec_km1 = REAL(coerceVector(prec_km1_, REALSXP))[0];
-  double prec_k = REAL(coerceVector(prec_k_, REALSXP))[0];
-  double theta_0k = REAL(coerceVector(theta_0k_, REALSXP))[0];
-  double theta_0kp1 = REAL(coerceVector(theta_0kp1_, REALSXP))[0];
+  SEXP theta_kp1 = PROTECT(coerceVector(theta_kp1_, REALSXP));
+  double *theta_kp1_ptr = REAL(theta_kp1);
+  SEXP prec_km1 = PROTECT(coerceVector(prec_km1_, REALSXP));
+  double prec_km1_val = REAL(prec_km1)[0];
+  SEXP prec_k = PROTECT(coerceVector(prec_k_, REALSXP));
+  double prec_k_val = REAL(prec_k)[0];
+  SEXP theta_0k = PROTECT(coerceVector(theta_0k_, REALSXP));
+  double theta_0k_val = REAL(theta_0k)[0];
+  SEXP theta_0kp1 = PROTECT(coerceVector(theta_0kp1_, REALSXP));
+  double theta_0kp1_val = REAL(theta_0kp1)[0];
 
   double *theta_km1_post = (double *) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_km1_post, theta_km1, n * sizeof(double));
+  memcpy(theta_km1_post, theta_km1_ptr, n * sizeof(double));
 
   double *theta_k_post = (double *) R_alloc(2 * n, sizeof(double));
 
   double *theta_kp1_post = (double *) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_kp1_post + n, theta_kp1, n * sizeof(double));
+  memcpy(theta_kp1_post + n, theta_kp1_ptr, n * sizeof(double));
 
   double *prec_theta_km1_post = (double *) R_alloc(2, sizeof(double));
-  prec_theta_km1_post[0] = prec_km1;
+  prec_theta_km1_post[0] = prec_km1_val;
 
   double *prec_theta_k_post = (double *) R_alloc(2, sizeof(double));
-  prec_theta_k_post[0] = prec_k;
+  prec_theta_k_post[0] = prec_k_val;
 
   double *theta_0k_post = (double *) R_alloc(2, sizeof(double));
-  theta_0k_post[0] = theta_0k;
+  theta_0k_post[0] = theta_0k_val;
 
   double *theta_0kp1_post = (double *) R_alloc(2, sizeof(double));
-  theta_0kp1_post[1] = theta_0kp1;
+  theta_0kp1_post[1] = theta_0kp1_val;
 
   GetRNGstate();
   generate_theta_k(theta_km1_post, theta_k_post, theta_kp1_post, prec_theta_km1_post, prec_theta_k_post, theta_0k_post, theta_0kp1_post, n, 1);
@@ -668,7 +703,7 @@ SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEX
   SEXP result_sexp = PROTECT(allocVector(REALSXP, n));
   memcpy(REAL(result_sexp), theta_k_post + n, n * sizeof(double));
 
-  UNPROTECT(1);
+  UNPROTECT(7);
   return result_sexp;
 }
 
@@ -696,26 +731,30 @@ SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEX
  * @since version 1.0
  */
 SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP theta_0p_) {
-  int n = LENGTH(coerceVector(theta_pm1_, REALSXP));
+  SEXP theta_pm1 = PROTECT(coerceVector(theta_pm1_, REALSXP));
+  int n = LENGTH(theta_pm1);
+  double *theta_pm1_ptr = REAL(theta_pm1);
 
-  double *theta_pm1 = REAL(coerceVector(theta_pm1_, REALSXP));
-  double prec_pm1 = REAL(coerceVector(prec_pm1_, REALSXP))[0];
-  double prec_p = REAL(coerceVector(prec_p_, REALSXP))[0];
-  double theta_0p = REAL(coerceVector(theta_0p_, REALSXP))[0];
+  SEXP prec_pm1 = PROTECT(coerceVector(prec_pm1_, REALSXP));
+  double prec_pm1_val = REAL(prec_pm1)[0];
+  SEXP prec_p = PROTECT(coerceVector(prec_p_, REALSXP));
+  double prec_p_val = REAL(prec_p)[0];
+  SEXP theta_0p = PROTECT(coerceVector(theta_0p_, REALSXP));
+  double theta_0p_val = REAL(theta_0p)[0];
 
   double *theta_pm1_post = (double *) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_pm1_post, theta_pm1, n * sizeof(double));
+  memcpy(theta_pm1_post, theta_pm1_ptr, n * sizeof(double));
 
   double *theta_p_post = (double *) R_alloc(2 * n, sizeof(double));
 
   double *prec_theta_pm1_post = (double *) R_alloc(2, sizeof(double));
-  prec_theta_pm1_post[0] = prec_pm1;
+  prec_theta_pm1_post[0] = prec_pm1_val;
 
   double *prec_theta_p_post = (double *) R_alloc(2, sizeof(double));
-  prec_theta_p_post[0] = prec_p;
+  prec_theta_p_post[0] = prec_p_val;
 
   double *theta_0p_post = (double *) R_alloc(2, sizeof(double));
-  theta_0p_post[0] = theta_0p;
+  theta_0p_post[0] = theta_0p_val;
 
   GetRNGstate();
   generate_theta_p(theta_pm1_post, theta_p_post, prec_theta_pm1_post, prec_theta_p_post, theta_0p_post, n, 1);
@@ -724,7 +763,7 @@ SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP t
   SEXP result_sexp = PROTECT(allocVector(REALSXP, n));
   memcpy(REAL(result_sexp), theta_p_post + n, n * sizeof(double));
 
-  UNPROTECT(1);
+  UNPROTECT(5);
   return result_sexp;
 }
 
@@ -756,24 +795,30 @@ SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP t
  * @since version 1.0
  */
 SEXP test_generate_theta_01_locallevel(SEXP theta_1_, SEXP prec_theta_1_, SEXP mean_theta_01_, SEXP prec_theta_01_) {
-  int n = LENGTH(coerceVector(theta_1_, REALSXP));
-  double *theta_1 = REAL(coerceVector(theta_1_, REALSXP));
-  double prec_theta_1 = REAL(coerceVector(prec_theta_1_, REALSXP))[0];
-  double mean_theta_01 = REAL(coerceVector(mean_theta_01_, REALSXP))[0];
-  double prec_theta_01 = REAL(coerceVector(prec_theta_01_, REALSXP))[0];
+  SEXP theta_1 = PROTECT(coerceVector(theta_1_, REALSXP));
+  int n = LENGTH(theta_1);
+  double *theta_1_ptr = REAL(theta_1);
 
-  double *theta_1_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_1_post + n, theta_1, n * sizeof(double));
+  SEXP prec_theta_1 = PROTECT(coerceVector(prec_theta_1_, REALSXP));
+  double prec_theta_1_val = REAL(prec_theta_1)[0];
+  SEXP mean_theta_01 = PROTECT(coerceVector(mean_theta_01_, REALSXP));
+  double mean_theta_01_val = REAL(mean_theta_01)[0];
+  SEXP prec_theta_01 = PROTECT(coerceVector(prec_theta_01_, REALSXP));
+  double prec_theta_01_val = REAL(prec_theta_01)[0];
 
-  double *prec_theta_1_post = (double*) R_alloc(2, sizeof(double));
-  prec_theta_1_post[1] = prec_theta_1;
+  double *theta_1_post = (double *) R_alloc(2 * n, sizeof(double));
+  memcpy(theta_1_post + n, theta_1_ptr, n * sizeof(double));
 
-  double *theta_01_post = (double*) R_alloc(2, sizeof(double));
+  double *prec_theta_1_post = (double *) R_alloc(2, sizeof(double));
+  prec_theta_1_post[1] = prec_theta_1_val;
+
+  double *theta_01_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
-  generate_theta_01_locallevel(theta_01_post, theta_1_post, prec_theta_1_post, mean_theta_01, prec_theta_01, n, 1);
+  generate_theta_01_locallevel(theta_01_post, theta_1_post, prec_theta_1_post, mean_theta_01_val, prec_theta_01_val, n, 1);
   PutRNGstate();
 
+  UNPROTECT(4);
   return ScalarReal(theta_01_post[1]);
 }
 
@@ -802,28 +847,35 @@ SEXP test_generate_theta_01_locallevel(SEXP theta_1_, SEXP prec_theta_1_, SEXP m
  * @since version 1.0
  */
 SEXP test_generate_theta_01(SEXP theta_1_, SEXP theta_02_, SEXP prec_theta_1_, SEXP mean_theta_01_, SEXP prec_theta_01_) {
-  int n = LENGTH(coerceVector(theta_1_, REALSXP));
-  double *theta_1 = REAL(coerceVector(theta_1_, REALSXP));
-  double theta_02 = REAL(coerceVector(theta_02_, REALSXP))[0];
-  double prec_theta_1 = REAL(coerceVector(prec_theta_1_, REALSXP))[0];
-  double mean_theta_01 = REAL(coerceVector(mean_theta_01_, REALSXP))[0];
-  double prec_theta_01 = REAL(coerceVector(prec_theta_01_, REALSXP))[0];
+  SEXP theta_1 = PROTECT(coerceVector(theta_1_, REALSXP));
+  int n = LENGTH(theta_1);
+  double *theta_1_ptr = REAL(theta_1);
 
-  double *theta_1_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_1_post + n, theta_1, n * sizeof(double));
+  SEXP theta_02 = PROTECT(coerceVector(theta_02_, REALSXP));
+  double theta_02_val = REAL(theta_02)[0];
+  SEXP prec_theta_1 = PROTECT(coerceVector(prec_theta_1_, REALSXP));
+  double prec_theta_1_val = REAL(prec_theta_1)[0];
+  SEXP mean_theta_01 = PROTECT(coerceVector(mean_theta_01_, REALSXP));
+  double mean_theta_01_val = REAL(mean_theta_01)[0];
+  SEXP prec_theta_01 = PROTECT(coerceVector(prec_theta_01_, REALSXP));
+  double prec_theta_01_val = REAL(prec_theta_01)[0];
 
-  double *theta_02_post = (double*) R_alloc(2, sizeof(double));
-  theta_02_post[1] = theta_02;
+  double *theta_1_post = (double *) R_alloc(2 * n, sizeof(double));
+  memcpy(theta_1_post + n, theta_1_ptr, n * sizeof(double));
 
-  double *prec_theta_1_post = (double*) R_alloc(2, sizeof(double));
-  prec_theta_1_post[1] = prec_theta_1;
+  double *theta_02_post = (double *) R_alloc(2, sizeof(double));
+  theta_02_post[1] = theta_02_val;
 
-  double *theta_01_post = (double*) R_alloc(2, sizeof(double));
+  double *prec_theta_1_post = (double *) R_alloc(2, sizeof(double));
+  prec_theta_1_post[1] = prec_theta_1_val;
+
+  double *theta_01_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
-  generate_theta_01(theta_01_post, theta_02_post, theta_1_post, prec_theta_1_post, mean_theta_01, prec_theta_01, n, 1);
+  generate_theta_01(theta_01_post, theta_02_post, theta_1_post, prec_theta_1_post, mean_theta_01_val, prec_theta_01_val, n, 1);
   PutRNGstate();
 
+  UNPROTECT(5);
   return ScalarReal(theta_01_post[1]);
 }
 
@@ -855,36 +907,51 @@ SEXP test_generate_theta_01(SEXP theta_1_, SEXP theta_02_, SEXP prec_theta_1_, S
  * @since version 1.0
  */
 SEXP test_generate_theta_0k(SEXP theta_km1_, SEXP theta_k_, SEXP theta_0km1_, SEXP theta_0kp1_, SEXP prec_km1_, SEXP prec_k_, SEXP mean_0k_, SEXP prec_0k_) {
-  int n = LENGTH(coerceVector(theta_k_, REALSXP));
+  SEXP theta_k = PROTECT(coerceVector(theta_k_, REALSXP));
+  int n = LENGTH(theta_k);
+  double *theta_k_ptr = REAL(theta_k);
 
-  double *theta_km1_post = (double*) R_alloc(2*n, sizeof(double));
-  memcpy(theta_km1_post, REAL(coerceVector(theta_km1_, REALSXP)), n * sizeof(double));
+  SEXP theta_km1 = PROTECT(coerceVector(theta_km1_, REALSXP));
+  double *theta_km1_ptr = REAL(theta_km1);
+  SEXP theta_0km1 = PROTECT(coerceVector(theta_0km1_, REALSXP));
+  double theta_0km1_val = REAL(theta_0km1)[0];
+  SEXP theta_0kp1 = PROTECT(coerceVector(theta_0kp1_, REALSXP));
+  double theta_0kp1_val = REAL(theta_0kp1)[0];
+  SEXP prec_km1 = PROTECT(coerceVector(prec_km1_, REALSXP));
+  double prec_km1_val = REAL(prec_km1)[0];
+  SEXP prec_k = PROTECT(coerceVector(prec_k_, REALSXP));
+  double prec_k_val = REAL(prec_k)[0];
+  SEXP mean_0k = PROTECT(coerceVector(mean_0k_, REALSXP));
+  double mean_0k_val = REAL(mean_0k)[0];
+  SEXP prec_0k = PROTECT(coerceVector(prec_0k_, REALSXP));
+  double prec_0k_val = REAL(prec_0k)[0];
 
-  double *theta_k_post = (double*) R_alloc(2*n, sizeof(double));
-  memcpy(theta_k_post + n, REAL(coerceVector(theta_k_, REALSXP)), n * sizeof(double));
+  double *theta_km1_post = (double *) R_alloc(2 * n, sizeof(double));
+  memcpy(theta_km1_post, theta_km1_ptr, n * sizeof(double));
 
-  double *theta_0km1_post = (double*) R_alloc(2, sizeof(double));
-  theta_0km1_post[0] = REAL(coerceVector(theta_0km1_, REALSXP))[0];
+  double *theta_k_post = (double *) R_alloc(2 * n, sizeof(double));
+  memcpy(theta_k_post + n, theta_k_ptr, n * sizeof(double));
 
-  double *theta_0kp1_post = (double*) R_alloc(2, sizeof(double));
-  theta_0kp1_post[1] = REAL(coerceVector(theta_0kp1_, REALSXP))[0];
+  double *theta_0km1_post = (double *) R_alloc(2, sizeof(double));
+  theta_0km1_post[0] = theta_0km1_val;
 
-  double *prec_theta_km1_post = (double*) R_alloc(2, sizeof(double));
-  prec_theta_km1_post[0] = REAL(coerceVector(prec_km1_, REALSXP))[0];
+  double *theta_0kp1_post = (double *) R_alloc(2, sizeof(double));
+  theta_0kp1_post[1] = theta_0kp1_val;
 
-  double *prec_theta_k_post = (double*) R_alloc(2, sizeof(double));
-  prec_theta_k_post[1] = REAL(coerceVector(prec_k_, REALSXP))[0];
+  double *prec_theta_km1_post = (double *) R_alloc(2, sizeof(double));
+  prec_theta_km1_post[0] = prec_km1_val;
 
-  double mean_0k = REAL(coerceVector(mean_0k_, REALSXP))[0];
-  double prec_0k = REAL(coerceVector(prec_0k_, REALSXP))[0];
+  double *prec_theta_k_post = (double *) R_alloc(2, sizeof(double));
+  prec_theta_k_post[1] = prec_k_val;
 
-  double *theta_0k_post = (double*) R_alloc(2, sizeof(double));
+  double *theta_0k_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
   generate_theta_0k(theta_0km1_post, theta_0k_post, theta_0kp1_post, theta_km1_post, theta_k_post,
-                    prec_theta_km1_post, prec_theta_k_post, mean_0k, prec_0k, n, 1);
+                    prec_theta_km1_post, prec_theta_k_post, mean_0k_val, prec_0k_val, n, 1);
   PutRNGstate();
 
+  UNPROTECT(8);
   return ScalarReal(theta_0k_post[1]);
 }
 
@@ -915,33 +982,46 @@ SEXP test_generate_theta_0k(SEXP theta_km1_, SEXP theta_k_, SEXP theta_0km1_, SE
  * @since version 1.0
  */
 SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP mean_0p_, SEXP prec_0p_) {
-  int n = LENGTH(coerceVector(theta_p_, REALSXP));
+  SEXP theta_p = PROTECT(coerceVector(theta_p_, REALSXP));
+  int n = LENGTH(theta_p);
+  double *theta_p_ptr = REAL(theta_p);
 
-  double *theta_pm1_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_pm1_post, REAL(coerceVector(theta_pm1_, REALSXP)), n * sizeof(double));
+  SEXP theta_pm1 = PROTECT(coerceVector(theta_pm1_, REALSXP));
+  double *theta_pm1_ptr = REAL(theta_pm1);
+  SEXP theta_0pm1 = PROTECT(coerceVector(theta_0pm1_, REALSXP));
+  double theta_0pm1_val = REAL(theta_0pm1)[0];
+  SEXP prec_pm1 = PROTECT(coerceVector(prec_pm1_, REALSXP));
+  double prec_pm1_val = REAL(prec_pm1)[0];
+  SEXP prec_p = PROTECT(coerceVector(prec_p_, REALSXP));
+  double prec_p_val = REAL(prec_p)[0];
+  SEXP mean_0p = PROTECT(coerceVector(mean_0p_, REALSXP));
+  double mean_0p_val = REAL(mean_0p)[0];
+  SEXP prec_0p = PROTECT(coerceVector(prec_0p_, REALSXP));
+  double prec_0p_val = REAL(prec_0p)[0];
 
-  double *theta_p_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_p_post + n, REAL(coerceVector(theta_p_, REALSXP)), n * sizeof(double));
+  double *theta_pm1_post = (double *) R_alloc(2 * n, sizeof(double));
+  memcpy(theta_pm1_post, theta_pm1_ptr, n * sizeof(double));
 
-  double *theta_0pm1_post = (double*) R_alloc(2, sizeof(double));
-  theta_0pm1_post[0] = REAL(coerceVector(theta_0pm1_, REALSXP))[0];
+  double *theta_p_post = (double *) R_alloc(2 * n, sizeof(double));
+  memcpy(theta_p_post + n, theta_p_ptr, n * sizeof(double));
 
-  double *prec_theta_pm1_post = (double*) R_alloc(2, sizeof(double));
-  prec_theta_pm1_post[0] = REAL(coerceVector(prec_pm1_, REALSXP))[0];
+  double *theta_0pm1_post = (double *) R_alloc(2, sizeof(double));
+  theta_0pm1_post[0] = theta_0pm1_val;
 
-  double *prec_theta_p_post = (double*) R_alloc(2, sizeof(double));
-  prec_theta_p_post[1] = REAL(coerceVector(prec_p_, REALSXP))[0];
+  double *prec_theta_pm1_post = (double *) R_alloc(2, sizeof(double));
+  prec_theta_pm1_post[0] = prec_pm1_val;
 
-  double mean_0p = REAL(coerceVector(mean_0p_, REALSXP))[0];
-  double prec_0p = REAL(coerceVector(prec_0p_, REALSXP))[0];
+  double *prec_theta_p_post = (double *) R_alloc(2, sizeof(double));
+  prec_theta_p_post[1] = prec_p_val;
 
-  double *theta_0p_post = (double*) R_alloc(2, sizeof(double));
+  double *theta_0p_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
   generate_theta_0p(theta_0pm1_post, theta_0p_post, theta_pm1_post, theta_p_post,
-                    prec_theta_pm1_post, prec_theta_p_post, mean_0p, prec_0p, n, 1);
+                    prec_theta_pm1_post, prec_theta_p_post, mean_0p_val, prec_0p_val, n, 1);
   PutRNGstate();
 
+  UNPROTECT(7);
   return ScalarReal(theta_0p_post[1]);
 }
 
@@ -983,35 +1063,41 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SE
  * @since version 1.3
  */
 SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_, SEXP log_sigma_in_) {
-  int n = LENGTH(coerceVector(y_, REALSXP));
-  double n_trials = REAL(coerceVector(n_trials_, REALSXP))[0];
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  int n = LENGTH(y);
+  double *y_ptr = REAL(y);
+
+  SEXP n_trials = PROTECT(coerceVector(n_trials_, REALSXP));
+  double n_trials_val = REAL(n_trials)[0];
 
   // MCMC history arrays
   double *theta_1_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_1_post, REAL(coerceVector(theta_1_in_, REALSXP)), n * sizeof(double));
+  SEXP theta_1_in = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  memcpy(theta_1_post, REAL(theta_1_in), n * sizeof(double));
 
   double *theta_01_post = (double*) R_alloc(2, sizeof(double));
-  theta_01_post[0] = REAL(coerceVector(theta_01_in_, REALSXP))[0];
+  SEXP theta_01_in = PROTECT(coerceVector(theta_01_in_, REALSXP));
+  theta_01_post[0] = REAL(theta_01_in)[0];
 
   double *prec_1_post = (double*) R_alloc(2, sizeof(double));
-  prec_1_post[0] = REAL(coerceVector(prec_1_in_, REALSXP))[0];
-
-  double *y = REAL(coerceVector(y_, REALSXP));
+  SEXP prec_1_in = PROTECT(coerceVector(prec_1_in_, REALSXP));
+  prec_1_post[0] = REAL(prec_1_in)[0];
 
   double *theta_1_updated = (double*) R_alloc(2 * n, sizeof(double));
   double *alpha_post = (double*) R_alloc(2 * n, sizeof(double));
 
   // CWMH working arrays
-  double *log_sigma = REAL(coerceVector(log_sigma_in_, REALSXP)); // Use log_sigma from R
+  SEXP log_sigma_in = PROTECT(coerceVector(log_sigma_in_, REALSXP));
+  double *log_sigma = REAL(log_sigma_in); // Use log_sigma from R
   double *hat_theta_1 = (double*) R_alloc(n, sizeof(double));
   double *theta_1_new = (double*) R_alloc(n, sizeof(double));
   double *log_accept_prob = (double*) R_alloc(n, sizeof(double));
 
   GetRNGstate();
   cwmh_alpha_logit_binomial_locallevel(
-    theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
+    theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y_ptr,
     log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    2, n_trials, n, 1  // lag_update = 2
+    2, n_trials_val, n, 1  // lag_update = 2
   );
   PutRNGstate();
 
@@ -1030,7 +1116,7 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
   SET_STRING_ELT(nms, 1, mkChar("alpha"));
   setAttrib(res, R_NamesSymbol, nms);
 
-  UNPROTECT(4);
+  UNPROTECT(10);
   return res;
 }
 
@@ -1069,26 +1155,33 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
  * @since version 1.0
  */
 SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_, SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
-  int n = LENGTH(coerceVector(y_, REALSXP));
-  double n_trials = REAL(coerceVector(n_trials_, REALSXP))[0];
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  int n = LENGTH(y);
+  double *y_ptr = REAL(y);
+
+  SEXP n_trials = PROTECT(coerceVector(n_trials_, REALSXP));
+  double n_trials_val = REAL(n_trials)[0];
 
   // MCMC history arrays
   double *theta_1_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_1_post, REAL(coerceVector(theta_1_in_, REALSXP)), n * sizeof(double));
+  SEXP theta_1_in = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  memcpy(theta_1_post, REAL(theta_1_in), n * sizeof(double));
 
   double *theta_2_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_2_post + n, REAL(coerceVector(theta_2_in_, REALSXP)), n * sizeof(double));
+  SEXP theta_2_in = PROTECT(coerceVector(theta_2_in_, REALSXP));
+  memcpy(theta_2_post + n, REAL(theta_2_in), n * sizeof(double));
 
   double *theta_01_post = (double*) R_alloc(2, sizeof(double));
-  theta_01_post[0] = REAL(coerceVector(theta_01_in_, REALSXP))[0];
+  SEXP theta_01_in = PROTECT(coerceVector(theta_01_in_, REALSXP));
+  theta_01_post[0] = REAL(theta_01_in)[0];
 
   double *theta_02_post = (double*) R_alloc(2, sizeof(double));
-  theta_02_post[0] = REAL(coerceVector(theta_02_in_, REALSXP))[0];
+  SEXP theta_02_in = PROTECT(coerceVector(theta_02_in_, REALSXP));
+  theta_02_post[0] = REAL(theta_02_in)[0];
 
   double *prec_1_post = (double*) R_alloc(2, sizeof(double));
-  prec_1_post[0] = REAL(coerceVector(prec_1_in_, REALSXP))[0];
-
-  double *y = REAL(coerceVector(y_, REALSXP));
+  SEXP prec_1_in = PROTECT(coerceVector(prec_1_in_, REALSXP));
+  prec_1_post[0] = REAL(prec_1_in)[0];
 
   double *theta_1_updated = (double*) R_alloc(2 * n, sizeof(double));
   double *alpha_post = (double*) R_alloc(2 * n, sizeof(double));
@@ -1103,9 +1196,9 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
   GetRNGstate();
   cwmh_alpha_logit_binomial(
     theta_1_post, theta_2_post, theta_01_post, theta_02_post,
-    theta_1_updated, alpha_post, prec_1_post, y,
+    theta_1_updated, alpha_post, prec_1_post, y_ptr,
     log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    2, n_trials, n, 1  // lag_update = 2
+    2, n_trials_val, n, 1  // lag_update = 2
   );
   PutRNGstate();
 
@@ -1124,7 +1217,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
   SET_STRING_ELT(nms, 1, mkChar("alpha"));
   setAttrib(res, R_NamesSymbol, nms);
 
-  UNPROTECT(4);
+  UNPROTECT(11);
   return res;
 }
 
@@ -1165,20 +1258,25 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
  * @since version 1.0
  */
 SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
-  int n = LENGTH(coerceVector(y_, REALSXP));
-  double n_trials = REAL(coerceVector(n_trials_, REALSXP))[0];
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  int n = LENGTH(y);
+  double *y_ptr = REAL(y);
+
+  SEXP n_trials = PROTECT(coerceVector(n_trials_, REALSXP));
+  double n_trials_val = REAL(n_trials)[0];
 
   // MCMC history arrays
   double *theta_1_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_1_post, REAL(coerceVector(theta_1_in_, REALSXP)), n * sizeof(double));
+  SEXP theta_1_in = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  memcpy(theta_1_post, REAL(theta_1_in), n * sizeof(double));
 
   double *theta_01_post = (double*) R_alloc(2, sizeof(double));
-  theta_01_post[0] = REAL(coerceVector(theta_01_in_, REALSXP))[0];
+  SEXP theta_01_in = PROTECT(coerceVector(theta_01_in_, REALSXP));
+  theta_01_post[0] = REAL(theta_01_in)[0];
 
   double *prec_1_post = (double*) R_alloc(2, sizeof(double));
-  prec_1_post[0] = REAL(coerceVector(prec_1_in_, REALSXP))[0];
-
-  double *y = REAL(coerceVector(y_, REALSXP));
+  SEXP prec_1_in = PROTECT(coerceVector(prec_1_in_, REALSXP));
+  prec_1_post[0] = REAL(prec_1_in)[0];
 
   double *theta_1_updated = (double*) R_alloc(2 * n, sizeof(double));
   double *alpha_post = (double*) R_alloc(2 * n, sizeof(double));
@@ -1193,9 +1291,9 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
 
   GetRNGstate();
   generate_alpha_logit_binomial_locallevel(
-    theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
+    theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y_ptr,
     accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    0, n_trials, n, 1, 0.1, 1.0, 0.5, 0.44, 0.02  // min_deviation_threshold
+    0, n_trials_val, n, 1, 0.1, 1.0, 0.5, 0.44, 0.02  // min_deviation_threshold
   );
   PutRNGstate();
 
@@ -1214,7 +1312,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   SET_STRING_ELT(nms, 1, mkChar("alpha"));
   setAttrib(res, R_NamesSymbol, nms);
 
-  UNPROTECT(4);
+  UNPROTECT(9);
   return res;
 }
 
@@ -1252,26 +1350,33 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
  * @since version 1.0
  */
 SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_, SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
-  int n = LENGTH(coerceVector(y_, REALSXP));
-  double n_trials = REAL(coerceVector(n_trials_, REALSXP))[0];
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  int n = LENGTH(y);
+  double *y_ptr = REAL(y);
+
+  SEXP n_trials = PROTECT(coerceVector(n_trials_, REALSXP));
+  double n_trials_val = REAL(n_trials)[0];
 
   // MCMC history arrays
   double *theta_1_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_1_post, REAL(coerceVector(theta_1_in_, REALSXP)), n * sizeof(double));
+  SEXP theta_1_in = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  memcpy(theta_1_post, REAL(theta_1_in), n * sizeof(double));
 
   double *theta_2_post = (double*) R_alloc(2 * n, sizeof(double));
-  memcpy(theta_2_post + n, REAL(coerceVector(theta_2_in_, REALSXP)), n * sizeof(double));
+  SEXP theta_2_in = PROTECT(coerceVector(theta_2_in_, REALSXP));
+  memcpy(theta_2_post + n, REAL(theta_2_in), n * sizeof(double));
 
   double *theta_01_post = (double*) R_alloc(2, sizeof(double));
-  theta_01_post[0] = REAL(coerceVector(theta_01_in_, REALSXP))[0];
+  SEXP theta_01_in = PROTECT(coerceVector(theta_01_in_, REALSXP));
+  theta_01_post[0] = REAL(theta_01_in)[0];
 
   double *theta_02_post = (double*) R_alloc(2, sizeof(double));
-  theta_02_post[0] = REAL(coerceVector(theta_02_in_, REALSXP))[0];
+  SEXP theta_02_in = PROTECT(coerceVector(theta_02_in_, REALSXP));
+  theta_02_post[0] = REAL(theta_02_in)[0];
 
   double *prec_1_post = (double*) R_alloc(2, sizeof(double));
-  prec_1_post[0] = REAL(coerceVector(prec_1_in_, REALSXP))[0];
-
-  double *y = REAL(coerceVector(y_, REALSXP));
+  SEXP prec_1_in = PROTECT(coerceVector(prec_1_in_, REALSXP));
+  prec_1_post[0] = REAL(prec_1_in)[0];
 
   double *theta_1_updated = (double*) R_alloc(2 * n, sizeof(double));
   double *alpha_post = (double*) R_alloc(2 * n, sizeof(double));
@@ -1287,9 +1392,9 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   GetRNGstate();
   generate_alpha_logit_binomial(
     theta_1_post, theta_2_post, theta_01_post, theta_02_post,
-    theta_1_updated, alpha_post, prec_1_post, y,
+    theta_1_updated, alpha_post, prec_1_post, y_ptr,
     accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    0, n_trials, n, 1, 0.1, 1.0, 0.5, 0.44, 0.02  // min_deviation_threshold
+    0, n_trials_val, n, 1, 0.1, 1.0, 0.5, 0.44, 0.02  // min_deviation_threshold
   );
   PutRNGstate();
 
@@ -1308,7 +1413,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   SET_STRING_ELT(nms, 1, mkChar("alpha"));
   setAttrib(res, R_NamesSymbol, nms);
 
-  UNPROTECT(4);
+  UNPROTECT(11);
   return res;
 }
 
@@ -1380,62 +1485,138 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
                                                 SEXP return_log_sigma_, SEXP return_accept_prop_) {
 
   /* Parse data vector and validate */
-  double *y = REAL(coerceVector(y_, REALSXP));
-  int n = LENGTH(y_);
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  int n = LENGTH(y);
   if (n < 3) {
+    UNPROTECT(1);
     error("Sample size 'n' must be at least 3, got %d", n);
   }
+  double *y_ptr = REAL(y);
 
-  double n_trials = REAL(coerceVector(n_trials_, REALSXP))[0];
+  SEXP n_trials_sexp = PROTECT(coerceVector(n_trials_, REALSXP));
+  double n_trials = REAL(n_trials_sexp)[0];
+  UNPROTECT(1);
 
   /* Validate binomial constraints */
   for (int i = 0; i < n; i++) {
-    if (y[i] < 0 || y[i] > n_trials) {
-      error("y[%d] = %f violates 0 <= y <= n_trials = %f", i, y[i], n_trials);
+    if (y_ptr[i] < 0 || y_ptr[i] > n_trials) {
+      UNPROTECT(1);
+      error("y[%d] = %f violates 0 <= y <= n_trials = %f", i, y_ptr[i], n_trials);
     }
   }
 
   /* Parse MCMC settings */
-  int burnin = INTEGER(coerceVector(burnin_, INTSXP))[0];
-  int thinning = INTEGER(coerceVector(thinning_, INTSXP))[0];
-  int n_chain = INTEGER(coerceVector(n_chain_, INTSXP))[0];
+  SEXP burnin_sexp = PROTECT(coerceVector(burnin_, INTSXP));
+  int burnin = INTEGER(burnin_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP thinning_sexp = PROTECT(coerceVector(thinning_, INTSXP));
+  int thinning = INTEGER(thinning_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP n_chain_sexp = PROTECT(coerceVector(n_chain_, INTSXP));
+  int n_chain = INTEGER(n_chain_sexp)[0];
+  UNPROTECT(1);
+
   int n_iter = burnin + (n_chain - 1) * thinning + 1;
 
   /* Validate MCMC parameters */
-  if (burnin < 0) error("Burnin must be non-negative");
-  if (thinning <= 0) error("Thinning must be positive");
-  if (n_chain <= 0) error("n_chain must be positive");
+  if (burnin < 0) {
+    UNPROTECT(1);
+    error("Burnin must be non-negative");
+  }
+  if (thinning <= 0) {
+    UNPROTECT(1);
+    error("Thinning must be positive");
+  }
+  if (n_chain <= 0) {
+    UNPROTECT(1);
+    error("n_chain must be positive");
+  }
 
   /* Parse fixed parameter flags and values */
   int fix_theta_1 = !isNull(theta_1_true_);
   int fix_theta_01 = !isNull(theta_01_true_);
   int fix_prec_1 = !isNull(prec_1_true_);
 
-  double *theta_1_true = fix_theta_1 ? REAL(coerceVector(theta_1_true_, REALSXP)) : NULL;
-  double theta_01_true = fix_theta_01 ? REAL(coerceVector(theta_01_true_, REALSXP))[0] : 0.0;
-  double prec_1_true = fix_prec_1 ? REAL(coerceVector(prec_1_true_, REALSXP))[0] : 0.0;
+  SEXP theta_1_true_sexp = R_NilValue;
+  double *theta_1_true = NULL;
+  if (fix_theta_1) {
+    theta_1_true_sexp = PROTECT(coerceVector(theta_1_true_, REALSXP));
+    theta_1_true = REAL(theta_1_true_sexp);
+  }
+
+  double theta_01_true = 0.0;
+  if (fix_theta_01) {
+    SEXP theta_01_true_sexp = PROTECT(coerceVector(theta_01_true_, REALSXP));
+    theta_01_true = REAL(theta_01_true_sexp)[0];
+    UNPROTECT(1);
+  }
+
+  double prec_1_true = 0.0;
+  if (fix_prec_1) {
+    SEXP prec_1_true_sexp = PROTECT(coerceVector(prec_1_true_, REALSXP));
+    prec_1_true = REAL(prec_1_true_sexp)[0];
+    UNPROTECT(1);
+  }
 
   /* Parse priors and validate */
-  double prior_theta01_mean = REAL(coerceVector(prior_theta01_mean_, REALSXP))[0];
-  double prior_theta01_prec = REAL(coerceVector(prior_theta01_prec_, REALSXP))[0];
-  double prior_prec1_shape = REAL(coerceVector(prior_prec1_shape_, REALSXP))[0];
-  double prior_prec1_rate = REAL(coerceVector(prior_prec1_rate_, REALSXP))[0];
+  SEXP prior_theta01_mean_sexp = PROTECT(coerceVector(prior_theta01_mean_, REALSXP));
+  double prior_theta01_mean = REAL(prior_theta01_mean_sexp)[0];
+  UNPROTECT(1);
 
-  if (prior_theta01_prec <= 0) error("Prior precision must be positive");
+  SEXP prior_theta01_prec_sexp = PROTECT(coerceVector(prior_theta01_prec_, REALSXP));
+  double prior_theta01_prec = REAL(prior_theta01_prec_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP prior_prec1_shape_sexp = PROTECT(coerceVector(prior_prec1_shape_, REALSXP));
+  double prior_prec1_shape = REAL(prior_prec1_shape_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP prior_prec1_rate_sexp = PROTECT(coerceVector(prior_prec1_rate_, REALSXP));
+  double prior_prec1_rate = REAL(prior_prec1_rate_sexp)[0];
+  UNPROTECT(1);
+
+  if (prior_theta01_prec <= 0) {
+    if (fix_theta_1) UNPROTECT(1);
+    UNPROTECT(1);
+    error("Prior precision must be positive");
+  }
   if (prior_prec1_shape <= 0 || prior_prec1_rate <= 0) {
+    if (fix_theta_1) UNPROTECT(1);
+    UNPROTECT(1);
     error("Prior shape and rate must be positive");
   }
 
   /* Parse adaptation parameters */
-  int lag_update = INTEGER(coerceVector(lag_update_, INTSXP))[0];
-  double max_step_size = REAL(coerceVector(max_step_size_, REALSXP))[0];
-  double base_adaptation_rate = REAL(coerceVector(base_adaptation_rate_, REALSXP))[0];
-  double decay_exponent = REAL(coerceVector(decay_exponent_, REALSXP))[0];
-  double target_acceptance = REAL(coerceVector(target_acceptance_, REALSXP))[0];
+  SEXP lag_update_sexp = PROTECT(coerceVector(lag_update_, INTSXP));
+  int lag_update = INTEGER(lag_update_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP max_step_size_sexp = PROTECT(coerceVector(max_step_size_, REALSXP));
+  double max_step_size = REAL(max_step_size_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP base_adaptation_rate_sexp = PROTECT(coerceVector(base_adaptation_rate_, REALSXP));
+  double base_adaptation_rate = REAL(base_adaptation_rate_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP decay_exponent_sexp = PROTECT(coerceVector(decay_exponent_, REALSXP));
+  double decay_exponent = REAL(decay_exponent_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP target_acceptance_sexp = PROTECT(coerceVector(target_acceptance_, REALSXP));
+  double target_acceptance = REAL(target_acceptance_sexp)[0];
+  UNPROTECT(1);
 
   /* Parse diagnostic output options */
-  int return_log_sigma = LOGICAL(coerceVector(return_log_sigma_, LGLSXP))[0];
-  int return_accept_prop = LOGICAL(coerceVector(return_accept_prop_, LGLSXP))[0];
+  SEXP return_log_sigma_sexp = PROTECT(coerceVector(return_log_sigma_, LGLSXP));
+  int return_log_sigma = LOGICAL(return_log_sigma_sexp)[0];
+  UNPROTECT(1);
+
+  SEXP return_accept_prop_sexp = PROTECT(coerceVector(return_accept_prop_, LGLSXP));
+  int return_accept_prop = LOGICAL(return_accept_prop_sexp)[0];
+  UNPROTECT(1);
 
   /* Allocate storage for posterior samples */
   SEXP theta_1_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -1531,7 +1712,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
       }
     } else {
       generate_alpha_logit_binomial_locallevel(
-        theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y,
+        theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y_ptr,
         accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
         lag_update, n_trials, n, ii, max_step_size, base_adaptation_rate,
         decay_exponent, target_acceptance, 1.0/(double)lag_update);
@@ -1620,5 +1801,9 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
 
   /* Adjust UNPROTECT count: n_protect (samples) + 2 (result_list and names) */
   UNPROTECT(n_protect + 2);
+  if (fix_theta_1) {
+    UNPROTECT(1);
+  }
+  UNPROTECT(1);  // y
   return result_list;
 }

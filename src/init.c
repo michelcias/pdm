@@ -36,10 +36,6 @@ SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
                                 SEXP max_step_size_, SEXP base_adaptation_rate_,
                                 SEXP decay_exponent_, SEXP target_acceptance_,
                                 SEXP min_deviation_threshold_);
-SEXP test_adapt_cwmh_parameters_legacy(SEXP theta_updated_, SEXP log_sigma_,
-                                       SEXP lag_update_, SEXP n_, SEXP iter_,
-                                       SEXP max_step_size_, SEXP base_adaptation_rate_,
-                                       SEXP decay_exponent_, SEXP target_acceptance_);
 SEXP reset_adaptation_cache_wrapper(void);
 SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y_);
 SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP theta_k_,
@@ -96,7 +92,6 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          - test_ilogit: Inverse logit transformation testing (1 argument)
  *          - test_generate_normal_vector: Multivariate normal sampling testing (4 arguments)
  *          - test_adapt_cwmh_parameters: Optimized CWMH adaptation testing (10 arguments)
- *          - test_adapt_cwmh_parameters_legacy: Legacy CWMH adaptation testing (9 arguments)
  *
  *          **Test Helper Functions (Precision Parameters):**
  *          - test_generate_precision_data: Data precision sampling testing (4 arguments)
@@ -139,12 +134,10 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  * @note NULL terminator is required for proper array traversal
  * @note Names must match exactly those used in R wrapper functions
  * @note Test functions enable comprehensive unit testing of internal C algorithms
- * @note Legacy functions support backward compatibility during transition periods
  *
  * @warning Modifying this table requires corresponding changes in R wrapper functions
  * @warning Incorrect argument counts will cause runtime errors in R
  * @warning Test functions should only be used in testing environments
- * @warning Legacy functions are deprecated and should be phased out in future versions
  *
  * @see R_registerRoutines
  * @see DL_FUNC
@@ -164,7 +157,6 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_test_ilogit",                       (DL_FUNC)   &test_ilogit,                       1},
   {"_pdm_test_generate_normal_vector",       (DL_FUNC)   &test_generate_normal_vector,       4},
   {"_pdm_test_adapt_cwmh_parameters",        (DL_FUNC)   &test_adapt_cwmh_parameters,       10},
-  {"_pdm_test_adapt_cwmh_parameters_legacy", (DL_FUNC)   &test_adapt_cwmh_parameters_legacy, 9},
   {"_pdm_reset_adaptation_cache",            (DL_FUNC)   &reset_adaptation_cache_wrapper,    0},
 
   // --- Precision parameter sampling tests ---

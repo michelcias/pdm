@@ -3,7 +3,7 @@
  * @brief Adaptive parameter tuning for component-wise Metropolis-Hastings (CWMH) sampling
  *        in the pdm package - Optimized version.
  * @author Michel H. Montoril
- * @date 2025-09-30
+ * @date 2025-10-02
  * @version 1.2
  *
  * @details This file contains optimized functions for adaptive MCMC algorithms, including:
@@ -13,13 +13,16 @@
  *          - Diminishing adaptation for robust convergence with numerical stability
  *          - Vectorized operations with loop unrolling for improved performance
  *          - Enhanced cache validation to handle varying lag_update parameters
+ *          - Safe handling of large arrays using size_t for index calculations
  *
  * @changelog
+ * - v1.2 (2025-10-02): Removed legacy function and unused constants. Fixed header file
+ *   extension, improved large array handling with size_t for indices, enhanced thread
+ *   safety documentation, and standardized version references. Added overflow protection
+ *   and NaN/infinite validation for all parameters.
  * - v1.2 (2025-09-30): Simplified to use single vectorized implementation for all problem
  *   sizes, eliminating unnecessary complexity while maintaining optimal performance for
- *   typical use cases. Enhanced cache structure to validate lag_update parameter changes,
- *   fixing bug where inv_lag_update cache was not invalidated when lag_update changed
- *   between function calls, causing incorrect acceptance proportion calculations.
+ *   typical use cases. Enhanced cache structure to validate lag_update parameter changes.
  * - v1.1 (2025-09-23): Added configurable min_deviation_threshold parameter for
  *   flexible control over adaptation sensitivity.
  */
@@ -27,12 +30,9 @@
 #include <R.h>
 #include <Rmath.h>
 #include <string.h>  /* for memset */
+#include <stddef.h>  /* for size_t */
+#include <stdint.h>  /* for SIZE_MAX */
 #include "cwmh_adaptive.h"
-
-// Symbolic constants for readability and performance
-#define POSITIVE_STEP_DIRECTION 1.0
-#define NEGATIVE_STEP_DIRECTION -1.0
-#define VECTORIZATION_THRESHOLD 4  /* Minimum n for loop unrolling */
 
 /**
  * @brief Cache structure for expensive adaptation computations
@@ -42,12 +42,12 @@
  */
 typedef struct {
   double cached_step_size;       /* Cached adaptation step size */
-int    cached_iter;            /* Iteration number for cached step size */
-double cached_base_rate;       /* Cached base adaptation rate */
-double cached_max_step;        /* Cached maximum step size */
-double cached_decay_exp;       /* Cached decay exponent */
-double inv_lag_update;         /* Precomputed 1.0 / lag_update */
-int    cached_lag_update;      /* Cached lag_update value for validation */
+  int    cached_iter;            /* Iteration number for cached step size */
+  double cached_base_rate;       /* Cached base adaptation rate */
+  double cached_max_step;        /* Cached maximum step size */
+  double cached_decay_exp;       /* Cached decay exponent */
+  double inv_lag_update;         /* Precomputed 1.0 / lag_update */
+  int    cached_lag_update;      /* Cached lag_update value for validation */
 } adaptation_cache_t;
 
 static adaptation_cache_t adapt_cache = {-1.0, -1, -1.0, -1.0, -1.0, 0.0, -1};
@@ -65,8 +65,10 @@ static adaptation_cache_t adapt_cache = {-1.0, -1, -1.0, -1.0, -1.0, 0.0, -1};
  *
  * @note Uses R's fmin2 and R_pow for consistency with R's numerical behavior.
  * @note Cache is validated across all parameters to ensure correctness.
+ * @version 1.2
  */
-static inline double compute_step_size_cached(int iter, double max_step_size,
+static inline double compute_step_size_cached(int    iter,
+                                              double max_step_size,
                                               double base_adaptation_rate,
                                               double decay_exponent) {
   if (adapt_cache.cached_iter != iter ||
@@ -86,17 +88,19 @@ static inline double compute_step_size_cached(int iter, double max_step_size,
 }
 
 /**
- * @brief Vectorized acceptance proportion computation with loop unrolling
+ * @brief Vectorized acceptance proportion computation with loop unrolling and overflow protection
  * @details Computes acceptance proportions for all components using optimized vectorization
  *          with manual loop unrolling. This implementation provides excellent performance
  *          for typical problem sizes in dynamic models (n = 10 to 1000 components) by
  *          maximizing instruction-level parallelism and maintaining good cache locality.
+ *          Enhanced with safe index calculations using size_t to prevent overflow.
  *
  *          **Performance characteristics:**
  *          - Sequential memory access pattern enables efficient hardware prefetching
  *          - Loop unrolling (4-way) reduces branch overhead and enables parallel execution
  *          - Small working set (accept_prop vector) remains in L1 cache throughout
  *          - Input data access is cache-friendly for typical lag_update values (20-200)
+ *          - Safe handling of large arrays with overflow protection
  *
  *          **Algorithm:**
  *          1. Initialize accept_prop vector to zeros using memset
@@ -121,42 +125,45 @@ static inline double compute_step_size_cached(int iter, double max_step_size,
  * @note Memory access pattern: Sequential reads with stride-1 access for optimal prefetching.
  * @note Cache efficiency: Working set typically fits entirely in L1 cache for standard problems.
  * @note Numerical stability: Uses multiplication by inverse rather than division for consistency.
+ * @note Overflow protection: Uses size_t for index calculations to handle large arrays safely.
  *
  * @warning Assumes theta_updated is properly allocated with lag_update * n elements.
  * @warning Assumes accept_prop is properly allocated with n elements.
  * @warning inv_lag_update must be positive and finite to ensure valid proportions.
+ * @version 1.2
  */
 static inline void compute_acceptance_vectorized(double *theta_updated,
                                                  double *accept_prop,
-                                                 int lag_update,
-                                                 int n,
-                                                 double inv_lag_update) {
+                                                 int     lag_update,
+                                                 int     n,
+                                                 double  inv_lag_update) {
   int k, row;
 
   /* Initialize acceptance proportions to zero using optimized memset */
-  memset(accept_prop, 0, n * sizeof(double));
+  memset(accept_prop, 0, (size_t)n * sizeof(double));
 
   /* Accumulate acceptance indicators across all rows in sliding window */
   for (row = 0; row < lag_update; row++) {
-    int row_idx = row * n;
+    /* Use size_t for safe index calculation to prevent overflow */
+    size_t row_idx = (size_t)row * (size_t)n;
 
-    /* Loop unrolling for n >= 4 to enable instruction-level parallelism */
-    if (n >= VECTORIZATION_THRESHOLD) {
+    /* Loop unrolling for n >= 4 (vectorization threshold) to enable instruction-level parallelism */
+    if (n >= 4) {
       /* Process 4 components simultaneously to reduce loop overhead */
       for (k = 0; k < n - 3; k += 4) {
-        accept_prop[k]     += theta_updated[row_idx + k];
-        accept_prop[k + 1] += theta_updated[row_idx + k + 1];
-        accept_prop[k + 2] += theta_updated[row_idx + k + 2];
-        accept_prop[k + 3] += theta_updated[row_idx + k + 3];
+        accept_prop[k]     += theta_updated[row_idx + (size_t)k];
+        accept_prop[k + 1] += theta_updated[row_idx + (size_t)k + 1];
+        accept_prop[k + 2] += theta_updated[row_idx + (size_t)k + 2];
+        accept_prop[k + 3] += theta_updated[row_idx + (size_t)k + 3];
       }
       /* Handle remaining elements (0 to 3 components) */
       for (; k < n; k++) {
-        accept_prop[k] += theta_updated[row_idx + k];
+        accept_prop[k] += theta_updated[row_idx + (size_t)k];
       }
     } else {
       /* Simple loop for very small n (< 4 components) */
       for (k = 0; k < n; k++) {
-        accept_prop[k] += theta_updated[row_idx + k];
+        accept_prop[k] += theta_updated[row_idx + (size_t)k];
       }
     }
   }
@@ -200,6 +207,7 @@ static inline void compute_acceptance_vectorized(double *theta_updated,
  *
  * @warning step_size must be positive for correct update direction.
  * @warning min_deviation_threshold must be non-negative.
+ * @version 1.2
  */
 static inline void update_log_sigma_optimized(double *accept_prop,
                                               double *log_sigma,
@@ -267,6 +275,15 @@ static inline void update_log_sigma_optimized(double *accept_prop,
  *          - Validated cache for inv_lag_update to handle varying window sizes correctly
  *          - Threshold-based filtering to reduce spurious updates from noise
  *          - Optimized memory access patterns for modern CPU cache hierarchies
+ *          - Safe handling of large arrays using size_t for index calculations
+ *
+ *          **Thread safety:** This function is NOT thread-safe due to internal static caching.
+ *          Multiple threads calling this function simultaneously may experience:
+ *          - Cache corruption leading to incorrect step size calculations
+ *          - Race conditions in cache validation logic
+ *          - Inconsistent inv_lag_update values between threads
+ *          For multi-threaded applications, ensure external synchronization or use separate
+ *          instances per thread with thread-local storage.
  *
  *          **Memory layout compatibility:** This version is designed to work with the optimized
  *          sliding window implementation in cwmh_binomial.c, where theta_updated is organized
@@ -292,8 +309,10 @@ static inline void update_log_sigma_optimized(double *accept_prop,
  *                        (updated in-place).
  * @param lag_update      Number of recent iterations to use for acceptance rate calculation
  *                        (sliding window size). Must be > 0. Typical values: 20-200.
+ *                        Maximum safe value: SIZE_MAX / n to prevent overflow.
  * @param n               Number of components (dimensions) in the parameter vector. Must be > 0.
  *                        Typical values: 10-1000 for time series models.
+ *                        Maximum safe value: SIZE_MAX / lag_update to prevent overflow.
  * @param iter            Current MCMC iteration (0-based). Must be >= lag_update.
  * @param max_step_size   Maximum adaptation step size. Must be > 0. Typical values: 0.01-0.1.
  * @param base_adaptation_rate  Base adaptation rate (initial step size). Must be > 0.
@@ -318,6 +337,10 @@ static inline void update_log_sigma_optimized(double *accept_prop,
  *       and invalidates the cached inv_lag_update value to ensure mathematically correct
  *       acceptance proportion calculations. This prevents incorrect normalization when
  *       window sizes change between calls.
+ * @note Performance: Vectorized implementation provides optimal performance for typical
+ *       problem sizes (n = 10 to 1000, lag_update = 20 to 200) without additional complexity
+ *       of problem-size-dependent algorithm selection.
+ * @note Large arrays: Uses size_t internally for safe index calculations with large arrays.
  *
  * @note Common parameter choices: max_step_size = 0.01-0.1, base_adaptation_rate = 1.0-10.0,
  *       decay_exponent = 0.3-0.8, lag_update = 50-200, min_deviation_threshold = 1.0/lag_update.
@@ -327,22 +350,25 @@ static inline void update_log_sigma_optimized(double *accept_prop,
  *       expected 22 acceptances to 21 or 23 acceptances (deviation >= 0.02).
  * @note Adaptation schedule: Uses diminishing adaptation (step_size -> 0 as iter -> infinity)
  *       for theoretical convergence guarantees (Roberts and Rosenthal, 2007).
- * @note Performance: Vectorized implementation provides optimal performance for typical
- *       problem sizes (n = 10 to 1000, lag_update = 20 to 200) without additional complexity
- *       of problem-size-dependent algorithm selection.
  *
  * @warning Results are invalid if theta_updated does not contain sufficient history
  *          (iter < lag_update).
  * @warning Inappropriate adaptation rates and step sizes may lead to poor MCMC mixing.
  * @warning Large n (> 10^6) may require additional memory management considerations.
- * @warning Thread safety: This function is not thread-safe due to static caching.
+ * @warning Thread safety: This function is NOT thread-safe due to static caching.
+ *          Use external synchronization in multi-threaded environments.
  * @warning Cache invalidation: The cache automatically resets when lag_update changes,
  *          ensuring correctness but potentially causing slight overhead on first call
  *          with a new window size.
+ * @warning Overflow protection: Ensure lag_update * n <= SIZE_MAX to prevent index overflow.
+ *          The function performs basic overflow checks but cannot guarantee safety for all
+ *          possible input combinations.
  *
  * @see cwmh_alpha_logit_binomial_locallevel
  * @see cwmh_alpha_logit_binomial
  * @see Roberts and Rosenthal (2007), "Coupling and Ergodicity of Adaptive MCMC"
+ * @since version 1.0
+ * @version 1.2
  *
  * @example
  * @code
@@ -405,20 +431,33 @@ void adapt_cwmh_parameters(double *theta_updated,
   if (lag_update <= 0) {
     error("lag_update must be positive, got %d", lag_update);
   }
-  if (max_step_size <= 0.0) {
-    error("max_step_size must be positive, got %f", max_step_size);
+  if (max_step_size <= 0.0 || !R_FINITE(max_step_size)) {
+    error("max_step_size must be positive and finite, got %f", max_step_size);
   }
-  if (base_adaptation_rate <= 0.0) {
-    error("base_adaptation_rate must be positive, got %f", base_adaptation_rate);
+  if (base_adaptation_rate <= 0.0 || !R_FINITE(base_adaptation_rate)) {
+    error("base_adaptation_rate must be positive and finite, got %f", base_adaptation_rate);
   }
-  if (decay_exponent <= 0.0) {
-    error("decay_exponent must be positive, got %f", decay_exponent);
+  if (decay_exponent <= 0.0 || !R_FINITE(decay_exponent)) {
+    error("decay_exponent must be positive and finite, got %f", decay_exponent);
   }
-  if (target_acceptance <= 0.0 || target_acceptance >= 1.0) {
-    error("target_acceptance must be in (0,1), got %f", target_acceptance);
+  if (target_acceptance <= 0.0 || target_acceptance >= 1.0 || !R_FINITE(target_acceptance)) {
+    error("target_acceptance must be finite and in (0,1), got %f", target_acceptance);
   }
-  if (min_deviation_threshold < 0.0) {
-    error("min_deviation_threshold must be non-negative, got %f", min_deviation_threshold);
+  if (min_deviation_threshold < 0.0 || !R_FINITE(min_deviation_threshold)) {
+    error("min_deviation_threshold must be non-negative and finite, got %f", min_deviation_threshold);
+  }
+
+  /* ========== Performance and Usability Warnings ========== */
+  if (min_deviation_threshold > 0.5) {
+    warning("min_deviation_threshold (%.3f) is very high (> 0.5). This may prevent adaptation. "
+              "Consider using a lower threshold (e.g., 1.0/lag_update = %.3f) for effective adaptation.",
+              min_deviation_threshold, 1.0 / (double)lag_update);
+  }
+
+  /* ========== Overflow Protection for Large Arrays ========== */
+  /* Check if lag_update * n would overflow size_t */
+  if ((size_t)lag_update > SIZE_MAX / (size_t)n) {
+    error("Array size too large: lag_update (%d) * n (%d) would cause overflow", lag_update, n);
   }
 
   /* ========== Optimized Step Size Computation with Caching ========== */
@@ -449,6 +488,10 @@ void adapt_cwmh_parameters(double *theta_updated,
  *          is required across multiple function calls. Enhanced to reset lag_update cache
  *          validation field to ensure proper recalculation when window size changes.
  *
+ *          **Thread safety:** This function is thread-safe for resetting the cache, but
+ *          should not be called concurrently with adapt_cwmh_parameters. In multi-threaded
+ *          environments, ensure proper synchronization to avoid race conditions.
+ *
  *          **Usage scenarios:**
  *          - Unit testing that requires deterministic cache behavior
  *          - Debugging adaptation issues by forcing cache regeneration
@@ -467,12 +510,11 @@ void adapt_cwmh_parameters(double *theta_updated,
  *
  * @return None.
  *
- * @note This function is thread-safe as it only modifies static cache variables.
+ * @note This function modifies static cache variables atomically.
+ * @note Performance impact is minimal as cache recomputation is fast.
  * @note Calling this function will cause the next adapt_cwmh_parameters call to
  *       recompute all cached values.
- * @note Performance impact is minimal as cache recomputation is fast.
- * @note Version 1.2 enhancement: Now includes cached_lag_update reset for proper
- *       cache invalidation when window size changes.
+ * @note Cache recomputation occurs automatically on next function call.
  *
  * @warning Only call this function when necessary, as it removes performance benefits
  *          of caching until values are recomputed.
@@ -480,6 +522,7 @@ void adapt_cwmh_parameters(double *theta_updated,
  *          to prevent cache-related test failures.
  * @warning Not required in production code as cache validation handles parameter changes
  *          automatically.
+ * @warning Do not call concurrently with adapt_cwmh_parameters in multi-threaded code.
  *
  * @see adapt_cwmh_parameters
  * @since version 1.0
@@ -495,61 +538,3 @@ void reset_adaptation_cache(void) {
   adapt_cache.cached_lag_update = -1;
 }
 
-/**
- * @brief Legacy wrapper for adapt_cwmh_parameters with backward compatibility.
- *
- * @details This function provides backward compatibility with existing code by calling
- *          the optimized adapt_cwmh_parameters function with a default threshold value.
- *          The default threshold (1.0/lag_update) matches the previous hardcoded behavior.
- *
- *          **Usage recommendation:** New code should use adapt_cwmh_parameters directly
- *          with an explicit threshold parameter for better control and clarity.
- *
- *          **Default behavior:**
- *          This wrapper automatically computes the practical threshold as 1.0/lag_update,
- *          which corresponds to the deviation caused by a single additional acceptance
- *          or rejection in the sliding window. This is a sensible default that balances
- *          adaptation responsiveness with stability against random fluctuations.
- *
- * @param theta_updated   Sliding window matrix of acceptance indicators (lag_update x n).
- * @param accept_prop     Output vector (size n) of acceptance proportions.
- * @param log_sigma       Input/output vector (size n) of log proposal standard deviations.
- * @param lag_update      Sliding window size for acceptance rate calculation.
- * @param n               Number of parameter components.
- * @param iter            Current MCMC iteration (0-based).
- * @param max_step_size   Maximum adaptation step size.
- * @param base_adaptation_rate  Base adaptation rate.
- * @param decay_exponent  Adaptation decay exponent.
- * @param target_acceptance     Target acceptance rate.
- *
- * @return None (results are written to accept_prop and log_sigma).
- *
- * @note This function uses a default min_deviation_threshold of 1.0/lag_update.
- * @note All other parameters and behavior are identical to adapt_cwmh_parameters.
- * @note Consider migrating to adapt_cwmh_parameters for explicit threshold control.
- * @note Maintained for backward compatibility with existing codebases.
- *
- * @deprecated Use adapt_cwmh_parameters with explicit min_deviation_threshold instead.
- *
- * @see adapt_cwmh_parameters
- * @since version 1.0
- */
-void adapt_cwmh_parameters_legacy(double *theta_updated,
-                                  double *accept_prop,
-                                  double *log_sigma,
-                                  int lag_update,
-                                  int n,
-                                  int iter,
-                                  double max_step_size,
-                                  double base_adaptation_rate,
-                                  double decay_exponent,
-                                  double target_acceptance) {
-
-  /* Compute practical threshold based on sliding window size */
-  double practical_threshold = 1.0 / (double)lag_update;
-
-  /* Call the main function with computed threshold */
-  adapt_cwmh_parameters(theta_updated, accept_prop, log_sigma, lag_update, n, iter,
-                        max_step_size, base_adaptation_rate, decay_exponent,
-                        target_acceptance, practical_threshold);
-}

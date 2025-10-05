@@ -6,10 +6,14 @@
  *          ensuring proper interface between R and C code. Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
- * @date 2025-09-23
- * @version 1.1
+ * @date 2025-10-05
+ * @version 1.2
  *
  * @changelog
+ * - v1.2 (2025-10-05): [Descreva aqui as principais mudanças incluídas nesta atualização, por exemplo:]
+ *     - Atualização da tabela de métodos registrados (.Call) conforme novas funções/mudanças;
+ *     - Correção/adição de funções, ajuste de argumentos, melhorias de segurança ou desempenho;
+ *     - Outras alterações relevantes implementadas nesta versão.
  * - v1.1 (2025-09-23): Added registration for optimized adaptive MCMC functions
  *   including adapt_cwmh_parameters with threshold parameter and legacy wrapper
  *   for backward compatibility.

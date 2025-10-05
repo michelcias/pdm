@@ -55,10 +55,10 @@ static precision_cache_t prec_cache = {-1.0, 0.0, 0.0, -1};
  *          to sample the level state vector theta_1 in a binomial observation model with
  *          logit link:
  *          y_t ~ Binomial(n_trials, alpha_t),
- *          where alpha_t = logit^{-1}(theta_{1,t}).
+ *          where alpha_t = logit^{-1}(theta_{t,1}).
  *
  *          State equation (local level):
- *              theta_{1,t} = theta_{1,t-1} + u_{1,t}, u_{1,t} ~ N(0, 1/prec_theta_1)
+ *              theta_{t,1} = theta_{t-1,1} + u_{t,1}, u_{t,1} ~ N(0, 1/prec_theta_1)
  *
  *          **Optimizations implemented:**
  *          - Cached precision computations to avoid repeated sqrt/division
@@ -76,11 +76,11 @@ static precision_cache_t prec_cache = {-1.0, 0.0, 0.0, -1};
  *
  *          **Conditional means for proposal:**
  *          - First:
- *          E[theta_{1,1} | theta_01, theta_{1,2}] = 0.5 * (theta_{1,2} + theta_01)
+ *          E[theta_{1,1} | theta_01, theta_{2,1}] = 0.5 * (theta_{2,1} + theta_01)
  *          - Intermediate:
- *          E[theta_{1,k} | theta_{1,k-1}, theta_{1,k+1}] = 0.5 * (theta_{1,k-1} + theta_{1,k+1})
+ *          E[theta_{k,1} | theta_{k-1,1}, theta_{k+1,1}] = 0.5 * (theta_{k-1,1} + theta_{k+1,1})
  *          - Last:
- *          E[theta_{1,n} | theta_{1,n-1}] = theta_{1,n-1}
+ *          E[theta_{n,1} | theta_{n-1,1}] = theta_{n-1,1}
  *
  * @param theta_1            Matrix of level states (vectorized B x n), input/output.
  * @param theta_01           Vector of initial level states (size B).
@@ -163,7 +163,7 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
 
   /* ========== First Element (k = 0) ========== */
   // Conditional mean incorporating initial state from previous iteration
-  // For local level: E[theta_{1,1} | theta_01, theta_{1,2}] = 0.5 * (theta_{1,2} + theta_01)
+  // For local level: E[theta_{1,1} | theta_01, theta_{2,1}] = 0.5 * (theta_{2,1} + theta_01)
   hat_theta_1[0] = 0.5 * (theta_1[iterm1_n + 1] + theta_01[prev_iter]);
 
   // Generate proposal from random walk
@@ -190,7 +190,7 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
   double theta_prev = theta_1_new[0];
 
   for (k = 1; k < (n - 1); k++) {
-    // Conditional mean for local level model: E[theta_{1,k} | theta_{1,k-1}, theta_{1,k+1}]
+    // Conditional mean for local level model: E[theta_{k,1} | theta_{k-1,1}, theta_{k+1,1}]
     // Using forward-sampling: previously updated theta_prev
     double theta_next = theta_1[iterm1_n + k + 1];
     hat_theta_1[k] = 0.5 * (theta_next + theta_prev);
@@ -257,11 +257,11 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
  *          to sample the level state vector theta_1 in a binomial observation model with
  *          logit link:
  *          y_t ~ Binomial(n_trials, alpha_t),
- *          where alpha_t = logit^{-1}(theta_{1,t}).
+ *          where alpha_t = logit^{-1}(theta_{t,1}).
  *
  *          State equation (local trend):
- *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},
- *          with u_{1,t} ~ N(0, 1/prec_theta_1).
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},
+ *          with u_{t,1} ~ N(0, 1/prec_theta_1).
  *
  *          **Optimizations implemented:**
  *          - Cached precision computations to avoid repeated sqrt/division
@@ -279,13 +279,13 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
  *
  *          **Conditional means for proposal:**
  *          - First:
- *          E[theta_{1,1} | theta_01, theta_02, theta_{1,2}, theta_{2,1}] =
- *                            0.5 * (theta_{1,2} - theta_{2,1} + theta_01 + theta_02)
+ *          E[theta_{1,1} | theta_01, theta_02, theta_{2,1}, theta_{1,2}] =
+ *                            0.5 * (theta_{2,1} - theta_{1,2} + theta_01 + theta_02)
  *          - Intermediate:
- *          E[theta_{1,k} | theta_{1,k-1}, theta_{2,k-1}, theta_{1,k+1}, theta_{2,k}] =
- *                            0.5 * (theta_{1,k+1} - theta_{2,k} + theta_{1,k-1} - theta_{2,k-1})
+ *          E[theta_{k,1} | theta_{k-1,1}, theta_{k-1,2}, theta_{k+1,1}, theta_{k,2}] =
+ *                            0.5 * (theta_{k+1,1} - theta_{k,2} + theta_{k-1,1} - theta_{k-1,2})
  *          - Last:
- *          E[theta_{1,n} | theta_{1,n-1}, theta_{2,n-1}] = theta_{1,n-1} + theta_{2,n-1}
+ *          E[theta_{n,1} | theta_{n-1,1}, theta_{n-1,2}] = theta_{n-1,1} + theta_{n-1,2}
  *
  * @param theta_1            Matrix of level states (vectorized B x n), input/output.
  * @param theta_2            Matrix of trend states (vectorized B x n), input only.

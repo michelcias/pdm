@@ -26,11 +26,11 @@
  *
  *          Observation equation:
  *          y_t ~ Binomial(n_trials, alpha_t)
- *          where alpha_t = logit^(-1)(theta_{1,t})
+ *          where alpha_t = logit^(-1)(theta_{t,1})
  *
  *          State equations:
- *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},  u_{1,t} ~ N(0, W_1)
- *          theta_{2,t} = theta_{2,t-1} + u_{2,t},                  u_{2,t} ~ N(0, W_2)
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
+ *          theta_{t,2} = theta_{t-1,2} + u_{t,2},                  u_{t,2} ~ N(0, W_2)
  *
  *          The algorithm employs optimized component-wise Metropolis-Hastings for the non-linear
  *          observation model, with adaptive proposal tuning based on acceptance proportions.

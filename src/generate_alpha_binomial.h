@@ -162,14 +162,14 @@ void generate_alpha_logit_binomial(double *theta_1,
  * @details Implements efficient Gibbs sampling for the level state vector theta_1
  *          in a Bernoulli observation model with probit link:
  *          y_t ~ Bernoulli(alpha_t),
- *          where alpha_t = Phi(theta_{1,t}) and Phi is the standard normal CDF.
+ *          where alpha_t = Phi(theta_{t,1}) and Phi is the standard normal CDF.
  *
  *          State equation (random walk):
- *          theta_{1,t} = theta_{1,t-1} + u_{1,t},
- *          with u_{1,t} ~ N(0, 1/prec_theta_1).
+ *          theta_{t,1} = theta_{t-1,1} + u_{t,1},
+ *          with u_{t,1} ~ N(0, 1/prec_theta_1).
  *
  *          **Albert-Chib Data Augmentation:**
- *          Introduces latent variables v_t ~ N(theta_{1,t}, 1) such that:
+ *          Introduces latent variables v_t ~ N(theta_{t,1}, 1) such that:
  *          - y_t = 1 if v_t > 0
  *          - y_t = 0 if v_t <= 0
  *
@@ -223,9 +223,9 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
  *          trend component in the state evolution:
  *
  *          State equations:
- *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},
- *          theta_{2,t} = theta_{2,t-1} + u_{2,t},
- *          with u_{1,t} ~ N(0, 1/prec_theta_1), u_{2,t} ~ N(0, 1/prec_theta_2).
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},
+ *          theta_{t,2} = theta_{t-1,2} + u_{t,2},
+ *          with u_{t,1} ~ N(0, 1/prec_theta_1), u_{t,2} ~ N(0, 1/prec_theta_2).
  *
  *          **Algorithm:**
  *          1. Sample latent variables v_t from truncated normals

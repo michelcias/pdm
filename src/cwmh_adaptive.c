@@ -143,11 +143,7 @@ static inline void compute_acceptance_vectorized(double *theta_updated,
   int k, row;
 
   /* Initialize acceptance proportions to zero using optimized memset */
-  memset(
-    accept_prop,               /* dest: acceptance proportion vector */
-    0,                          /* value: zero-initialize buffer */
-    (size_t)n * sizeof(double)  /* size: total bytes to clear */
-  );
+  memset(accept_prop, 0, (size_t)n * sizeof(double));
 
   /* Accumulate acceptance indicators across all rows in sliding window */
   for (row = 0; row < lag_update; row++) {

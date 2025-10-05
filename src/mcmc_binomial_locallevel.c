@@ -145,11 +145,11 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
   double eta_01       = REAL(prior_prec1_rate_)[0];
 
   /* Parse adaptation parameters */
-  int    lag_update           = INTEGER(lag_update_)[0];
-  double max_step_size        = REAL(max_step_size_)[0];
-  double base_adaptation_rate = REAL(base_adaptation_rate_)[0];
-  double decay_exponent       = REAL(decay_exponent_)[0];
-  double target_acceptance    = REAL(target_acceptance_)[0];
+  int    lag_update              = INTEGER(lag_update_)[0];
+  double max_step_size           = REAL(max_step_size_)[0];
+  double base_adaptation_rate    = REAL(base_adaptation_rate_)[0];
+  double decay_exponent          = REAL(decay_exponent_)[0];
+  double target_acceptance       = REAL(target_acceptance_)[0];
   double min_deviation_threshold = REAL(min_deviation_threshold_)[0];
 
   /* Parse diagnostic output options */

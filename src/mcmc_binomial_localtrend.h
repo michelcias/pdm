@@ -129,4 +129,41 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_, SEXP n_trials_,
                                       SEXP target_acceptance_, SEXP min_deviation_threshold_,
                                       SEXP return_log_sigma_, SEXP return_accept_prop_);
 
+/**
+ * @brief Gibbs sampler for local-trend Bernoulli dynamic model with probit link
+ *
+ * @details Implements the Albert-Chib (1993) latent-variable augmentation for
+ *          Bernoulli observations governed by a local-trend Gaussian state
+ *          evolution. Returns retained posterior draws for level and trend
+ *          states, innovation precisions, and Bernoulli probabilities.
+ *
+ * @param y_                   SEXP Numeric vector of Bernoulli observations [length n]
+ * @param burnin_              SEXP Integer scalar, number of burn-in iterations
+ * @param thinning_            SEXP Integer scalar, thinning interval
+ * @param n_chain_             SEXP Integer scalar, number of retained samples
+ * @param prior_theta01_mean_  SEXP Double scalar, prior mean for theta_{0,1}
+ * @param prior_theta01_prec_  SEXP Double scalar, prior precision for theta_{0,1}
+ * @param prior_theta02_mean_  SEXP Double scalar, prior mean for theta_{0,2}
+ * @param prior_theta02_prec_  SEXP Double scalar, prior precision for theta_{0,2}
+ * @param prior_prec1_shape_   SEXP Double scalar, prior shape for 1/W_1
+ * @param prior_prec1_rate_    SEXP Double scalar, prior rate for 1/W_1
+ * @param prior_prec2_shape_   SEXP Double scalar, prior shape for 1/W_2
+ * @param prior_prec2_rate_    SEXP Double scalar, prior rate for 1/W_2
+ *
+ * @return SEXP R list with components theta_1, theta_2, theta_01, theta_02,
+ *         prec_1, prec_2, and alpha.
+ */
+SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
+                                        SEXP burnin_,
+                                        SEXP thinning_,
+                                        SEXP n_chain_,
+                                        SEXP prior_theta01_mean_,
+                                        SEXP prior_theta01_prec_,
+                                        SEXP prior_theta02_mean_,
+                                        SEXP prior_theta02_prec_,
+                                        SEXP prior_prec1_shape_,
+                                        SEXP prior_prec1_rate_,
+                                        SEXP prior_prec2_shape_,
+                                        SEXP prior_prec2_rate_);
+
 #endif /* MCMC_BINOMIAL_LOCALTREND_H */

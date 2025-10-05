@@ -23,6 +23,7 @@
 
 #include "cwmh_adaptive.h"  /* adapt_cwmh_parameters */
 #include "cwmh_binomial.h"
+#include "utils.h"          /* generate_normal_vector */
 #include "generate_alpha_binomial.h"
 
 /**
@@ -32,11 +33,11 @@
  * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
  *          level state vector theta_1 in a binomial observation model with logit link:
  *          y_t ~ Binomial(n_trials, alpha_t),
- *          where alpha_t = logit^{-1}(theta_{1,t}).
+ *          where alpha_t = logit^{-1}(theta_{t,1}).
  *
  *          The state equation is a random walk:
- *          theta_{1,t} = theta_{1,t-1} + u_{1,t},
- *          with u_{1,t} ~ N(0, 1/prec_theta_1). This excludes trend components.
+ *          theta_{t,1} = theta_{t-1,1} + u_{t,1},
+ *          with u_{t,1} ~ N(0, 1/prec_theta_1). This excludes trend components.
  *
  *          Iteration timing: Uses theta_01[iter-1] and prec_theta_1[iter-1] because
  *          those are sampled later in the Gibbs sequence.
@@ -199,11 +200,11 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
  *          level state vector theta_1 with a binomial observation model and local
  *          trend state-space evolution:
  *          y_t ~ Binomial(n_trials, alpha_t),
- *          where alpha_t = logit^{-1}(theta_{1,t}).
+ *          where alpha_t = logit^{-1}(theta_{t,1}).
  *
  *          State equation:
- *          theta_{1,t} = theta_{1,t-1} + theta_{2,t-1} + u_{1,t},
- *          with u_{1,t} ~ N(0, 1/prec_theta_1).
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},
+ *          with u_{t,1} ~ N(0, 1/prec_theta_1).
  *
  *          Iteration timing: Uses theta_01[iter-1] and prec_theta_1[iter-1] because
  *          those are sampled later in the Gibbs sequence.
@@ -358,4 +359,296 @@ void generate_alpha_logit_binomial(double *theta_1,
     n,                 /* n */
     iter               /* iter */
   );
+}
+
+/**
+ * @brief Efficient sampling from truncated normal distribution N(mu, sigma^2).
+ *
+ * @details Uses the inverse CDF method with proper bounds handling for numerical stability.
+ *          Handles extreme cases where truncation bounds are far from the mean.
+ *
+ * @param mu     Mean of the normal distribution.
+ * @param sigma  Standard deviation of the normal distribution.
+ * @param lower  Lower truncation bound (-Inf for no lower bound).
+ * @param upper  Upper truncation bound (+Inf for no upper bound).
+ * @return       Random sample from the truncated distribution.
+ *
+ * @note Uses R's pnorm/qnorm for numerical stability.
+ * @note Handles boundary cases gracefully.
+ */
+static double rtruncnorm(double mu, double sigma, double lower, double upper) {
+  double p_lower, p_upper, u, p;
+
+  // Compute cumulative probabilities at bounds
+  if (lower == R_NegInf) {
+    p_lower = 0.0;
+  } else {
+    p_lower = pnorm(lower, mu, sigma, 1, 0);
+  }
+
+  if (upper == R_PosInf) {
+    p_upper = 1.0;
+  } else {
+    p_upper = pnorm(upper, mu, sigma, 1, 0);
+  }
+
+  // Sample uniform in valid probability range
+  u = unif_rand();
+  p = p_lower + u * (p_upper - p_lower);
+
+  // Transform back to truncated normal
+  return qnorm(p, mu, sigma, 1, 0);
+}
+
+/**
+ * @brief Gibbs sampler for theta_1 in a probit-Bernoulli local level model
+ *        using Albert-Chib data augmentation.
+ *
+ * @details Implements efficient Gibbs sampling for the level state vector theta_1
+ *          in a Bernoulli observation model with probit link:
+ *          y_t ~ Bernoulli(alpha_t),
+ *          where alpha_t = Phi(theta_{t,1}) and Phi is the standard normal CDF.
+ *
+ *          State equation (random walk):
+ *          theta_{t,1} = theta_{t-1,1} + u_{t,1},
+ *          with u_{t,1} ~ N(0, 1/prec_theta_1).
+ *
+ *          **Albert-Chib Data Augmentation:**
+ *          Introduces latent variables v_t ~ N(theta_{t,1}, 1) such that:
+ *          - y_t = 1 if v_t > 0
+ *          - y_t = 0 if v_t <= 0
+ *
+ *          **Algorithm:**
+ *          1. Sample latent variables v_t from truncated normals given theta_1, y
+ *          2. Sample theta_1 from multivariate normal given v using generate_normal_vector
+ *
+ *          The full conditional posterior is:
+ *          theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
+ *          where Sigma_posterior^{-1} = I + prec_theta_1 * H'H (tridiagonal precision)
+ *                mu_posterior = Sigma_posterior * [v + prec_theta_1 * theta_01 * e_1]
+ *
+ * @param theta_1              Matrix of level states (vectorized B x n), input/output.
+ * @param theta_01             Vector of initial level states (size B).
+ * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
+ * @param prec_theta_1         Vector of level precision parameters (size B).
+ * @param y                    Vector of observed Bernoulli outcomes (size n).
+ *                             Each y[k] must be exactly 0 or 1.
+ * @param v_latent             Working vector for latent variables (size n).
+ * @param rhs_vector           Working vector for right-hand side of system (size n).
+ * @param n                    Length of the time series.
+ * @param iter                 Current MCMC iteration (0-based).
+ *
+ * @note Complexity: O(n) per iteration (exploiting tridiagonal structure).
+ * @note Always achieves acceptance rate of 1.0 (Gibbs sampling).
+ * @note Model is local level (no trend component).
+ *
+ * @warning Each y[k] must be exactly 0 or 1 (Bernoulli outcomes).
+ * @warning Results are invalid if theta_01 or prec_theta_1 do not contain
+ *          sufficient history (iter < 1).
+ * @warning n must be > 0 for generate_normal_vector to work correctly.
+ *
+ * @see Albert and Chib (1993) "Bayesian Analysis of Binary and Polychotomous Response Data"
+ * @see generate_normal_vector
+ */
+void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
+                                                double *theta_01,
+                                                double *alpha,
+                                                double *prec_theta_1,
+                                                double *y,
+                                                double *v_latent,
+                                                double *rhs_vector,
+                                                int     n,
+                                                int     iter) {
+
+  /* ========== Prerequisites and Safety Checks ========== */
+  if (iter <= 0) {
+    return;
+  }
+
+  int prev_iter = iter - 1;
+  int current_pos = iter * n;
+  int prev_pos = prev_iter * n;
+
+  double prec_1 = prec_theta_1[prev_iter];
+  double theta_0 = theta_01[prev_iter];
+
+  // Pointers to previous iteration values
+  double *theta_1_prev = &theta_1[prev_pos];
+
+  /* ========== Step 1: Sample Latent Variables (Data Augmentation) ========== */
+  // For each time point t, sample v_t from truncated normal
+  // v_t | y_t, theta_{t,1} ~ N(theta_{t,1}, 1) with appropriate truncation
+
+  for (int t = 0; t < n; t++) {
+    double theta_1_mean = theta_1_prev[t];
+
+    if (y[t] == 1.0) {
+      // y_t = 1: sample from N(theta_{t,1}, 1) truncated above 0
+      v_latent[t] = rtruncnorm(theta_1_mean, 1.0, 0.0, R_PosInf);
+    } else {
+      // y_t = 0: sample from N(theta_{t,1}, 1) truncated below 0
+      v_latent[t] = rtruncnorm(theta_1_mean, 1.0, R_NegInf, 0.0);
+    }
+  }
+
+  /* ========== Step 2: Construct Right-Hand Side Vector ========== */
+  // Following the conditional posterior mean structure:
+  // For local level: rhs = v + prec_theta_1 * theta_01 * e_1
+  // where e_1 = (1, 0, 0, ..., 0)' is the first unit vector
+
+  rhs_vector[0] = v_latent[0] + prec_1 * theta_0;
+  for (int t = 1; t < n; t++) {
+    rhs_vector[t] = v_latent[t];
+  }
+
+  /* ========== Step 3: Sample theta_1 from Multivariate Normal ========== */
+  // Sample from: theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
+  // where Sigma_posterior^{-1} = I + prec_theta_1 * H'H
+  //
+  // The precision matrix has tridiagonal structure with:
+  // - Diagonal: 1 + 2*prec_1 for t = 0,...,n-2
+  // - Last diagonal: 1 + prec_1
+  // - Off-diagonal: -prec_1
+  //
+  // This corresponds to generate_normal_vector with:
+  // a = 1.0 (observational precision), b = prec_1 (state precision)
+
+  generate_normal_vector(
+    theta_1,       /* r: output matrix */
+    rhs_vector,    /* y: right-hand side */
+    1.0,           /* a: observational precision (from latent variance = 1) */
+    prec_1,        /* b: state precision */
+    n,             /* n: dimension */
+    iter,          /* iter: current iteration */
+    1              /* add_a: use (a + b) for last diagonal element */
+  );
+
+  /* ========== Step 4: Transform to Probability Scale ========== */
+  // Compute alpha_t = Phi(theta_{t,1}) for all t
+  double *alpha_curr = &alpha[current_pos];
+  double *theta_1_curr = &theta_1[current_pos];
+
+  for (int t = 0; t < n; t++) {
+    alpha_curr[t] = pnorm(theta_1_curr[t], 0.0, 1.0, 1, 0);
+  }
+}
+
+//----------------------------------------------------------------------
+
+/**
+ * @brief Gibbs sampler for theta_1 in a probit-Bernoulli local trend model
+ *        using Albert-Chib data augmentation.
+ *
+ * @details Similar to generate_alpha_probit_bernoulli_locallevel but includes
+ *          trend component in the state evolution:
+ *
+ *          State equations:
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},
+ *          theta_{t,2} = theta_{t-1,2} + u_{t,2},
+ *          with u_{t,1} ~ N(0, 1/prec_theta_1), u_{t,2} ~ N(0, 1/prec_theta_2).
+ *
+ *          **Algorithm:**
+ *          1. Sample latent variables v_t from truncated normals
+ *          2. Adjust right-hand side to account for trend component
+ *          3. Sample theta_1 using generate_normal_vector
+ *
+ *          The full conditional incorporates the trend through additional terms
+ *          in the posterior mean vector.
+ *
+ * @param theta_1              Matrix of level states (vectorized B x n), input/output.
+ * @param theta_2              Matrix of trend states (vectorized B x n), input only.
+ * @param theta_01             Vector of initial level states (size B).
+ * @param theta_02             Vector of initial trend states (size B).
+ * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
+ * @param prec_theta_1         Vector of level precision parameters (size B).
+ * @param y                    Vector of observed Bernoulli outcomes (size n).
+ * @param v_latent             Working vector for latent variables (size n).
+ * @param rhs_vector           Working vector for right-hand side of system (size n).
+ * @param n                    Length of the time series.
+ * @param iter                 Current MCMC iteration (0-based).
+ *
+ * @note All other properties same as generate_alpha_probit_bernoulli_locallevel.
+ * @note The trend theta_2 must be already sampled in the Gibbs cycle.
+ * @note Complexity: O(n) per iteration.
+ *
+ * @warning Theta_2 matrix must contain valid values for current iteration.
+ *
+ * @see Albert and Chib (1993) "Bayesian Analysis of Binary and Polychotomous Response Data"
+ * @see generate_normal_vector
+ */
+void generate_alpha_probit_bernoulli(double *theta_1,
+                                     double *theta_2,
+                                     double *theta_01,
+                                     double *theta_02,
+                                     double *alpha,
+                                     double *prec_theta_1,
+                                     double *y,
+                                     double *v_latent,
+                                     double *rhs_vector,
+                                     int     n,
+                                     int     iter) {
+
+  /* ========== Prerequisites ========== */
+  if (iter <= 0) {
+    return;
+  }
+
+  int prev_iter = iter - 1;
+  int current_pos = iter * n;
+  int prev_pos = prev_iter * n;
+
+  double prec_1 = prec_theta_1[prev_iter];
+  double theta_0_level = theta_01[prev_iter];
+  double theta_0_trend = theta_02[prev_iter];
+
+  // Pointers for efficiency
+  double *theta_1_prev = &theta_1[prev_pos];
+  double *theta_2_curr = &theta_2[current_pos];
+
+  /* ========== Step 1: Sample Latent Variables ========== */
+
+  for (int t = 0; t < n; t++) {
+    double theta_1_mean = theta_1_prev[t];
+
+    if (y[t] == 1.0) {
+      v_latent[t] = rtruncnorm(theta_1_mean, 1.0, 0.0, R_PosInf);
+    } else {
+      v_latent[t] = rtruncnorm(theta_1_mean, 1.0, R_NegInf, 0.0);
+    }
+  }
+
+  /* ========== Step 2: Construct Right-Hand Side with Trend ========== */
+  // For local trend model, the right-hand side becomes:
+  // rhs = v + prec_theta_1 * [(theta_01 + theta_02) * e_1 + H'B * theta_2]
+  //
+  // The term H'B * theta_2 accounts for the trend contribution:
+  // (H'B * theta_2)[0] = theta_2[0] - theta_02  (boundary condition)
+  // (H'B * theta_2)[t] = theta_2[t] - theta_2[t-1] for t = 1,...,n-1
+
+  rhs_vector[0] = v_latent[0] + prec_1 * (theta_0_level + theta_0_trend +
+  theta_2_curr[0] - theta_0_trend);
+
+  for (int t = 1; t < n; t++) {
+    double theta_2_diff = theta_2_curr[t] - theta_2_curr[t - 1];
+    rhs_vector[t] = v_latent[t] + prec_1 * theta_2_diff;
+  }
+
+  /* ========== Step 3: Sample theta_1 from Multivariate Normal ========== */
+  generate_normal_vector(
+    theta_1,       /* r: output matrix */
+    rhs_vector,    /* y: right-hand side */
+    1.0,           /* a: observational precision */
+    prec_1,        /* b: state precision */
+    n,             /* n: dimension */
+    iter,          /* iter: current iteration */
+    1              /* add_a: use (a + b) for last diagonal */
+  );
+
+  /* ========== Step 4: Transform to Probability Scale ========== */
+  double *alpha_curr = &alpha[current_pos];
+  double *theta_1_curr = &theta_1[current_pos];
+
+  for (int t = 0; t < n; t++) {
+    alpha_curr[t] = pnorm(theta_1_curr[t], 0.0, 1.0, 1, 0);
+  }
 }

@@ -87,6 +87,9 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          - C_MCMC_logit_binomial_locallevel: Binomial local level model MCMC (17 arguments)
  *          - C_MCMC_logit_binomial_localtrend: Binomial local trend model MCMC (21 arguments)
  *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration MCMC (25 arguments)
+ *          - C_MCMC_probit_bernoulli_locallevel: Bernoulli local level model MCMC (8 arguments)
+ *          - C_MCMC_probit_bernoulli_localtrend: Bernoulli local trend model MCMC (12 arguments)
+ *          - C_MCMC_probit_bernoulli_localacceleration: Bernoulli local acceleration MCMC (16 arguments)
  *
  *          **Test Helper Functions (Utility and Basic):**
  *          - test_ilogit: Inverse logit transformation testing (1 argument)
@@ -127,7 +130,9 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
  *          **Version 1.2 Updates:**
  *          Updated C_MCMC_logit_binomial_locallevel argument count from 15 to 17
  *          to accommodate the min_deviation_threshold and return_accept_prop
- *          parameters now registered in the table below.
+ *          parameters now registered in the table below, and registered
+ *          probit Bernoulli samplers for local-level, local-trend, and
+ *          local-acceleration models using Albert-Chib augmentation.
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism
@@ -152,6 +157,9 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel,               17},
   {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend,               21},
   {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 25},
+  {"_pdm_C_MCMC_probit_bernoulli_locallevel",       (DL_FUNC) &C_MCMC_probit_bernoulli_locallevel,        8},
+  {"_pdm_C_MCMC_probit_bernoulli_localtrend",       (DL_FUNC) &C_MCMC_probit_bernoulli_localtrend,       12},
+  {"_pdm_C_MCMC_probit_bernoulli_localacceleration",(DL_FUNC) &C_MCMC_probit_bernoulli_localacceleration,16},
 
   // --- Utility and basic function tests ---
   {"_pdm_test_ilogit",                       (DL_FUNC)   &test_ilogit,                       1},

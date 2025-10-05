@@ -1598,15 +1598,15 @@ SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP thet
 
   GetRNGstate();
   generate_alpha_probit_bernoulli_locallevel(
-    theta_1_store,
-    theta_01_store,
-    alpha_store,
-    prec_1_store,
-    y_ptr,
-    v_latent,
-    rhs_vector,
-    n,
-    1
+    theta_1_store, /* theta_1: two-iteration storage for level state */
+    theta_01_store, /* theta_01: two-iteration storage for initial level */
+    alpha_store,    /* alpha: two-iteration storage for success probabilities */
+    prec_1_store,   /* prec_1: two-iteration storage for level precision */
+    y_ptr,          /* y: Bernoulli outcomes */
+    v_latent,       /* v: latent Gaussian draws */
+    rhs_vector,     /* rhs: working right-hand side vector */
+    n,              /* n: series length */
+    1               /* iter: index of iteration to draw */
   );
   PutRNGstate();
 
@@ -1701,17 +1701,17 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_, SEXP theta_2_in_,
 
   GetRNGstate();
   generate_alpha_probit_bernoulli(
-    theta_1_store,
-    theta_2_store,
-    theta_01_store,
-    theta_02_store,
-    alpha_store,
-    prec_1_store,
-    y_ptr,
-    v_latent,
-    rhs_vector,
-    n,
-    1
+    theta_1_store, /* theta_1: two-iteration storage for level state */
+    theta_2_store, /* theta_2: two-iteration storage for trend state */
+    theta_01_store, /* theta_01: two-iteration storage for initial level */
+    theta_02_store, /* theta_02: two-iteration storage for initial trend */
+    alpha_store,   /* alpha: two-iteration storage for success probabilities */
+    prec_1_store,  /* prec_1: two-iteration storage for level precision */
+    y_ptr,         /* y: Bernoulli outcomes */
+    v_latent,      /* v: latent Gaussian draws */
+    rhs_vector,    /* rhs: working right-hand side vector */
+    n,             /* n: series length */
+    1              /* iter: index of iteration to draw */
   );
   PutRNGstate();
 

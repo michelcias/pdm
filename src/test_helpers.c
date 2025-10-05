@@ -1541,6 +1541,199 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   return res;
 }
 
+/**
+ * @brief Test wrapper for generate_alpha_probit_bernoulli_locallevel
+ *
+ * @details Exposes the Gibbs sampler for probit-linked Bernoulli local level models
+ *          implemented in C to the R testing environment. The wrapper prepares the
+ *          minimal two-iteration history required by the underlying sampler,
+ *          performs input validation, and returns the sampled level states and
+ *          corresponding probabilities for the first stored iteration.
+ *
+ * @param theta_1_in_ SEXP: Numeric vector with previous iteration level states.
+ * @param theta_01_in_ SEXP: Numeric scalar with previous iteration initial level state.
+ * @param prec_1_in_  SEXP: Numeric scalar with previous iteration level precision.
+ * @param y_          SEXP: Numeric vector with Bernoulli outcomes (0/1).
+ * @return Named list with elements 'theta_1' and 'alpha'.
+ *
+ * @note The sampler relies on Albert-Chib latent variable augmentation and uses
+ *       generate_normal_vector internally for efficient Gaussian draws.
+ *
+ * @warning Input vectors must be finite and of matching lengths.
+ */
+SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
+                                                     SEXP prec_1_in_, SEXP y_) {
+
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  if (LENGTH(y) == 0) {
+    UNPROTECT(1);
+    error("Input vector 'y' must have positive length");
+  }
+  int n = LENGTH(y);
+  double *y_ptr = REAL(y);
+
+  SEXP theta_1_in = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  if (LENGTH(theta_1_in) != n) {
+    UNPROTECT(2);
+    error("theta_1_in must have length %d to match y, got %d", n, LENGTH(theta_1_in));
+  }
+
+  SEXP theta_01_in = PROTECT(coerceVector(theta_01_in_, REALSXP));
+  SEXP prec_1_in = PROTECT(coerceVector(prec_1_in_, REALSXP));
+
+  double *theta_1_store = (double*) R_alloc(2 * n, sizeof(double));
+  memcpy(theta_1_store, REAL(theta_1_in), n * sizeof(double));
+
+  double *theta_01_store = (double*) R_alloc(2, sizeof(double));
+  theta_01_store[0] = REAL(theta_01_in)[0];
+
+  double *prec_1_store = (double*) R_alloc(2, sizeof(double));
+  prec_1_store[0] = REAL(prec_1_in)[0];
+
+  double *alpha_store = (double*) R_alloc(2 * n, sizeof(double));
+  memset(alpha_store, 0, 2 * n * sizeof(double));
+
+  double *v_latent = (double*) R_alloc(n, sizeof(double));
+  double *rhs_vector = (double*) R_alloc(n, sizeof(double));
+
+  GetRNGstate();
+  generate_alpha_probit_bernoulli_locallevel(
+    theta_1_store,
+    theta_01_store,
+    alpha_store,
+    prec_1_store,
+    y_ptr,
+    v_latent,
+    rhs_vector,
+    n,
+    1
+  );
+  PutRNGstate();
+
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
+  SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
+  SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
+
+  memcpy(REAL(theta_1_out), theta_1_store + n, n * sizeof(double));
+  memcpy(REAL(alpha_out), alpha_store + n, n * sizeof(double));
+
+  SET_VECTOR_ELT(res, 0, theta_1_out);
+  SET_VECTOR_ELT(res, 1, alpha_out);
+
+  SEXP nms = PROTECT(allocVector(STRSXP, 2));
+  SET_STRING_ELT(nms, 0, mkChar("theta_1"));
+  SET_STRING_ELT(nms, 1, mkChar("alpha"));
+  setAttrib(res, R_NamesSymbol, nms);
+
+  UNPROTECT(8);
+  return res;
+}
+
+/**
+ * @brief Test wrapper for generate_alpha_probit_bernoulli (local trend model)
+ *
+ * @details Similar to test_generate_alpha_probit_bernoulli_locallevel but additionally
+ *          accepts the trend state history required by the local trend sampler.
+ *          The wrapper mirrors the two-iteration storage layout expected by the
+ *          underlying C routine and returns sampled level states alongside the
+ *          implied Bernoulli probabilities for verification in R tests.
+ *
+ * @param theta_1_in_ SEXP: Numeric vector with previous iteration level states.
+ * @param theta_2_in_ SEXP: Numeric vector with current iteration trend states.
+ * @param theta_01_in_ SEXP: Numeric scalar with previous iteration initial level state.
+ * @param theta_02_in_ SEXP: Numeric scalar with previous iteration initial trend state.
+ * @param prec_1_in_  SEXP: Numeric scalar with previous iteration level precision.
+ * @param y_          SEXP: Numeric vector with Bernoulli outcomes (0/1).
+ * @return Named list with elements 'theta_1' and 'alpha'.
+ */
+SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_, SEXP theta_2_in_,
+                                          SEXP theta_01_in_, SEXP theta_02_in_,
+                                          SEXP prec_1_in_, SEXP y_) {
+
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  if (LENGTH(y) == 0) {
+    UNPROTECT(1);
+    error("Input vector 'y' must have positive length");
+  }
+  int n = LENGTH(y);
+  double *y_ptr = REAL(y);
+
+  SEXP theta_1_in = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  if (LENGTH(theta_1_in) != n) {
+    UNPROTECT(2);
+    error("theta_1_in must have length %d to match y, got %d", n, LENGTH(theta_1_in));
+  }
+
+  SEXP theta_2_in = PROTECT(coerceVector(theta_2_in_, REALSXP));
+  if (LENGTH(theta_2_in) != n) {
+    UNPROTECT(3);
+    error("theta_2_in must have length %d to match y, got %d", n, LENGTH(theta_2_in));
+  }
+
+  SEXP theta_01_in = PROTECT(coerceVector(theta_01_in_, REALSXP));
+  SEXP theta_02_in = PROTECT(coerceVector(theta_02_in_, REALSXP));
+  SEXP prec_1_in = PROTECT(coerceVector(prec_1_in_, REALSXP));
+
+  double *theta_1_store = (double*) R_alloc(2 * n, sizeof(double));
+  memcpy(theta_1_store, REAL(theta_1_in), n * sizeof(double));
+
+  double *theta_2_store = (double*) R_alloc(2 * n, sizeof(double));
+  const double *theta_2_src = REAL(theta_2_in);
+  memcpy(theta_2_store, theta_2_src, n * sizeof(double));
+  memcpy(theta_2_store + n, theta_2_src, n * sizeof(double));
+
+  double *theta_01_store = (double*) R_alloc(2, sizeof(double));
+  theta_01_store[0] = REAL(theta_01_in)[0];
+
+  double *theta_02_store = (double*) R_alloc(2, sizeof(double));
+  double theta_02_value = REAL(theta_02_in)[0];
+  theta_02_store[0] = theta_02_value;
+  theta_02_store[1] = theta_02_value;
+
+  double *prec_1_store = (double*) R_alloc(2, sizeof(double));
+  prec_1_store[0] = REAL(prec_1_in)[0];
+
+  double *alpha_store = (double*) R_alloc(2 * n, sizeof(double));
+  memset(alpha_store, 0, 2 * n * sizeof(double));
+
+  double *v_latent = (double*) R_alloc(n, sizeof(double));
+  double *rhs_vector = (double*) R_alloc(n, sizeof(double));
+
+  GetRNGstate();
+  generate_alpha_probit_bernoulli(
+    theta_1_store,
+    theta_2_store,
+    theta_01_store,
+    theta_02_store,
+    alpha_store,
+    prec_1_store,
+    y_ptr,
+    v_latent,
+    rhs_vector,
+    n,
+    1
+  );
+  PutRNGstate();
+
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
+  SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
+  SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
+
+  memcpy(REAL(theta_1_out), theta_1_store + n, n * sizeof(double));
+  memcpy(REAL(alpha_out), alpha_store + n, n * sizeof(double));
+
+  SET_VECTOR_ELT(res, 0, theta_1_out);
+  SET_VECTOR_ELT(res, 1, alpha_out);
+
+  SEXP nms = PROTECT(allocVector(STRSXP, 2));
+  SET_STRING_ELT(nms, 0, mkChar("theta_1"));
+  SET_STRING_ELT(nms, 1, mkChar("alpha"));
+  setAttrib(res, R_NamesSymbol, nms);
+
+  UNPROTECT(10);
+  return res;
+}
+
 //==============================================================================
 // FULL MCMC TEST WRAPPER
 //==============================================================================

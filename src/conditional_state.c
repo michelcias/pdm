@@ -94,7 +94,15 @@ void generate_theta_1_locallevel(double *data,
   // Off-diag: -prec_1
   // Last diag: prec_y + prec_1
   // add_a = 1 (adjusts last diagonal element to prec_y + prec_1)
-  generate_normal_vector(theta_1_post, mean_theta_1, prec_y, prec_1, n, iter, 1);
+  generate_normal_vector(
+    theta_1_post, /* theta_post: destination buffer for theta_1 samples */
+    mean_theta_1, /* mean_theta: conditional posterior mean vector */
+    prec_y,       /* prec_y: observation precision contribution */
+    prec_1,       /* prec_1: innovation precision contribution */
+    n,            /* n: number of time points */
+    iter,         /* iter: current Gibbs iteration */
+    1             /* add_a: adjust last diagonal element */
+  );
 }
 
 
@@ -194,7 +202,15 @@ void generate_theta_1(double *data,
   // Off-diag: -prec_1
   // Last diag: prec_y + prec_1
   // add_a = 1 (adjusts last diagonal element to prec_y + prec_1)
-  generate_normal_vector(theta_1_post, mean_theta_1, prec_y, prec_1, n, iter, 1);
+  generate_normal_vector(
+    theta_1_post, /* theta_post: destination buffer for theta_1 samples */
+    mean_theta_1, /* mean_theta: conditional posterior mean vector */
+    prec_y,       /* prec_y: observation precision contribution */
+    prec_1,       /* prec_1: innovation precision contribution */
+    n,            /* n: number of time points */
+    iter,         /* iter: current Gibbs iteration */
+    1             /* add_a: adjust last diagonal element */
+  );
 }
 
 
@@ -294,7 +310,15 @@ void generate_theta_k(double *theta_km1_post,
   // Off-diag: -prec_k
   // Last diag: prec_k
   // add_a = 0 (last diagonal element is prec_k only)
-  generate_normal_vector(theta_k_post, mean_theta_k, prec_km1, prec_k, n, iter, 0);
+  generate_normal_vector(
+    theta_k_post, /* theta_post: destination buffer for theta_k samples */
+    mean_theta_k, /* mean_theta: conditional posterior mean vector */
+    prec_km1,     /* prec_lower: precision from component k-1 */
+    prec_k,       /* prec_upper: precision from component k+1 */
+    n,            /* n: number of time points */
+    iter,         /* iter: current Gibbs iteration */
+    0             /* add_a: boundary adjustment flag */
+  );
 }
 
 
@@ -385,5 +409,13 @@ void generate_theta_p(double *theta_pm1_post,
   // Off-diag: -prec_p
   // Last diag: prec_p
   // add_a = 0 (last diagonal element is prec_p only)
-  generate_normal_vector(theta_p_post, mean_theta_p, prec_pm1, prec_p, n, iter, 0);
+  generate_normal_vector(
+    theta_p_post, /* theta_post: destination buffer for theta_p samples */
+    mean_theta_p, /* mean_theta: conditional posterior mean vector */
+    prec_pm1,     /* prec_lower: precision from component p-1 */
+    prec_p,       /* prec_upper: innovation precision for theta_p */
+    n,            /* n: number of time points */
+    iter,         /* iter: current Gibbs iteration */
+    0             /* add_a: boundary adjustment flag */
+  );
 }

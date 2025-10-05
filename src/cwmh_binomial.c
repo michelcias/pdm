@@ -175,7 +175,12 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
   double lp1o = dnorm(theta_1[iterm1_n], hat_theta_1[0], sd_regular, 1);
   double lp2o = dbinom(y[0], n_trials, ilogit(theta_1[iterm1_n]), 1);
 
-  log_accept_prob[0] = stable_log_accept_prob(lp1n, lp2n, lp1o, lp2o);
+  log_accept_prob[0] = stable_log_accept_prob(
+    lp1n, /* lp1n: log-density of new state w.r.t. prior */
+    lp2n, /* lp2n: log-likelihood of new state */
+    lp1o, /* lp1o: log-density of current state w.r.t. prior */
+    lp2o  /* lp2o: log-likelihood of current state */
+  );
   int accepted_0 = log(runif(0, 1)) <= log_accept_prob[0];
 
   if (!accepted_0) {
@@ -203,7 +208,12 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
     lp1o = dnorm(theta_1[iterm1_n + k], hat_theta_1[k], sd_regular, 1);
     lp2o = dbinom(y[k], n_trials, ilogit(theta_1[iterm1_n + k]), 1);
 
-    log_accept_prob[k] = stable_log_accept_prob(lp1n, lp2n, lp1o, lp2o);
+    log_accept_prob[k] = stable_log_accept_prob(
+      lp1n, /* lp1n: log-density of new state w.r.t. prior */
+      lp2n, /* lp2n: log-likelihood of new state */
+      lp1o, /* lp1o: log-density of current state w.r.t. prior */
+      lp2o  /* lp2o: log-likelihood of current state */
+    );
     int accepted_k = log(runif(0, 1)) <= log_accept_prob[k];
 
     if (!accepted_k) {
@@ -230,7 +240,12 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
   lp1o = dnorm(theta_1[iterm1_n + (n - 1)], hat_theta_1[n - 1], sd_last, 1);
   lp2o = dbinom(y[n - 1], n_trials, ilogit(theta_1[iterm1_n + (n - 1)]), 1);
 
-  log_accept_prob[n - 1] = stable_log_accept_prob(lp1n, lp2n, lp1o, lp2o);
+  log_accept_prob[n - 1] = stable_log_accept_prob(
+    lp1n, /* lp1n: log-density of new state w.r.t. prior */
+    lp2n, /* lp2n: log-likelihood of new state */
+    lp1o, /* lp1o: log-density of current state w.r.t. prior */
+    lp2o  /* lp2o: log-likelihood of current state */
+  );
   int accepted_last = log(runif(0, 1)) <= log_accept_prob[n - 1];
 
   if (!accepted_last) {
@@ -382,7 +397,12 @@ void cwmh_alpha_logit_binomial(double *theta_1,
   double lp1o = dnorm(theta_1[iterm1_n], hat_theta_1[0], sd_regular, 1);
   double lp2o = dbinom(y[0], n_trials, ilogit(theta_1[iterm1_n]), 1);
 
-  log_accept_prob[0] = stable_log_accept_prob(lp1n, lp2n, lp1o, lp2o);
+  log_accept_prob[0] = stable_log_accept_prob(
+    lp1n, /* lp1n: log-density of new state w.r.t. prior */
+    lp2n, /* lp2n: log-likelihood of new state */
+    lp1o, /* lp1o: log-density of current state w.r.t. prior */
+    lp2o  /* lp2o: log-likelihood of current state */
+  );
   int accepted_0 = log(runif(0, 1)) <= log_accept_prob[0];
 
   if (!accepted_0) {
@@ -412,7 +432,12 @@ void cwmh_alpha_logit_binomial(double *theta_1,
     lp1o = dnorm(theta_1[iterm1_n + k], hat_theta_1[k], sd_regular, 1);
     lp2o = dbinom(y[k], n_trials, ilogit(theta_1[iterm1_n + k]), 1);
 
-    log_accept_prob[k] = stable_log_accept_prob(lp1n, lp2n, lp1o, lp2o);
+    log_accept_prob[k] = stable_log_accept_prob(
+      lp1n, /* lp1n: log-density of new state w.r.t. prior */
+      lp2n, /* lp2n: log-likelihood of new state */
+      lp1o, /* lp1o: log-density of current state w.r.t. prior */
+      lp2o  /* lp2o: log-likelihood of current state */
+    );
     int accepted_k = log(runif(0, 1)) <= log_accept_prob[k];
 
     if (!accepted_k) {
@@ -439,7 +464,12 @@ void cwmh_alpha_logit_binomial(double *theta_1,
   lp1o = dnorm(theta_1[iterm1_n + (n - 1)], hat_theta_1[n - 1], sd_last, 1);
   lp2o = dbinom(y[n - 1], n_trials, ilogit(theta_1[iterm1_n + (n - 1)]), 1);
 
-  log_accept_prob[n - 1] = stable_log_accept_prob(lp1n, lp2n, lp1o, lp2o);
+  log_accept_prob[n - 1] = stable_log_accept_prob(
+    lp1n, /* lp1n: log-density of new state w.r.t. prior */
+    lp2n, /* lp2n: log-likelihood of new state */
+    lp1o, /* lp1o: log-density of current state w.r.t. prior */
+    lp2o  /* lp2o: log-likelihood of current state */
+  );
   int accepted_last = log(runif(0, 1)) <= log_accept_prob[n - 1];
 
   if (!accepted_last) {

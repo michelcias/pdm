@@ -120,7 +120,15 @@ SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_) {
   GetRNGstate();
 
   // Call the target function for testing
-  generate_normal_vector(result_ptr, y, a, b, n, 0, add_a);
+  generate_normal_vector(
+    result_ptr, /* dest: output buffer for sampled vector */
+    y,          /* y: right-hand side vector */
+    a,          /* a: main diagonal precision contribution */
+    b,          /* b: off-diagonal precision contribution */
+    n,          /* n: vector length */
+    0,          /* iter: fixed iteration index for testing */
+    add_a       /* add_a: adjustment flag for last diagonal */
+  );
 
   PutRNGstate();
 
@@ -220,10 +228,19 @@ SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
   }
 
   // Call the optimized C function
-  adapt_cwmh_parameters(theta_updated, accept_prop_out, log_sigma_out,
-                        lag_update, n, iter, max_step_size,
-                        base_adaptation_rate, decay_exponent, target_acceptance,
-                        min_deviation_threshold);
+  adapt_cwmh_parameters(
+    theta_updated,          /* theta_updated: sliding window acceptance history */
+    accept_prop_out,        /* accept_prop: output acceptance proportions */
+    log_sigma_out,          /* log_sigma: proposal log standard deviations */
+    lag_update,             /* lag_update: window length */
+    n,                      /* n: number of components */
+    iter,                   /* iter: current iteration */
+    max_step_size,          /* max_step_size: adaptation step cap */
+    base_adaptation_rate,   /* base_adaptation_rate: initial adaptation rate */
+    decay_exponent,         /* decay_exponent: diminishing schedule */
+    target_acceptance,      /* target_acceptance: desired acceptance proportion */
+    min_deviation_threshold /* min_deviation_threshold: deviation trigger */
+  );
 
   // Set names for the list elements
   SEXP names = PROTECT(allocVector(STRSXP, 2));
@@ -322,7 +339,15 @@ SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y
 
   GetRNGstate();
   // Call the function for iter = 1 (the second position)
-  generate_precision_data(y_ptr, theta_1_post, prec_y_post, nu_y_val, eta_y_val, n, 1);
+  generate_precision_data(
+    y_ptr,         /* y: observed data */
+    theta_1_post,  /* theta_1_post: state trajectories */
+    prec_y_post,   /* prec_y_post: precision storage */
+    nu_y_val,      /* nu_y: prior shape */
+    eta_y_val,     /* eta_y: prior rate */
+    n,             /* n: number of observations */
+    1              /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   UNPROTECT(4);
@@ -384,8 +409,17 @@ SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP thet
 
   GetRNGstate();
   // Call for iter = 1
-  generate_precision_theta_k(theta_0k_post, theta_0kp1_post, theta_k_post, theta_kp1_post,
-                             prec_theta_k_post, nu_0k_val, eta_0k_val, n, 1);
+  generate_precision_theta_k(
+    theta_0k_post,    /* theta_0k_post: initial state k */
+    theta_0kp1_post,  /* theta_0kp1_post: initial state k+1 */
+    theta_k_post,     /* theta_k_post: state trajectories k */
+    theta_kp1_post,   /* theta_kp1_post: state trajectories k+1 */
+    prec_theta_k_post,/* prec_theta_k_post: precision storage */
+    nu_0k_val,        /* nu_0k: prior shape */
+    eta_0k_val,       /* eta_0k: prior rate */
+    n,                /* n: number of observations */
+    1                 /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   UNPROTECT(6);
@@ -437,7 +471,15 @@ SEXP test_generate_precision_theta_p(SEXP theta_0p_, SEXP theta_p_, SEXP nu_0p_,
 
   GetRNGstate();
   // Call for iter = 1
-  generate_precision_theta_p(theta_0p_post, theta_p_post, prec_theta_p_post, nu_0p_val, eta_0p_val, n, 1);
+  generate_precision_theta_p(
+    theta_0p_post,    /* theta_0p_post: initial state p */
+    theta_p_post,     /* theta_p_post: state trajectories p */
+    prec_theta_p_post,/* prec_theta_p_post: precision storage */
+    nu_0p_val,        /* nu_0p: prior shape */
+    eta_0p_val,       /* eta_0p: prior rate */
+    n,                /* n: number of observations */
+    1                 /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   UNPROTECT(4);
@@ -493,7 +535,15 @@ SEXP test_generate_theta_1_locallevel(SEXP data_, SEXP prec_data_, SEXP prec_the
   theta_01_post[0] = theta_01_val;
 
   GetRNGstate();
-  generate_theta_1_locallevel(data_ptr, theta_1_post, prec_data_post, prec_theta_1_post, theta_01_post, n, 1);
+  generate_theta_1_locallevel(
+    data_ptr,        /* data: observed series */
+    theta_1_post,    /* theta_1_post: level trajectories */
+    prec_data_post,  /* prec_data_post: data precision draws */
+    prec_theta_1_post,/* prec_theta_1_post: level precision draws */
+    theta_01_post,   /* theta_01_post: initial level states */
+    n,               /* n: number of observations */
+    1                /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   SEXP result_sexp = PROTECT(allocVector(REALSXP, n));
@@ -561,7 +611,17 @@ SEXP test_generate_theta_1(SEXP data_, SEXP theta_2_, SEXP prec_data_, SEXP prec
   theta_02_post[1] = theta_02_val;
 
   GetRNGstate();
-  generate_theta_1(data_ptr, theta_1_post, theta_2_post, prec_data_post, prec_theta_1_post, theta_01_post, theta_02_post, n, 1);
+  generate_theta_1(
+    data_ptr,        /* data: observed series */
+    theta_1_post,    /* theta_1_post: level trajectories */
+    theta_2_post,    /* theta_2_post: trend trajectories */
+    prec_data_post,  /* prec_data_post: data precision draws */
+    prec_theta_1_post,/* prec_theta_1_post: level precision draws */
+    theta_01_post,   /* theta_01_post: initial level states */
+    theta_02_post,   /* theta_02_post: initial trend states */
+    n,               /* n: number of observations */
+    1                /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   SEXP result_sexp = PROTECT(allocVector(REALSXP, n));
@@ -633,7 +693,17 @@ SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEX
   theta_0kp1_post[1] = theta_0kp1_val;
 
   GetRNGstate();
-  generate_theta_k(theta_km1_post, theta_k_post, theta_kp1_post, prec_theta_km1_post, prec_theta_k_post, theta_0k_post, theta_0kp1_post, n, 1);
+  generate_theta_k(
+    theta_km1_post,   /* theta_km1_post: trajectories for component k-1 */
+    theta_k_post,     /* theta_k_post: trajectories for component k */
+    theta_kp1_post,   /* theta_kp1_post: trajectories for component k+1 */
+    prec_theta_km1_post,/* prec_theta_km1_post: precision for component k-1 */
+    prec_theta_k_post,  /* prec_theta_k_post: precision for component k */
+    theta_0k_post,    /* theta_0k_post: initial state k */
+    theta_0kp1_post,  /* theta_0kp1_post: initial state k+1 */
+    n,                /* n: number of observations */
+    1                 /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   SEXP result_sexp = PROTECT(allocVector(REALSXP, n));
@@ -693,7 +763,15 @@ SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP t
   theta_0p_post[0] = theta_0p_val;
 
   GetRNGstate();
-  generate_theta_p(theta_pm1_post, theta_p_post, prec_theta_pm1_post, prec_theta_p_post, theta_0p_post, n, 1);
+  generate_theta_p(
+    theta_pm1_post,   /* theta_pm1_post: trajectories for component p-1 */
+    theta_p_post,     /* theta_p_post: trajectories for component p */
+    prec_theta_pm1_post,/* prec_theta_pm1_post: precision for component p-1 */
+    prec_theta_p_post,  /* prec_theta_p_post: precision for component p */
+    theta_0p_post,    /* theta_0p_post: initial state p */
+    n,                /* n: number of observations */
+    1                 /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   SEXP result_sexp = PROTECT(allocVector(REALSXP, n));
@@ -751,7 +829,15 @@ SEXP test_generate_theta_01_locallevel(SEXP theta_1_, SEXP prec_theta_1_, SEXP m
   double *theta_01_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
-  generate_theta_01_locallevel(theta_01_post, theta_1_post, prec_theta_1_post, mean_theta_01_val, prec_theta_01_val, n, 1);
+  generate_theta_01_locallevel(
+    theta_01_post,      /* theta_01_post: initial level states */
+    theta_1_post,       /* theta_1_post: level trajectories */
+    prec_theta_1_post,  /* prec_theta_1_post: level precision draws */
+    mean_theta_01_val,  /* mean_theta_01: prior mean */
+    prec_theta_01_val,  /* prec_theta_01: prior precision */
+    n,                  /* n: number of observations */
+    1                   /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   UNPROTECT(4);
@@ -808,7 +894,16 @@ SEXP test_generate_theta_01(SEXP theta_1_, SEXP theta_02_, SEXP prec_theta_1_, S
   double *theta_01_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
-  generate_theta_01(theta_01_post, theta_02_post, theta_1_post, prec_theta_1_post, mean_theta_01_val, prec_theta_01_val, n, 1);
+  generate_theta_01(
+    theta_01_post,      /* theta_01_post: initial level states */
+    theta_02_post,      /* theta_02_post: initial trend states */
+    theta_1_post,       /* theta_1_post: level trajectories */
+    prec_theta_1_post,  /* prec_theta_1_post: level precision draws */
+    mean_theta_01_val,  /* mean_theta_01: prior mean */
+    prec_theta_01_val,  /* prec_theta_01: prior precision */
+    n,                  /* n: number of observations */
+    1                   /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   UNPROTECT(5);
@@ -883,8 +978,19 @@ SEXP test_generate_theta_0k(SEXP theta_km1_, SEXP theta_k_, SEXP theta_0km1_, SE
   double *theta_0k_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
-  generate_theta_0k(theta_0km1_post, theta_0k_post, theta_0kp1_post, theta_km1_post, theta_k_post,
-                    prec_theta_km1_post, prec_theta_k_post, mean_0k_val, prec_0k_val, n, 1);
+  generate_theta_0k(
+    theta_0km1_post,   /* theta_0km1_post: initial state k-1 */
+    theta_0k_post,     /* theta_0k_post: initial state k */
+    theta_0kp1_post,   /* theta_0kp1_post: initial state k+1 */
+    theta_km1_post,    /* theta_km1_post: trajectories for component k-1 */
+    theta_k_post,      /* theta_k_post: trajectories for component k */
+    prec_theta_km1_post,/* prec_theta_km1_post: precision for component k-1 */
+    prec_theta_k_post,  /* prec_theta_k_post: precision for component k */
+    mean_0k_val,       /* mean_theta_0k: prior mean */
+    prec_0k_val,       /* prec_theta_0k: prior precision */
+    n,                 /* n: number of observations */
+    1                  /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   UNPROTECT(8);
@@ -953,8 +1059,18 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SE
   double *theta_0p_post = (double *) R_alloc(2, sizeof(double));
 
   GetRNGstate();
-  generate_theta_0p(theta_0pm1_post, theta_0p_post, theta_pm1_post, theta_p_post,
-                    prec_theta_pm1_post, prec_theta_p_post, mean_0p_val, prec_0p_val, n, 1);
+  generate_theta_0p(
+    theta_0pm1_post,   /* theta_0pm1_post: initial state p-1 */
+    theta_0p_post,     /* theta_0p_post: initial state p */
+    theta_pm1_post,    /* theta_pm1_post: trajectories for component p-1 */
+    theta_p_post,      /* theta_p_post: trajectories for component p */
+    prec_theta_pm1_post,/* prec_theta_pm1_post: precision for component p-1 */
+    prec_theta_p_post,  /* prec_theta_p_post: precision for component p */
+    mean_0p_val,       /* mean_theta_0p: prior mean */
+    prec_0p_val,       /* prec_theta_0p: prior precision */
+    n,                 /* n: number of observations */
+    1                  /* iter: fixed iteration index */
+  );
   PutRNGstate();
 
   UNPROTECT(7);
@@ -1138,10 +1254,22 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP the
 
   GetRNGstate();
   cwmh_alpha_logit_binomial(
-    theta_1_post, theta_2_post, theta_01_post, theta_02_post,
-    theta_1_updated, alpha_post, prec_1_post, y_ptr,
-    log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    TEST_LAG_UPDATE, n_trials_val, n, TEST_ITER
+    theta_1_post,     /* theta_1: level states */
+    theta_2_post,     /* theta_2: trend states */
+    theta_01_post,    /* theta_01: initial level states */
+    theta_02_post,    /* theta_02: initial trend states */
+    theta_1_updated,  /* theta_1_updated: sliding window indicators */
+    alpha_post,       /* alpha: success probabilities */
+    prec_1_post,      /* prec_theta_1: level precisions */
+    y_ptr,            /* y: observed counts */
+    log_sigma,        /* log_sigma: proposal log standard deviations */
+    hat_theta_1,      /* hat_theta_1: conditional means */
+    theta_1_new,      /* theta_1_new: proposal buffer */
+    log_accept_prob,  /* log_accept_prob: log acceptance storage */
+    TEST_LAG_UPDATE,  /* lag_update: adaptation window length */
+    n_trials_val,     /* n_trials: number of binomial trials */
+    n,                /* n: number of observations */
+    TEST_ITER         /* iter: iteration index */
   );
   PutRNGstate();
 
@@ -1243,11 +1371,26 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
 
   GetRNGstate();
   generate_alpha_logit_binomial_locallevel(
-    theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y_ptr,
-    accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    TEST_LAG_UPDATE, n_trials_val, n, TEST_ITER, TEST_MAX_STEP_SIZE,
-    TEST_BASE_ADAPTATION_RATE, TEST_DECAY_EXPONENT, TEST_TARGET_ACCEPTANCE,
-    TEST_MIN_DEVIATION_THRESHOLD
+    theta_1_post,               /* theta_1: level states */
+    theta_01_post,              /* theta_01: initial level states */
+    theta_1_updated,            /* theta_1_updated: sliding window indicators */
+    alpha_post,                 /* alpha: success probabilities */
+    prec_1_post,                /* prec_theta_1: level precisions */
+    y_ptr,                      /* y: observed counts */
+    accept_prop,                /* accept_prop: acceptance proportions */
+    log_sigma,                  /* log_sigma: proposal log standard deviations */
+    hat_theta_1,                /* hat_theta_1: conditional means */
+    theta_1_new,                /* theta_1_new: proposal buffer */
+    log_accept_prob,            /* log_accept_prob: log acceptance storage */
+    TEST_LAG_UPDATE,            /* lag_update: adaptation window length */
+    n_trials_val,               /* n_trials: number of binomial trials */
+    n,                          /* n: number of observations */
+    TEST_ITER,                  /* iter: iteration index */
+    TEST_MAX_STEP_SIZE,         /* max_step_size: adaptation step cap */
+    TEST_BASE_ADAPTATION_RATE,  /* base_adaptation_rate: initial adaptation rate */
+    TEST_DECAY_EXPONENT,        /* decay_exponent: diminishing schedule */
+    TEST_TARGET_ACCEPTANCE,     /* target_acceptance: desired acceptance proportion */
+    TEST_MIN_DEVIATION_THRESHOLD/* min_deviation_threshold: deviation trigger */
   );
   PutRNGstate();
 
@@ -1354,12 +1497,28 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
 
   GetRNGstate();
   generate_alpha_logit_binomial(
-    theta_1_post, theta_2_post, theta_01_post, theta_02_post,
-    theta_1_updated, alpha_post, prec_1_post, y_ptr,
-    accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-    TEST_LAG_UPDATE, n_trials_val, n, TEST_ITER, TEST_MAX_STEP_SIZE,
-    TEST_BASE_ADAPTATION_RATE, TEST_DECAY_EXPONENT, TEST_TARGET_ACCEPTANCE,
-    TEST_MIN_DEVIATION_THRESHOLD
+    theta_1_post,               /* theta_1: level states */
+    theta_2_post,               /* theta_2: trend states */
+    theta_01_post,              /* theta_01: initial level states */
+    theta_02_post,              /* theta_02: initial trend states */
+    theta_1_updated,            /* theta_1_updated: sliding window indicators */
+    alpha_post,                 /* alpha: success probabilities */
+    prec_1_post,                /* prec_theta_1: level precisions */
+    y_ptr,                      /* y: observed counts */
+    accept_prop,                /* accept_prop: acceptance proportions */
+    log_sigma,                  /* log_sigma: proposal log standard deviations */
+    hat_theta_1,                /* hat_theta_1: conditional means */
+    theta_1_new,                /* theta_1_new: proposal buffer */
+    log_accept_prob,            /* log_accept_prob: log acceptance storage */
+    TEST_LAG_UPDATE,            /* lag_update: adaptation window length */
+    n_trials_val,               /* n_trials: number of binomial trials */
+    n,                          /* n: number of observations */
+    TEST_ITER,                  /* iter: iteration index */
+    TEST_MAX_STEP_SIZE,         /* max_step_size: adaptation step cap */
+    TEST_BASE_ADAPTATION_RATE,  /* base_adaptation_rate: initial adaptation rate */
+    TEST_DECAY_EXPONENT,        /* decay_exponent: diminishing schedule */
+    TEST_TARGET_ACCEPTANCE,     /* target_acceptance: desired acceptance proportion */
+    TEST_MIN_DEVIATION_THRESHOLD/* min_deviation_threshold: deviation trigger */
   );
   PutRNGstate();
 

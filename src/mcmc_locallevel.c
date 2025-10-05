@@ -133,45 +133,46 @@ SEXP C_MCMC_locallevel(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
     for (int ii = 1; ii < n_iter; ii++) {
         /* 1) Sample state vector theta_1 */
         generate_theta_1_locallevel(
-            y,
-            theta_1_post,
-            prec_y_post,
-            prec_1_post,
-            theta_01_post,
-            n,
-            ii
+            y,             /* data: observed series */
+            theta_1_post,  /* theta_1_post: level trajectories */
+            prec_y_post,   /* prec_y_post: data precision draws */
+            prec_1_post,   /* prec_1_post: level precision draws */
+            theta_01_post, /* theta_01_post: initial level states */
+            n,             /* n: number of observations */
+            ii             /* iter: current iteration */
         );
 
         /* 2) Sample innovation precision 1/W_1 */
         generate_precision_theta_p(
-            theta_01_post,    /* theta_0p */
-            theta_1_post,     /* theta_p */
-            prec_1_post,      /* output precision 1/W_p */
-            nu_01, eta_01,
-            n,
-            ii
+            theta_01_post, /* theta_0p_post: initial level states */
+            theta_1_post,  /* theta_p_post: level trajectories */
+            prec_1_post,   /* prec_theta_p_post: precision storage */
+            nu_01,         /* nu_0p: prior shape */
+            eta_01,        /* eta_0p: prior rate */
+            n,             /* n: number of observations */
+            ii             /* iter: current iteration */
         );
 
         /* 3) Sample initial state theta_01 */
         generate_theta_01_locallevel(
-            theta_01_post,
-            theta_1_post,
-            prec_1_post,
-            mean_theta01,
-            prec_theta01,
-            n,
-            ii
+            theta_01_post, /* theta_01_post: initial level states */
+            theta_1_post,  /* theta_1_post: level trajectories */
+            prec_1_post,   /* prec_1_post: level precision draws */
+            mean_theta01,  /* mean_theta_01: prior mean */
+            prec_theta01,  /* prec_theta_01: prior precision */
+            n,             /* n: number of observations */
+            ii             /* iter: current iteration */
         );
 
         /* 4) Sample data precision 1/V */
         generate_precision_data(
-            y,
-            theta_1_post,
-            prec_y_post,
-            nu_y,
-            eta_y,
-            n,
-            ii
+            y,            /* y: observed data */
+            theta_1_post, /* theta_1_post: level trajectories */
+            prec_y_post,  /* prec_y_post: data precision draws */
+            nu_y,         /* nu_y: prior shape */
+            eta_y,        /* eta_y: prior rate */
+            n,            /* n: number of observations */
+            ii            /* iter: current iteration */
         );
 
         /* Store post‐burn‐in draws, applying thinning */

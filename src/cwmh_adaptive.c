@@ -76,8 +76,11 @@ static inline double compute_step_size_cached(int    iter,
       adapt_cache.cached_max_step != max_step_size ||
       adapt_cache.cached_decay_exp != decay_exponent) {
 
-    adapt_cache.cached_step_size = fmin2(max_step_size,
-                                         base_adaptation_rate / R_pow((double)iter, decay_exponent));
+    adapt_cache.cached_step_size = fmin2(
+      max_step_size,                               /* cap: maximum allowed step size */
+      base_adaptation_rate /
+        R_pow((double)iter, decay_exponent)        /* diminishing: base_rate / iter^decay */
+    );
     adapt_cache.cached_iter = iter;
     adapt_cache.cached_base_rate = base_adaptation_rate;
     adapt_cache.cached_max_step = max_step_size;
@@ -140,7 +143,11 @@ static inline void compute_acceptance_vectorized(double *theta_updated,
   int k, row;
 
   /* Initialize acceptance proportions to zero using optimized memset */
-  memset(accept_prop, 0, (size_t)n * sizeof(double));
+  memset(
+    accept_prop,               /* dest: acceptance proportion vector */
+    0,                          /* value: zero-initialize buffer */
+    (size_t)n * sizeof(double)  /* size: total bytes to clear */
+  );
 
   /* Accumulate acceptance indicators across all rows in sliding window */
   for (row = 0; row < lag_update; row++) {
@@ -461,8 +468,12 @@ void adapt_cwmh_parameters(double *theta_updated,
   }
 
   /* ========== Optimized Step Size Computation with Caching ========== */
-  double step_size = compute_step_size_cached(iter, max_step_size,
-                                              base_adaptation_rate, decay_exponent);
+  double step_size = compute_step_size_cached(
+    iter,                 /* iter: current iteration index */
+    max_step_size,        /* max_step_size: adaptation step cap */
+    base_adaptation_rate, /* base_rate: initial adaptation magnitude */
+    decay_exponent        /* decay_exponent: diminishing schedule */
+  );
 
   /* ========== Precompute Inverse for Efficient Division with Validation ========== */
   if (adapt_cache.inv_lag_update == 0.0 || adapt_cache.cached_lag_update != lag_update) {
@@ -473,11 +484,23 @@ void adapt_cwmh_parameters(double *theta_updated,
   double inv_lag_update = adapt_cache.inv_lag_update;
 
   /* ========== Compute Acceptance Proportions Using Vectorized Algorithm ========== */
-  compute_acceptance_vectorized(theta_updated, accept_prop, lag_update, n, inv_lag_update);
+  compute_acceptance_vectorized(
+    theta_updated,   /* theta_updated: sliding window acceptance matrix */
+    accept_prop,     /* accept_prop: output vector for acceptance rates */
+    lag_update,      /* lag_update: window length */
+    n,               /* n: number of components */
+    inv_lag_update   /* inv_lag_update: cached reciprocal of lag_update */
+  );
 
   /* ========== Update Proposal Scales with Configurable Threshold Filtering ========== */
-  update_log_sigma_optimized(accept_prop, log_sigma, n, step_size, target_acceptance,
-                             min_deviation_threshold);
+  update_log_sigma_optimized(
+    accept_prop,             /* accept_prop: current acceptance rates */
+    log_sigma,               /* log_sigma: proposal log standard deviations */
+    n,                       /* n: number of components */
+    step_size,               /* step_size: adaptation magnitude */
+    target_acceptance,       /* target_acceptance: desired acceptance rate */
+    min_deviation_threshold  /* min_deviation_threshold: update sensitivity */
+  );
 }
 
 /**

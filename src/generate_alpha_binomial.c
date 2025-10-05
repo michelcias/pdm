@@ -156,37 +156,37 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
   if (lag_update > 0 && iter >= lag_update && (iter % lag_update == 0)) {
 
     adapt_cwmh_parameters(
-      theta_1_updated,        /* theta_updated */
-      accept_prop,            /* accept_prop */
-      log_sigma,              /* log_sigma */
-      lag_update,             /* lag_update */
-      n,                      /* n */
-      iter,                   /* iter */
-      max_step_size,          /* max_step_size */
-      base_adaptation_rate,   /* base_adaptation_rate */
-      decay_exponent,         /* decay_exponent */
-      target_acceptance,      /* target_acceptance */
-      min_deviation_threshold /* min_deviation_threshold */
+      theta_1_updated,        /* theta_updated: sliding window acceptance buffer */
+      accept_prop,            /* accept_prop: workspace for acceptance rates */
+      log_sigma,              /* log_sigma: proposal scale parameters */
+      lag_update,             /* lag_update: adaptation window length */
+      n,                      /* n: number of time points */
+      iter,                   /* iter: current iteration index */
+      max_step_size,          /* max_step_size: cap on adaptation step */
+      base_adaptation_rate,   /* base_adaptation_rate: initial adaptation rate */
+      decay_exponent,         /* decay_exponent: diminishing schedule */
+      target_acceptance,      /* target_acceptance: desired acceptance probability */
+      min_deviation_threshold /* min_deviation_threshold: deviation trigger */
     );
   }
 
   /* ========== CWMH Update for Current Iteration ========== */
   // Updates theta_1 block for 'iter', logs acceptance, and stores alpha = ilogit(theta_1)
   cwmh_alpha_logit_binomial_locallevel(
-    theta_1,           /* theta_1 */
-    theta_01,          /* theta_01 */
-    theta_1_updated,   /* theta_1_updated */
-    alpha,             /* alpha */
-    prec_theta_1,      /* prec_theta_1 */
-    y,                 /* y */
-    log_sigma,         /* log_sigma */
-    hat_theta_1,       /* hat_theta_1 */
-    theta_1_new,       /* theta_1_new */
-    log_accept_prob,   /* log_accept_prob */
-    lag_update,        /* lag_update */
-    n_trials,          /* n_trials */
-    n,                 /* n */
-    iter               /* iter */
+    theta_1,         /* theta_1: state trajectory matrix */
+    theta_01,        /* theta_01: initial level states */
+    theta_1_updated, /* theta_1_updated: sliding window indicators */
+    alpha,           /* alpha: success probability samples */
+    prec_theta_1,    /* prec_theta_1: level precision draws */
+    y,               /* y: observed counts */
+    log_sigma,       /* log_sigma: proposal log standard deviations */
+    hat_theta_1,     /* hat_theta_1: conditional means workspace */
+    theta_1_new,     /* theta_1_new: proposal buffer */
+    log_accept_prob, /* log_accept_prob: log acceptance storage */
+    lag_update,      /* lag_update: adaptation window length */
+    n_trials,        /* n_trials: binomial trials */
+    n,               /* n: number of observations */
+    iter             /* iter: current iteration */
   );
 }
 
@@ -325,39 +325,39 @@ void generate_alpha_logit_binomial(double *theta_1,
   if (lag_update > 0 && iter >= lag_update && (iter % lag_update == 0)) {
 
     adapt_cwmh_parameters(
-      theta_1_updated,        /* theta_updated */
-      accept_prop,            /* accept_prop */
-      log_sigma,              /* log_sigma */
-      lag_update,             /* lag_update */
-      n,                      /* n */
-      iter,                   /* iter */
-      max_step_size,          /* max_step_size */
-      base_adaptation_rate,   /* base_adaptation_rate */
-      decay_exponent,         /* decay_exponent */
-      target_acceptance,      /* target_acceptance */
-      min_deviation_threshold /* min_deviation_threshold */
+      theta_1_updated,        /* theta_updated: sliding window acceptance buffer */
+      accept_prop,            /* accept_prop: workspace for acceptance rates */
+      log_sigma,              /* log_sigma: proposal scale parameters */
+      lag_update,             /* lag_update: adaptation window length */
+      n,                      /* n: number of time points */
+      iter,                   /* iter: current iteration index */
+      max_step_size,          /* max_step_size: cap on adaptation step */
+      base_adaptation_rate,   /* base_adaptation_rate: initial adaptation rate */
+      decay_exponent,         /* decay_exponent: diminishing schedule */
+      target_acceptance,      /* target_acceptance: desired acceptance probability */
+      min_deviation_threshold /* min_deviation_threshold: deviation trigger */
     );
   }
 
   /* ========== CWMH Update for Current Iteration ========== */
   // Updates theta_1 block for 'iter', logs acceptance, and stores alpha = ilogit(theta_1)
   cwmh_alpha_logit_binomial(
-    theta_1,           /* theta_1 */
-    theta_2,           /* theta_2 */
-    theta_01,          /* theta_01 */
-    theta_02,          /* theta_02 */
-    theta_1_updated,   /* theta_1_updated */
-    alpha,             /* alpha */
-    prec_theta_1,      /* prec_theta_1 */
-    y,                 /* y */
-    log_sigma,         /* log_sigma */
-    hat_theta_1,       /* hat_theta_1 */
-    theta_1_new,       /* theta_1_new */
-    log_accept_prob,   /* log_accept_prob */
-    lag_update,        /* lag_update */
-    n_trials,          /* n_trials */
-    n,                 /* n */
-    iter               /* iter */
+    theta_1,         /* theta_1: level state trajectories */
+    theta_2,         /* theta_2: trend state trajectories */
+    theta_01,        /* theta_01: initial level states */
+    theta_02,        /* theta_02: initial trend states */
+    theta_1_updated, /* theta_1_updated: sliding window indicators */
+    alpha,           /* alpha: success probability samples */
+    prec_theta_1,    /* prec_theta_1: level precision draws */
+    y,               /* y: observed counts */
+    log_sigma,       /* log_sigma: proposal log standard deviations */
+    hat_theta_1,     /* hat_theta_1: conditional means workspace */
+    theta_1_new,     /* theta_1_new: proposal buffer */
+    log_accept_prob, /* log_accept_prob: log acceptance storage */
+    lag_update,      /* lag_update: adaptation window length */
+    n_trials,        /* n_trials: binomial trials */
+    n,               /* n: number of observations */
+    iter             /* iter: current iteration */
   );
 }
 

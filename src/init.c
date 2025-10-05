@@ -241,8 +241,17 @@ static const R_CallMethodDef CallEntries[] = {
  */
 void R_init_pdm(DllInfo *dll) {
   // Register .Call entry points for C functions accessible from R
-  R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+  R_registerRoutines(
+    dll,         /* dll: package DLL information */
+    NULL,        /* cMethods: no .C registrations */
+    CallEntries, /* callMethods: .Call registration table */
+    NULL,        /* fMethods: no .Fortran registrations */
+    NULL         /* rMethods: no .External registrations */
+  );
 
   // Disable dynamic symbol lookup for improved security and encapsulation
-  R_useDynamicSymbols(dll, FALSE);
+  R_useDynamicSymbols(
+    dll,   /* dll: package DLL information */
+    FALSE  /* value: disable dynamic symbol lookup */
+  );
 }

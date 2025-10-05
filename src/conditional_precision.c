@@ -80,7 +80,10 @@ void generate_precision_data(double *y,
 
   // Sample data precision 1/V from Gamma(nu_post, eta_post) distribution
   // R's rgamma uses scale = 1 / rate
-  prec_y_post[iter] = rgamma(nu_y_post, 1.0 / eta_y_post);
+  prec_y_post[iter] = rgamma(
+    nu_y_post,       /* shape: posterior Gamma shape */
+    1.0 / eta_y_post /* scale: inverse of posterior rate */
+  );
 }
 
 //----------------------------------------------------------------------
@@ -173,7 +176,10 @@ void generate_precision_theta_k(double *theta_0k_post,
 
   // Sample precision 1/W_k from Gamma(nu_post, eta_post) distribution
   // R's rgamma uses scale = 1 / rate
-  prec_theta_k_post[iter] = rgamma(nu_0k_post, 1.0 / eta_0k_post);
+  prec_theta_k_post[iter] = rgamma(
+    nu_0k_post,      /* shape: posterior Gamma shape */
+    1.0 / eta_0k_post /* scale: inverse of posterior rate */
+  );
 }
 
 //----------------------------------------------------------------------
@@ -257,5 +263,8 @@ void generate_precision_theta_p(double *theta_0p_post,
 
   // Sample precision 1/W_p from Gamma(nu_post, eta_post) distribution
   // R's rgamma uses scale = 1 / rate
-  prec_theta_p_post[iter] = rgamma(nu_0p_post, 1.0 / eta_0p_post);
+  prec_theta_p_post[iter] = rgamma(
+    nu_0p_post,      /* shape: posterior Gamma shape */
+    1.0 / eta_0p_post /* scale: inverse of posterior rate */
+  );
 }

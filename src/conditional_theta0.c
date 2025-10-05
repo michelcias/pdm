@@ -73,7 +73,10 @@ void generate_theta_01_locallevel(
                                prec_theta_1_post[iter]) * var_theta_01_post;
 
   // Sample theta_01 from its conditional posterior Normal distribution
-  theta_01_post[iter] = rnorm(mean_theta_01_post, sqrt(var_theta_01_post));
+  theta_01_post[iter] = rnorm(
+    mean_theta_01_post,      /* mean: posterior expectation of theta_01 */
+    sqrt(var_theta_01_post)  /* sd: posterior standard deviation */
+  );
 }
 
 //----------------------------------------------------------------------
@@ -144,7 +147,10 @@ void generate_theta_01(
                                prec_theta_1_post[iter]) * var_theta_01_post;
 
   // Sample theta_01 from its conditional posterior Normal distribution
-  theta_01_post[iter] = rnorm(mean_theta_01_post, sqrt(var_theta_01_post));
+  theta_01_post[iter] = rnorm(
+    mean_theta_01_post,      /* mean: posterior expectation of theta_01 */
+    sqrt(var_theta_01_post)  /* sd: posterior standard deviation */
+  );
 }
 
 //----------------------------------------------------------------------
@@ -233,7 +239,10 @@ void generate_theta_0k(
   prec_theta_k_post[iter]) * var_theta_0k_post;
 
   // Sample theta_0k from its conditional posterior Normal distribution
-  theta_0k_post[iter] = rnorm(mean_theta_0k_post, sqrt(var_theta_0k_post));
+  theta_0k_post[iter] = rnorm(
+    mean_theta_0k_post,      /* mean: posterior expectation of theta_0k */
+    sqrt(var_theta_0k_post)  /* sd: posterior standard deviation */
+  );
 }
 
 //----------------------------------------------------------------------
@@ -322,5 +331,8 @@ void generate_theta_0p(
   var_theta_0p_post;
 
   // Sample theta_0p from its conditional posterior Normal distribution
-  theta_0p_post[iter] = rnorm(mean_theta_0p_post, sqrt(var_theta_0p_post));
+  theta_0p_post[iter] = rnorm(
+    mean_theta_0p_post,      /* mean: posterior expectation of theta_0p */
+    sqrt(var_theta_0p_post)  /* sd: posterior standard deviation */
+  );
 }

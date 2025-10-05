@@ -67,6 +67,11 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
                                         SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
 SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
                                     SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
+SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
+                                                     SEXP prec_1_in_, SEXP y_);
+SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_, SEXP theta_2_in_,
+                                          SEXP theta_01_in_, SEXP theta_02_in_,
+                                          SEXP prec_1_in_, SEXP y_);
 SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP burnin_, SEXP thinning_,
                                                 SEXP n_chain_, SEXP theta_1_true_, SEXP theta_01_true_,
                                                 SEXP prec_1_true_, SEXP prior_theta01_mean_,
@@ -193,6 +198,8 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_test_cwmh_alpha_logit_binomial_locallevel",     (DL_FUNC) &test_cwmh_alpha_logit_binomial_locallevel,     6},
   {"_pdm_test_generate_alpha_logit_binomial",            (DL_FUNC) &test_generate_alpha_logit_binomial,            7},
   {"_pdm_test_cwmh_alpha_logit_binomial",                (DL_FUNC) &test_cwmh_alpha_logit_binomial,                7},
+  {"_pdm_test_generate_alpha_probit_bernoulli_locallevel", (DL_FUNC) &test_generate_alpha_probit_bernoulli_locallevel, 4},
+  {"_pdm_test_generate_alpha_probit_bernoulli",            (DL_FUNC) &test_generate_alpha_probit_bernoulli,            6},
 
   // --- Complete MCMC simulation tests ---
   {"_pdm_test_mcmc_binomial_locallevel_fixed_params", (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params, 19},

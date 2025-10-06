@@ -10,10 +10,9 @@
  * @version 1.2
  *
  * @changelog
- * - v1.2 (2025-10-05): [Descreva aqui as principais mudanças incluídas nesta atualização, por exemplo:]
- *     - Atualização da tabela de métodos registrados (.Call) conforme novas funções/mudanças;
- *     - Correção/adição de funções, ajuste de argumentos, melhorias de segurança ou desempenho;
- *     - Outras alterações relevantes implementadas nesta versão.
+ * - v1.2 (2025-10-05): Atualizada a tabela de métodos registrados para incluir
+ *     o helper de testes do sampler probit Bernoulli com parâmetros fixos e
+ *     revisada a documentação associada.
  * - v1.1 (2025-09-23): Added registration for optimized adaptive MCMC functions
  *   including adapt_cwmh_parameters with threshold parameter and legacy wrapper
  *   for backward compatibility.
@@ -201,14 +200,14 @@ static const R_CallMethodDef CallEntries[] = {
   // --- Binomial model component tests ---
   {"_pdm_test_generate_alpha_logit_binomial_locallevel", (DL_FUNC) &test_generate_alpha_logit_binomial_locallevel, 5},
   {"_pdm_test_cwmh_alpha_logit_binomial_locallevel",     (DL_FUNC) &test_cwmh_alpha_logit_binomial_locallevel,     6},
-  {"_pdm_test_generate_alpha_logit_binomial",            (DL_FUNC) &test_generate_alpha_logit_binomial,            7},
-  {"_pdm_test_cwmh_alpha_logit_binomial",                (DL_FUNC) &test_cwmh_alpha_logit_binomial,                7},
-  {"_pdm_test_generate_alpha_probit_bernoulli_locallevel", (DL_FUNC) &test_generate_alpha_probit_bernoulli_locallevel, 4},
-  {"_pdm_test_generate_alpha_probit_bernoulli",            (DL_FUNC) &test_generate_alpha_probit_bernoulli,            6},
+  {"_pdm_test_generate_alpha_logit_binomial",             (DL_FUNC) &test_generate_alpha_logit_binomial,             7},
+  {"_pdm_test_cwmh_alpha_logit_binomial",                 (DL_FUNC) &test_cwmh_alpha_logit_binomial,                 7},
+  {"_pdm_test_generate_alpha_probit_bernoulli_locallevel",(DL_FUNC) &test_generate_alpha_probit_bernoulli_locallevel, 4},
+  {"_pdm_test_generate_alpha_probit_bernoulli",           (DL_FUNC) &test_generate_alpha_probit_bernoulli,           6},
 
   // --- Complete MCMC simulation tests ---
-  {"_pdm_test_mcmc_binomial_locallevel_fixed_params", (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params, 19},
-  {"_pdm_test_mcmc_probit_bernoulli_locallevel_fixed_params", (DL_FUNC) &test_mcmc_probit_bernoulli_locallevel_fixed_params, 11},
+  {"_pdm_test_mcmc_binomial_locallevel_fixed_params",      (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params,      19},
+  {"_pdm_test_mcmc_probit_bernoulli_locallevel_fixed_params",(DL_FUNC) &test_mcmc_probit_bernoulli_locallevel_fixed_params, 11},
 
   // --- End of table marker ---
   {NULL, NULL, 0}

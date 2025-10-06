@@ -1,8 +1,8 @@
 library(testthat)
 
-# This file validates the statistical correctness of the probit Bernoulli MCMC 
+# This file validates the statistical correctness of the probit Bernoulli MCMC
 # sampler for local-level models using Albert-Chib data augmentation.
-# The strategy is to simulate Bernoulli data from known "true" parameters, then 
+# The strategy is to simulate Bernoulli data from known "true" parameters, then
 # run the Gibbs sampler while fixing some parameters to their true values. We then
 # check if the posterior distribution of the unfixed parameter is centered
 # around its true value.
@@ -80,7 +80,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
   # Test D: Verify alpha transformation is correct
   expect_true(all(mcmc_out_C$alpha >= 0 & mcmc_out_C$alpha <= 1),
               info = "All alpha values should be in [0,1] range.")
-  
+
   # Check probit transformation: alpha = Phi(theta_1)
   alpha_check <- pnorm(mcmc_out_C$theta_1[nrow(mcmc_out_C$theta_1), ])
   expect_equal(mcmc_out_C$alpha[nrow(mcmc_out_C$alpha), ], alpha_check, tolerance = 1e-12,
@@ -88,11 +88,11 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
 })
 
 test_that("mcmc_probit_bernoulli_locallevel handles edge cases correctly", {
-  
+
   # Test with extreme probability cases
   set.seed(505)
   n_small <- 20
-  
+
   # Case 1: All zeros (should handle gracefully)
   y_zeros <- rep(0, n_small)
   expect_no_error({
@@ -100,15 +100,15 @@ test_that("mcmc_probit_bernoulli_locallevel handles edge cases correctly", {
                           y_zeros, 50L, 1L, 100L,
                           0.0, 1.0, 1.0, 1.0)
   })
-  
-  # Case 2: All ones (should handle gracefully)  
+
+  # Case 2: All ones (should handle gracefully)
   y_ones <- rep(1, n_small)
   expect_no_error({
     result_ones <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
                          y_ones, 50L, 1L, 100L,
                          0.0, 1.0, 1.0, 1.0)
   })
-  
+
   # Verify output structure for edge cases
   expect_true(is.list(result_zeros))
   expect_true(is.list(result_ones))

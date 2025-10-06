@@ -10,9 +10,9 @@
  * @version 1.2
  *
  * @changelog
- * - v1.2 (2025-10-05): Atualizada a tabela de métodos registrados para incluir
- *     o helper de testes do sampler probit Bernoulli com parâmetros fixos e
- *     revisada a documentação associada.
+ * - v1.2 (2025-10-05): Updated the table of registered methods to include
+ *     the test helper for the probit Bernoulli sampler with fixed parameters,
+ *     and revised the associated documentation.
  * - v1.1 (2025-09-23): Added registration for optimized adaptive MCMC functions
  *   including adapt_cwmh_parameters with threshold parameter and legacy wrapper
  *   for backward compatibility.

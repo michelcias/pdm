@@ -27,6 +27,9 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>     // Include for rnorm and rgamma
+#include <R_ext/Arith.h>
+#include <R_ext/Utils.h>
+#include <stdbool.h>
 #include <string.h>    // For memcpy
 
 // Include headers for the C functions to be tested
@@ -2181,36 +2184,42 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
 /**
  * @brief Test wrapper for probit Bernoulli local-level MCMC with selective parameter fixing
  *
- * @details Enables validation of MCMC algorithm correctness by fixing specific parameters
- *          to known true values while sampling others. Uses Albert-Chib data augmentation
- *          for efficient Gibbs sampling in Bernoulli models with probit link.
+ * @details Enables validation of the probit Bernoulli local-level Gibbs sampler by
+ *          fixing individual parameters to known values while sampling the others.
+ *          The sampler uses Albert-Chib data augmentation and mirrors the production
+ *          implementation, but exposes deterministic control over which parameters
+ *          are updated in each iteration. This is useful for conditional correctness
+ *          checks in unit tests.
  *
  *          Model specification:
- *          y_t ~ Bernoulli(alpha_t), alpha_t = Phi(theta_{t,1})
- *          theta_{t,1} = theta_{t-1,1} + u_{t,1}, u_{t,1} ~ N(0, 1/prec_1)
+ *          y_t ~ Bernoulli(alpha_t),  alpha_t = Phi(theta_{t,1})
+ *          theta_{t,1} = theta_{t-1,1} + u_{t,1},  u_{t,1} ~ N(0, 1/prec_1)
  *
- * @param y_                   SEXP Numeric vector of Bernoulli observations [0,1] (length n)
- * @param burnin_              SEXP Integer scalar, number of burn-in iterations
- * @param thinning_            SEXP Integer scalar, thinning interval
- * @param n_chain_             SEXP Integer scalar, number of retained samples
- * @param theta_1_true_        SEXP Numeric matrix [n_chain x n] or NULL (fix theta_1 if provided)
+ * @param y_                   SEXP Numeric vector of Bernoulli observations in {0, 1} (length n)
+ * @param burnin_              SEXP Integer scalar, number of burn-in iterations (>= 0)
+ * @param thinning_            SEXP Integer scalar, thinning interval (> 0)
+ * @param n_chain_             SEXP Integer scalar, number of retained posterior draws (> 0)
+ * @param theta_1_true_        SEXP Numeric vector (length n) or NULL (fix theta_1 if provided)
  * @param theta_01_true_       SEXP Numeric scalar or NULL (fix theta_01 if provided)
  * @param prec_1_true_         SEXP Numeric scalar or NULL (fix prec_1 if provided)
  * @param prior_theta01_mean_  SEXP Double scalar, prior mean for theta_01
- * @param prior_theta01_prec_  SEXP Double scalar, prior precision for theta_01
- * @param prior_prec1_shape_   SEXP Double scalar, prior shape for prec_1
- * @param prior_prec1_rate_    SEXP Double scalar, prior rate for prec_1
+ * @param prior_theta01_prec_  SEXP Double scalar, prior precision for theta_01 (> 0)
+ * @param prior_prec1_shape_   SEXP Double scalar, prior Gamma shape for prec_1 (> 0)
+ * @param prior_prec1_rate_    SEXP Double scalar, prior Gamma rate for prec_1 (> 0)
  *
- * @return Named list with MCMC samples:
- *         - theta_1: Matrix [n_chain x n] of level state samples
- *         - theta_01: Vector [n_chain] of initial state samples
- *         - prec_1: Vector [n_chain] of precision samples
- *         - alpha: Matrix [n_chain x n] of success probability samples
+ * @return Named list with posterior draws:
+ *         - theta_1: Matrix [n_chain x n] of level state trajectories
+ *         - theta_01: Vector [n_chain] of initial state draws
+ *         - prec_1: Vector [n_chain] of precision draws
+ *         - alpha: Matrix [n_chain x n] of success probabilities (Phi(theta_1))
  *
- * @note Uses Gibbs sampling (100% acceptance rate) via Albert-Chib augmentation
- * @note Supports flexible parameter fixing by checking for NULL values
- * @note Validates Bernoulli constraints: y[i] ∈ {0,1}
+ * @note Supports flexible parameter fixing by checking for NULL inputs
+ * @note Validates Bernoulli constraints: y[i] ∈ {0,1} and finite
  * @note Enforces minimum sample size n >= 3 for numerical stability
+ * @note Limits the total number of stored iterations to avoid excessive memory usage
+ *
+ * @warning theta_1_true_ must have length equal to length(y) when provided
+ * @warning Prior precision, shape, and rate parameters must be positive and finite
  *
  * @see generate_alpha_probit_bernoulli_locallevel
  * @see C_MCMC_probit_bernoulli_locallevel
@@ -2221,188 +2230,275 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_, SEXP burnin_, S
                                                         SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
                                                         SEXP prior_prec1_shape_, SEXP prior_prec1_rate_) {
 
-  // Numerical constants for validation and initialization
-  const int MIN_SAMPLE_SIZE = 3;
-  const double MIN_PRECISION_THRESHOLD = 1e-6;
-  const double DEFAULT_INIT_SD = 0.1;
+  const int    MIN_SAMPLE_SIZE = 3;
+  const double MIN_PRECISION_THRESHOLD = 1e-8;
+  const int    MAX_TOTAL_ITER = 1000000;
 
-  /* Parse data vector and validate */
+  /* ------------------------------------------------------------------ */
+  /* Parse and validate data                                            */
+  /* ------------------------------------------------------------------ */
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   int protected_count = 1;
+
   int n = LENGTH(y);
   if (n < MIN_SAMPLE_SIZE) {
     UNPROTECT(protected_count);
     error("Sample size 'n' must be at least %d for numerical stability, got %d", MIN_SAMPLE_SIZE, n);
   }
-  double *y_ptr = REAL(y);
 
-  /* Validate Bernoulli constraints */
+  double *y_ptr = REAL(y);
   for (int i = 0; i < n; i++) {
-    if (y_ptr[i] != 0.0 && y_ptr[i] != 1.0) {
+    if (!R_FINITE(y_ptr[i]) || (y_ptr[i] != 0.0 && y_ptr[i] != 1.0)) {
       UNPROTECT(protected_count);
-      error("Invalid Bernoulli observation y[%d] = %f: must be exactly 0 or 1", i + 1, y_ptr[i]);
+      error("Invalid Bernoulli observation y[%d] = %f: must be finite and exactly 0 or 1", i + 1, y_ptr[i]);
     }
   }
 
-  /* Parse MCMC parameters */
-  int burnin = asInteger(burnin_);
-  int thinning = asInteger(thinning_);
-  int n_chain = asInteger(n_chain_);
+  /* ------------------------------------------------------------------ */
+  /* Parse MCMC settings                                                */
+  /* ------------------------------------------------------------------ */
+  SEXP burnin_sexp = PROTECT(coerceVector(burnin_, INTSXP));
+  protected_count++;
+  int burnin = INTEGER(burnin_sexp)[0];
 
-  if (burnin < 0 || thinning < 1 || n_chain < 1) {
+  SEXP thinning_sexp = PROTECT(coerceVector(thinning_, INTSXP));
+  protected_count++;
+  int thinning = INTEGER(thinning_sexp)[0];
+
+  SEXP n_chain_sexp = PROTECT(coerceVector(n_chain_, INTSXP));
+  protected_count++;
+  int n_chain = INTEGER(n_chain_sexp)[0];
+
+  if (burnin < 0) {
     UNPROTECT(protected_count);
-    error("Invalid MCMC parameters: burnin >= 0, thinning >= 1, n_chain >= 1");
+    error("burnin must be non-negative, got %d", burnin);
+  }
+  if (thinning <= 0) {
+    UNPROTECT(protected_count);
+    error("thinning must be positive, got %d", thinning);
+  }
+  if (n_chain <= 0) {
+    UNPROTECT(protected_count);
+    error("n_chain must be positive, got %d", n_chain);
   }
 
   int n_iter = burnin + (n_chain - 1) * thinning + 1;
-
-  /* Parse prior parameters */
-  double prior_theta01_mean = asReal(prior_theta01_mean_);
-  double prior_theta01_prec = asReal(prior_theta01_prec_);
-  double prior_prec1_shape = asReal(prior_prec1_shape_);
-  double prior_prec1_rate = asReal(prior_prec1_rate_);
-
-  if (prior_theta01_prec <= 0 || prior_prec1_shape <= 0 || prior_prec1_rate <= 0) {
+  if (n_iter > MAX_TOTAL_ITER) {
     UNPROTECT(protected_count);
-    error("Prior precision parameters must be positive");
+    error("Total iterations (%d) exceed safety limit of %d", n_iter, MAX_TOTAL_ITER);
   }
 
-  /* Check which parameters to fix */
+  /* ------------------------------------------------------------------ */
+  /* Parse prior parameters                                             */
+  /* ------------------------------------------------------------------ */
+  SEXP prior_theta01_mean_sexp = PROTECT(coerceVector(prior_theta01_mean_, REALSXP));
+  protected_count++;
+  double prior_theta01_mean = REAL(prior_theta01_mean_sexp)[0];
+
+  SEXP prior_theta01_prec_sexp = PROTECT(coerceVector(prior_theta01_prec_, REALSXP));
+  protected_count++;
+  double prior_theta01_prec = REAL(prior_theta01_prec_sexp)[0];
+
+  SEXP prior_prec1_shape_sexp = PROTECT(coerceVector(prior_prec1_shape_, REALSXP));
+  protected_count++;
+  double prior_prec1_shape = REAL(prior_prec1_shape_sexp)[0];
+
+  SEXP prior_prec1_rate_sexp = PROTECT(coerceVector(prior_prec1_rate_, REALSXP));
+  protected_count++;
+  double prior_prec1_rate = REAL(prior_prec1_rate_sexp)[0];
+
+  if (prior_theta01_prec <= 0 || !R_FINITE(prior_theta01_prec)) {
+    UNPROTECT(protected_count);
+    error("prior_theta01_prec must be positive and finite, got %f", prior_theta01_prec);
+  }
+  if (prior_prec1_shape <= 0 || prior_prec1_rate <= 0 ||
+      !R_FINITE(prior_prec1_shape) || !R_FINITE(prior_prec1_rate)) {
+    UNPROTECT(protected_count);
+    error("prior_prec1_shape (%f) and prior_prec1_rate (%f) must be positive and finite",
+          prior_prec1_shape, prior_prec1_rate);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Fixed-parameter handling                                           */
+  /* ------------------------------------------------------------------ */
   bool fix_theta_1 = !isNull(theta_1_true_);
   bool fix_theta_01 = !isNull(theta_01_true_);
   bool fix_prec_1 = !isNull(prec_1_true_);
 
-  /* Allocate memory for MCMC storage */
-  double *theta_1_samples = R_Calloc(n_iter * n, double);
-  double *theta_01_samples = R_Calloc(n_iter, double);
-  double *prec_1_samples = R_Calloc(n_iter, double);
-  double *alpha_samples = R_Calloc(n_iter * n, double);
-
-  /* Working arrays for Gibbs sampling */
-  double *v_latent = R_Calloc(n, double);
-  double *rhs_vector = R_Calloc(n, double);
-
-  /* Initialize or fix parameters */
+  const double *theta_1_true = NULL;
+  SEXP theta_1_true_sexp = R_NilValue;
   if (fix_theta_1) {
-    double *theta_1_true = REAL(theta_1_true_);
-    for (int i = 0; i < n_iter * n; i++) {
-      theta_1_samples[i] = theta_1_true[i % n];  // Replicate if needed
+    theta_1_true_sexp = PROTECT(coerceVector(theta_1_true_, REALSXP));
+    protected_count++;
+    if (LENGTH(theta_1_true_sexp) != n) {
+      UNPROTECT(protected_count);
+      error("theta_1_true must have length %d to match y, got %d", n, LENGTH(theta_1_true_sexp));
     }
-  } else {
-    // Initialize with small random values
-    GetRNGstate();
-    for (int i = 0; i < n_iter * n; i++) {
-      theta_1_samples[i] = rnorm(0.0, DEFAULT_INIT_SD);
-    }
-    PutRNGstate();
+    theta_1_true = REAL(theta_1_true_sexp);
   }
 
+  double theta_01_true = 0.0;
   if (fix_theta_01) {
-    double theta_01_true = asReal(theta_01_true_);
-    for (int i = 0; i < n_iter; i++) {
-      theta_01_samples[i] = theta_01_true;
+    SEXP theta_01_true_sexp = PROTECT(coerceVector(theta_01_true_, REALSXP));
+    protected_count++;
+    theta_01_true = REAL(theta_01_true_sexp)[0];
+    if (!R_FINITE(theta_01_true)) {
+      UNPROTECT(protected_count);
+      error("theta_01_true must be finite, got %f", theta_01_true);
     }
+  }
+
+  double prec_1_true = 0.0;
+  if (fix_prec_1) {
+    SEXP prec_1_true_sexp = PROTECT(coerceVector(prec_1_true_, REALSXP));
+    protected_count++;
+    prec_1_true = REAL(prec_1_true_sexp)[0];
+    if (!R_FINITE(prec_1_true) || prec_1_true <= 0) {
+      UNPROTECT(protected_count);
+      error("prec_1_true must be positive and finite, got %f", prec_1_true);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Allocate storage for posterior history and outputs                  */
+  /* ------------------------------------------------------------------ */
+  double *theta_1_post = (double*) R_Calloc(n_iter * n, double);
+  double *theta_01_post = (double*) R_Calloc(n_iter, double);
+  double *prec_1_post = (double*) R_Calloc(n_iter, double);
+  double *alpha_post = (double*) R_Calloc(n_iter * n, double);
+  double *v_latent = (double*) R_Calloc(n, double);
+  double *rhs_vector = (double*) R_Calloc(n, double);
+
+  SEXP theta_1_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  protected_count++;
+  SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
+  protected_count++;
+  SEXP prec_1_samples = PROTECT(allocVector(REALSXP, n_chain));
+  protected_count++;
+  SEXP alpha_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  protected_count++;
+
+  /* ------------------------------------------------------------------ */
+  /* Initialization (iteration 0)                                       */
+  /* ------------------------------------------------------------------ */
+  GetRNGstate();
+
+  if (fix_theta_01) {
+    theta_01_post[0] = theta_01_true;
   } else {
-    // Initialize from prior
-    GetRNGstate();
-    for (int i = 0; i < n_iter; i++) {
-      theta_01_samples[i] = rnorm(prior_theta01_mean, sqrt(1.0 / prior_theta01_prec));
-    }
-    PutRNGstate();
+    theta_01_post[0] = rnorm(prior_theta01_mean, sqrt(1.0 / prior_theta01_prec));
   }
 
   if (fix_prec_1) {
-    double prec_1_true = asReal(prec_1_true_);
-    for (int i = 0; i < n_iter; i++) {
-      prec_1_samples[i] = prec_1_true;
-    }
+    prec_1_post[0] = prec_1_true;
   } else {
-    // Initialize from prior
-    GetRNGstate();
-    for (int i = 0; i < n_iter; i++) {
-      prec_1_samples[i] = rgamma(prior_prec1_shape, 1.0 / prior_prec1_rate);
+    prec_1_post[0] = rgamma(prior_prec1_shape, 1.0 / prior_prec1_rate);
+    if (!R_FINITE(prec_1_post[0]) || prec_1_post[0] < MIN_PRECISION_THRESHOLD) {
+      prec_1_post[0] = MIN_PRECISION_THRESHOLD;
     }
-    PutRNGstate();
   }
 
-  /* Run MCMC iterations */
-  GetRNGstate();
+  if (fix_theta_1) {
+    memcpy(theta_1_post, theta_1_true, n * sizeof(double));
+  } else {
+    double init_sd = sqrt(1.0 / prec_1_post[0]);
+    theta_1_post[0] = rnorm(theta_01_post[0], init_sd);
+    for (int j = 1; j < n; j++) {
+      theta_1_post[j] = rnorm(theta_1_post[j - 1], init_sd);
+    }
+  }
 
+  for (int j = 0; j < n; j++) {
+    alpha_post[j] = pnorm(theta_1_post[j], 0.0, 1.0, 1, 0);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Main Gibbs sampling loop                                           */
+  /* ------------------------------------------------------------------ */
   for (int iter = 1; iter < n_iter; iter++) {
+    if (iter % 1000 == 0) {
+      R_CheckUserInterrupt();
+    }
 
-    // Sample theta_1 (unless fixed)
-    if (!fix_theta_1) {
+    if (fix_theta_1) {
+      double *theta_curr = &theta_1_post[iter * n];
+      double *alpha_curr = &alpha_post[iter * n];
+      memcpy(theta_curr, theta_1_true, n * sizeof(double));
+      for (int j = 0; j < n; j++) {
+        alpha_curr[j] = pnorm(theta_curr[j], 0.0, 1.0, 1, 0);
+      }
+    } else {
       generate_alpha_probit_bernoulli_locallevel(
-        theta_1_samples, theta_01_samples, alpha_samples, prec_1_samples,
+        theta_1_post, theta_01_post, alpha_post, prec_1_post,
         y_ptr, v_latent, rhs_vector, n, iter
       );
+    }
+
+    if (fix_prec_1) {
+      prec_1_post[iter] = prec_1_true;
     } else {
-      // Still need to compute alpha for fixed theta_1
-      int current_pos = iter * n;
-      for (int t = 0; t < n; t++) {
-        alpha_samples[current_pos + t] = pnorm(theta_1_samples[current_pos + t], 0.0, 1.0, 1, 0);
+      generate_precision_theta_p(
+        theta_01_post, theta_1_post, prec_1_post,
+        prior_prec1_shape, prior_prec1_rate, n, iter
+      );
+
+      if (!R_FINITE(prec_1_post[iter]) || prec_1_post[iter] < MIN_PRECISION_THRESHOLD) {
+        prec_1_post[iter] = fmax2(prec_1_post[iter - 1], MIN_PRECISION_THRESHOLD);
       }
     }
 
-    // Sample theta_01 (unless fixed)
-    if (!fix_theta_01) {
-      generate_theta_01_locallevel(theta_1_samples, theta_01_samples, prec_1_samples,
-                                   prior_theta01_mean, prior_theta01_prec, n, iter);
-    }
-
-    // Sample prec_1 (unless fixed)
-    if (!fix_prec_1) {
-      generate_precision_theta_p(theta_1_samples, theta_01_samples, prec_1_samples,
-                                 prior_prec1_shape, prior_prec1_rate, n, iter);
+    if (fix_theta_01) {
+      theta_01_post[iter] = theta_01_true;
+    } else {
+      generate_theta_01_locallevel(
+        theta_01_post, theta_1_post, prec_1_post,
+        prior_theta01_mean, prior_theta01_prec, n, iter
+      );
     }
   }
 
   PutRNGstate();
 
-  /* Create output matrices and vectors */
-  SEXP theta_1_out = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_out = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_1_out = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP alpha_out = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  protected_count += 4;
-
-  /* Extract thinned samples */
+  /* ------------------------------------------------------------------ */
+  /* Extract thinned samples for output                                 */
+  /* ------------------------------------------------------------------ */
   for (int chain_idx = 0; chain_idx < n_chain; chain_idx++) {
     int iter_idx = burnin + chain_idx * thinning;
+    int offset = iter_idx * n;
 
-    // Extract theta_1 row
-    for (int t = 0; t < n; t++) {
-      REAL(theta_1_out)[chain_idx + t * n_chain] = theta_1_samples[iter_idx * n + t];
-      REAL(alpha_out)[chain_idx + t * n_chain] = alpha_samples[iter_idx * n + t];
+    for (int j = 0; j < n; j++) {
+      REAL(theta_1_samples)[chain_idx + j * n_chain] = theta_1_post[offset + j];
+      REAL(alpha_samples)[chain_idx + j * n_chain] = alpha_post[offset + j];
     }
 
-    // Extract scalar parameters
-    REAL(theta_01_out)[chain_idx] = theta_01_samples[iter_idx];
-    REAL(prec_1_out)[chain_idx] = prec_1_samples[iter_idx];
+    REAL(theta_01_samples)[chain_idx] = theta_01_post[iter_idx];
+    REAL(prec_1_samples)[chain_idx] = prec_1_post[iter_idx];
   }
 
-  /* Create output list */
+  /* ------------------------------------------------------------------ */
+  /* Package results and release memory                                 */
+  /* ------------------------------------------------------------------ */
   SEXP result = PROTECT(allocVector(VECSXP, 4));
-  SEXP names = PROTECT(allocVector(STRSXP, 4));
-  protected_count += 2;
+  protected_count++;
+  SEXP result_names = PROTECT(allocVector(STRSXP, 4));
+  protected_count++;
 
-  SET_VECTOR_ELT(result, 0, theta_1_out);
-  SET_VECTOR_ELT(result, 1, theta_01_out);
-  SET_VECTOR_ELT(result, 2, prec_1_out);
-  SET_VECTOR_ELT(result, 3, alpha_out);
+  SET_VECTOR_ELT(result, 0, theta_1_samples);
+  SET_VECTOR_ELT(result, 1, theta_01_samples);
+  SET_VECTOR_ELT(result, 2, prec_1_samples);
+  SET_VECTOR_ELT(result, 3, alpha_samples);
 
-  SET_STRING_ELT(names, 0, mkChar("theta_1"));
-  SET_STRING_ELT(names, 1, mkChar("theta_01"));
-  SET_STRING_ELT(names, 2, mkChar("prec_1"));
-  SET_STRING_ELT(names, 3, mkChar("alpha"));
+  SET_STRING_ELT(result_names, 0, mkChar("theta_1"));
+  SET_STRING_ELT(result_names, 1, mkChar("theta_01"));
+  SET_STRING_ELT(result_names, 2, mkChar("prec_1"));
+  SET_STRING_ELT(result_names, 3, mkChar("alpha"));
 
-  setAttrib(result, R_NamesSymbol, names);
+  setAttrib(result, R_NamesSymbol, result_names);
 
-  /* Clean up memory */
-  R_Free(theta_1_samples);
-  R_Free(theta_01_samples);
-  R_Free(prec_1_samples);
-  R_Free(alpha_samples);
+  R_Free(theta_1_post);
+  R_Free(theta_01_post);
+  R_Free(prec_1_post);
+  R_Free(alpha_post);
   R_Free(v_latent);
   R_Free(rhs_vector);
 

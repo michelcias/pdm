@@ -80,6 +80,11 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
                                                 SEXP max_step_size_, SEXP base_adaptation_rate_,
                                                 SEXP decay_exponent_, SEXP target_acceptance_,
                                                 SEXP return_log_sigma_, SEXP return_accept_prop_);
+SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
+                                                        SEXP theta_1_true_, SEXP theta_01_true_, SEXP prec_1_true_,
+                                                        SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
+                                                        SEXP prior_prec1_shape_, SEXP prior_prec1_rate_);
+
 
 /**
  * @brief Static table defining .Call method entries for R-C interface
@@ -203,6 +208,7 @@ static const R_CallMethodDef CallEntries[] = {
 
   // --- Complete MCMC simulation tests ---
   {"_pdm_test_mcmc_binomial_locallevel_fixed_params", (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params, 19},
+  {"_pdm_test_mcmc_probit_bernoulli_locallevel_fixed_params", (DL_FUNC) &test_mcmc_probit_bernoulli_locallevel_fixed_params, 11},
 
   // --- End of table marker ---
   {NULL, NULL, 0}

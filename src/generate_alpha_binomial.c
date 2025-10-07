@@ -489,6 +489,7 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
       // y_t = 0: sample from N(theta_{t,1}, 1) truncated below 0
       v_latent[t] = rtruncnorm(theta_1_mean, 1.0, R_NegInf, 0.0);
     }
+    Rprintf("[%.6f]  ", v_latent[t]);
   }
 
   /* ========== Step 2: Construct Right-Hand Side Vector ========== */

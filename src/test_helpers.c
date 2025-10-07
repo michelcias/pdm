@@ -47,6 +47,33 @@
 //==============================================================================
 
 /**
+ * @brief Helper function to print first N values of a double array
+ *
+ * @param label Descriptive label for the array
+ * @param arr Pointer to the array
+ * @param n_print Number of values to print (usually 5)
+ * @param total_length Total length of the array (for context)
+ */
+// static void print_array_head(const char *label, const double *arr, int n_print, int total_length) {
+//   Rprintf("%s (showing %d of %d): [", label, n_print, total_length);
+//   for (int i = 0; i < n_print && i < total_length; i++) {
+//     if (R_IsNA(arr[i])) {
+//       Rprintf("NA");
+//     } else if (R_IsNaN(arr[i])) {
+//       Rprintf("NaN");
+//     } else if (!R_finite(arr[i])) {
+//       Rprintf("Inf");
+//     } else {
+//       Rprintf("%.4f", arr[i]);
+//     }
+//     if (i < n_print - 1 && i < total_length - 1) {
+//       Rprintf(", ");
+//     }
+//   }
+//   Rprintf("]\n\n");
+// }
+
+/**
  * @brief R interface wrapper for the internal C ilogit function
  *
  * @details This function serves as a bridge to allow the internal C `ilogit`
@@ -1599,6 +1626,30 @@ SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP thet
   double *v_latent = (double*) R_alloc(n, sizeof(double));
   double *rhs_vector = (double*) R_alloc(n, sizeof(double));
 
+  // Rprintf("\n========================================\n");
+  // Rprintf("DEBUG: test_generate_alpha_probit_bernoulli_locallevel\n");
+  // Rprintf("========================================\n");
+  // Rprintf("n = %d\n\n", n);
+  //
+  // // Imprimir inputs
+  // Rprintf("--- INPUT VECTORS (first 5 values) ---\n");
+  // print_array_head("y", y_ptr, 5, n);
+  // print_array_head("theta_1_in", REAL(theta_1_in), 5, n);
+  // Rprintf("theta_01_in[0] = %.10f\n", REAL(theta_01_in)[0]);
+  // Rprintf("prec_1_in[0] = %.10f\n\n", REAL(prec_1_in)[0]);
+  //
+  // Rprintf("--- STORAGE ARRAYS BEFORE SAMPLING ---\n");
+  // print_array_head("theta_1_store[0:n-1] (iter 0)", theta_1_store, 5, n);
+  // print_array_head("theta_1_store[n:2n-1] (iter 1, uninitialized)", theta_1_store + n, 5, n);
+  // Rprintf("theta_01_store: [%.6f, %.6f]\n", theta_01_store[0], theta_01_store[1]);
+  // Rprintf("prec_1_store: [%.6f, %.6f]\n", prec_1_store[0], prec_1_store[1]);
+  // print_array_head("alpha_store[0:n-1] (iter 0)", alpha_store, 5, n);
+  // print_array_head("alpha_store[n:2n-1] (iter 1, zeros)", alpha_store + n, 5, n);
+  // Rprintf("\n");
+  //
+  // Rprintf("--- CALLING generate_alpha_probit_bernoulli_locallevel ---\n");
+  // Rprintf("Parameters: n=%d, iter=1\n\n", n);
+
   GetRNGstate();
   generate_alpha_probit_bernoulli_locallevel(
     theta_1_store, /* theta_1: two-iteration storage for level state */
@@ -1613,12 +1664,27 @@ SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP thet
   );
   PutRNGstate();
 
+  // Rprintf("--- STORAGE ARRAYS AFTER SAMPLING ---\n");
+  // print_array_head("theta_1_store[0:n-1] (iter 0, unchanged)", theta_1_store, 5, n);
+  // print_array_head("theta_1_store[n:2n-1] (iter 1, SAMPLED)", theta_1_store + n, 5, n);
+  // Rprintf("theta_01_store: [%.6f, %.6f]\n", theta_01_store[0], theta_01_store[1]);
+  // Rprintf("prec_1_store: [%.6f, %.6f] (unchanged)\n", prec_1_store[0], prec_1_store[1]);
+  // print_array_head("alpha_store[0:n-1] (iter 0, unchanged)", alpha_store, 5, n);
+  // print_array_head("alpha_store[n:2n-1] (iter 1, COMPUTED)", alpha_store + n, 5, n);
+  // print_array_head("v_latent (working array)", v_latent, 5, n);
+  // print_array_head("rhs_vector (working array)", rhs_vector, 5, n);
+  // Rprintf("\n");
+
   SEXP res = PROTECT(allocVector(VECSXP, 2));
   SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
   SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
 
   memcpy(REAL(theta_1_out), theta_1_store + n, n * sizeof(double));
   memcpy(REAL(alpha_out), alpha_store + n, n * sizeof(double));
+
+  // Rprintf("--- OUTPUT TO R ---\n");
+  // print_array_head("theta_1_out (returned)", REAL(theta_1_out), 5, n);
+  // print_array_head("alpha_out (returned)", REAL(alpha_out), 5, n);
 
   SET_VECTOR_ELT(res, 0, theta_1_out);
   SET_VECTOR_ELT(res, 1, alpha_out);

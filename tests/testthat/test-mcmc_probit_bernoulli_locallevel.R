@@ -13,7 +13,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
 
   # --- 1. Simulation Setup ---
   set.seed(501)
-  n <- 150
+  n <- 1500
 
   # True parameters for simulation
   theta_01_true <- -0.2

@@ -83,15 +83,15 @@ y <- rbinom(n, size = 1, prob = alpha_true)
 #-------------------------------------------------------------------------------
 burnin   <- 10000
 thinning <- 1
-n_chain  <- 100000
+n_chain  <- 10000
 # Total iterations: same formula as in C implementations
 n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
 # Priors (matching naming from C implementations)
 mean_theta01 <- 0       # prior_theta01_mean
-prec_theta01 <- 0.01    # prior_theta01_prec
-nu_01        <- 1e3     # prior_prec1_shape
-eta_01       <- 1e3     # prior_prec1_rate
+prec_theta01 <- 0.1    # prior_theta01_prec
+nu_01        <- 1e-1     # prior_prec1_shape
+eta_01       <- 1e-1     # prior_prec1_rate
 
 #-------------------------------------------------------------------------------
 # 3) Chain Storage

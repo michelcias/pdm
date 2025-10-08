@@ -377,24 +377,71 @@ void generate_alpha_logit_binomial(double *theta_1,
  * @note Handles boundary cases gracefully.
  */
 static double rtruncnorm(double mu, double sigma, double lower, double upper) {
+  /* Fallback probability guard when avoiding <float.h> constants. We set the floor
+   * close to the smallest normalised double (≈1e-308); pushing the guard any
+   * lower causes pnorm/qnorm to underflow to zero on mainstream toolchains. */
+  const double PROB_FLOOR   = 1e-308;
+  const double PROB_CEILING = 1.0 - PROB_FLOOR;
+
   double p_lower, p_upper, u, p;
 
+  if (!(lower < upper)) {
+    error("rtruncnorm: lower must be strictly less than upper (received %f vs %f)",
+          lower, upper);
+  }
+
   // Compute cumulative probabilities at bounds
-  if (lower == R_NegInf) {
+  if (lower == 0.0) {
+    p_lower = 0.5;
+  } else if (lower == R_NegInf) {
     p_lower = 0.0;
   } else {
     p_lower = pnorm(lower, mu, sigma, 1, 0);
   }
 
-  if (upper == R_PosInf) {
+  if (upper == 0.0) {
+    p_upper = 0.5;
+  } else if (upper == R_PosInf) {
     p_upper = 1.0;
   } else {
     p_upper = pnorm(upper, mu, sigma, 1, 0);
   }
 
-  // Sample uniform in valid probability range
-  u = unif_rand();
-  p = p_lower + u * (p_upper - p_lower);
+  // Guard against numerical collapse of the probability interval which would lead to
+  // qnorm returning +/-Inf and subsequently propagating NaNs into the state sampler.
+  if (p_lower <= 0.0) {
+    p_lower = PROB_FLOOR;
+  } else if (p_lower >= 1.0) {
+    p_lower = PROB_CEILING;
+  }
+
+  if (p_upper <= 0.0) {
+    p_upper = PROB_FLOOR;
+  } else if (p_upper >= 1.0) {
+    p_upper = PROB_CEILING;
+  }
+
+  if (p_upper <= p_lower) {
+    // When the tail probability degenerates due to finite precision (e.g. extremely
+    // imbalanced truncation), fall back to the nearest admissible probability to avoid
+    // returning infinities from qnorm.
+    if (p_lower >= PROB_CEILING) {
+      p = PROB_CEILING;
+    } else {
+      p = PROB_FLOOR;
+    }
+  } else {
+    // Sample uniform in valid probability range
+    u = unif_rand();
+    p = p_lower + u * (p_upper - p_lower);
+  }
+
+  // Final safety clamp to keep probability strictly inside (0, 1)
+  if (p <= 0.0) {
+    p = PROB_FLOOR;
+  } else if (p >= 1.0) {
+    p = PROB_CEILING;
+  }
 
   // Transform back to truncated normal
   return qnorm(p, mu, sigma, 1, 0);

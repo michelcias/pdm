@@ -396,6 +396,11 @@ static double rtruncnorm(double mu, double sigma, double lower, double upper) {
   u = unif_rand();
   p = p_lower + u * (p_upper - p_lower);
 
+  Rprintf("[p_lower = %.6f]  ", p_lower);
+  Rprintf("[p_upper = %.6f]  ", p_upper);
+  Rprintf("[u       = %.6f]  ", u);
+  Rprintf("[p       = %.6f]  \n\n", p);
+
   // Transform back to truncated normal
   return qnorm(p, mu, sigma, 1, 0);
 }

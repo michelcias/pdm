@@ -380,7 +380,7 @@ static double rtruncnorm(double mu, double sigma, double lower, double upper) {
   /* Fallback probability guard when avoiding <float.h> constants. We set the floor
    * close to the smallest normalised double (≈1e-308); pushing the guard any
    * lower causes pnorm/qnorm to underflow to zero on mainstream toolchains. */
-  const double PROB_FLOOR   = 1e-308;
+  const double PROB_FLOOR   = 1e-199;
   const double PROB_CEILING = 1.0 - PROB_FLOOR;
 
   double p_lower, p_upper, u, p;

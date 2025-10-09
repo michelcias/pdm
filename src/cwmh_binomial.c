@@ -30,7 +30,10 @@
  * @param lp2o Log-likelihood contribution of the second component at the old state.
  * @return Log of the acceptance probability truncated at 0 to cap the probability at 1.
  */
-static inline double stable_log_accept_prob(double lp1n, double lp2n, double lp1o, double lp2o) {
+static inline double stable_log_accept_prob(double lp1n,
+                                            double lp2n,
+                                            double lp1o,
+                                            double lp2o) {
   double log_ratio = (lp1n + lp2n) - (lp1o + lp2o);
   return fmin2(0.0, log_ratio);  // Cap at 0 (probability 1)
 }
@@ -42,7 +45,7 @@ typedef struct {
   double cached_prec;
   double cached_sd_last;
   double cached_sd_regular;
-  int cached_iter;
+  int    cached_iter;
 } precision_cache_t;
 
 static precision_cache_t prec_cache = {-1.0, 0.0, 0.0, -1};
@@ -71,14 +74,14 @@ static precision_cache_t prec_cache = {-1.0, 0.0, 0.0, -1};
  *          lag_update x n instead of full B x n matrix.
  *
  *          **Precision structure:**
- *          - Regular elements (k=0..n-2): sd_regular = 1/sqrt(prec_theta_1 * 2)
- *          - Last element (k=n-1):        sd_last    = 1/sqrt(prec_theta_1)
+ *          - Regular elements (t=0..n-2): sd_regular = 1/sqrt(prec_theta_1 * 2)
+ *          - Last element (t=n-1):        sd_last    = 1/sqrt(prec_theta_1)
  *
  *          **Conditional means for proposal:**
  *          - First:
  *          E[theta_{1,1} | theta_01, theta_{2,1}] = 0.5 * (theta_{2,1} + theta_01)
  *          - Intermediate:
- *          E[theta_{k,1} | theta_{k-1,1}, theta_{k+1,1}] = 0.5 * (theta_{k-1,1} + theta_{k+1,1})
+ *          E[theta_{t,1} | theta_{t-1,1}, theta_{t+1,1}] = 0.5 * (theta_{t-1,1} + theta_{t+1,1})
  *          - Last:
  *          E[theta_{n,1} | theta_{n-1,1}] = theta_{n-1,1}
  *
@@ -91,7 +94,7 @@ static precision_cache_t prec_cache = {-1.0, 0.0, 0.0, -1};
  *                           success probability at time t.
  * @param prec_theta_1       Vector of level precision parameters (size B).
  * @param y                  Vector of observed binomial counts (size n).
- *                           Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
+ *                           Each y[t] must satisfy 0 <= y[t] <= n_trials.
  * @param log_sigma          Vector of log proposal standard deviations (size n).
  * @param hat_theta_1        Temporary vector for conditional means (size n).
  * @param theta_1_new        Temporary vector for proposed values (size n).
@@ -110,7 +113,7 @@ static precision_cache_t prec_cache = {-1.0, 0.0, 0.0, -1};
  * @note Model specification: Implements a local level binomial model (random walk only).
  * @note Cache optimization: Precision-dependent calculations are cached between iterations.
  *
- * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
+ * @warning Each y[t] must satisfy 0 <= y[t] <= n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
  * @warning lag_update must be > 0 for theta_1_updated indexing.
@@ -125,10 +128,10 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
                                           double *hat_theta_1,
                                           double *theta_1_new,
                                           double *log_accept_prob,
-                                          int lag_update,
-                                          double n_trials,
-                                          int n,
-                                          int iter) {
+                                          int     lag_update,
+                                          double  n_trials,
+                                          int     n,
+                                          int     iter) {
 
   int k;
 
@@ -161,7 +164,7 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
   const int window_row = iter % lag_update;
   const int window_idx = window_row * n;
 
-  /* ========== First Element (k = 0) ========== */
+  /* ========== First Element (t = 0) ========== */
   // Conditional mean incorporating initial state from previous iteration
   // For local level: E[theta_{1,1} | theta_01, theta_{2,1}] = 0.5 * (theta_{2,1} + theta_01)
   hat_theta_1[0] = 0.5 * (theta_1[iterm1_n + 1] + theta_01[prev_iter]);
@@ -190,12 +193,12 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
   // Store acceptance indicator in sliding window
   theta_1_updated[window_idx + 0] = accepted_0;
 
-  /* ========== Intermediate Elements (k = 1 to n-2) ========== */
+  /* ========== Intermediate Elements (t = 1 to n-2) ========== */
   // Cache previous value for improved memory locality
   double theta_prev = theta_1_new[0];
 
   for (k = 1; k < (n - 1); k++) {
-    // Conditional mean for local level model: E[theta_{k,1} | theta_{k-1,1}, theta_{k+1,1}]
+    // Conditional mean for local level model: E[theta_{t,1} | theta_{t-1,1}, theta_{t+1,1}]
     // Using forward-sampling: previously updated theta_prev
     double theta_next = theta_1[iterm1_n + k + 1];
     hat_theta_1[k] = 0.5 * (theta_next + theta_prev);
@@ -227,8 +230,8 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
     theta_prev = theta_1_new[k];
   }
 
-  /* ========== Last Element (k = n-1) ========== */
-  // Simplified conditional mean for last element: E[theta_{1,n-1} | theta_{1,n-2}]
+  /* ========== Last Element (t = n-1) ========== */
+  // Simplified conditional mean for last element: E[theta_{n-1,1} | theta_{n-2,1}]
   // For local level: just the previous state (random walk)
   hat_theta_1[n - 1] = theta_prev;  // Use cached value
 
@@ -258,7 +261,7 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
   /* ========== Update Output Arrays (vectorized) ========== */
   for (k = 0; k < n; k++) {
     theta_1[iter_n + k] = theta_1_new[k];                      // Store sampled states
-    alpha[iter_n + k] = ilogit(theta_1_new[k]);               // Store transformed probabilities
+    alpha[iter_n + k] = ilogit(theta_1_new[k]);                // Store transformed probabilities
   }
 }
 
@@ -289,16 +292,16 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
  *          lag_update x n instead of full B x n matrix.
  *
  *          **Precision structure:**
- *          - Regular elements (k=0..n-2): sd_regular = 1/sqrt(prec_theta_1 * 2)
- *          - Last element (k=n-1):        sd_last    = 1/sqrt(prec_theta_1)
+ *          - Regular elements (t=0..n-2): sd_regular = 1/sqrt(prec_theta_1 * 2)
+ *          - Last element (t=n-1):        sd_last    = 1/sqrt(prec_theta_1)
  *
  *          **Conditional means for proposal:**
  *          - First:
  *          E[theta_{1,1} | theta_01, theta_02, theta_{2,1}, theta_{1,2}] =
  *                            0.5 * (theta_{2,1} - theta_{1,2} + theta_01 + theta_02)
  *          - Intermediate:
- *          E[theta_{k,1} | theta_{k-1,1}, theta_{k-1,2}, theta_{k+1,1}, theta_{k,2}] =
- *                            0.5 * (theta_{k+1,1} - theta_{k,2} + theta_{k-1,1} - theta_{k-1,2})
+ *          E[theta_{t,1} | theta_{t-1,1}, theta_{t-1,2}, theta_{t+1,1}, theta_{t,2}] =
+ *                            0.5 * (theta_{t+1,1} - theta_{t,2} + theta_{t-1,1} - theta_{t-1,2})
  *          - Last:
  *          E[theta_{n,1} | theta_{n-1,1}, theta_{n-1,2}] = theta_{n-1,1} + theta_{n-1,2}
  *
@@ -311,7 +314,7 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
  * @param alpha              Matrix of transformed probabilities (vectorized B x n), output.
  * @param prec_theta_1       Vector of level precision parameters (size B).
  * @param y                  Vector of observed binomial counts (size n).
- *                           Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
+ *                           Each y[t] must satisfy 0 <= y[t] <= n_trials.
  * @param log_sigma          Vector of log proposal standard deviations (size n).
  * @param hat_theta_1        Temporary vector for conditional means (size n).
  * @param theta_1_new        Temporary vector for proposed values (size n).
@@ -330,7 +333,7 @@ void cwmh_alpha_logit_binomial_locallevel(double *theta_1,
  * @note Model specification: Implements a local trend binomial model (random walk + trend).
  * @note Cache optimization: Precision-dependent calculations are cached between iterations.
  *
- * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
+ * @warning Each y[t] must satisfy 0 <= y[t] <= n_trials.
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
  *          history (iter < 1).
  * @warning lag_update must be > 0 for theta_1_updated indexing.
@@ -347,10 +350,10 @@ void cwmh_alpha_logit_binomial(double *theta_1,
                                double *hat_theta_1,
                                double *theta_1_new,
                                double *log_accept_prob,
-                               int lag_update,
-                               double n_trials,
-                               int n,
-                               int iter) {
+                               int     lag_update,
+                               double  n_trials,
+                               int     n,
+                               int     iter) {
 
   int k;
 
@@ -383,7 +386,7 @@ void cwmh_alpha_logit_binomial(double *theta_1,
   const int window_row = iter % lag_update;
   const int window_idx = window_row * n;
 
-  /* ========== First Element (k = 0) ========== */
+  /* ========== First Element (t = 0) ========== */
   // Conditional mean incorporating initial states from previous iteration
   hat_theta_1[0] = 0.5 * (theta_1[iterm1_n + 1] - theta_2[iter_n] +
   theta_01[prev_iter] + theta_02[prev_iter]);
@@ -412,7 +415,7 @@ void cwmh_alpha_logit_binomial(double *theta_1,
   // Store acceptance indicator in sliding window
   theta_1_updated[window_idx + 0] = accepted_0;
 
-  /* ========== Intermediate Elements (k = 1 to n-2) ========== */
+  /* ========== Intermediate Elements (t = 1 to n-2) ========== */
   // Cache previous value for improved memory locality
   double theta_prev = theta_1_new[0];
 
@@ -451,7 +454,7 @@ void cwmh_alpha_logit_binomial(double *theta_1,
     theta_prev = theta_1_new[k];
   }
 
-  /* ========== Last Element (k = n-1) ========== */
+  /* ========== Last Element (t = n-1) ========== */
   // Simplified conditional mean: no future state dependency
   double theta_2_prev = theta_2[iter_n + n - 2];
   hat_theta_1[n - 1] = theta_prev + theta_2_prev;  // Use cached theta_prev
@@ -482,6 +485,6 @@ void cwmh_alpha_logit_binomial(double *theta_1,
   /* ========== Update Output Arrays (vectorized) ========== */
   for (k = 0; k < n; k++) {
     theta_1[iter_n + k] = theta_1_new[k];                      // Store sampled states
-    alpha[iter_n + k] = ilogit(theta_1_new[k]);               // Store transformed probabilities
+    alpha[iter_n + k] = ilogit(theta_1_new[k]);                // Store transformed probabilities
   }
 }

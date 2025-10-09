@@ -533,8 +533,8 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
  * @brief Gibbs sampler for theta_1 in a probit-Bernoulli local level model
  *        using Albert-Chib data augmentation.
  *
- * @details Implements efficient Gibbs sampling for the level state vector theta_1
- *          in a Bernoulli observation model with probit link:
+ * @details Implements Gibbs sampling for the level state vector theta_1 in a
+ *          Bernoulli observation model with probit link:
  *          y_t ~ Bernoulli(alpha_t),
  *          where alpha_t = Phi(theta_{t,1}) and Phi is the standard normal CDF.
  *
@@ -548,36 +548,46 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
  *          - y_t = 0 if v_t <= 0
  *
  *          **Algorithm:**
- *          1. Sample latent variables v_t from truncated normals given theta_1, y
- *          2. Sample theta_1 from multivariate normal given v using generate_normal_vector
- *
- *          The full conditional posterior is:
+ *          The full conditional posterior for theta_1 given latent variables v is:
  *          theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
  *          where Sigma_posterior^{-1} = I + prec_theta_1 * H'H (tridiagonal precision)
  *                mu_posterior = Sigma_posterior * [v + prec_theta_1 * theta_01 * e_1]
  *
+ *          The sampler proceeds by drawing latent variables from truncated normals
+ *          conditional on current theta_1 values, constructing the right-hand side
+ *          vector for the linear system, and sampling theta_1 from its multivariate
+ *          normal full conditional using generate_normal_vector.
+ *
  * @param theta_1              Matrix of level states (vectorized B x n), input/output.
  * @param theta_01             Vector of initial level states (size B).
  * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
+ *                             Only computed if compute_alpha is non-zero.
  * @param prec_theta_1         Vector of level precision parameters (size B).
  * @param y                    Vector of observed Bernoulli outcomes (size n).
  *                             Each y[k] must be exactly 0 or 1.
- * @param v_latent             Working vector for latent variables (size n).
- * @param rhs_vector           Working vector for right-hand side of system (size n).
+ * @param v_latent             Unused parameter maintained for API consistency.
+ *                             Pass NULL.
+ * @param rhs_vector           Working vector for right-hand side of linear system (size n).
  * @param n                    Length of the time series.
  * @param iter                 Current MCMC iteration (0-based).
+ * @param compute_alpha        Flag to control alpha transformation (0 = skip, 1 = compute).
+ *                             Set to 0 when probability scale values are not needed.
  *
- * @note Complexity: O(n) per iteration (exploiting tridiagonal structure).
- * @note Always achieves acceptance rate of 1.0 (Gibbs sampling).
- * @note Model is local level (no trend component).
+ * @note Complexity: O(n) per iteration exploiting tridiagonal structure.
+ * @note Acceptance rate is always 1.0 (Gibbs sampling).
+ * @note Model assumes local level without trend component.
+ * @note For maximum efficiency, set compute_alpha = 0 during burn-in or when
+ *       alpha values are not required for inference.
  *
  * @warning Each y[k] must be exactly 0 or 1 (Bernoulli outcomes).
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain
  *          sufficient history (iter < 1).
- * @warning n must be > 0 for generate_normal_vector to work correctly.
+ * @warning n must be > 0.
+ * @warning v_latent parameter is not used; pass NULL.
  *
  * @see Albert and Chib (1993) "Bayesian Analysis of Binary and Polychotomous Response Data"
  * @see generate_normal_vector
+ * @see rtruncnorm
  */
 void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
                                                 double *theta_01,
@@ -587,13 +597,15 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
                                                 double *v_latent,
                                                 double *rhs_vector,
                                                 int     n,
-                                                int     iter) {
+                                                int     iter,
+                                                int     compute_alpha) {
 
   /* ========== Prerequisites and Safety Checks ========== */
   if (iter <= 0) {
     return;
   }
 
+  /* ========== Extract Parameters and Compute Positions ========== */
   int prev_iter = iter - 1;
   int current_pos = iter * n;
   int prev_pos = prev_iter * n;
@@ -601,47 +613,42 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
   double prec_1 = prec_theta_1[prev_iter];
   double theta_0 = theta_01[prev_iter];
 
-  // Pointers to previous iteration values
-  double *theta_1_prev = &theta_1[prev_pos];
-
-  /* ========== Step 1: Sample Latent Variables (Data Augmentation) ========== */
-  // For each time point t, sample v_t from truncated normal
-  // v_t | y_t, theta_{t,1} ~ N(theta_{t,1}, 1) with appropriate truncation
-
+  /* ========== Sample Latent Variables and Construct RHS Vector ========== */
+  /* Sample v_t from truncated normal conditional on theta_{t-1,1} and y_t.
+   * Truncation bounds depend on observation:
+   * - y_t = 1: sample from N(theta_{t-1,1}, 1) truncated above 0
+   * - y_t = 0: sample from N(theta_{t-1,1}, 1) truncated below 0
+   *
+   * The right-hand side vector is constructed as rhs[t] = v_t for all t,
+   * with boundary correction added after the loop. */
   for (int t = 0; t < n; t++) {
-    double theta_1_mean = theta_1_prev[t];
+    double theta_1_prev = theta_1[prev_pos + t];
+    double v_t;
 
     if (y[t] == 1.0) {
-      // y_t = 1: sample from N(theta_{t,1}, 1) truncated above 0
-      v_latent[t] = rtruncnorm(theta_1_mean, 1.0, 0.0, R_PosInf);
+      v_t = rtruncnorm(theta_1_prev, 1.0, 0.0, R_PosInf);
     } else {
-      // y_t = 0: sample from N(theta_{t,1}, 1) truncated below 0
-      v_latent[t] = rtruncnorm(theta_1_mean, 1.0, R_NegInf, 0.0);
+      v_t = rtruncnorm(theta_1_prev, 1.0, R_NegInf, 0.0);
     }
+
+    rhs_vector[t] = v_t;
   }
 
-  /* ========== Step 2: Construct Right-Hand Side Vector ========== */
-  // Following the conditional posterior mean structure:
-  // For local level: rhs = v + prec_theta_1 * theta_01 * e_1
-  // where e_1 = (1, 0, 0, ..., 0)' is the first unit vector
+  /* Adjust first element to incorporate initial state contribution.
+   * This implements the boundary condition rhs[0] = v_0 + prec_1 * theta_0. */
+  rhs_vector[0] += prec_1 * theta_0;
 
-  rhs_vector[0] = v_latent[0] + prec_1 * theta_0;
-  for (int t = 1; t < n; t++) {
-    rhs_vector[t] = v_latent[t];
-  }
-
-  /* ========== Step 3: Sample theta_1 from Multivariate Normal ========== */
-  // Sample from: theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
-  // where Sigma_posterior^{-1} = I + prec_theta_1 * H'H
-  //
-  // The precision matrix has tridiagonal structure with:
-  // - Diagonal: 1 + 2*prec_1 for t = 0,...,n-2
-  // - Last diagonal: 1 + prec_1
-  // - Off-diagonal: -prec_1
-  //
-  // This corresponds to generate_normal_vector with:
-  // a = 1.0 (observational precision), b = prec_1 (state precision)
-
+  /* ========== Sample theta_1 from Multivariate Normal ========== */
+  /* Sample from: theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
+   * where Sigma_posterior^{-1} = I + prec_theta_1 * H'H
+   *
+   * The precision matrix has tridiagonal structure with:
+   * - Diagonal: 1 + 2*prec_1 for t = 0,...,n-2
+   * - Last diagonal: 1 + prec_1
+   * - Off-diagonal: -prec_1
+   *
+   * This corresponds to generate_normal_vector with:
+   * a = 1.0 (observational precision), b = prec_1 (state precision) */
   generate_normal_vector(
     theta_1,       /* r: output matrix */
     rhs_vector,    /* y: right-hand side */
@@ -652,13 +659,14 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
     1              /* add_a: use (a + b) for last diagonal element */
   );
 
-  /* ========== Step 4: Transform to Probability Scale ========== */
-  // Compute alpha_t = Phi(theta_{t,1}) for all t
-  double *alpha_curr = &alpha[current_pos];
-  double *theta_1_curr = &theta_1[current_pos];
-
-  for (int t = 0; t < n; t++) {
-    alpha_curr[t] = pnorm(theta_1_curr[t], 0.0, 1.0, 1, 0);
+  /* ========== Transform to Probability Scale ========== */
+  /* Compute alpha_t = Phi(theta_{t,1}) for all t if requested.
+   * This transformation is needed for posterior summaries and diagnostics
+   * but can be skipped during burn-in to save computational cost. */
+  if (compute_alpha) {
+    for (int t = 0; t < n; t++) {
+      alpha[current_pos + t] = pnorm(theta_1[current_pos + t], 0.0, 1.0, 1, 0);
+    }
   }
 }
 

@@ -159,8 +159,8 @@ void generate_alpha_logit_binomial(double *theta_1,
  * @brief Gibbs sampler for theta_1 in a probit-Bernoulli local level model
  *        using Albert-Chib data augmentation.
  *
- * @details Implements efficient Gibbs sampling for the level state vector theta_1
- *          in a Bernoulli observation model with probit link:
+ * @details Implements Gibbs sampling for the level state vector theta_1 in a
+ *          Bernoulli observation model with probit link:
  *          y_t ~ Bernoulli(alpha_t),
  *          where alpha_t = Phi(theta_{t,1}) and Phi is the standard normal CDF.
  *
@@ -174,36 +174,46 @@ void generate_alpha_logit_binomial(double *theta_1,
  *          - y_t = 0 if v_t <= 0
  *
  *          **Algorithm:**
- *          1. Sample latent variables v_t from truncated normals given theta_1, y
- *          2. Sample theta_1 from multivariate normal given v using generate_normal_vector
- *
- *          The full conditional posterior is:
+ *          The full conditional posterior for theta_1 given latent variables v is:
  *          theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
  *          where Sigma_posterior^{-1} = I + prec_theta_1 * H'H (tridiagonal precision)
  *                mu_posterior = Sigma_posterior * [v + prec_theta_1 * theta_01 * e_1]
  *
+ *          The sampler proceeds by drawing latent variables from truncated normals
+ *          conditional on current theta_1 values, constructing the right-hand side
+ *          vector for the linear system, and sampling theta_1 from its multivariate
+ *          normal full conditional using generate_normal_vector.
+ *
  * @param theta_1              Matrix of level states (vectorized B x n), input/output.
  * @param theta_01             Vector of initial level states (size B).
  * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
+ *                             Only computed if compute_alpha is non-zero.
  * @param prec_theta_1         Vector of level precision parameters (size B).
  * @param y                    Vector of observed Bernoulli outcomes (size n).
  *                             Each y[k] must be exactly 0 or 1.
- * @param v_latent             Working vector for latent variables (size n).
- * @param rhs_vector           Working vector for right-hand side of system (size n).
+ * @param v_latent             Unused parameter maintained for API consistency.
+ *                             Pass NULL.
+ * @param rhs_vector           Working vector for right-hand side of linear system (size n).
  * @param n                    Length of the time series.
  * @param iter                 Current MCMC iteration (0-based).
+ * @param compute_alpha        Flag to control alpha transformation (0 = skip, 1 = compute).
+ *                             Set to 0 when probability scale values are not needed.
  *
- * @note Complexity: O(n) per iteration (exploiting tridiagonal structure).
- * @note Always achieves acceptance rate of 1.0 (Gibbs sampling).
- * @note Model is local level (no trend component).
+ * @note Complexity: O(n) per iteration exploiting tridiagonal structure.
+ * @note Acceptance rate is always 1.0 (Gibbs sampling).
+ * @note Model assumes local level without trend component.
+ * @note For maximum efficiency, set compute_alpha = 0 during burn-in or when
+ *       alpha values are not required for inference.
  *
  * @warning Each y[k] must be exactly 0 or 1 (Bernoulli outcomes).
  * @warning Results are invalid if theta_01 or prec_theta_1 do not contain
  *          sufficient history (iter < 1).
- * @warning n must be > 0 for generate_normal_vector to work correctly.
+ * @warning n must be > 0.
+ * @warning v_latent parameter is not used; pass NULL.
  *
  * @see Albert and Chib (1993) "Bayesian Analysis of Binary and Polychotomous Response Data"
  * @see generate_normal_vector
+ * @see rtruncnorm
  */
 void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
                                                 double *theta_01,
@@ -213,7 +223,8 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
                                                 double *v_latent,
                                                 double *rhs_vector,
                                                 int     n,
-                                                int     iter);
+                                                int     iter,
+                                                int     compute_alpha);
 
 /**
  * @brief Gibbs sampler for theta_1 in a probit-Bernoulli local trend model

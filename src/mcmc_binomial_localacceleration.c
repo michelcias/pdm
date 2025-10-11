@@ -1,23 +1,42 @@
 /**
  * @file mcmc_binomial_localacceleration.c
- * @brief Implementation of MCMC sampling for local-acceleration binomial dynamic models - Optimized version
- * @details Provides a complete optimized Gibbs sampler for Bayesian estimation of binomial
- *          dynamic models with logit link and local-acceleration structure, utilizing
- *          component-wise Metropolis-Hastings for non-linear state sampling with
- *          configurable adaptation threshold.
+ * @brief MCMC sampling for local-acceleration binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
- * @date 2025-09-27
- * @version 1.2
+ * @date 2025-01-11
+ * @version 1.0
  *
- * @changelog
- * - v1.2 (2025-09-27): Updated generate_alpha_logit_binomial calls to include
- *   configurable min_deviation_threshold parameter. Enhanced flexibility while
- *   maintaining optimal default behavior and sliding window memory optimization.
+ * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
+ *          dynamic models with local-acceleration structure (level + trend + acceleration):
+ *          - Logit-binomial: Component-wise Metropolis-Hastings with adaptive tuning
+ *          - Probit-Bernoulli: Gibbs sampling via Albert-Chib data augmentation
+ *
+ *          All implementations utilize memory-efficient current/previous iteration buffers
+ *          requiring only O(n) temporary storage regardless of chain length.
+ *
+ *          **Key features:**
+ *          - Memory-efficient O(n) temporary storage using current/previous buffers
+ *          - Conditional alpha computation for performance optimization
+ *          - Configurable adaptive threshold for Metropolis-Hastings algorithms
+ *          - Conjugate posterior updates for variance and initial state parameters
+ *          - Flexible burn-in and thinning controls
+ *
+ *          **Logit-binomial model:**
+ *          Observation: y_t ~ Binomial(n_trials, alpha_t), alpha_t = logit^{-1}(theta_{t,1})
+ *          State: theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1}
+ *                 theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2}
+ *                 theta_{t,3} = theta_{t-1,3} + u_{t,3}
+ *
+ *          **Probit-Bernoulli model:**
+ *          Observation: y_t ~ Bernoulli(alpha_t), alpha_t = Phi(theta_{t,1})
+ *          State: theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1}
+ *                 theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2}
+ *                 theta_{t,3} = theta_{t-1,3} + u_{t,3}
  */
 
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>
+#include <string.h>  /* memcpy */
 #include "conditional_state.h"
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
@@ -26,165 +45,172 @@
 #include "mcmc_binomial_localacceleration.h"
 
 /**
- * @brief Gibbs sampler for local-acceleration binomial dynamic model with logit link - Optimized version
+ * @brief Gibbs sampler for local-acceleration binomial dynamic model with logit link
  *
- * @details Implements a complete optimized Gibbs MCMC algorithm for the local-acceleration binomial model:
+ * @details Implements a complete Gibbs MCMC algorithm for the local-acceleration binomial model:
  *
- *          Observation equation:
- *          y_t ~ Binomial(n_trials, alpha_t)
- *          where alpha_t = logit^(-1)(theta_{t,1})
+ *          **Observation equation:**
+ *          y_t ~ Binomial(n_trials, alpha_t), where alpha_t = logit^{-1}(theta_{t,1})
  *
- *          State equations:
- *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
- *          theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2},  u_{t,2} ~ N(0, W_2)
- *          theta_{t,3} = theta_{t-1,3} + u_{t,3},                  u_{t,3} ~ N(0, W_3)
+ *          **State equations:**
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1}, u_{t,1} ~ N(0, W_1)
+ *          theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2}, u_{t,2} ~ N(0, W_2)
+ *          theta_{t,3} = theta_{t-1,3} + u_{t,3},                 u_{t,3} ~ N(0, W_3)
  *
- *          The algorithm employs optimized component-wise Metropolis-Hastings for the non-linear
- *          observation model, with adaptive proposal tuning based on acceptance proportions.
- *          Innovation precisions are sampled from conjugate Gamma posteriors.
- *
- *          **Optimizations implemented:**
- *          - Cached precision computations to avoid repeated sqrt/division
- *          - Reduced memory allocation by eliminating redundant arrays
- *          - Sliding window memory optimization for theta_1_updated
- *          - Stable log-probability computations
- *          - Configurable adaptation threshold with practical default (1.0/lag_update)
- *
- *          **Version 1.2 enhancements:**
- *          Enhanced flexibility by computing and passing practical adaptation threshold
- *          to component-wise sampling functions. This ensures optimal adaptation behavior
- *          while maintaining interface compatibility.
- *
- *          Sampling sequence per iteration:
- *          1. theta_3 | theta_2, theta_0, W_3 -> Gaussian posterior (conditional state)
- *          2. 1/W_3 | theta_3, theta_03 -> Gamma posterior
- *          3. theta_{0,3} | theta_3, theta_02, W_3 -> Gaussian posterior
- *          4. theta_2 | theta_1, theta_3, theta_0, W_2 -> Gaussian posterior (conditional state)
- *          5. 1/W_2 | theta_2, theta_02, theta_03 -> Gamma posterior
- *          6. theta_{0,2} | theta_2, theta_01, theta_03, W_2 -> Gaussian posterior
- *          7. theta_1 | y, theta_2, theta_0, W_1 -> Component-wise Metropolis-Hastings with adaptive threshold
- *          8. 1/W_1 | theta_1, theta_01, theta_02 -> Gamma posterior
- *          9. theta_{0,1} | theta_1, theta_02, W_1 -> Gaussian posterior
- *
- *          Total iterations computed as: burnin + (n_chain - 1) x thinning + 1
- *
- *          Priors:
- *          - theta_{0,1} ~ N(mu_01, tau_01^{-1})
- *          - theta_{0,2} ~ N(mu_02, tau_02^{-1})
- *          - theta_{0,3} ~ N(mu_03, tau_03^{-1})
+ *          **Prior distributions:**
+ *          - theta_{0,1} ~ N(mu_{0,1}, sigma_{0,1}^2)
+ *          - theta_{0,2} ~ N(mu_{0,2}, sigma_{0,2}^2)
+ *          - theta_{0,3} ~ N(mu_{0,3}, sigma_{0,3}^2)
  *          - 1/W_1 ~ Gamma(nu_1, eta_1)
  *          - 1/W_2 ~ Gamma(nu_2, eta_2)
  *          - 1/W_3 ~ Gamma(nu_3, eta_3)
  *
- * @param y_                       SEXP Numeric vector of observed binomial counts [length n]
- * @param n_trials_                SEXP Double scalar, number of trials per observation
- * @param burnin_                  SEXP Integer scalar, number of burn-in iterations
- * @param thinning_                SEXP Integer scalar, thinning interval
- * @param n_chain_                 SEXP Integer scalar, target number of retained samples
- * @param prior_theta01_mean_      SEXP Double scalar, prior mean for initial state theta_{0,1}
- * @param prior_theta01_prec_      SEXP Double scalar, prior precision for initial state theta_{0,1}
- * @param prior_theta02_mean_      SEXP Double scalar, prior mean for initial state theta_{0,2}
- * @param prior_theta02_prec_      SEXP Double scalar, prior precision for initial state theta_{0,2}
- * @param prior_theta03_mean_      SEXP Double scalar, prior mean for initial state theta_{0,3}
- * @param prior_theta03_prec_      SEXP Double scalar, prior precision for initial state theta_{0,3}
- * @param prior_prec1_shape_       SEXP Double scalar, shape parameter for Gamma prior on 1/W_1
- * @param prior_prec1_rate_        SEXP Double scalar, rate parameter for Gamma prior on 1/W_1
- * @param prior_prec2_shape_       SEXP Double scalar, shape parameter for Gamma prior on 1/W_2
- * @param prior_prec2_rate_        SEXP Double scalar, rate parameter for Gamma prior on 1/W_2
- * @param prior_prec3_shape_       SEXP Double scalar, shape parameter for Gamma prior on 1/W_3
- * @param prior_prec3_rate_        SEXP Double scalar, rate parameter for Gamma prior on 1/W_3
- * @param lag_update_              SEXP Integer scalar, adaptation frequency (iterations)
- * @param max_step_size_           SEXP Double scalar, maximum proposal step size
- * @param base_adaptation_rate_    SEXP Double scalar, base adaptation rate
- * @param decay_exponent_          SEXP Double scalar, adaptation decay exponent
- * @param target_acceptance_       SEXP Double scalar, target acceptance proportion
- * @param min_deviation_threshold_ SEXP Double scalar, minimum absolute deviation from
- *                                      target_acceptance required to trigger log_sigma updates.
- *                                      Values >= 0.
- * @param return_log_sigma_        SEXP Logical scalar, whether to return log_sigma diagnostics
- * @param return_accept_prop_      SEXP Logical scalar, whether to return accept_prop diagnostics
+ *          **Optimizations implemented:**
+ *          - Memory-efficient current/previous iteration buffers (O(n) storage)
+ *          - Conditional alpha computation (skip during burn-in/thinning)
+ *          - Configurable adaptation threshold (practical default: 1.0/lag_update)
+ *          - Scalar parameter passing to avoid array indexing
+ *          - Efficient initialization with zeros and neutral starting values
  *
- * @return SEXP R list containing posterior samples with named components:
- *         - theta_1:     Numeric matrix [n_chain x n] of level state trajectory samples
- *         - theta_2:     Numeric matrix [n_chain x n] of trend state trajectory samples
- *         - theta_3:     Numeric matrix [n_chain x n] of acceleration state trajectory samples
- *         - theta_01:    Numeric vector [n_chain] of initial level state samples
- *         - theta_02:    Numeric vector [n_chain] of initial trend state samples
- *         - theta_03:    Numeric vector [n_chain] of initial acceleration state samples
- *         - prec_1:      Numeric vector [n_chain] of level innovation precision samples
- *         - prec_2:      Numeric vector [n_chain] of trend innovation precision samples
- *         - prec_3:      Numeric vector [n_chain] of acceleration innovation precision samples
- *         - alpha:       Numeric matrix [n_chain x n] of success probability samples
- *         - log_sigma:   Numeric matrix [n_chain x n] of proposal scales (if requested)
- *         - accept_prop: Numeric matrix [n_chain x n] of acceptance proportions (if requested)
+ *          **Sampling sequence per iteration:**
+ *          1. theta_3 | theta_2, theta_03, W_3 -> Gaussian posterior
+ *          2. 1/W_3 | theta_3, theta_03 -> Gamma posterior
+ *          3. theta_{0,3} | theta_3, theta_02, W_3 -> Gaussian posterior
+ *          4. theta_2 | theta_1, theta_3, theta_02, W_2 -> Gaussian posterior
+ *          5. 1/W_2 | theta_2, theta_02, theta_03 -> Gamma posterior
+ *          6. theta_{0,2} | theta_2, theta_01, theta_03, W_2 -> Gaussian posterior
+ *          7. theta_1, alpha | y, theta_2, theta_01, W_1 -> Component-wise MH with adaptive tuning
+ *          8. 1/W_1 | theta_1, theta_01, theta_02 -> Gamma posterior
+ *          9. theta_{0,1} | theta_1, theta_02, W_1 -> Gaussian posterior
  *
- * @note Computational complexity: O(n_iter x n) for n_iter total iterations
- * @note Memory requirements: O(lag_update x n) for optimized sliding window + O(n_iter x n) for trajectory storage
- * @note RNG management: Proper GetRNGstate()/PutRNGstate() bracket for R integration
- * @note Adaptation: Uses practical threshold for optimal sensitivity control
- * @note Memory optimization: theta_1_updated uses sliding window instead of full matrix
+ *          Total iterations: burnin + (n_chain - 1) * thinning + 1
  *
- * @warning Minimum sample size n >= 3 enforced for numerical stability
- * @warning Each y[i] must satisfy 0 <= y[i] <= n_trials
- * @warning Memory allocation failures will terminate R session via R_Calloc errors
+ * @param y_                       Numeric vector [n] of observed binomial counts.
+ * @param n_trials_                Number of trials per observation.
+ * @param burnin_                  Number of burn-in iterations (discarded).
+ * @param thinning_                Thinning interval for autocorrelation reduction.
+ * @param n_chain_                 Number of retained posterior samples.
+ * @param prior_theta01_mean_      Prior mean for theta_{0,1}.
+ * @param prior_theta01_prec_      Prior precision for theta_{0,1}.
+ * @param prior_theta02_mean_      Prior mean for theta_{0,2}.
+ * @param prior_theta02_prec_      Prior precision for theta_{0,2}.
+ * @param prior_theta03_mean_      Prior mean for theta_{0,3}.
+ * @param prior_theta03_prec_      Prior precision for theta_{0,3}.
+ * @param prior_prec1_shape_       Gamma shape for 1/W_1.
+ * @param prior_prec1_rate_        Gamma rate for 1/W_1.
+ * @param prior_prec2_shape_       Gamma shape for 1/W_2.
+ * @param prior_prec2_rate_        Gamma rate for 1/W_2.
+ * @param prior_prec3_shape_       Gamma shape for 1/W_3.
+ * @param prior_prec3_rate_        Gamma rate for 1/W_3.
+ * @param lag_update_              Adaptation frequency (iterations).
+ * @param max_step_size_           Maximum proposal step size.
+ * @param base_adaptation_rate_    Base adaptation rate.
+ * @param decay_exponent_          Adaptation decay exponent.
+ * @param target_acceptance_       Target acceptance proportion.
+ * @param min_deviation_threshold_ Minimum deviation to trigger adaptation (>= 0).
+ * @param return_log_sigma_        Flag to return log_sigma diagnostics.
+ * @param return_accept_prop_      Flag to return accept_prop diagnostics.
  *
- * @see generate_theta_p
- * @see generate_precision_theta_p
- * @see generate_theta_0p
- * @see generate_theta_k
- * @see generate_precision_theta_k
- * @see generate_theta_0k
+ * @return R list with components:
+ *         - theta_1:     Matrix [n_chain * n] of level state trajectory samples
+ *         - theta_2:     Matrix [n_chain * n] of trend state trajectory samples
+ *         - theta_3:     Matrix [n_chain * n] of acceleration state trajectory samples
+ *         - theta_01:    Vector [n_chain] of initial level state samples
+ *         - theta_02:    Vector [n_chain] of initial trend state samples
+ *         - theta_03:    Vector [n_chain] of initial acceleration state samples
+ *         - prec_1:      Vector [n_chain] of level innovation precision samples
+ *         - prec_2:      Vector [n_chain] of trend innovation precision samples
+ *         - prec_3:      Vector [n_chain] of acceleration innovation precision samples
+ *         - alpha:       Matrix [n_chain * n] of success probability samples
+ *         - log_sigma:   Matrix [n_chain * n] of proposal scales (if requested)
+ *         - accept_prop: Matrix [n_chain * n] of acceptance proportions (if requested)
+ *
+ * @note Complexity: O(n_iter * n) time, O(n) space
+ * @note Requires n >= 3 for numerical stability
+ * @note Proper RNG state management via GetRNGstate()/PutRNGstate()
+ * @note Adaptation threshold: practical default is 1.0/lag_update
+ *
+ * @warning Each y[t] must satisfy 0 <= y[t] <= n_trials
+ * @warning n must not exceed INT_MAX
+ * @warning Memory allocation failures terminate R session
+ *
  * @see generate_alpha_logit_binomial
+ * @see generate_theta_p
+ * @see generate_theta_k
+ * @see generate_precision_theta_p
+ * @see generate_precision_theta_k
+ * @see generate_theta_0p
+ * @see generate_theta_0k
  * @see generate_theta_01
  */
-SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
-                                             SEXP burnin_, SEXP thinning_, SEXP n_chain_,
-                                             SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
-                                             SEXP prior_theta02_mean_, SEXP prior_theta02_prec_,
-                                             SEXP prior_theta03_mean_, SEXP prior_theta03_prec_,
-                                             SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
-                                             SEXP prior_prec2_shape_, SEXP prior_prec2_rate_,
-                                             SEXP prior_prec3_shape_, SEXP prior_prec3_rate_,
-                                             SEXP lag_update_, SEXP max_step_size_,
-                                             SEXP base_adaptation_rate_, SEXP decay_exponent_,
-                                             SEXP target_acceptance_, SEXP min_deviation_threshold_,
-                                             SEXP return_log_sigma_, SEXP return_accept_prop_) {
+SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
+                                             SEXP n_trials_,
+                                             SEXP burnin_,
+                                             SEXP thinning_,
+                                             SEXP n_chain_,
+                                             SEXP prior_theta01_mean_,
+                                             SEXP prior_theta01_prec_,
+                                             SEXP prior_theta02_mean_,
+                                             SEXP prior_theta02_prec_,
+                                             SEXP prior_theta03_mean_,
+                                             SEXP prior_theta03_prec_,
+                                             SEXP prior_prec1_shape_,
+                                             SEXP prior_prec1_rate_,
+                                             SEXP prior_prec2_shape_,
+                                             SEXP prior_prec2_rate_,
+                                             SEXP prior_prec3_shape_,
+                                             SEXP prior_prec3_rate_,
+                                             SEXP lag_update_,
+                                             SEXP max_step_size_,
+                                             SEXP base_adaptation_rate_,
+                                             SEXP decay_exponent_,
+                                             SEXP target_acceptance_,
+                                             SEXP min_deviation_threshold_,
+                                             SEXP return_log_sigma_,
+                                             SEXP return_accept_prop_) {
 
-  /* Parse data vector and check its length */
-  double   *y    = REAL(y_);
-  R_xlen_t  len  = LENGTH(y_);
-  if (len < 3)
+  /* ========== Parse Data Vector and Validate Length ========== */
+  double   *y   = REAL(y_);
+  R_xlen_t  len = LENGTH(y_);
+
+  /* Enforce minimum sample size for numerical stability */
+  if (len < 3) {
     Rf_error("C_MCMC_logit_binomial_localacceleration: sample size 'n' must be at least 3, got %lld",
              (long long) len);
-  if (len > INT_MAX)
+  }
+
+  /* Check for integer overflow (R limitation) */
+  if (len > INT_MAX) {
     Rf_error("C_MCMC_logit_binomial_localacceleration: sample size too large (%lld > %d)",
              (long long) len, INT_MAX);
+  }
+
   int n = (int) len;
 
-  /* Parse observation model parameters */
+  /* ========== Parse Observation Model Parameters ========== */
   double n_trials = REAL(n_trials_)[0];
 
   /* Validate binomial constraints */
-  for (int i = 0; i < n; i++) {
-    if (y[i] < 0 || y[i] > n_trials) {
+  for (int t = 0; t < n; t++) {
+    if (y[t] < 0 || y[t] > n_trials) {
       Rf_error("C_MCMC_logit_binomial_localacceleration: y[%d] = %f violates 0 <= y <= n_trials = %f",
-               i, y[i], n_trials);
+               t, y[t], n_trials);
     }
   }
 
-  /* Parse MCMC settings */
+  /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];
   int thinning = INTEGER(thinning_)[0];
   int n_chain  = INTEGER(n_chain_)[0];
   int n_iter   = burnin + (n_chain - 1) * thinning + 1;
 
-  /* Parse prior hyperparameters */
-  double theta01_mean = REAL(prior_theta01_mean_)[0];
-  double theta01_prec = REAL(prior_theta01_prec_)[0];
-  double theta02_mean = REAL(prior_theta02_mean_)[0];
-  double theta02_prec = REAL(prior_theta02_prec_)[0];
-  double theta03_mean = REAL(prior_theta03_mean_)[0];
-  double theta03_prec = REAL(prior_theta03_prec_)[0];
+  /* ========== Parse Prior Hyperparameters ========== */
+  double mean_theta01 = REAL(prior_theta01_mean_)[0];
+  double prec_theta01 = REAL(prior_theta01_prec_)[0];
+  double mean_theta02 = REAL(prior_theta02_mean_)[0];
+  double prec_theta02 = REAL(prior_theta02_prec_)[0];
+  double mean_theta03 = REAL(prior_theta03_mean_)[0];
+  double prec_theta03 = REAL(prior_theta03_prec_)[0];
   double nu_01        = REAL(prior_prec1_shape_)[0];
   double eta_01       = REAL(prior_prec1_rate_)[0];
   double nu_02        = REAL(prior_prec2_shape_)[0];
@@ -192,7 +218,7 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
   double nu_03        = REAL(prior_prec3_shape_)[0];
   double eta_03       = REAL(prior_prec3_rate_)[0];
 
-  /* Parse adaptive MCMC parameters */
+  /* ========== Parse Adaptation Parameters ========== */
   int    lag_update              = INTEGER(lag_update_)[0];
   double max_step_size           = REAL(max_step_size_)[0];
   double base_adaptation_rate    = REAL(base_adaptation_rate_)[0];
@@ -200,18 +226,11 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
   double target_acceptance       = REAL(target_acceptance_)[0];
   double min_deviation_threshold = REAL(min_deviation_threshold_)[0];
 
-  /* Parse diagnostic flags */
+  /* ========== Parse Diagnostic Output Options ========== */
   int return_log_sigma   = LOGICAL(return_log_sigma_)[0];
   int return_accept_prop = LOGICAL(return_accept_prop_)[0];
 
-  /* Calculate number of outputs and protections */
-  int n_base_outputs = 10;  /* theta_1, theta_2, theta_3, theta_01, theta_02, theta_03, prec_1, prec_2, prec_3, alpha */
-  int n_outputs = n_base_outputs;
-  if (return_log_sigma) n_outputs++;
-  if (return_accept_prop) n_outputs++;
-  int n_protect = n_base_outputs;  /* Base matrices/vectors to protect */
-
-  /* Allocate storage for posterior samples */
+  /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_2_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_3_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -226,28 +245,38 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples   = R_NilValue;
   SEXP accept_prop_samples = R_NilValue;
+  int n_outputs = 10;  /* Base outputs */
+  int n_protect = 10;  /* Base protection count */
+
   if (return_log_sigma) {
     log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    n_outputs++;
     n_protect++;
   }
   if (return_accept_prop) {
     accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    n_outputs++;
     n_protect++;
   }
 
-  /* Buffers for full MCMC trajectory (including burn‑in) */
-  double *theta_1_post     = (double *) R_Calloc(n_iter * n, double);
-  double *theta_2_post     = (double *) R_Calloc(n_iter * n, double);
-  double *theta_3_post     = (double *) R_Calloc(n_iter * n, double);
-  double *theta_01_post    = (double *) R_Calloc(n_iter,     double);
-  double *theta_02_post    = (double *) R_Calloc(n_iter,     double);
-  double *theta_03_post    = (double *) R_Calloc(n_iter,     double);
-  double *prec_1_post      = (double *) R_Calloc(n_iter,     double);
-  double *prec_2_post      = (double *) R_Calloc(n_iter,     double);
-  double *prec_3_post      = (double *) R_Calloc(n_iter,     double);
-  double *alpha_post       = (double *) R_Calloc(n_iter * n, double);
+  /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
+  double *theta_1_current  = (double *) R_Calloc(n, double);
+  double *theta_1_previous = (double *) R_Calloc(n, double);
+  double *theta_2_current  = (double *) R_Calloc(n, double);
+  double *theta_2_previous = (double *) R_Calloc(n, double);
+  double *theta_3_current  = (double *) R_Calloc(n, double);
+  double *theta_3_previous = (double *) R_Calloc(n, double);
+  double *alpha_current    = (double *) R_Calloc(n, double);
 
-  /* Optimized sliding window buffer for theta_1_updated */
+  /* Scalar parameters for current and previous iterations */
+  double theta_01_current, theta_01_previous;
+  double theta_02_current, theta_02_previous;
+  double theta_03_current, theta_03_previous;
+  double prec_1_current,   prec_1_previous;
+  double prec_2_current,   prec_2_previous;
+  double prec_3_current,   prec_3_previous;
+
+  /* Sliding window buffer for acceptance tracking */
   double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
 
   /* Working arrays for CWMH algorithm */
@@ -258,214 +287,226 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
   double *log_accept_prob  = (double *) R_Calloc(n, double);
 
   /* Initialize log_sigma with reasonable starting values */
-  for (int j = 0; j < n; j++) {
-    log_sigma[j] = log(0.1);  /* Initial proposal sd = 0.1 */
+  for (int t = 0; t < n; t++) {
+    log_sigma[t] = log(0.1);
   }
 
-  /* Initialize RNG state */
+  /* ========== Initialize RNG State ========== */
   GetRNGstate();
 
-  /*--- INITIALIZATION (iter = 0) ---*/
-  theta_01_post[0] = rnorm(theta01_mean, sqrt(1.0 / theta01_prec));
-  theta_02_post[0] = rnorm(theta02_mean, sqrt(1.0 / theta02_prec));
-  theta_03_post[0] = rnorm(theta03_mean, sqrt(1.0 / theta03_prec));
-  prec_1_post[0]   = rgamma(nu_01, 1.0 / eta_01);
-  prec_2_post[0]   = rgamma(nu_02, 1.0 / eta_02);
-  prec_3_post[0]   = rgamma(nu_03, 1.0 / eta_03);
+  /* ========== Initialize Parameters (Iteration 0) ========== */
+  theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
+  theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
+  theta_03_previous = rnorm(mean_theta03, sqrt(1.0 / prec_theta03));
+  prec_1_previous   = rgamma(nu_01, 1.0 / eta_01);
+  prec_2_previous   = rgamma(nu_02, 1.0 / eta_02);
+  prec_3_previous   = rgamma(nu_03, 1.0 / eta_03);
 
-  /* Initialize state vectors for t = 1..n */
-  double init_sd_1 = sqrt(1.0 / prec_1_post[0]);
-  double init_sd_2 = sqrt(1.0 / prec_2_post[0]);
-  double init_sd_3 = sqrt(1.0 / prec_3_post[0]);
-  theta_1_post[0] = rnorm(theta_01_post[0] + theta_02_post[0], init_sd_1);
-  theta_2_post[0] = rnorm(theta_02_post[0] + theta_03_post[0], init_sd_2);
-  theta_3_post[0] = rnorm(theta_03_post[0], init_sd_3);
-  for (int j = 1; j < n; j++) {
-    theta_1_post[j] = rnorm(theta_1_post[j - 1] + theta_2_post[j - 1], init_sd_1);
-    theta_2_post[j] = rnorm(theta_2_post[j - 1] + theta_3_post[j - 1], init_sd_2);
-    theta_3_post[j] = rnorm(theta_3_post[j - 1], init_sd_3);
+  /* Initialize state vectors with efficient neutral starting values */
+  for (int t = 0; t < n; t++) {
+    theta_1_previous[t] = 0.0;
+    theta_2_previous[t] = 0.0;
+    theta_3_previous[t] = 0.0;
+    alpha_current[t]    = 0.5;
   }
 
-  /* Initialize alpha (success probabilities) */
-  for (int j = 0; j < n; j++) {
-    alpha_post[j] = ilogit(theta_1_post[j]);
-  }
+  /* ========== Main Gibbs Sampling Loop ========== */
+  int chain_idx = 0;
 
-  /*--- Main Gibbs sampling loop ---*/
-  int chain = 0;
   for (int ii = 1; ii < n_iter; ii++) {
 
-    /* 1) Sample acceleration state vector theta_3 */
+    /* Determine whether to compute alpha transformations */
+    int compute_alpha = (ii >= burnin && ((ii - burnin) % thinning) == 0) ? 1 : 0;
+
+    /* ===== Step 1: Sample Acceleration State Vector theta_3 ===== */
+    /* Draw theta_3 | theta_2, previous parameters from multivariate Normal
+     * with tridiagonal precision matrix (O(n) via Cholesky).
+     * Uses theta_2 from previous iteration for computing differences. */
     generate_theta_p(
-      theta_2_post,  /* theta_pm1_post: trend states */
-      theta_3_post,  /* theta_p_post: acceleration states (output) */
-      prec_2_post,   /* prec_theta_pm1_post: trend precisions */
-      prec_3_post,   /* prec_theta_p_post: acceleration precisions */
-      theta_03_post, /* theta_0p_post: initial acceleration state */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+      theta_2_previous,   /* theta_{p-1}: trend from previous iteration [n] */
+      theta_3_current,    /* output: current iteration theta_3 [n] */
+      prec_2_previous,    /* scalar: trend precision from previous iteration */
+      prec_3_previous,    /* scalar: acceleration precision from previous iteration */
+      theta_03_previous,  /* scalar: initial acceleration from previous iteration */
+      n                   /* sample size */
     );
 
-    /* 2) Sample innovation precision 1/W_3 */
-    generate_precision_theta_p(
-      theta_03_post, /* theta_0p_post: initial acceleration state */
-      theta_3_post,  /* theta_p_post: acceleration trajectories */
-      prec_3_post,   /* prec_theta_p_post: acceleration precisions */
-      nu_03,         /* nu_0p: prior shape */
-      eta_03,        /* eta_0p: prior rate */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 2: Sample Acceleration Innovation Precision 1/W_3 ===== */
+    /* Draw 1/W_3 | theta_3_current, theta_{0,3}_previous from Gamma posterior.
+     * Uses current theta_3 (just sampled) and previous theta_{0,3}. */
+    prec_3_current = generate_precision_theta_p(
+      theta_03_previous,  /* scalar: initial acceleration from previous iteration */
+      theta_3_current,    /* vector: current theta_3 [n] */
+      nu_03,              /* prior shape */
+      eta_03,             /* prior rate */
+      n                   /* sample size */
     );
 
-    /* 3) Sample initial acceleration state theta_03 */
-    generate_theta_0p(
-      theta_02_post, /* theta_0pm1_post: initial trend state */
-      theta_03_post, /* theta_0p_post: initial acceleration state (output) */
-      theta_2_post,  /* theta_pm1_post: trend trajectories */
-      theta_3_post,  /* theta_p_post: acceleration trajectories */
-      prec_2_post,   /* prec_theta_pm1_post: trend precisions */
-      prec_3_post,   /* prec_theta_p_post: acceleration precisions */
-      theta03_mean,  /* mean_theta_0p: prior mean */
-      theta03_prec,  /* prec_theta_0p: prior precision */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 3: Sample Initial Acceleration State theta_{0,3} ===== */
+    /* Draw theta_{0,3} | theta_2_previous, theta_3_current, theta_{0,2}_previous,
+     * prec_2_previous, prec_3_current from Normal posterior.
+     * Uses information from both trend and acceleration components. */
+    theta_03_current = generate_theta_0p(
+      theta_2_previous,   /* theta_{p-1}: trend from previous iteration [n] */
+      theta_3_current,    /* theta_p: current acceleration [n] */
+      theta_02_previous,  /* theta_{0,p-1}: initial trend from previous iteration */
+      prec_2_previous,    /* prec_{p-1}: trend precision from previous iteration */
+      prec_3_current,     /* prec_p: current acceleration precision */
+      mean_theta03,       /* prior mean */
+      prec_theta03,       /* prior precision */
+      n                   /* sample size */
     );
 
-    /* 4) Sample trend state vector theta_2 */
+    /* ===== Step 4: Sample Trend State Vector theta_2 ===== */
+    /* Draw theta_2 | theta_1_previous, theta_3_current, theta_{0,1}_previous,
+     * theta_{0,2}_previous, theta_{0,3}_current, prec_1_previous, prec_2_previous
+     * from multivariate Normal with tridiagonal precision.
+     * Uses current theta_3 to account for acceleration contribution to trend evolution. */
     generate_theta_k(
-      theta_1_post,  /* theta_km1_post: level trajectories */
-      theta_2_post,  /* theta_k_post: trend trajectories (output) */
-      theta_3_post,  /* theta_kp1_post: acceleration trajectories */
-      prec_1_post,   /* prec_theta_km1_post: level precisions */
-      prec_2_post,   /* prec_theta_k_post: trend precisions */
-      theta_02_post, /* theta_0k_post: initial trend state */
-      theta_03_post, /* theta_0kp1_post: initial acceleration state */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+      theta_1_previous,   /* theta_{k-1}: level from previous iteration [n] */
+      theta_2_current,    /* output: current iteration theta_2 [n] */
+      theta_3_current,    /* theta_{k+1}: current acceleration [n] */
+      prec_1_previous,    /* scalar: level precision from previous iteration */
+      prec_2_previous,    /* scalar: trend precision from previous iteration */
+      theta_02_previous,  /* scalar: initial trend from previous iteration */
+      theta_03_current,   /* scalar: current initial acceleration */
+      n                   /* sample size */
     );
 
-    /* 5) Sample innovation precision 1/W_2 */
-    generate_precision_theta_k(
-      theta_02_post, /* theta_0k_post: initial trend state */
-      theta_03_post, /* theta_0kp1_post: initial acceleration state */
-      theta_2_post,  /* theta_k_post: trend trajectories */
-      theta_3_post,  /* theta_kp1_post: acceleration trajectories */
-      prec_2_post,   /* prec_theta_k_post: trend precisions */
-      nu_02,         /* nu_0k: prior shape */
-      eta_02,        /* eta_0k: prior rate */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 5: Sample Trend Innovation Precision 1/W_2 ===== */
+    /* Draw 1/W_2 | theta_{0,2}_previous, theta_{0,3}_current, theta_2_current,
+     * theta_3_current from Gamma posterior.
+     * Uses both trend and acceleration information to compute innovations. */
+    prec_2_current = generate_precision_theta_k(
+      theta_02_previous,  /* scalar: initial trend from previous iteration */
+      theta_03_current,   /* scalar: current initial acceleration */
+      theta_2_current,    /* vector: current trend [n] */
+      theta_3_current,    /* vector: current acceleration [n] */
+      nu_02,              /* prior shape */
+      eta_02,             /* prior rate */
+      n                   /* sample size */
     );
 
-    /* 6) Sample initial trend state theta_02 */
-    generate_theta_0k(
-      theta_01_post, /* theta_0km1_post: initial level state */
-      theta_02_post, /* theta_0k_post: initial trend state (output) */
-      theta_03_post, /* theta_0kp1_post: initial acceleration state */
-      theta_1_post,  /* theta_km1_post: level trajectories */
-      theta_2_post,  /* theta_k_post: trend trajectories */
-      prec_1_post,   /* prec_theta_km1_post: level precisions */
-      prec_2_post,   /* prec_theta_k_post: trend precisions */
-      theta02_mean,  /* mean_theta_0k: prior mean */
-      theta02_prec,  /* prec_theta_0k: prior precision */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 6: Sample Initial Trend State theta_{0,2} ===== */
+    /* Draw theta_{0,2} | theta_1_previous, theta_2_current, theta_{0,1}_previous,
+     * theta_{0,3}_current, prec_1_previous, prec_2_current from Normal posterior.
+     * Uses information from level, trend, and acceleration components. */
+    theta_02_current = generate_theta_0k(
+      theta_1_previous,   /* theta_{k-1}: level from previous iteration [n] */
+      theta_2_current,    /* theta_k: current trend [n] */
+      theta_01_previous,  /* theta_{0,k-1}: initial level from previous iteration */
+      theta_03_current,   /* theta_{0,k+1}: current initial acceleration */
+      prec_1_previous,    /* prec_{k-1}: level precision from previous iteration */
+      prec_2_current,     /* prec_k: current trend precision */
+      mean_theta02,       /* prior mean */
+      prec_theta02,       /* prior precision */
+      n                   /* sample size */
     );
 
-    /* 7) Sample level state vector theta_1 and success probabilities alpha */
+    /* ===== Step 7: Sample Level State Vector theta_1 and Success Probabilities alpha ===== */
     generate_alpha_logit_binomial(
-      theta_1_post,          /* theta_1_post: level trajectories */
-      theta_2_post,          /* theta_2_post: trend trajectories */
-      theta_01_post,         /* theta_01_post: initial level states */
-      theta_02_post,         /* theta_02_post: initial trend states */
-      theta_1_updated,       /* theta_1_updated: sliding window workspace */
-      alpha_post,            /* alpha_post: success probability draws */
-      prec_1_post,           /* prec_1_post: level precision draws */
-      y,                     /* y: observed binomial counts */
-      accept_prop,           /* accept_prop: acceptance proportions */
-      log_sigma,             /* log_sigma: proposal scales */
-      hat_theta_1,           /* hat_theta_1: conditional means */
-      theta_1_new,           /* theta_1_new: proposal levels */
-      log_accept_prob,       /* log_accept_prob: MH log-acceptance ratios */
-      lag_update,            /* lag_update: adaptation lag */
-      n_trials,              /* n_trials: number of binomial trials */
-      n,                     /* n: number of time points */
-      ii,                    /* iter: current iteration */
-      max_step_size,         /* max_step_size: proposal cap */
-      base_adaptation_rate,  /* base_adaptation_rate: base adaptation weight */
-      decay_exponent,        /* decay_exponent: adaptation decay */
-      target_acceptance,     /* target_acceptance: desired acceptance rate */
-      min_deviation_threshold   /* min_deviation_threshold: adaptation trigger */
+      theta_1_previous,       /* theta_1_previous: level from previous iteration [n] */
+      theta_1_current,        /* theta_1_current: output for current iteration [n] */
+      compute_alpha ? alpha_current : NULL,  /* alpha_current: NULL if not retained */
+      theta_2_current,        /* theta_2_current: trend from current iteration [n] */
+      theta_01_previous,      /* theta_01_previous: initial level from previous iteration */
+      theta_02_current,       /* theta_02_current: initial trend from current iteration */
+      prec_1_previous,        /* prec_1_previous: level precision from previous iteration */
+      theta_1_updated,        /* theta_1_updated: sliding window workspace */
+      y,                      /* y: observed binomial counts */
+      accept_prop,            /* accept_prop: acceptance proportions workspace */
+      log_sigma,              /* log_sigma: proposal scale parameters */
+      hat_theta_1,            /* hat_theta_1: conditional means workspace */
+      theta_1_new,            /* theta_1_new: proposal states workspace */
+      log_accept_prob,        /* log_accept_prob: MH log-acceptance ratios */
+      lag_update,             /* lag_update: adaptation lag */
+      n_trials,               /* n_trials: number of binomial trials */
+      n,                      /* n: series length */
+      ii,                     /* iter: current iteration */
+      max_step_size,          /* max_step_size: proposal cap */
+      base_adaptation_rate,   /* base_adaptation_rate: base adaptation weight */
+      decay_exponent,         /* decay_exponent: adaptation decay */
+      target_acceptance,      /* target_acceptance: desired acceptance rate */
+      min_deviation_threshold,/* min_deviation_threshold: adaptation trigger */
+      compute_alpha           /* compute_alpha: flag for alpha computation */
     );
 
-    /* 8) Sample innovation precision 1/W_1 */
-    generate_precision_theta_k(
-      theta_01_post, /* theta_0k_post: initial level state */
-      theta_02_post, /* theta_0kp1_post: initial trend state */
-      theta_1_post,  /* theta_k_post: level trajectories */
-      theta_2_post,  /* theta_kp1_post: trend trajectories */
-      prec_1_post,   /* prec_theta_k_post: level precisions */
-      nu_01,         /* nu_0k: prior shape */
-      eta_01,        /* eta_0k: prior rate */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 8: Sample Level Innovation Precision 1/W_1 ===== */
+    /* Draw 1/W_1 | theta_{0,1}_previous, theta_{0,2}_current, theta_1_current,
+     * theta_2_current from Gamma posterior.
+     * Uses both level and trend information to compute innovations. */
+    prec_1_current = generate_precision_theta_k(
+      theta_01_previous,  /* scalar: initial level from previous iteration */
+      theta_02_current,   /* scalar: current initial trend */
+      theta_1_current,    /* vector: current level [n] */
+      theta_2_current,    /* vector: current trend [n] */
+      nu_01,              /* prior shape */
+      eta_01,             /* prior rate */
+      n                   /* sample size */
     );
 
-    /* 9) Sample initial level state theta_01 */
-    generate_theta_01(
-      theta_01_post, /* theta_01_post: initial level state */
-      theta_1_post,  /* theta_1_post: level trajectories */
-      theta_02_post, /* theta_02_post: initial trend state */
-      prec_1_post,   /* prec_theta_1_post: level precisions */
-      theta01_mean,  /* mean_theta_01: prior mean */
-      theta01_prec,  /* prec_theta_01: prior precision */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 9: Sample Initial Level State theta_{0,1} ===== */
+    /* Draw theta_{0,1} | theta_1_current, theta_{0,2}_current, prec_1_current
+     * from Normal posterior.
+     * Uses current level and trend information. */
+    theta_01_current = generate_theta_01(
+      theta_1_current,    /* vector: current level [n] */
+      theta_02_current,   /* scalar: current initial trend */
+      prec_1_current,     /* scalar: current level precision */
+      mean_theta01,       /* prior mean */
+      prec_theta01,       /* prior precision */
+      n                   /* sample size */
     );
 
-    /* Store samples if past burn-in and on thinning schedule */
-    if (ii >= burnin && ((ii - burnin) % thinning) == 0) {
-      int idx = chain++;
-      for (int j = 0; j < n; j++) {
-        REAL(theta_1_samples)[idx + j * n_chain] = theta_1_post[ii * n + j];
-        REAL(theta_2_samples)[idx + j * n_chain] = theta_2_post[ii * n + j];
-        REAL(theta_3_samples)[idx + j * n_chain] = theta_3_post[ii * n + j];
-        REAL(alpha_samples)[idx + j * n_chain]   = alpha_post[ii * n + j];
-      }
-      /* Store diagnostics if requested */
-      if (return_log_sigma) {
-        for (int j = 0; j < n; j++) {
-          REAL(log_sigma_samples)[idx + j * n_chain] = log_sigma[j];
+    /* ===== Store Post-Burn-in Samples with Thinning ===== */
+    if (compute_alpha) {
+      int idx = chain_idx++;
+
+      for (int t = 0; t < n; t++) {
+        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
+        REAL(theta_2_samples)[idx + t * n_chain] = theta_2_current[t];
+        REAL(theta_3_samples)[idx + t * n_chain] = theta_3_current[t];
+        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
+
+        if (return_log_sigma) {
+          REAL(log_sigma_samples)[idx + t * n_chain] = log_sigma[t];
+        }
+        if (return_accept_prop) {
+          REAL(accept_prop_samples)[idx + t * n_chain] = accept_prop[t];
         }
       }
-      if (return_accept_prop) {
-        for (int j = 0; j < n; j++) {
-          REAL(accept_prop_samples)[idx + j * n_chain] = accept_prop[j];
-        }
-      }
-      REAL(theta_01_samples)[idx] = theta_01_post[ii];
-      REAL(theta_02_samples)[idx] = theta_02_post[ii];
-      REAL(theta_03_samples)[idx] = theta_03_post[ii];
-      REAL(prec_1_samples)[idx]   = prec_1_post[ii];
-      REAL(prec_2_samples)[idx]   = prec_2_post[ii];
-      REAL(prec_3_samples)[idx]   = prec_3_post[ii];
+
+      REAL(theta_01_samples)[idx] = theta_01_current;
+      REAL(theta_02_samples)[idx] = theta_02_current;
+      REAL(theta_03_samples)[idx] = theta_03_current;
+      REAL(prec_1_samples)[idx]   = prec_1_current;
+      REAL(prec_2_samples)[idx]   = prec_2_current;
+      REAL(prec_3_samples)[idx]   = prec_3_current;
     }
+
+    /* ===== Update Previous Values for Next Iteration ===== */
+    memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
+    memcpy(theta_2_previous, theta_2_current, n * sizeof(double));
+    memcpy(theta_3_previous, theta_3_current, n * sizeof(double));
+    theta_01_previous = theta_01_current;
+    theta_02_previous = theta_02_current;
+    theta_03_previous = theta_03_current;
+    prec_1_previous   = prec_1_current;
+    prec_2_previous   = prec_2_current;
+    prec_3_previous   = prec_3_current;
   }
 
-  /* Return RNG state */
+  /* ========== Restore RNG State ========== */
   PutRNGstate();
 
-  /* Free temporary buffers */
-  R_Free(theta_1_post);
-  R_Free(theta_2_post);
-  R_Free(theta_3_post);
-  R_Free(theta_01_post);
-  R_Free(theta_02_post);
-  R_Free(theta_03_post);
-  R_Free(prec_1_post);
-  R_Free(prec_2_post);
-  R_Free(prec_3_post);
-  R_Free(alpha_post);
+  /* ========== Free Temporary Buffers ========== */
+  R_Free(theta_1_current);
+  R_Free(theta_1_previous);
+  R_Free(theta_2_current);
+  R_Free(theta_2_previous);
+  R_Free(theta_3_current);
+  R_Free(theta_3_previous);
+  R_Free(alpha_current);
   R_Free(theta_1_updated);
   R_Free(accept_prop);
   R_Free(log_sigma);
@@ -473,13 +514,12 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
   R_Free(theta_1_new);
   R_Free(log_accept_prob);
 
-  /* Package results into a named list */
+  /* ========== Package Results into Named List ========== */
   SEXP out = PROTECT(allocVector(VECSXP, n_outputs));
   SEXP nms = PROTECT(allocVector(STRSXP, n_outputs));
 
   int output_idx = 0;
 
-  /* Always include base outputs */
   SET_VECTOR_ELT(out, output_idx, theta_1_samples);
   SET_STRING_ELT(nms, output_idx++, mkChar("theta_1"));
 
@@ -510,7 +550,6 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
   SET_VECTOR_ELT(out, output_idx, alpha_samples);
   SET_STRING_ELT(nms, output_idx++, mkChar("alpha"));
 
-  /* Conditionally add diagnostic outputs */
   if (return_log_sigma) {
     SET_VECTOR_ELT(out, output_idx, log_sigma_samples);
     SET_STRING_ELT(nms, output_idx++, mkChar("log_sigma"));
@@ -522,86 +561,97 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_, SEXP n_trials_,
 
   setAttrib(out, R_NamesSymbol, nms);
 
-  /* Adjust UNPROTECT count: +2 for out and nms */
   UNPROTECT(n_protect + 2);
   return out;
 }
 
 /**
- * @brief Gibbs sampler for local-acceleration Bernoulli model with probit link - Optimized version
+ * @brief Gibbs sampler for local-acceleration Bernoulli dynamic model with probit link
  *
- * @details Extends the Albert-Chib (1993) latent-variable augmentation to a
- *          three-component Gaussian state-space system (level, trend, and
- *          acceleration) with Bernoulli observations:
+ * @details Implements the Albert-Chib (1993) latent-variable augmentation to obtain
+ *          fully Gibbs updates for Bernoulli observations governed by a local-acceleration
+ *          Gaussian state evolution:
  *
- *          Observation equation:
- *          y_t ~ Bernoulli(alpha_t) with alpha_t = Phi(theta_{t,1})
+ *          **Observation equation:**
+ *          y_t ~ Bernoulli(alpha_t), where alpha_t = Phi(theta_{t,1})
  *
- *          State equations:
- *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
- *          theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2},  u_{t,2} ~ N(0, W_2)
- *          theta_{t,3} = theta_{t-1,3} + u_{t,3},                  u_{t,3} ~ N(0, W_3)
+ *          **State equations:**
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1}, u_{t,1} ~ N(0, W_1)
+ *          theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2}, u_{t,2} ~ N(0, W_2)
+ *          theta_{t,3} = theta_{t-1,3} + u_{t,3},                 u_{t,3} ~ N(0, W_3)
  *
- *          Latent Gaussian utilities provide closed-form conditional updates for
- *          state trajectories, initial states, and innovation precisions,
- *          yielding a fully Gibbs sampling scheme.
+ *          **Prior distributions:**
+ *          - theta_{0,1} ~ N(mu_{0,1}, sigma_{0,1}^2)
+ *          - theta_{0,2} ~ N(mu_{0,2}, sigma_{0,2}^2)
+ *          - theta_{0,3} ~ N(mu_{0,3}, sigma_{0,3}^2)
+ *          - 1/W_1 ~ Gamma(nu_1, eta_1)
+ *          - 1/W_2 ~ Gamma(nu_2, eta_2)
+ *          - 1/W_3 ~ Gamma(nu_3, eta_3)
  *
- *          **Optimization:**
- *          The compute_alpha flag is used to skip probability transformations
- *          for iterations that will not be retained in the final sample. This includes
- *          both burn-in iterations and those discarded by thinning. The computational
- *          savings scale with the thinning interval: for thinning = 10, approximately
- *          90% of probit transformations are eliminated, resulting in overall runtime
- *          reductions of 10-20% for typical time series lengths. Probability scale
- *          values (alpha) are computed only for iterations that contribute to the
- *          posterior sample.
+ *          **Optimizations implemented:**
+ *          - Memory-efficient current/previous iteration buffers (O(n) storage)
+ *          - Conditional alpha computation (skip during burn-in/thinning)
+ *          - Single rhs_vector buffer for linear system construction
+ *          - Scalar parameter passing to avoid array indexing
+ *          - Efficient initialization with zeros and neutral starting values
  *
- *          Sampling sequence per iteration:
- *          1. theta_{t,3} | theta_{t,2}, theta_{0,3}, 1/W_2, 1/W_3 -> Gaussian
- *          2. 1/W_3 | theta_{t,3}, theta_{0,3} -> Gamma
- *          3. theta_{0,3} | theta_{t,2}, theta_{t,3}, theta_{0,2}, 1/W_3 -> Gaussian
- *          4. theta_{t,2} | theta_{t,1}, theta_{t,3}, theta_{0,2}, theta_{0,3}, 1/W_1, 1/W_2 -> Gaussian
- *          5. 1/W_2 | theta_{t,2}, theta_{t,3}, theta_{0,2}, theta_{0,3} -> Gamma
- *          6. theta_{0,2} | theta_{t,1}, theta_{t,2}, theta_{t,3}, theta_{0,1}, theta_{0,3}, 1/W_2 -> Gaussian
- *          7. v_t, theta_{t,1}, alpha_t | y_t, theta_{t,2}, theta_{0,1}, 1/W_1 -> Gaussian via augmentation
- *          8. 1/W_1 | theta_{t,1}, theta_{t,2}, theta_{0,1}, theta_{0,2} -> Gamma
- *          9. theta_{0,1} | theta_{t,1}, theta_{t,2}, 1/W_1 -> Gaussian
+ *          **Sampling sequence per iteration:**
+ *          1. theta_3 | theta_2, theta_03, W_3 -> Gaussian posterior
+ *          2. 1/W_3 | theta_3, theta_03 -> Gamma posterior
+ *          3. theta_{0,3} | theta_3, theta_02, W_3 -> Gaussian posterior
+ *          4. theta_2 | theta_1, theta_3, theta_02, W_2 -> Gaussian posterior
+ *          5. 1/W_2 | theta_2, theta_02, theta_03 -> Gamma posterior
+ *          6. theta_{0,2} | theta_2, theta_01, theta_03, W_2 -> Gaussian posterior
+ *          7. v_t, theta_1, alpha | y, theta_2, theta_01, W_1 -> Gibbs via augmentation
+ *          8. 1/W_1 | theta_1, theta_01, theta_02 -> Gamma posterior
+ *          9. theta_{0,1} | theta_1, theta_02, W_1 -> Gaussian posterior
  *
- *          Total iterations computed as: burnin + (n_chain - 1) x thinning + 1
+ *          Total iterations: burnin + (n_chain - 1) * thinning + 1
  *
- * @param y_                   SEXP Numeric vector of Bernoulli observations [length n]
- * @param burnin_              SEXP Integer scalar, number of burn-in iterations
- * @param thinning_            SEXP Integer scalar, thinning interval
- * @param n_chain_             SEXP Integer scalar, number of retained samples
- * @param prior_theta01_mean_  SEXP Double scalar, prior mean for theta_{0,1}
- * @param prior_theta01_prec_  SEXP Double scalar (>0), prior precision for theta_{0,1}
- * @param prior_theta02_mean_  SEXP Double scalar, prior mean for theta_{0,2}
- * @param prior_theta02_prec_  SEXP Double scalar (>0), prior precision for theta_{0,2}
- * @param prior_theta03_mean_  SEXP Double scalar, prior mean for theta_{0,3}
- * @param prior_theta03_prec_  SEXP Double scalar (>0), prior precision for theta_{0,3}
- * @param prior_prec1_shape_   SEXP Double scalar (>0), prior shape for 1/W_1
- * @param prior_prec1_rate_    SEXP Double scalar (>0), prior rate for 1/W_1
- * @param prior_prec2_shape_   SEXP Double scalar (>0), prior shape for 1/W_2
- * @param prior_prec2_rate_    SEXP Double scalar (>0), prior rate for 1/W_2
- * @param prior_prec3_shape_   SEXP Double scalar (>0), prior shape for 1/W_3
- * @param prior_prec3_rate_    SEXP Double scalar (>0), prior rate for 1/W_3
+ * @param y_                  Numeric vector [n] of Bernoulli observations.
+ * @param burnin_             Number of burn-in iterations (discarded).
+ * @param thinning_           Thinning interval for autocorrelation reduction.
+ * @param n_chain_            Number of retained posterior samples.
+ * @param prior_theta01_mean_ Prior mean for theta_{0,1}.
+ * @param prior_theta01_prec_ Prior precision for theta_{0,1}.
+ * @param prior_theta02_mean_ Prior mean for theta_{0,2}.
+ * @param prior_theta02_prec_ Prior precision for theta_{0,2}.
+ * @param prior_theta03_mean_ Prior mean for theta_{0,3}.
+ * @param prior_theta03_prec_ Prior precision for theta_{0,3}.
+ * @param prior_prec1_shape_  Gamma shape for 1/W_1.
+ * @param prior_prec1_rate_   Gamma rate for 1/W_1.
+ * @param prior_prec2_shape_  Gamma shape for 1/W_2.
+ * @param prior_prec2_rate_   Gamma rate for 1/W_2.
+ * @param prior_prec3_shape_  Gamma shape for 1/W_3.
+ * @param prior_prec3_rate_   Gamma rate for 1/W_3.
  *
- * @return SEXP R list containing theta_1, theta_2, theta_3, theta_01, theta_02,
- *         theta_03, prec_1, prec_2, prec_3, and alpha.
+ * @return R list with components:
+ *         - theta_1:  Matrix [n_chain * n] of level state trajectory samples
+ *         - theta_2:  Matrix [n_chain * n] of trend state trajectory samples
+ *         - theta_3:  Matrix [n_chain * n] of acceleration state trajectory samples
+ *         - theta_01: Vector [n_chain] of initial level state samples
+ *         - theta_02: Vector [n_chain] of initial trend state samples
+ *         - theta_03: Vector [n_chain] of initial acceleration state samples
+ *         - prec_1:   Vector [n_chain] of level innovation precision samples
+ *         - prec_2:   Vector [n_chain] of trend innovation precision samples
+ *         - prec_3:   Vector [n_chain] of acceleration innovation precision samples
+ *         - alpha:    Matrix [n_chain * n] of Bernoulli probabilities
  *
- * @note Computational complexity: O(n_iter x n) for n_iter total iterations
- * @note Memory requirements: O(n_iter x n) for trajectory storage
- * @note RNG management: Proper GetRNGstate()/PutRNGstate() bracket for R integration
- * @note Performance optimization: Alpha transformations skipped for non-retained iterations
+ * @note Complexity: O(n_iter * n) time, O(n) space
+ * @note Requires n >= 3 for numerical stability
+ * @note Acceptance rate: Always 1.0 (Gibbs sampling)
+ * @note Conditional alpha computation eliminates unnecessary pnorm calls
  *
- * @warning Minimum sample size n >= 3 enforced for numerical stability
- * @warning Each y[t] must equal 0 or 1
+ * @warning Each y[t] must be either 0 or 1
+ * @warning n must not exceed INT_MAX
  *
  * @see Albert & Chib (1993). Bayesian Analysis of Binary and Polychotomous Response Data.
  *      JASA, 88(422), 669-679. https://doi.org/10.1080/01621459.1993.10476321
  * @see generate_alpha_probit_bernoulli
  * @see generate_theta_p
  * @see generate_theta_k
+ * @see generate_precision_theta_p
+ * @see generate_precision_theta_k
  * @see generate_theta_0p
  * @see generate_theta_0k
  * @see generate_theta_01
@@ -623,38 +673,44 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
                                                SEXP prior_prec3_shape_,
                                                SEXP prior_prec3_rate_) {
 
-  /* Parse data vector and validate its length */
-  double   *y    = REAL(y_);
-  R_xlen_t  len  = LENGTH(y_);
-  if (len < 3)
+  /* ========== Parse Data Vector and Validate Length ========== */
+  double   *y   = REAL(y_);
+  R_xlen_t  len = LENGTH(y_);
+
+  /* Enforce minimum sample size for numerical stability */
+  if (len < 3) {
     Rf_error("C_MCMC_probit_bernoulli_localacceleration: sample size 'n' must be at least 3, got %lld",
              (long long) len);
-  if (len > INT_MAX)
+  }
+
+  /* Check for integer overflow (R limitation) */
+  if (len > INT_MAX) {
     Rf_error("C_MCMC_probit_bernoulli_localacceleration: sample size too large (%lld > %d)",
              (long long) len, INT_MAX);
+  }
+
   int n = (int) len;
 
   /* Validate Bernoulli support */
-  for (int i = 0; i < n; i++) {
-    if (!(y[i] == 0.0 || y[i] == 1.0)) {
-      Rf_error("C_MCMC_probit_bernoulli_localacceleration: y[%d] = %f must be 0 or 1",
-               i, y[i]);
+  for (int t = 0; t < n; t++) {
+    if (!(y[t] == 0.0 || y[t] == 1.0)) {
+      Rf_error("C_MCMC_probit_bernoulli_localacceleration: y[%d] = %f must be 0 or 1", t, y[t]);
     }
   }
 
-  /* Parse MCMC configuration */
+  /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];
   int thinning = INTEGER(thinning_)[0];
   int n_chain  = INTEGER(n_chain_)[0];
   int n_iter   = burnin + (n_chain - 1) * thinning + 1;
 
-  /* Parse priors */
-  double theta01_mean = REAL(prior_theta01_mean_)[0];
-  double theta01_prec = REAL(prior_theta01_prec_)[0];
-  double theta02_mean = REAL(prior_theta02_mean_)[0];
-  double theta02_prec = REAL(prior_theta02_prec_)[0];
-  double theta03_mean = REAL(prior_theta03_mean_)[0];
-  double theta03_prec = REAL(prior_theta03_prec_)[0];
+  /* ========== Parse Prior Hyperparameters ========== */
+  double mean_theta01 = REAL(prior_theta01_mean_)[0];
+  double prec_theta01 = REAL(prior_theta01_prec_)[0];
+  double mean_theta02 = REAL(prior_theta02_mean_)[0];
+  double prec_theta02 = REAL(prior_theta02_prec_)[0];
+  double mean_theta03 = REAL(prior_theta03_mean_)[0];
+  double prec_theta03 = REAL(prior_theta03_prec_)[0];
   double nu_01        = REAL(prior_prec1_shape_)[0];
   double eta_01       = REAL(prior_prec1_rate_)[0];
   double nu_02        = REAL(prior_prec2_shape_)[0];
@@ -662,7 +718,7 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
   double nu_03        = REAL(prior_prec3_shape_)[0];
   double eta_03       = REAL(prior_prec3_rate_)[0];
 
-  /* Allocate storage for posterior samples */
+  /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_2_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_3_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -676,211 +732,225 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
   int n_outputs = 10;
   int n_protect = 10;
 
-  /* Buffers for full MCMC trajectory */
-  double *theta_1_post  = (double *) R_Calloc((size_t) n_iter * n, double);
-  double *theta_2_post  = (double *) R_Calloc((size_t) n_iter * n, double);
-  double *theta_3_post  = (double *) R_Calloc((size_t) n_iter * n, double);
-  double *theta_01_post = (double *) R_Calloc((size_t) n_iter,     double);
-  double *theta_02_post = (double *) R_Calloc((size_t) n_iter,     double);
-  double *theta_03_post = (double *) R_Calloc((size_t) n_iter,     double);
-  double *prec_1_post   = (double *) R_Calloc((size_t) n_iter,     double);
-  double *prec_2_post   = (double *) R_Calloc((size_t) n_iter,     double);
-  double *prec_3_post   = (double *) R_Calloc((size_t) n_iter,     double);
+  /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
+  double *theta_1_current  = (double *) R_Calloc(n, double);
+  double *theta_1_previous = (double *) R_Calloc(n, double);
+  double *theta_2_current  = (double *) R_Calloc(n, double);
+  double *theta_2_previous = (double *) R_Calloc(n, double);
+  double *theta_3_current  = (double *) R_Calloc(n, double);
+  double *theta_3_previous = (double *) R_Calloc(n, double);
+  double *alpha_current    = (double *) R_Calloc(n, double);
 
-  double *alpha_post    = (double *) R_Calloc((size_t) n_chain * n, double);
+  /* Scalar parameters for current and previous iterations */
+  double theta_01_current, theta_01_previous;
+  double theta_02_current, theta_02_previous;
+  double theta_03_current, theta_03_previous;
+  double prec_1_current,   prec_1_previous;
+  double prec_2_current,   prec_2_previous;
+  double prec_3_current,   prec_3_previous;
 
   /* Working array for right-hand side of linear system */
   double *rhs_vector = (double *) R_Calloc(n, double);
 
-  /* Initialize RNG state */
+  /* ========== Initialize RNG State ========== */
   GetRNGstate();
 
-  /*--- INITIALIZATION (iter = 0) ---*/
-  theta_01_post[0] = rnorm(theta01_mean, sqrt(1.0 / theta01_prec));
-  theta_02_post[0] = rnorm(theta02_mean, sqrt(1.0 / theta02_prec));
-  theta_03_post[0] = rnorm(theta03_mean, sqrt(1.0 / theta03_prec));
-  prec_1_post[0]   = rgamma(nu_01, 1.0 / eta_01);
-  prec_2_post[0]   = rgamma(nu_02, 1.0 / eta_02);
-  prec_3_post[0]   = rgamma(nu_03, 1.0 / eta_03);
+  /* ========== Initialize Parameters (Iteration 0) ========== */
+  theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
+  theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
+  theta_03_previous = rnorm(mean_theta03, sqrt(1.0 / prec_theta03));
+  prec_1_previous   = rgamma(nu_01, 1.0 / eta_01);
+  prec_2_previous   = rgamma(nu_02, 1.0 / eta_02);
+  prec_3_previous   = rgamma(nu_03, 1.0 / eta_03);
 
-  double init_sd_1 = sqrt(1.0 / prec_1_post[0]);
-  double init_sd_2 = sqrt(1.0 / prec_2_post[0]);
-  double init_sd_3 = sqrt(1.0 / prec_3_post[0]);
-
-  theta_3_post[0] = rnorm(theta_03_post[0], init_sd_3);
-  theta_2_post[0] = rnorm(theta_02_post[0] + theta_3_post[0], init_sd_2);
-  theta_1_post[0] = rnorm(theta_01_post[0] + theta_2_post[0], init_sd_1);
-  for (int j = 1; j < n; j++) {
-    theta_3_post[j] = rnorm(theta_3_post[j - 1], init_sd_3);
-    theta_2_post[j] = rnorm(theta_2_post[j - 1] + theta_3_post[j - 1], init_sd_2);
-    theta_1_post[j] = rnorm(theta_1_post[j - 1] + theta_2_post[j - 1], init_sd_1);
+  /* Initialize state vectors with efficient neutral starting values */
+  for (int t = 0; t < n; t++) {
+    theta_1_previous[t] = 0.0;
+    theta_2_previous[t] = 0.0;
+    theta_3_previous[t] = 0.0;
+    alpha_current[t]    = 0.5;
   }
 
-  for (int j = 0; j < n; j++) {
-    alpha_post[j] = pnorm(theta_1_post[j], 0.0, 1.0, 1, 0);
-  }
+  /* ========== Main Gibbs Sampling Loop ========== */
+  int chain_idx = 0;
 
-  /*--- Main Gibbs sampling loop ---*/
-  int chain = 0;
   for (int ii = 1; ii < n_iter; ii++) {
 
-    /* Determine whether to compute alpha transformations.
-     * Only compute for iterations that will be retained after thinning to maximize efficiency. */
+    /* Determine whether to compute alpha transformations */
     int compute_alpha = (ii >= burnin && ((ii - burnin) % thinning) == 0) ? 1 : 0;
 
-    /* 1) Sample acceleration state vector theta_3 */
+    /* ===== Step 1: Sample Acceleration State Vector theta_3 ===== */
+    /* Draw theta_3 | theta_2, previous parameters from multivariate Normal
+     * with tridiagonal precision matrix (O(n) via Cholesky).
+     * Uses theta_2 from previous iteration for computing differences. */
     generate_theta_p(
-      theta_2_post,  /* theta_pm1_post: trend trajectories */
-      theta_3_post,  /* theta_p_post: acceleration trajectories */
-      prec_2_post,   /* prec_theta_pm1_post: trend precisions */
-      prec_3_post,   /* prec_theta_p_post: acceleration precisions */
-      theta_03_post, /* theta_0p_post: initial acceleration states */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+      theta_2_previous,   /* theta_{p-1}: trend from previous iteration [n] */
+      theta_3_current,    /* output: current iteration theta_3 [n] */
+      prec_2_previous,    /* scalar: trend precision from previous iteration */
+      prec_3_previous,    /* scalar: acceleration precision from previous iteration */
+      theta_03_previous,  /* scalar: initial acceleration from previous iteration */
+      n                   /* sample size */
     );
 
-    /* 2) Sample innovation precision 1/W_3 */
-    generate_precision_theta_p(
-      theta_03_post, /* theta_0p_post: initial acceleration states */
-      theta_3_post,  /* theta_p_post: acceleration trajectories */
-      prec_3_post,   /* prec_theta_p_post: acceleration precisions */
-      nu_03,         /* nu_0p: prior shape */
-      eta_03,        /* eta_0p: prior rate */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 2: Sample Acceleration Innovation Precision 1/W_3 ===== */
+    /* Draw 1/W_3 | theta_3_current, theta_{0,3}_previous from Gamma posterior.
+     * Uses current theta_3 (just sampled) and previous theta_{0,3}. */
+    prec_3_current = generate_precision_theta_p(
+      theta_03_previous,  /* scalar: initial acceleration from previous iteration */
+      theta_3_current,    /* vector: current theta_3 [n] */
+      nu_03,              /* prior shape */
+      eta_03,             /* prior rate */
+      n                   /* sample size */
     );
 
-    /* 3) Sample initial acceleration state theta_{0,3} */
-    generate_theta_0p(
-      theta_02_post, /* theta_0pm1_post: initial trend states */
-      theta_03_post, /* theta_0p_post: initial acceleration states */
-      theta_2_post,  /* theta_pm1_post: trend trajectories */
-      theta_3_post,  /* theta_p_post: acceleration trajectories */
-      prec_2_post,   /* prec_theta_pm1_post: trend precisions */
-      prec_3_post,   /* prec_theta_p_post: acceleration precisions */
-      theta03_mean,  /* mean_theta_0p: prior mean */
-      theta03_prec,  /* prec_theta_0p: prior precision */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 3: Sample Initial Acceleration State theta_{0,3} ===== */
+    /* Draw theta_{0,3} | theta_2_previous, theta_3_current, theta_{0,2}_previous,
+     * prec_2_previous, prec_3_current from Normal posterior.
+     * Uses information from both trend and acceleration components. */
+    theta_03_current = generate_theta_0p(
+      theta_2_previous,   /* theta_{p-1}: trend from previous iteration [n] */
+      theta_3_current,    /* theta_p: current acceleration [n] */
+      theta_02_previous,  /* theta_{0,p-1}: initial trend from previous iteration */
+      prec_2_previous,    /* prec_{p-1}: trend precision from previous iteration */
+      prec_3_current,     /* prec_p: current acceleration precision */
+      mean_theta03,       /* prior mean */
+      prec_theta03,       /* prior precision */
+      n                   /* sample size */
     );
 
-    /* 4) Sample trend state vector theta_2 */
+    /* ===== Step 4: Sample Trend State Vector theta_2 ===== */
+    /* Draw theta_2 | theta_1_previous, theta_3_current, theta_{0,1}_previous,
+     * theta_{0,2}_previous, theta_{0,3}_current, prec_1_previous, prec_2_previous
+     * from multivariate Normal with tridiagonal precision.
+     * Uses current theta_3 to account for acceleration contribution to trend evolution. */
     generate_theta_k(
-      theta_1_post,  /* theta_km1_post: level trajectories */
-      theta_2_post,  /* theta_k_post: trend trajectories */
-      theta_3_post,  /* theta_kp1_post: acceleration trajectories */
-      prec_1_post,   /* prec_theta_km1_post: level precisions */
-      prec_2_post,   /* prec_theta_k_post: trend precisions */
-      theta_02_post, /* theta_0k_post: initial trend states */
-      theta_03_post, /* theta_0kp1_post: initial acceleration states */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+      theta_1_previous,   /* theta_{k-1}: level from previous iteration [n] */
+      theta_2_current,    /* output: current iteration theta_2 [n] */
+      theta_3_current,    /* theta_{k+1}: current acceleration [n] */
+      prec_1_previous,    /* scalar: level precision from previous iteration */
+      prec_2_previous,    /* scalar: trend precision from previous iteration */
+      theta_02_previous,  /* scalar: initial trend from previous iteration */
+      theta_03_current,   /* scalar: current initial acceleration */
+      n                   /* sample size */
     );
 
-    /* 5) Sample innovation precision 1/W_2 */
-    generate_precision_theta_k(
-      theta_02_post, /* theta_0k_post: initial trend states */
-      theta_03_post, /* theta_0kp1_post: initial acceleration states */
-      theta_2_post,  /* theta_k_post: trend trajectories */
-      theta_3_post,  /* theta_kp1_post: acceleration trajectories */
-      prec_2_post,   /* prec_theta_k_post: trend precisions */
-      nu_02,         /* nu_0k: prior shape */
-      eta_02,        /* eta_0k: prior rate */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 5: Sample Trend Innovation Precision 1/W_2 ===== */
+    /* Draw 1/W_2 | theta_{0,2}_previous, theta_{0,3}_current, theta_2_current,
+     * theta_3_current from Gamma posterior.
+     * Uses both trend and acceleration information to compute innovations. */
+    prec_2_current = generate_precision_theta_k(
+      theta_02_previous,  /* scalar: initial trend from previous iteration */
+      theta_03_current,   /* scalar: current initial acceleration */
+      theta_2_current,    /* vector: current trend [n] */
+      theta_3_current,    /* vector: current acceleration [n] */
+      nu_02,              /* prior shape */
+      eta_02,             /* prior rate */
+      n                   /* sample size */
     );
 
-    /* 6) Sample initial trend state theta_{0,2} */
-    generate_theta_0k(
-      theta_01_post, /* theta_0km1_post: initial level states */
-      theta_02_post, /* theta_0k_post: initial trend states */
-      theta_03_post, /* theta_0kp1_post: initial acceleration states */
-      theta_1_post,  /* theta_km1_post: level trajectories */
-      theta_2_post,  /* theta_k_post: trend trajectories */
-      prec_1_post,   /* prec_theta_km1_post: level precisions */
-      prec_2_post,   /* prec_theta_k_post: trend precisions */
-      theta02_mean,  /* mean_theta_0k: prior mean */
-      theta02_prec,  /* prec_theta_0k: prior precision */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 6: Sample Initial Trend State theta_{0,2} ===== */
+    /* Draw theta_{0,2} | theta_1_previous, theta_2_current, theta_{0,1}_previous,
+     * theta_{0,3}_current, prec_1_previous, prec_2_current from Normal posterior.
+     * Uses information from level, trend, and acceleration components. */
+    theta_02_current = generate_theta_0k(
+      theta_1_previous,   /* theta_{k-1}: level from previous iteration [n] */
+      theta_2_current,    /* theta_k: current trend [n] */
+      theta_01_previous,  /* theta_{0,k-1}: initial level from previous iteration */
+      theta_03_current,   /* theta_{0,k+1}: current initial acceleration */
+      prec_1_previous,    /* prec_{k-1}: level precision from previous iteration */
+      prec_2_current,     /* prec_k: current trend precision */
+      mean_theta02,       /* prior mean */
+      prec_theta02,       /* prior precision */
+      n                   /* sample size */
     );
 
-    /* 7) Sample latent utilities, level state vector theta_1, and probabilities alpha (conditionally) */
+    /* ===== Step 7: Sample Latent Utilities, theta_1, and alpha (conditionally) ===== */
     generate_alpha_probit_bernoulli(
-      theta_1_post,  /* theta_1_post: level trajectories */
-      theta_2_post,  /* theta_2_post: trend trajectories */
-      theta_01_post, /* theta_01_post: initial level states */
-      theta_02_post, /* theta_02_post: initial trend states */
-      &alpha_post[idx * n],    /* alpha_post: Bernoulli probabilities */
-      prec_1_post,   /* prec_1_post: level precisions */
-      y,             /* y: Bernoulli observations */
-      rhs_vector,    /* rhs_vector: solver right-hand side */
-      n,             /* n: number of time points */
-      ii,            /* iter: current iteration */
-      compute_alpha  /* compute_alpha: flag to control probability transformations */
+      theta_1_previous,       /* theta_1_previous: level from previous iteration [n] */
+      theta_1_current,        /* theta_1_current: output for current iteration [n] */
+      compute_alpha ? alpha_current : NULL,  /* alpha_current: NULL if not retained */
+      theta_2_current,        /* theta_2_current: trend from current iteration [n] */
+      theta_01_previous,      /* theta_01_previous: initial level from previous iteration */
+      theta_02_current,       /* theta_02_current: initial trend from current iteration */
+      prec_1_previous,        /* prec_1_previous: level precision from previous iteration */
+      y,                      /* y: Bernoulli observations */
+      rhs_vector,             /* rhs_vector: solver right-hand side */
+      n,                      /* n: number of time points */
+      compute_alpha           /* compute_alpha: flag for alpha computation */
     );
 
-    /* 8) Sample innovation precision 1/W_1 */
-    generate_precision_theta_k(
-      theta_01_post, /* theta_0k_post: initial level states */
-      theta_02_post, /* theta_0kp1_post: initial trend states */
-      theta_1_post,  /* theta_k_post: level trajectories */
-      theta_2_post,  /* theta_kp1_post: trend trajectories */
-      prec_1_post,   /* prec_theta_k_post: level precisions */
-      nu_01,         /* nu_0k: prior shape */
-      eta_01,        /* eta_0k: prior rate */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 8: Sample Level Innovation Precision 1/W_1 ===== */
+    /* Draw 1/W_1 | theta_{0,1}_previous, theta_{0,2}_current, theta_1_current,
+     * theta_2_current from Gamma posterior.
+     * Uses both level and trend information to compute innovations. */
+    prec_1_current = generate_precision_theta_k(
+      theta_01_previous,  /* scalar: initial level from previous iteration */
+      theta_02_current,   /* scalar: current initial trend */
+      theta_1_current,    /* vector: current level [n] */
+      theta_2_current,    /* vector: current trend [n] */
+      nu_01,              /* prior shape */
+      eta_01,             /* prior rate */
+      n                   /* sample size */
     );
 
-    /* 9) Sample initial level state theta_{0,1} */
-    generate_theta_01(
-      theta_01_post, /* theta_01_post: initial level states */
-      theta_02_post, /* theta_02_post: initial trend states */
-      theta_1_post,  /* theta_1_post: level trajectories */
-      prec_1_post,   /* prec_1_post: level precisions */
-      theta01_mean,  /* mean_theta_01: prior mean */
-      theta01_prec,  /* prec_theta_01: prior precision */
-      n,             /* n: number of time points */
-      ii             /* iter: current iteration */
+    /* ===== Step 9: Sample Initial Level State theta_{0,1} ===== */
+    /* Draw theta_{0,1} | theta_1_current, theta_{0,2}_current, prec_1_current
+     * from Normal posterior.
+     * Uses current level and trend information. */
+    theta_01_current = generate_theta_01(
+      theta_1_current,    /* vector: current level [n] */
+      theta_02_current,   /* scalar: current initial trend */
+      prec_1_current,     /* scalar: current level precision */
+      mean_theta01,       /* prior mean */
+      prec_theta01,       /* prior precision */
+      n                   /* sample size */
     );
 
-    /* Store post-burn-in draws, applying thinning */
+    /* ===== Store Post-Burn-in Samples with Thinning ===== */
     if (compute_alpha) {
-      int idx = chain++;
-      for (int j = 0; j < n; j++) {
-        size_t offset = (size_t) ii * n + j;
-        REAL(theta_1_samples)[idx + j * n_chain] = theta_1_post[offset];
-        REAL(theta_2_samples)[idx + j * n_chain] = theta_2_post[offset];
-        REAL(theta_3_samples)[idx + j * n_chain] = theta_3_post[offset];
-        REAL(alpha_samples)[idx + j * n_chain]   = alpha_post[offset];
+      int idx = chain_idx++;
+
+      for (int t = 0; t < n; t++) {
+        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
+        REAL(theta_2_samples)[idx + t * n_chain] = theta_2_current[t];
+        REAL(theta_3_samples)[idx + t * n_chain] = theta_3_current[t];
+        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
       }
-      REAL(theta_01_samples)[idx] = theta_01_post[ii];
-      REAL(theta_02_samples)[idx] = theta_02_post[ii];
-      REAL(theta_03_samples)[idx] = theta_03_post[ii];
-      REAL(prec_1_samples)[idx]   = prec_1_post[ii];
-      REAL(prec_2_samples)[idx]   = prec_2_post[ii];
-      REAL(prec_3_samples)[idx]   = prec_3_post[ii];
+
+      REAL(theta_01_samples)[idx] = theta_01_current;
+      REAL(theta_02_samples)[idx] = theta_02_current;
+      REAL(theta_03_samples)[idx] = theta_03_current;
+      REAL(prec_1_samples)[idx]   = prec_1_current;
+      REAL(prec_2_samples)[idx]   = prec_2_current;
+      REAL(prec_3_samples)[idx]   = prec_3_current;
     }
+
+    /* ===== Update Previous Values for Next Iteration ===== */
+    memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
+    memcpy(theta_2_previous, theta_2_current, n * sizeof(double));
+    memcpy(theta_3_previous, theta_3_current, n * sizeof(double));
+    theta_01_previous = theta_01_current;
+    theta_02_previous = theta_02_current;
+    theta_03_previous = theta_03_current;
+    prec_1_previous   = prec_1_current;
+    prec_2_previous   = prec_2_current;
+    prec_3_previous   = prec_3_current;
   }
 
-  /* Return RNG state */
+  /* ========== Restore RNG State ========== */
   PutRNGstate();
 
-  /* Free temporary buffers */
-  R_Free(theta_1_post);
-  R_Free(theta_2_post);
-  R_Free(theta_3_post);
-  R_Free(theta_01_post);
-  R_Free(theta_02_post);
-  R_Free(theta_03_post);
-  R_Free(prec_1_post);
-  R_Free(prec_2_post);
-  R_Free(prec_3_post);
-  R_Free(alpha_post);
+  /* ========== Free Temporary Buffers ========== */
+  R_Free(theta_1_current);
+  R_Free(theta_1_previous);
+  R_Free(theta_2_current);
+  R_Free(theta_2_previous);
+  R_Free(theta_3_current);
+  R_Free(theta_3_previous);
+  R_Free(alpha_current);
   R_Free(rhs_vector);
 
-  /* Package results into a named list */
+  /* ========== Package Results into Named List ========== */
   SEXP out = PROTECT(allocVector(VECSXP, n_outputs));
   SEXP nms = PROTECT(allocVector(STRSXP, n_outputs));
 

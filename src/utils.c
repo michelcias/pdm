@@ -52,14 +52,12 @@ double ilogit(double x) {
  *          The algorithm exploits the tridiagonal structure for O(n) complexity
  *          instead of O(n^3) for general matrices.
  *
- * @param r       Output array (vectorized B x n matrix). The sampled n-variate normal
- *                vector will be stored at row `iter` (r[iter*n:(iter+1)*n-1]).
- * @param y       Right-hand side vector (size n) of the system A*x = y.
+ * @param r       Output vector [n] for sampled multivariate normal vector.
+ * @param y       Right-hand side vector [n] of the system A*x = y.
  *                Determines the mean of the generated distribution.
  * @param a       Scalar parameter 'a' for precision matrix structure.
  * @param b       Scalar parameter 'b' for precision matrix structure.
  * @param n       Dimension of vectors/matrix (must be > 2).
- * @param iter    Row index (0-based) in output matrix `r` for storage.
  * @param add_a   Flag controlling last diagonal element:
  *                - 1: A[n-1,n-1] = a + b
  *                - 0: A[n-1,n-1] = b
@@ -69,8 +67,8 @@ double ilogit(double x) {
  *
  * @note **Critical Assumption**: n > 2 required for algorithm stability.
  * @note Uses R's memory allocation (R_alloc) - automatically garbage collected.
- * @note Thread-safe if different threads use different `iter` values.
  * @note Numerical stability depends on condition number of precision matrix A.
+ * @note Requires GetRNGstate()/PutRNGstate() bracket in calling function.
  *
  * @warning Undefined behavior for n <= 2 (boundary checks removed for performance).
  * @warning No validation of matrix positive definiteness - may fail silently.
@@ -80,13 +78,12 @@ double ilogit(double x) {
  * @since version 1.0
  *
  */
-void generate_normal_vector(double *r,
-                            double *y,
-                            double a,
-                            double b,
-                            int n,
-                            int iter,
-                            int add_a) {
+void generate_normal_vector(double       *r,
+                            const double *y,
+                            double        a,
+                            double        b,
+                            int           n,
+                            int           add_a) {
 
   /* ========== Debug Validation ========== */
 #ifdef DEBUG
@@ -98,7 +95,6 @@ void generate_normal_vector(double *r,
   /* ========== Matrix Parameters Setup ========== */
   double a11 = a + 2 * b;                                             // Standard diagonal element of A
   double ann = add_a == 1 ? a + b : b;                                // Last diagonal element of A
-  int iter_n = iter * n;                                              // Iteration index for the r vector
   int i;                                                              // Loop index for matrix elements
 
   /* ========== Memory Allocation ========== */
@@ -128,15 +124,15 @@ void generate_normal_vector(double *r,
   // Solutions to L'*x = u and L'*r = z
   // Last element (i = n-1)
   x[n - 1] = u[n - 1] / d[n - 1];                                     // x[n-1] = u[n-1]/L[n-1,n-1]
-  r[iter_n + n - 1] = rnorm(0, 1) / d[n - 1];                         // r[iter, n-1] = z[n-1]/L[n-1,n-1]
+  r[n - 1] = rnorm(0, 1) / d[n - 1];                                  // r[n-1] = z[n-1]/L[n-1,n-1]
 
   // Remaining elements (i = n-2 to 0)
   for (i = n - 2; i >= 0; i--) {
     x[i] = (u[i] - l[i] * x[i + 1]) / d[i];                           // x[i] = (u[i] - L[i+1,i]*x[i+1])/L[i,i]
-    r[iter_n + i] = (rnorm(0, 1) - l[i] * r[iter_n + i + 1]) / d[i];  // r[iter, i] = (z[i] - L[i+1,i]*r[iter, i+1])/L[i,i]
-    r[iter_n + i + 1] += x[i + 1];                                    // Incrementally add x[i+1] to r[iter, i+1]
+    r[i] = (rnorm(0, 1) - l[i] * r[i + 1]) / d[i];                    // r[i] = (z[i] - L[i+1,i]*r[i+1])/L[i,i]
+    r[i + 1] += x[i + 1];                                             // Incrementally add x[i+1] to r[i+1]
   }
 
-  r[iter_n] += x[0];                                                  // Final addition to r[iter, 0]
+  r[0] += x[0];                                                       // Final addition to r[0]
 
 }

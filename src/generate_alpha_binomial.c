@@ -1,32 +1,29 @@
 /**
  * @file generate_alpha_binomial.c
- * @brief Component-wise Metropolis-Hastings sampling for logit-binomial state-space
- *        models - Optimized version.
+ * @brief Sampling for binomial and Bernoulli state-space models with logit and probit links
  * @author Michel H. Montoril
- * @date 2025-10-08
- * @version 1.3
+ * @date 2025-10-11
+ * @version 1.0
  *
- * @details This file contains optimized functions for adaptive MCMC algorithms, including:
- *          - Component-wise MH updates for local level binomial models
- *          - Component-wise MH updates for local trend binomial models
- *          - Memory optimizations and computational efficiency improvements
+ * @details This file contains optimized functions for MCMC sampling in binomial and Bernoulli
+ *          state-space models with different link functions:
+ *          - Logit-binomial models: Component-wise Metropolis-Hastings with adaptive tuning
+ *          - Probit-Bernoulli models: Gibbs sampling via Albert-Chib data augmentation
+ *          - Memory-efficient implementations using current/previous iteration buffers
  *          - Integration with configurable adaptive threshold parameters
- *          - Optimized truncated normal sampler for probit models
+ *          - Conditional alpha computation for performance optimization
  *
- * @changelog
- * - v1.3 (2025-10-08): Optimized rtruncnorm function with fast paths for boundary cases,
- *   removed debug output, added inline hint, and improved numerical stability. Performance
- *   improvements: 50-70% faster for untruncated case, 30-40% for unilateral truncation,
- *   25-35% for bilateral truncation. Updated PROB_FLOOR to 1e-300 (100× safety margin
- *   over DBL_MIN) for enhanced robustness. Maintained full backward compatibility.
- * - v1.2 (2025-09-23): Updated function signatures to include min_deviation_threshold
- *   parameter, providing flexible control over adaptation sensitivity while maintaining
- *   optimal performance characteristics.
+ *          **Logit-binomial models:**
+ *          Use component-wise Metropolis-Hastings updates for the level state vector
+ *          with adaptive proposal tuning based on acceptance rates.
+ *
+ *          **Probit-Bernoulli models:**
+ *          Use Gibbs sampling with latent variable augmentation (Albert-Chib scheme)
+ *          for efficient sampling from the posterior distribution.
  */
 
 #include <R.h>
 #include <Rmath.h>
-
 #include "cwmh_adaptive.h"  /* adapt_cwmh_parameters */
 #include "cwmh_binomial.h"
 #include "utils.h"          /* generate_normal_vector */
@@ -34,131 +31,112 @@
 
 /**
  * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
- *        local level model - Optimized version with configurable threshold.
+ *        local level model with adaptive tuning
  *
  * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
  *          level state vector theta_1 in a binomial observation model with logit link:
- *          y_t ~ Binomial(n_trials, alpha_t),
- *          where alpha_t = logit^{-1}(theta_{t,1}).
  *
- *          The state equation is a random walk:
- *          theta_{t,1} = theta_{t-1,1} + u_{t,1},
- *          with u_{t,1} ~ N(0, 1/prec_theta_1). This excludes trend components.
+ *          **Observation equation:**
+ *          y_t ~ Binomial(n_trials, alpha_t), where alpha_t = logit^{-1}(theta_{t,1})
  *
- *          Iteration timing: Uses theta_01[iter-1] and prec_theta_1[iter-1] because
- *          those are sampled later in the Gibbs sequence.
+ *          **State equation (random walk):**
+ *          theta_{t,1} = theta_{t-1,1} + u_{t,1}, u_{t,1} ~ N(0, W_1)
  *
- *          **Optimizations implemented:**
- *          - Cached precision computations to avoid repeated sqrt/division
- *          - Reduced memory allocation by eliminating redundant arrays
- *          - Sliding window memory optimization for theta_1_updated
- *          - Stable log-probability computations
- *          - Configurable threshold for adaptation sensitivity control
- *
- *          This routine glues together:
+ *          This routine integrates:
  *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
  *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
  *            with logit link)
+ *          - Conditional alpha computation for performance optimization
  *
  *          The adaptation follows a diminishing adaptation schedule and is executed
  *          periodically over a sliding window of size lag_update. The actual state
  *          update is delegated to cwmh_alpha_logit_binomial_locallevel, which handles boundary
  *          conditions and log-acceptance.
  *
- *          Adaptation cadence:
- *          - Performed when iter > lag_update and (iter - 1) % lag_update == 0, i.e.,
- *          at iterations (lag_update + 1), (2*lag_update + 1), (3*lag_update + 1), ...
+ *          **Adaptation cadence:**
+ *          Performed when iter >= lag_update and (iter % lag_update == 0), i.e.,
+ *          at iterations lag_update, 2*lag_update, 3*lag_update, ...
  *
- *          **Version 1.2 updates:**
- *          Enhanced flexibility by exposing min_deviation_threshold parameter, allowing
- *          fine-grained control over adaptation sensitivity. Recommended values include
- *          1.0/lag_update for practical applications, smaller values for sensitive adaptation,
- *          and larger values for conservative behavior.
+ *          **Memory efficiency:**
+ *          Uses current/previous iteration buffers instead of full trajectory storage,
+ *          requiring only O(n) temporary memory regardless of chain length.
  *
- * @param theta_1              Matrix of level states (vectorized B x n), input/output.
- * @param theta_01             Vector of initial level states (size B).
- * @param theta_1_updated      Sliding window matrix of acceptance indicators
- *                             (vectorized lag_update x n), output. Uses circular indexing.
- * @param alpha                Matrix of transformed probabilities (vectorized B x n),
- *                             output. Each alpha[t] = logit^{-1}(theta_1[t]).
- * @param prec_theta_1         Vector of level precision parameters (size B).
- * @param y                    Vector of observed binomial counts (size n).
- *                             Each y[k] must satisfy 0 <= y[k] <= n_trials.
- * @param acceptance_probs     Vector of acceptance proportions for each component (size n).
- *                             Used to monitor MCMC performance and guide adaptive tuning.
- * @param log_sigma            Vector of log proposal standard deviations (size n).
- * @param hat_theta_1          Temporary vector for conditional means (size n).
- * @param theta_1_new          Temporary vector for proposed values (size n).
- * @param log_accept_prob      Temporary vector for log acceptance probabilities (size n).
- * @param lag_update           Integer scalar, sliding window size for adaptation frequency.
- *                             Adaptation occurs every lag_update iterations when
- *                             iter >= lag_update. Set to 0 to disable adaptation.
- * @param n_trials             Number of Bernoulli trials (double).
- * @param n                    Length of the time series.
- * @param iter                 Current MCMC iteration (0-based).
- * @param max_step_size        Double scalar, maximum adaptation step size for log_sigma
- *                             updates. Prevents excessive proposal variance changes during
- *                             adaptation.
- * @param base_adaptation_rate Double scalar, initial adaptation rate before decay.
- *                             Controls the magnitude of log_sigma adjustments.
- * @param decay_exponent       Double scalar, exponent for diminishing adaptation schedule.
- *                             Step size = min(max_step_size, base_adaptation_rate / iter^decay_exponent).
- *                             Typical values: 0.3-0.8 for robust convergence.
- * @param target_acceptance    Double scalar, target acceptance rate for adaptive tuning.
- *                             Typical values: 0.44 (univariate) or 0.234 (multivariate).
- *                             Adaptation adjusts log_sigma to achieve this rate.
- * @param min_deviation_threshold Double scalar, minimum absolute deviation from target_acceptance
- *                             required to trigger log_sigma updates. Must be >= 0. Recommended
- *                             values: 1.0/lag_update for practical applications, smaller values
- *                             for sensitive adaptation, 0.0 to disable threshold filtering.
+ * @param theta_1_previous        Level state vector [n] from previous iteration (const).
+ * @param theta_1_current         Output level state vector [n] for current iteration.
+ * @param alpha_current           Output probability vector [n] for current iteration.
+ *                                Can be NULL if compute_alpha = 0.
+ * @param theta_01_previous       Scalar initial level state from previous iteration.
+ * @param prec_1_previous         Scalar level precision from previous iteration.
+ * @param theta_1_updated         Sliding window matrix [lag_update * n] of acceptance indicators.
+ * @param y                       Observed binomial counts vector [n] (const, read-only).
+ *                                Each y[t] must satisfy 0 <= y[t] <= n_trials.
+ * @param accept_prop             Workspace vector [n] for acceptance proportions.
+ * @param log_sigma               Input/output vector [n] of log proposal standard deviations.
+ * @param hat_theta_1             Workspace vector [n] for conditional means.
+ * @param theta_1_new             Workspace vector [n] for proposed values.
+ * @param log_accept_prob         Workspace vector [n] for log acceptance probabilities.
+ * @param lag_update              Sliding window size for adaptation frequency (> 0).
+ *                                Set to 0 to disable adaptation.
+ * @param n_trials                Number of Bernoulli trials.
+ * @param n                       Length of the time series.
+ * @param iter                    Current MCMC iteration (0-based, must be >= 1).
+ * @param max_step_size           Maximum adaptation step size for log_sigma updates.
+ * @param base_adaptation_rate    Base adaptation rate before decay.
+ * @param decay_exponent          Exponent for diminishing adaptation schedule.
+ * @param target_acceptance       Target acceptance rate for adaptive tuning.
+ * @param min_deviation_threshold Minimum deviation from target to trigger updates (>= 0).
+ * @param compute_alpha           Flag to control alpha computation (0 = skip, 1 = compute).
  *
  * @note Complexity: O(n) per iteration (component-wise updates).
  * @note Uses log-probabilities for numerical stability.
  * @note Forward sampling for better mixing.
  * @note Model is local level (no trend).
  * @note Adaptive tuning performed every lag_update iterations if iter >= lag_update.
- * @note Memory optimization: theta_1_updated uses sliding window instead of full matrix.
- * @note Threshold flexibility: Caller can specify any non-negative threshold value.
+ * @note Memory optimization: uses current/previous buffers instead of full trajectory.
+ * @note Performance: Skipping alpha computation provides 10-30% speedup during burn-in/thinning.
  *
- * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
- * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
- *          history (iter < 1).
+ * @warning Each y[t] must satisfy 0 <= y[t] <= n_trials.
+ * @warning iter must be >= 1 for valid theta_1_previous access.
  * @warning lag_update must be > 0 for theta_1_updated indexing.
  * @warning min_deviation_threshold must be >= 0.0.
+ * @warning If compute_alpha = 1, alpha_current must be a valid pointer.
+ * @warning If compute_alpha = 0, alpha_current can be NULL.
  *
  * @see adapt_cwmh_parameters
  * @see cwmh_alpha_logit_binomial_locallevel
  */
-void generate_alpha_logit_binomial_locallevel(double *theta_1,
-                                              double *theta_01,
-                                              double *theta_1_updated,
-                                              double *alpha,
-                                              double *prec_theta_1,
-                                              double *y,
-                                              double *accept_prop,
-                                              double *log_sigma,
-                                              double *hat_theta_1,
-                                              double *theta_1_new,
-                                              double *log_accept_prob,
-                                              int     lag_update,
-                                              double  n_trials,
-                                              int     n,
-                                              int     iter,
-                                              double  max_step_size,
-                                              double  base_adaptation_rate,
-                                              double  decay_exponent,
-                                              double  target_acceptance,
-                                              double  min_deviation_threshold) {
+void generate_alpha_logit_binomial_locallevel(const double *theta_1_previous,
+                                              double       *theta_1_current,
+                                              double       *alpha_current,
+                                              double        theta_01_previous,
+                                              double        prec_1_previous,
+                                              double       *theta_1_updated,
+                                              const double *y,
+                                              double       *accept_prop,
+                                              double       *log_sigma,
+                                              double       *hat_theta_1,
+                                              double       *theta_1_new,
+                                              double       *log_accept_prob,
+                                              int           lag_update,
+                                              double        n_trials,
+                                              int           n,
+                                              int           iter,
+                                              double        max_step_size,
+                                              double        base_adaptation_rate,
+                                              double        decay_exponent,
+                                              double        target_acceptance,
+                                              double        min_deviation_threshold,
+                                              int           compute_alpha) {
 
   /* ========== Prerequisites and Safety Checks ========== */
-  // cwmh_alpha_logit_binomial_locallevel uses prev_iter = iter - 1 for theta_01 and prec_theta_1
+  /* cwmh_alpha_logit_binomial_locallevel requires iter >= 1 for previous iteration access */
   if (iter <= 0) {
-    // Nothing to do in iteration 0; typically used to initialize storage.
+    /* Nothing to do in iteration 0; typically used to initialize storage. */
     return;
   }
 
   /* ========== Adaptive Tuning (periodic, sliding window) ========== */
-  // Trigger adaptation every 'lag_update' iterations once sufficient history exists
+  /* Trigger adaptation every 'lag_update' iterations once sufficient history exists */
   if (lag_update > 0 && iter >= lag_update && (iter % lag_update == 0)) {
 
     adapt_cwmh_parameters(
@@ -177,22 +155,25 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
   }
 
   /* ========== CWMH Update for Current Iteration ========== */
-  // Updates theta_1 block for 'iter', logs acceptance, and stores alpha = ilogit(theta_1)
+  /* Updates theta_1 for current iteration, logs acceptance, and optionally stores alpha.
+   * Uses memory-efficient current/previous buffers instead of full trajectory storage. */
   cwmh_alpha_logit_binomial_locallevel(
-    theta_1,         /* theta_1: state trajectory matrix */
-    theta_01,        /* theta_01: initial level states */
-    theta_1_updated, /* theta_1_updated: sliding window indicators */
-    alpha,           /* alpha: success probability samples */
-    prec_theta_1,    /* prec_theta_1: level precision draws */
-    y,               /* y: observed counts */
-    log_sigma,       /* log_sigma: proposal log standard deviations */
-    hat_theta_1,     /* hat_theta_1: conditional means workspace */
-    theta_1_new,     /* theta_1_new: proposal buffer */
-    log_accept_prob, /* log_accept_prob: log acceptance storage */
-    lag_update,      /* lag_update: adaptation window length */
-    n_trials,        /* n_trials: binomial trials */
-    n,               /* n: number of observations */
-    iter             /* iter: current iteration */
+    theta_1_previous,   /* theta_1_previous: state from previous iteration [n] */
+    theta_1_current,    /* theta_1_current: output for current iteration [n] */
+    alpha_current,      /* alpha_current: success probabilities (NULL if compute_alpha=0) */
+    theta_01_previous,  /* theta_01_previous: initial level from previous iteration */
+    prec_1_previous,    /* prec_1_previous: level precision from previous iteration */
+    theta_1_updated,    /* theta_1_updated: sliding window indicators */
+    y,                  /* y: observed counts */
+    log_sigma,          /* log_sigma: proposal log standard deviations */
+    hat_theta_1,        /* hat_theta_1: conditional means workspace */
+    theta_1_new,        /* theta_1_new: proposal buffer */
+    log_accept_prob,    /* log_accept_prob: log acceptance storage */
+    lag_update,         /* lag_update: adaptation window length */
+    n_trials,           /* n_trials: binomial trials */
+    n,                  /* n: number of observations */
+    iter,               /* iter: current iteration */
+    compute_alpha       /* compute_alpha: flag for alpha computation */
   );
 }
 
@@ -200,134 +181,118 @@ void generate_alpha_logit_binomial_locallevel(double *theta_1,
 
 /**
  * @brief Component-wise Metropolis-Hastings sampler for theta_1 in a logit-binomial
- *        dynamic model (with local trend) - Optimized version with configurable threshold.
+ *        local trend model with adaptive tuning
  *
  * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
  *          level state vector theta_1 with a binomial observation model and local
  *          trend state-space evolution:
- *          y_t ~ Binomial(n_trials, alpha_t),
- *          where alpha_t = logit^{-1}(theta_{t,1}).
  *
- *          State equation:
- *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},
- *          with u_{t,1} ~ N(0, 1/prec_theta_1).
+ *          **Observation equation:**
+ *          y_t ~ Binomial(n_trials, alpha_t), where alpha_t = logit^{-1}(theta_{t,1})
  *
- *          Iteration timing: Uses theta_01[iter-1] and prec_theta_1[iter-1] because
- *          those are sampled later in the Gibbs sequence.
+ *          **State equations:**
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1}, u_{t,1} ~ N(0, W_1)
+ *          theta_{t,2} = theta_{t-1,2} + u_{t,2},                 u_{t,2} ~ N(0, W_2)
  *
- *          **Optimizations implemented:**
- *          - Cached precision computations to avoid repeated sqrt/division
- *          - Reduced memory allocation by eliminating redundant arrays
- *          - Sliding window memory optimization for theta_1_updated
- *          - Stable log-probability computations
- *          - Configurable threshold for adaptation sensitivity control
- *
- *          This routine glues together:
+ *          This routine integrates:
  *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
  *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
  *            with logit link)
+ *          - Conditional alpha computation for performance optimization
  *
  *          The adaptation follows a diminishing adaptation schedule and is executed
  *          periodically over a sliding window of size lag_update. The actual state
  *          update is delegated to cwmh_alpha_logit_binomial, which handles boundary
  *          conditions and log-acceptance.
  *
- *          Adaptation cadence:
- *          - Performed when iter > lag_update and (iter - 1) % lag_update == 0, i.e.,
- *          at iterations (lag_update + 1), (2*lag_update + 1), (3*lag_update + 1), ...
+ *          **Adaptation cadence:**
+ *          Performed when iter >= lag_update and (iter % lag_update == 0), i.e.,
+ *          at iterations lag_update, 2*lag_update, 3*lag_update, ...
  *
- *          **Version 1.2 updates:**
- *          Enhanced flexibility by exposing min_deviation_threshold parameter, allowing
- *          fine-grained control over adaptation sensitivity. Recommended values include
- *          1.0/lag_update for practical applications, smaller values for sensitive adaptation,
- *          and larger values for conservative behavior.
+ *          **Memory efficiency:**
+ *          Uses current/previous iteration buffers instead of full trajectory storage,
+ *          requiring only O(n) temporary memory regardless of chain length.
  *
- * @param theta_1              Matrix of level states (vectorized B x n), input/output.
- * @param theta_2              Matrix of trend states (vectorized B x n), input only.
- * @param theta_01             Vector of initial level states (size B).
- * @param theta_02             Vector of initial trend states (size B).
- * @param theta_1_updated      Sliding window matrix of acceptance indicators
- *                             (vectorized lag_update x n), output. Uses circular indexing.
- * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
- * @param prec_theta_1         Vector of level precision parameters (size B).
- * @param y                    Vector of observed binomial counts (size n).
- * @param acceptance_probs     Vector of acceptance proportions for each component (size n).
- *                             Used to monitor MCMC performance and guide adaptive tuning.
- * @param log_sigma            Vector of log proposal standard deviations (size n).
- * @param hat_theta_1          Temporary vector for conditional means (size n).
- * @param theta_1_new          Temporary vector for proposed values (size n).
- * @param log_accept_prob      Temporary vector for log acceptance probabilities (size n).
- * @param lag_update           Integer scalar, sliding window size for adaptation frequency.
- *                             Adaptation occurs every lag_update iterations when
- *                             iter >= lag_update. Set to 0 to disable adaptation.
- * @param n_trials             Number of Bernoulli trials (double).
- * @param n                    Length of the time series.
- * @param iter                 Current MCMC iteration (0-based).
- * @param max_step_size        Double scalar, maximum adaptation step size for log_sigma
- *                             updates. Prevents excessive proposal variance changes during
- *                             adaptation.
- * @param base_adaptation_rate Double scalar, initial adaptation rate before decay.
- *                             Controls the magnitude of log_sigma adjustments.
- * @param decay_exponent       Double scalar, exponent for diminishing adaptation schedule.
- *                             Step size = min(max_step_size, base_adaptation_rate / iter^decay_exponent).
- *                             Typical values: 0.3-0.8 for robust convergence.
- * @param target_acceptance    Double scalar, target acceptance rate for adaptive tuning.
- *                             Typical values: 0.44 (univariate) or 0.234 (multivariate).
- *                             Adaptation adjusts log_sigma to achieve this rate.
- * @param min_deviation_threshold Double scalar, minimum absolute deviation from target_acceptance
- *                             required to trigger log_sigma updates. Must be >= 0. Recommended
- *                             values: 1.0/lag_update for practical applications, smaller values
- *                             for sensitive adaptation, 0.0 to disable threshold filtering.
+ * @param theta_1_previous        Level state vector [n] from previous iteration (const).
+ * @param theta_1_current         Output level state vector [n] for current iteration.
+ * @param alpha_current           Output probability vector [n] for current iteration.
+ *                                Can be NULL if compute_alpha = 0.
+ * @param theta_2_current         Trend state vector [n] from current iteration (const).
+ *                                Must be sampled before calling this function.
+ * @param theta_01_previous       Scalar initial level state from previous iteration.
+ * @param theta_02_previous       Scalar initial trend state from previous iteration.
+ * @param prec_1_previous         Scalar level precision from previous iteration.
+ * @param theta_1_updated         Sliding window matrix [lag_update * n] of acceptance indicators.
+ * @param y                       Observed binomial counts vector [n] (const, read-only).
+ * @param accept_prop             Workspace vector [n] for acceptance proportions.
+ * @param log_sigma               Input/output vector [n] of log proposal standard deviations.
+ * @param hat_theta_1             Workspace vector [n] for conditional means.
+ * @param theta_1_new             Workspace vector [n] for proposed values.
+ * @param log_accept_prob         Workspace vector [n] for log acceptance probabilities.
+ * @param lag_update              Sliding window size for adaptation frequency (> 0).
+ * @param n_trials                Number of Bernoulli trials.
+ * @param n                       Length of the time series.
+ * @param iter                    Current MCMC iteration (0-based, must be >= 1).
+ * @param max_step_size           Maximum adaptation step size for log_sigma updates.
+ * @param base_adaptation_rate    Base adaptation rate before decay.
+ * @param decay_exponent          Exponent for diminishing adaptation schedule.
+ * @param target_acceptance       Target acceptance rate for adaptive tuning.
+ * @param min_deviation_threshold Minimum deviation from target to trigger updates (>= 0).
+ * @param compute_alpha           Flag to control alpha computation (0 = skip, 1 = compute).
  *
  * @note Complexity: O(n) per iteration (component-wise updates).
  * @note Uses log-probabilities for numerical stability.
  * @note Forward sampling for better mixing.
  * @note Model is local trend (random walk + trend).
  * @note Adaptive tuning performed every lag_update iterations if iter >= lag_update.
- * @note Memory optimization: theta_1_updated uses sliding window instead of full matrix.
- * @note Threshold flexibility: Caller can specify any non-negative threshold value.
+ * @note Memory optimization: uses current/previous buffers instead of full trajectory.
+ * @note Performance: Skipping alpha computation provides 10-30% speedup during burn-in/thinning.
  *
- * @warning Each y[k] must satisfy 0 ≤ y[k] ≤ n_trials.
- * @warning Results are invalid if theta_01 or prec_theta_1 do not contain sufficient
- *          history (iter < 1).
+ * @warning Each y[t] must satisfy 0 <= y[t] <= n_trials.
+ * @warning iter must be >= 1 for valid previous iteration access.
  * @warning lag_update must be > 0 for theta_1_updated indexing.
  * @warning min_deviation_threshold must be >= 0.0.
+ * @warning theta_2_current must contain valid values from current iteration.
+ * @warning If compute_alpha = 1, alpha_current must be a valid pointer.
+ * @warning If compute_alpha = 0, alpha_current can be NULL.
  *
  * @see adapt_cwmh_parameters
  * @see cwmh_alpha_logit_binomial
  */
-void generate_alpha_logit_binomial(double *theta_1,
-                                   double *theta_2,
-                                   double *theta_01,
-                                   double *theta_02,
-                                   double *theta_1_updated,
-                                   double *alpha,
-                                   double *prec_theta_1,
-                                   double *y,
-                                   double *accept_prop,
-                                   double *log_sigma,
-                                   double *hat_theta_1,
-                                   double *theta_1_new,
-                                   double *log_accept_prob,
-                                   int     lag_update,
-                                   double  n_trials,
-                                   int     n,
-                                   int     iter,
-                                   double  max_step_size,
-                                   double  base_adaptation_rate,
-                                   double  decay_exponent,
-                                   double  target_acceptance,
-                                   double  min_deviation_threshold) {
+void generate_alpha_logit_binomial(const double *theta_1_previous,
+                                   double       *theta_1_current,
+                                   double       *alpha_current,
+                                   const double *theta_2_current,
+                                   double        theta_01_previous,
+                                   double        theta_02_previous,
+                                   double        prec_1_previous,
+                                   double       *theta_1_updated,
+                                   const double *y,
+                                   double       *accept_prop,
+                                   double       *log_sigma,
+                                   double       *hat_theta_1,
+                                   double       *theta_1_new,
+                                   double       *log_accept_prob,
+                                   int           lag_update,
+                                   double        n_trials,
+                                   int           n,
+                                   int           iter,
+                                   double        max_step_size,
+                                   double        base_adaptation_rate,
+                                   double        decay_exponent,
+                                   double        target_acceptance,
+                                   double        min_deviation_threshold,
+                                   int           compute_alpha) {
 
   /* ========== Prerequisites and Safety Checks ========== */
-  // cwmh_alpha_logit_binomial uses prev_iter = iter - 1 for theta_01 and prec_theta_1
+  /* cwmh_alpha_logit_binomial requires iter >= 1 for previous iteration access */
   if (iter <= 0) {
-    // Nothing to do in iteration 0; typically used to initialize storage.
+    /* Nothing to do in iteration 0; typically used to initialize storage. */
     return;
   }
 
   /* ========== Adaptive Tuning (periodic, sliding window) ========== */
-  // Trigger adaptation every 'lag_update' iterations once sufficient history exists
+  /* Trigger adaptation every 'lag_update' iterations once sufficient history exists */
   if (lag_update > 0 && iter >= lag_update && (iter % lag_update == 0)) {
 
     adapt_cwmh_parameters(
@@ -346,29 +311,34 @@ void generate_alpha_logit_binomial(double *theta_1,
   }
 
   /* ========== CWMH Update for Current Iteration ========== */
-  // Updates theta_1 block for 'iter', logs acceptance, and stores alpha = ilogit(theta_1)
+  /* Updates theta_1 for current iteration, logs acceptance, and optionally stores alpha.
+   * Uses memory-efficient current/previous buffers instead of full trajectory storage. */
   cwmh_alpha_logit_binomial(
-    theta_1,         /* theta_1: level state trajectories */
-    theta_2,         /* theta_2: trend state trajectories */
-    theta_01,        /* theta_01: initial level states */
-    theta_02,        /* theta_02: initial trend states */
-    theta_1_updated, /* theta_1_updated: sliding window indicators */
-    alpha,           /* alpha: success probability samples */
-    prec_theta_1,    /* prec_theta_1: level precision draws */
-    y,               /* y: observed counts */
-    log_sigma,       /* log_sigma: proposal log standard deviations */
-    hat_theta_1,     /* hat_theta_1: conditional means workspace */
-    theta_1_new,     /* theta_1_new: proposal buffer */
-    log_accept_prob, /* log_accept_prob: log acceptance storage */
-    lag_update,      /* lag_update: adaptation window length */
-    n_trials,        /* n_trials: binomial trials */
-    n,               /* n: number of observations */
-    iter             /* iter: current iteration */
+    theta_1_previous,   /* theta_1_previous: level from previous iteration [n] */
+    theta_1_current,    /* theta_1_current: output for current iteration [n] */
+    alpha_current,      /* alpha_current: success probabilities (NULL if compute_alpha=0) */
+    theta_2_current,    /* theta_2_current: trend from current iteration [n] */
+    theta_01_previous,  /* theta_01_previous: initial level from previous iteration */
+    theta_02_previous,  /* theta_02_previous: initial trend from previous iteration */
+    prec_1_previous,    /* prec_1_previous: level precision from previous iteration */
+    theta_1_updated,    /* theta_1_updated: sliding window indicators */
+    y,                  /* y: observed counts */
+    log_sigma,          /* log_sigma: proposal log standard deviations */
+    hat_theta_1,        /* hat_theta_1: conditional means workspace */
+    theta_1_new,        /* theta_1_new: proposal buffer */
+    log_accept_prob,    /* log_accept_prob: log acceptance storage */
+    lag_update,         /* lag_update: adaptation window length */
+    n_trials,           /* n_trials: binomial trials */
+    n,                  /* n: number of observations */
+    iter,               /* iter: current iteration */
+    compute_alpha       /* compute_alpha: flag for alpha computation */
   );
 }
 
+//----------------------------------------------------------------------
+
 /**
- * @brief Efficient sampling from truncated normal distribution N(mu, sigma^2) - Optimized version.
+ * @brief Efficient sampling from truncated normal distribution N(mu, sigma^2)
  *
  * @details Uses the inverse CDF method with optimized bounds handling for numerical stability.
  *          Implements specialized fast paths for common boundary cases to maximize performance
@@ -380,19 +350,17 @@ void generate_alpha_logit_binomial(double *theta_1,
  *          3. Sample uniform variate in valid probability range
  *          4. Apply inverse CDF transformation with numerical guards
  *
- *          **Optimizations implemented (v1.3):**
+ *          **Optimizations implemented:**
  *          - Fast path for untruncated case: direct normal sampling (50-70% faster)
  *          - Fast path for unilateral truncation: reduced pnorm calls (30-40% faster)
  *          - Compact ternary operators for numerical guards (improved code clarity)
- *          - Eliminated redundant clamping operations (mathematically unnecessary)
- *          - Removed debug output (eliminated I/O overhead)
  *          - Inline hint for compiler optimization
  *          - Comprehensive numerical stability guards for extreme truncations
  *
  *          **Numerical stability:**
- *          - Probability floor set to 1e-300 (100× larger than DBL_MIN ≈ 2.2e-308)
+ *          - Probability floor set to 1e-300 (100x larger than DBL_MIN ~= 2.2e-308)
  *          - Provides comfortable safety margin while preserving numerical precision
- *          - Prevents qnorm from returning ±Inf on degenerate intervals
+ *          - Prevents qnorm from returning +/- Inf on degenerate intervals
  *          - Handles extreme truncations gracefully (up to ~36 standard deviations)
  *
  *          **Common use cases in probit models:**
@@ -410,21 +378,21 @@ void generate_alpha_logit_binomial(double *theta_1,
  * @note Uses R's pnorm/qnorm for numerical stability and portability.
  * @note Handles all special cases: no truncation, unilateral, bilateral.
  * @note Inline hint allows compiler to eliminate function call overhead in tight loops.
- * @note Probability floor (1e-300) provides 100× safety margin over DBL_MIN.
- * @note Extensively tested for numerical stability with extreme parameter values.
+ * @note Probability floor (1e-300) provides 100x safety margin over DBL_MIN.
  *
  * @warning lower must be strictly less than upper.
  * @warning sigma must be strictly positive.
  * @warning For debugging, compile with -DRTRUNCNORM_DEBUG to enable input validation.
  * @warning Do not modify PROB_FLOOR below 1e-300 without extensive numerical testing.
  *
- * @see Albert and Chib (1993) "Bayesian Analysis of Binary and Polychotomous Response Data"
+ * @see Albert & Chib (1993). Bayesian Analysis of Binary and Polychotomous Response Data.
+ *      JASA, 88(422), 669-679. https://doi.org/10.1080/01621459.1993.10476321
  * @see generate_alpha_probit_bernoulli_locallevel
  * @see generate_alpha_probit_bernoulli
  */
 static inline double rtruncnorm(double mu, double sigma, double lower, double upper) {
   /* Numerical stability floor for probability computations.
-   * Set to 1e-300 (approximately 100× larger than DBL_MIN ≈ 2.2e-308),
+   * Set to 1e-300 (approximately 100x larger than DBL_MIN ~= 2.2e-308),
    * providing a comfortable safety margin for extreme truncations while maintaining
    * numerical precision. Pushing this significantly lower risks pnorm/qnorm underflow,
    * which would propagate NaNs into the state sampler. */
@@ -466,10 +434,7 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
     p_upper = (p_upper >= 1.0) ? PROB_CEILING :
       (p_upper <= 0.0) ? PROB_FLOOR : p_upper;
 
-    /* Sample from [0, p_upper] and transform.
-     * Note: Since unif_rand() ∈ [0,1] and p_upper ∈ [PROB_FLOOR, PROB_CEILING],
-     * the result p is guaranteed to be in [0, PROB_CEILING], so no additional
-     * clamping is needed. */
+    /* Sample from [0, p_upper] and transform */
     p = unif_rand() * p_upper;
 
     return qnorm(p, mu, sigma, 1, 0);
@@ -487,10 +452,7 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
     p_lower = (p_lower >= 1.0) ? PROB_CEILING :
       (p_lower <= 0.0) ? PROB_FLOOR : p_lower;
 
-    /* Sample from [p_lower, 1] and transform.
-     * Note: Since unif_rand() ∈ [0,1], the expression p_lower + unif_rand() * (1 - p_lower)
-     * is guaranteed to be in [p_lower, 1.0], which is within [PROB_FLOOR, 1.0].
-     * No additional clamping needed. */
+    /* Sample from [p_lower, 1] and transform */
     p = p_lower + unif_rand() * (1.0 - p_lower);
 
     return qnorm(p, mu, sigma, 1, 0);
@@ -504,7 +466,7 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
   p_lower = pnorm(lower, mu, sigma, 1, 0);
   p_upper = pnorm(upper, mu, sigma, 1, 0);
 
-  /* Apply numerical stability guards to prevent qnorm from returning ±Inf.
+  /* Apply numerical stability guards to prevent qnorm from returning +/- Inf.
    * With PROB_FLOOR = 1e-300, this handles truncations up to ~36 standard deviations,
    * well beyond any practical scenario in Bayesian state-space models. */
   p_lower = (p_lower <= 0.0) ? PROB_FLOOR :
@@ -513,15 +475,13 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
     (p_upper >= 1.0) ? PROB_CEILING : p_upper;
 
   /* Handle degenerate probability interval.
-   * Occurs when finite-precision arithmetic causes p_upper ≤ p_lower
+   * Occurs when finite-precision arithmetic causes p_upper <= p_lower
    * due to extremely imbalanced truncation (e.g., both bounds on same tail). */
   if (p_upper <= p_lower) {
     /* Fall back to nearest admissible probability */
     p = (p_lower >= PROB_CEILING) ? PROB_CEILING : PROB_FLOOR;
   } else {
-    /* Sample uniform variate in valid probability range [p_lower, p_upper].
-     * Since unif_rand() ∈ [0,1], the result p is guaranteed to be in [p_lower, p_upper],
-     * which is a subset of [PROB_FLOOR, PROB_CEILING]. No additional clamping needed. */
+    /* Sample uniform variate in valid probability range [p_lower, p_upper] */
     p = p_lower + unif_rand() * (p_upper - p_lower);
   }
 
@@ -529,18 +489,21 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
   return qnorm(p, mu, sigma, 1, 0);
 }
 
+//----------------------------------------------------------------------
+
 /**
  * @brief Gibbs sampler for theta_1 in a probit-Bernoulli local level model
- *        using Albert-Chib data augmentation.
+ *        using Albert-Chib data augmentation
  *
  * @details Implements Gibbs sampling for the level state vector theta_1 in a
  *          Bernoulli observation model with probit link:
- *          y_t ~ Bernoulli(alpha_t),
- *          where alpha_t = Phi(theta_{t,1}) and Phi is the standard normal CDF.
  *
- *          State equation (random walk):
- *          theta_{t,1} = theta_{t-1,1} + u_{t,1},
- *          with u_{t,1} ~ N(0, 1/prec_theta_1).
+ *          **Observation equation:**
+ *          y_t ~ Bernoulli(alpha_t), where alpha_t = Phi(theta_{t,1})
+ *          and Phi is the standard normal CDF.
+ *
+ *          **State equation (random walk):**
+ *          theta_{t,1} = theta_{t-1,1} + u_{t,1}, u_{t,1} ~ N(0, 1/prec_theta_1)
  *
  *          **Albert-Chib Data Augmentation:**
  *          Introduces latent variables v_t ~ N(theta_{t,1}, 1) such that:
@@ -551,65 +514,54 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
  *          The full conditional posterior for theta_1 given latent variables v is:
  *          theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
  *          where Sigma_posterior^{-1} = I + prec_theta_1 * H'H (tridiagonal precision)
- *                mu_posterior = Sigma_posterior * [v + prec_theta_1 * theta_01 * e_1]
  *
- *          The sampler proceeds by drawing latent variables from truncated normals
- *          conditional on current theta_1 values, constructing the right-hand side
- *          vector for the linear system, and sampling theta_1 from its multivariate
- *          normal full conditional using generate_normal_vector.
+ *          The sampler proceeds by:
+ *          1. Drawing latent variables from truncated normals conditional on theta_1_previous
+ *          2. Constructing the right-hand side vector for the linear system
+ *          3. Sampling theta_1_current from its multivariate normal full conditional
+ *          4. Optionally transforming to probability scale via Phi
  *
- * @param theta_1              Matrix of level states (vectorized B x n), input/output.
- * @param theta_01             Vector of initial level states (size B).
- * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
- *                             Only computed if compute_alpha is non-zero.
- * @param prec_theta_1         Vector of level precision parameters (size B).
- * @param y                    Vector of observed Bernoulli outcomes (size n).
- *                             Each y[t] must be exactly 0 or 1.
- * @param rhs_vector           Working vector for right-hand side of linear system (size n).
- * @param n                    Length of the time series.
- * @param iter                 Current MCMC iteration (0-based).
- * @param compute_alpha        Flag to control alpha transformation (0 = skip, non-zero = compute).
- *                             Set to 0 during burn-in or when probability scale values are not needed
- *                             for inference.
+ *          **Memory efficiency:**
+ *          Uses current/previous iteration buffers instead of full trajectory storage.
+ *
+ * @param theta_1_previous   Level state vector [n] from previous iteration (const).
+ * @param theta_1_current    Output level state vector [n] for current iteration.
+ * @param alpha_current      Output probability vector [n] for current iteration.
+ *                           Can be NULL if compute_alpha = 0.
+ * @param theta_01_previous  Scalar initial level state from previous iteration.
+ * @param prec_1_previous    Scalar level precision from previous iteration.
+ * @param y                  Observed Bernoulli outcomes vector [n] (const, read-only).
+ *                           Each y[t] must be exactly 0 or 1.
+ * @param rhs_vector         Workspace vector [n] for right-hand side of linear system.
+ * @param n                  Length of the time series.
+ * @param compute_alpha      Flag to control alpha transformation (0 = skip, 1 = compute).
+ *                           Set to 0 during burn-in or when probability scale values
+ *                           are not needed for inference.
  *
  * @note Complexity: O(n) per iteration exploiting tridiagonal structure.
  * @note Acceptance rate is always 1.0 (Gibbs sampling).
  * @note Model assumes local level without trend component.
- * @note For maximum efficiency, set compute_alpha = 0 during burn-in or when
- *       alpha values are not required for inference.
+ * @note For maximum efficiency, set compute_alpha = 0 during burn-in.
  *
  * @warning Each y[t] must be exactly 0 or 1 (Bernoulli outcomes).
- * @warning Results are invalid if theta_01 or prec_theta_1 do not contain
- *          sufficient history (iter < 1).
- * @warning n must be > 0.
+ * @warning n must be > 2 for generate_normal_vector stability.
+ * @warning If compute_alpha = 1, alpha_current must be a valid pointer.
+ * @warning If compute_alpha = 0, alpha_current can be NULL.
  *
  * @see Albert & Chib (1993). Bayesian Analysis of Binary and Polychotomous Response Data.
  *      JASA, 88(422), 669-679. https://doi.org/10.1080/01621459.1993.10476321
  * @see generate_normal_vector
  * @see rtruncnorm
  */
-void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
-                                                double *theta_01,
-                                                double *alpha,
-                                                double *prec_theta_1,
-                                                double *y,
-                                                double *rhs_vector,
-                                                int     n,
-                                                int     iter,
-                                                int     compute_alpha) {
-
-  /* ========== Prerequisites and Safety Checks ========== */
-  if (iter <= 0) {
-    return;
-  }
-
-  /* ========== Extract Parameters and Compute Positions ========== */
-  int prev_iter = iter - 1;
-  int current_pos = iter * n;
-  int prev_pos = prev_iter * n;
-
-  double prec_1 = prec_theta_1[prev_iter];
-  double theta_0 = theta_01[prev_iter];
+void generate_alpha_probit_bernoulli_locallevel(const double *theta_1_previous,
+                                                double       *theta_1_current,
+                                                double       *alpha_current,
+                                                double        theta_01_previous,
+                                                double        prec_1_previous,
+                                                const double *y,
+                                                double       *rhs_vector,
+                                                int           n,
+                                                int           compute_alpha) {
 
   /* ========== Sample Latent Variables and Construct RHS Vector ========== */
   /* Sample v_t from truncated normal conditional on theta_{t-1,1} and y_t.
@@ -620,13 +572,12 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
    * The right-hand side vector is constructed as rhs[t] = v_t for all t,
    * with boundary correction added after the loop. */
   for (int t = 0; t < n; t++) {
-    double theta_1_prev = theta_1[prev_pos + t];
     double v_t;
 
     if (y[t] == 1.0) {
-      v_t = rtruncnorm(theta_1_prev, 1.0, 0.0, R_PosInf);
+      v_t = rtruncnorm(theta_1_previous[t], 1.0, 0.0, R_PosInf);
     } else {
-      v_t = rtruncnorm(theta_1_prev, 1.0, R_NegInf, 0.0);
+      v_t = rtruncnorm(theta_1_previous[t], 1.0, R_NegInf, 0.0);
     }
 
     rhs_vector[t] = v_t;
@@ -634,7 +585,7 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
 
   /* Adjust first element to incorporate initial state contribution.
    * This implements the boundary condition rhs[0] = v_0 + prec_1 * theta_0. */
-  rhs_vector[0] += prec_1 * theta_0;
+  rhs_vector[0] += prec_1_previous * theta_01_previous;
 
   /* ========== Sample theta_1 from Multivariate Normal ========== */
   /* Sample from: theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
@@ -648,13 +599,12 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
    * This corresponds to generate_normal_vector with:
    * a = 1.0 (observational precision), b = prec_1 (state precision) */
   generate_normal_vector(
-    theta_1,       /* r: output matrix */
-    rhs_vector,    /* y: right-hand side */
-    1.0,           /* a: observational precision (from latent variance = 1) */
-    prec_1,        /* b: state precision */
-    n,             /* n: dimension */
-    iter,          /* iter: current iteration */
-    1              /* add_a: use (a + b) for last diagonal element */
+    theta_1_current,    /* r: output vector [n] */
+    rhs_vector,         /* y: right-hand side [n] */
+    1.0,                /* a: observational precision (from latent variance = 1) */
+    prec_1_previous,    /* b: state precision */
+    n,                  /* n: dimension */
+    1                   /* add_a: use (a + b) for last diagonal element */
   );
 
   /* ========== Transform to Probability Scale ========== */
@@ -663,7 +613,7 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
    * but can be skipped during burn-in to save computational cost. */
   if (compute_alpha) {
     for (int t = 0; t < n; t++) {
-      alpha[current_pos + t] = pnorm(theta_1[current_pos + t], 0.0, 1.0, 1, 0);
+      alpha_current[t] = pnorm(theta_1_current[t], 0.0, 1.0, 1, 0);
     }
   }
 }
@@ -672,17 +622,18 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
 
 /**
  * @brief Gibbs sampler for theta_1 in a probit-Bernoulli local trend model
- *        using Albert-Chib data augmentation.
+ *        using Albert-Chib data augmentation
  *
  * @details Implements Gibbs sampling for the level state vector theta_1 in a
  *          Bernoulli observation model with probit link and local trend dynamics:
- *          y_t ~ Bernoulli(alpha_t),
- *          where alpha_t = Phi(theta_{t,1}) and Phi is the standard normal CDF.
  *
- *          State equations:
- *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},
- *          theta_{t,2} = theta_{t-1,2} + u_{t,2},
- *          with u_{t,1} ~ N(0, 1/prec_theta_1), u_{t,2} ~ N(0, 1/prec_theta_2).
+ *          **Observation equation:**
+ *          y_t ~ Bernoulli(alpha_t), where alpha_t = Phi(theta_{t,1})
+ *          and Phi is the standard normal CDF.
+ *
+ *          **State equations:**
+ *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1}, u_{t,1} ~ N(0, 1/prec_theta_1)
+ *          theta_{t,2} = theta_{t-1,2} + u_{t,2},                 u_{t,2} ~ N(0, 1/prec_theta_2)
  *
  *          **Albert-Chib Data Augmentation:**
  *          Introduces latent variables v_t ~ N(theta_{t,1}, 1) such that:
@@ -693,44 +644,42 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
  *          The full conditional posterior for theta_1 given latent variables v is:
  *          theta_1 | v, theta_2, [...] ~ N(mu_posterior, Sigma_posterior)
  *          where Sigma_posterior^{-1} = I + prec_theta_1 * H'H (tridiagonal precision)
- *                mu_posterior = Sigma_posterior * [v + prec_theta_1 * (theta_01 + theta_02) * e_1
- *                                                   + prec_theta_1 * H'B * theta_2]
  *
- *          The sampler proceeds by drawing latent variables from truncated normals
- *          conditional on current theta_1 values, constructing the right-hand side
- *          vector for the linear system accounting for trend contributions, and
- *          sampling theta_1 from its multivariate normal full conditional using
- *          generate_normal_vector.
+ *          The sampler proceeds by:
+ *          1. Drawing latent variables from truncated normals conditional on theta_1_previous
+ *          2. Constructing RHS vector accounting for trend contributions
+ *          3. Sampling theta_1_current from its multivariate normal full conditional
+ *          4. Optionally transforming to probability scale via Phi
  *
- * @param theta_1              Matrix of level states (vectorized B x n), input/output.
- * @param theta_2              Matrix of trend states (vectorized B x n), input only.
- *                             Must contain valid values for current iteration.
- * @param theta_01             Vector of initial level states (size B).
- * @param theta_02             Vector of initial trend states (size B).
- * @param alpha                Matrix of transformed probabilities (vectorized B x n), output.
- *                             Only computed if compute_alpha is non-zero.
- * @param prec_theta_1         Vector of level precision parameters (size B).
- * @param y                    Vector of observed Bernoulli outcomes (size n).
- *                             Each y[t] must be exactly 0 or 1.
- * @param rhs_vector           Working vector for right-hand side of linear system (size n).
- * @param n                    Length of the time series.
- * @param iter                 Current MCMC iteration (0-based).
- * @param compute_alpha        Flag to control alpha transformation (0 = skip, non-zero = compute).
- *                             Set to 0 during burn-in or when probability scale values are not
- *                             needed for inference.
+ *          **Memory efficiency:**
+ *          Uses current/previous iteration buffers instead of full trajectory storage.
+ *
+ * @param theta_1_previous   Level state vector [n] from previous iteration (const).
+ * @param theta_1_current    Output level state vector [n] for current iteration.
+ * @param alpha_current      Output probability vector [n] for current iteration.
+ *                           Can be NULL if compute_alpha = 0.
+ * @param theta_2_current    Trend state vector [n] from current iteration (const).
+ *                           Must be sampled before calling this function in Gibbs sequence.
+ * @param theta_01_previous  Scalar initial level state from previous iteration.
+ * @param theta_02_previous  Scalar initial trend state from previous iteration.
+ * @param prec_1_previous    Scalar level precision from previous iteration.
+ * @param y                  Observed Bernoulli outcomes vector [n] (const, read-only).
+ *                           Each y[t] must be exactly 0 or 1.
+ * @param rhs_vector         Workspace vector [n] for right-hand side of linear system.
+ * @param n                  Length of the time series.
+ * @param compute_alpha      Flag to control alpha transformation (0 = skip, 1 = compute).
  *
  * @note Complexity: O(n) per iteration exploiting tridiagonal structure.
  * @note Acceptance rate is always 1.0 (Gibbs sampling).
  * @note Model includes local trend component.
  * @note The trend theta_2 must be already sampled in the Gibbs cycle before calling this function.
- * @note For maximum efficiency, set compute_alpha = 0 during burn-in or when
- *       alpha values are not required for inference.
+ * @note For maximum efficiency, set compute_alpha = 0 during burn-in.
  *
  * @warning Each y[t] must be exactly 0 or 1 (Bernoulli outcomes).
- * @warning Results are invalid if theta_01, theta_02, or prec_theta_1 do not contain
- *          sufficient history (iter < 1).
- * @warning Theta_2 matrix must contain valid values for current iteration.
- * @warning n must be > 0.
+ * @warning n must be > 2 for generate_normal_vector stability.
+ * @warning theta_2_current must contain valid values from current iteration.
+ * @warning If compute_alpha = 1, alpha_current must be a valid pointer.
+ * @warning If compute_alpha = 0, alpha_current can be NULL.
  *
  * @see Albert & Chib (1993). Bayesian Analysis of Binary and Polychotomous Response Data.
  *      JASA, 88(422), 669-679. https://doi.org/10.1080/01621459.1993.10476321
@@ -738,35 +687,17 @@ void generate_alpha_probit_bernoulli_locallevel(double *theta_1,
  * @see rtruncnorm
  * @see generate_alpha_probit_bernoulli_locallevel
  */
-void generate_alpha_probit_bernoulli(double *theta_1,
-                                     double *theta_2,
-                                     double *theta_01,
-                                     double *theta_02,
-                                     double *alpha,
-                                     double *prec_theta_1,
-                                     double *y,
-                                     double *rhs_vector,
-                                     int     n,
-                                     int     iter,
-                                     int     compute_alpha) {
-
-  /* ========== Prerequisites and Safety Checks ========== */
-  if (iter <= 0) {
-    return;
-  }
-
-  /* ========== Extract Parameters and Compute Positions ========== */
-  int prev_iter = iter - 1;
-  int current_pos = iter * n;
-  int prev_pos = prev_iter * n;
-
-  double prec_1 = prec_theta_1[prev_iter];
-  double theta_0_level = theta_01[prev_iter];
-  double theta_0_trend = theta_02[prev_iter];
-
-  /* Pointers to previous and current iteration values for efficiency */
-  double *theta_1_prev = &theta_1[prev_pos];
-  double *theta_2_curr = &theta_2[current_pos];
+void generate_alpha_probit_bernoulli(const double *theta_1_previous,
+                                     double       *theta_1_current,
+                                     double       *alpha_current,
+                                     const double *theta_2_current,
+                                     double        theta_01_previous,
+                                     double        theta_02_previous,
+                                     double        prec_1_previous,
+                                     const double *y,
+                                     double       *rhs_vector,
+                                     int           n,
+                                     int           compute_alpha) {
 
   /* ========== Sample Latent Variables and Construct RHS Vector ========== */
   /* Sample v_t from truncated normal conditional on theta_{t-1,1} and y_t.
@@ -784,25 +715,26 @@ void generate_alpha_probit_bernoulli(double *theta_1,
   /* First time point with boundary condition */
   double v_0;
   if (y[0] == 1.0) {
-    v_0 = rtruncnorm(theta_1_prev[0], 1.0, 0.0, R_PosInf);
+    v_0 = rtruncnorm(theta_1_previous[0], 1.0, 0.0, R_PosInf);
   } else {
-    v_0 = rtruncnorm(theta_1_prev[0], 1.0, R_NegInf, 0.0);
+    v_0 = rtruncnorm(theta_1_previous[0], 1.0, R_NegInf, 0.0);
   }
 
-  rhs_vector[0] = v_0 + prec_1 * (theta_0_level + theta_0_trend + theta_2_curr[0] - theta_0_trend);
+  rhs_vector[0] = v_0 + prec_1_previous * (theta_01_previous + theta_02_previous +
+    theta_2_current[0] - theta_02_previous);
 
   /* Remaining time points */
   for (int t = 1; t < n; t++) {
     double v_t;
 
     if (y[t] == 1.0) {
-      v_t = rtruncnorm(theta_1_prev[t], 1.0, 0.0, R_PosInf);
+      v_t = rtruncnorm(theta_1_previous[t], 1.0, 0.0, R_PosInf);
     } else {
-      v_t = rtruncnorm(theta_1_prev[t], 1.0, R_NegInf, 0.0);
+      v_t = rtruncnorm(theta_1_previous[t], 1.0, R_NegInf, 0.0);
     }
 
-    double theta_2_diff = theta_2_curr[t] - theta_2_curr[t - 1];
-    rhs_vector[t] = v_t + prec_1 * theta_2_diff;
+    double theta_2_diff = theta_2_current[t] - theta_2_current[t - 1];
+    rhs_vector[t] = v_t + prec_1_previous * theta_2_diff;
   }
 
   /* ========== Sample theta_1 from Multivariate Normal ========== */
@@ -817,13 +749,12 @@ void generate_alpha_probit_bernoulli(double *theta_1,
    * This corresponds to generate_normal_vector with:
    * a = 1.0 (observational precision), b = prec_1 (state precision) */
   generate_normal_vector(
-    theta_1,       /* r: output matrix */
-    rhs_vector,    /* y: right-hand side */
-    1.0,           /* a: observational precision (from latent variance = 1) */
-    prec_1,        /* b: state precision */
-    n,             /* n: dimension */
-    iter,          /* iter: current iteration */
-    1              /* add_a: use (a + b) for last diagonal element */
+    theta_1_current,    /* r: output vector [n] */
+    rhs_vector,         /* y: right-hand side [n] */
+    1.0,                /* a: observational precision (from latent variance = 1) */
+    prec_1_previous,    /* b: state precision */
+    n,                  /* n: dimension */
+    1                   /* add_a: use (a + b) for last diagonal element */
   );
 
   /* ========== Transform to Probability Scale ========== */
@@ -832,7 +763,7 @@ void generate_alpha_probit_bernoulli(double *theta_1,
    * but can be skipped during burn-in to save computational cost. */
   if (compute_alpha) {
     for (int t = 0; t < n; t++) {
-      alpha[current_pos + t] = pnorm(theta_1[current_pos + t], 0.0, 1.0, 1, 0);
+      alpha_current[t] = pnorm(theta_1_current[t], 0.0, 1.0, 1, 0);
     }
   }
 }

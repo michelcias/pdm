@@ -26,15 +26,12 @@
 #include <R_ext/Rdynload.h>
 
 /* Include headers for all registered production functions */
-#include "mcmc_locallevel.h"
-#include "mcmc_localtrend.h"
-#include "mcmc_localacceleration.h"
+#include "mcmc_normal_locallevel.h"
+#include "mcmc_normal_localtrend.h"
+#include "mcmc_normal_localacceleration.h"
 #include "mcmc_binomial_locallevel.h"
 #include "mcmc_binomial_localtrend.h"
 #include "mcmc_binomial_localacceleration.h"
-#include "mcmc_bernoulli_locallevel.h"
-#include "mcmc_bernoulli_localtrend.h"
-#include "mcmc_bernoulli_localacceleration.h"
 #include "test_helpers.h"
 #include "utils.h"
 

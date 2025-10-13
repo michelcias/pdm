@@ -46,13 +46,22 @@
 /**
  * @brief Ensure that a numeric vector matches the expected length.
  *
- * @param vec Candidate vector to validate.
- * @param expected Required length for @p vec.
- * @param arg Name of the argument being checked, used for error messages.
- * @param reference Name of the reference argument establishing the length, used for error
- *        reporting.
+ * @details This lightweight validation helper checks that wrapper inputs share
+ *          consistent lengths before delegating to the core numerical
+ *          routines.
+ *
+ * @param vec        Candidate vector to validate.
+ * @param expected   Required length for @p vec.
+ * @param arg        Name of the argument being checked, used for error messages.
+ * @param reference  Name of the reference argument establishing the length,
+ *                   used for error reporting.
+ *
+ * @return Nothing. Raises an R error when the supplied length is invalid.
  */
-static void ensure_length(SEXP vec, int expected, const char *arg, const char *reference) {
+static void ensure_length(SEXP        vec,
+                          int         expected,
+                          const char *arg,
+                          const char *reference) {
   if (LENGTH(vec) != expected) {
     error("%s must have length %d to match %s (got %d)",
           arg, expected, reference, LENGTH(vec));
@@ -62,14 +71,18 @@ static void ensure_length(SEXP vec, int expected, const char *arg, const char *r
 /**
  * @brief Coerce an object to integer and return the first scalar entry.
  *
- * @param x R object expected to hold an integer scalar.
- * @param arg Name of the argument being coerced, used for diagnostic messages.
+ * @details Wrappers rely on this helper to normalise scalar integer
+ *          arguments, ensuring consistent type handling across the module.
  *
- * @return The first integer extracted from @p x.
+ * @param x    R object expected to hold an integer scalar.
+ * @param arg  Name of the argument being coerced, used for diagnostic messages.
+ *
+ * @return The first integer extracted from @p x (defaults to 0 when NULL).
  *
  * @note Accepts NULL input (returns 0 for NULL inputs).
  */
-static int require_int_scalar(SEXP x, const char *arg) {
+static int require_int_scalar(SEXP        x,
+                              const char *arg) {
   if (x == R_NilValue) {
     return 0;
   }
@@ -86,14 +99,18 @@ static int require_int_scalar(SEXP x, const char *arg) {
 /**
  * @brief Coerce an object to double and return the first scalar entry.
  *
- * @param x R object expected to hold a numeric scalar.
- * @param arg Name of the argument being coerced, used for diagnostic messages.
+ * @details Wrappers use this helper to promote scalar numeric arguments to
+ *          double precision and to provide uniform error reporting.
  *
- * @return The first double extracted from @p x.
+ * @param x    R object expected to hold a numeric scalar.
+ * @param arg  Name of the argument being coerced, used for diagnostic messages.
+ *
+ * @return The first double extracted from @p x (defaults to 0.0 when NULL).
  *
  * @note Accepts NULL input (returns 0.0 for NULL inputs).
  */
-static double require_real_scalar(SEXP x, const char *arg) {
+static double require_real_scalar(SEXP        x,
+                                  const char *arg) {
   if (x == R_NilValue) {
     return 0.0;
   }
@@ -114,7 +131,11 @@ static double require_real_scalar(SEXP x, const char *arg) {
 /**
  * @brief Evaluate the inverse-logit transform for a scalar value.
  *
- * @param x_ Numeric vector whose first element is transformed.
+ * @details Provides a thin wrapper around the internal @c ilogit helper so
+ *          that tests can confirm numerical behaviour through R's @c .Call
+ *          interface.
+ *
+ * @param x_  Numeric vector whose first element is transformed.
  *
  * @return A length-one numeric vector containing @f$\mathrm{logit}^{-1}(x)@f$.
  */
@@ -129,14 +150,20 @@ SEXP test_ilogit(SEXP x_) {
 /**
  * @brief Draw a normal vector used when simulating latent states.
  *
- * @param y_ Baseline numeric vector used as the proposal centre.
- * @param a_ Scalar location shift applied during proposal generation.
- * @param b_ Scalar precision parameter governing variability.
- * @param add_a_ Integer flag indicating whether @p a_ should be added element-wise.
+ * @details Calls the shared random number helper to produce conditionally
+ *          independent normal draws centred around @p y_ with optional shift.
+ *
+ * @param y_      Baseline numeric vector used as the proposal centre.
+ * @param a_      Scalar location shift applied during proposal generation.
+ * @param b_      Scalar precision parameter governing variability.
+ * @param add_a_  Integer flag indicating whether @p a_ should be added element-wise.
  *
  * @return A numeric vector of the same length as @p y_ containing the simulated values.
  */
-SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_) {
+SEXP test_generate_normal_vector(SEXP y_,
+                                 SEXP a_,
+                                 SEXP b_,
+                                 SEXP add_a_) {
   int protect_count = 0;
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   protect_count++;
@@ -157,7 +184,14 @@ SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_) {
   protect_count++;
 
   GetRNGstate();
-  generate_normal_vector(REAL(result), REAL(y), REAL(a)[0], REAL(b)[0], n, INTEGER(add_a)[0]);
+  generate_normal_vector(
+    REAL(result),         /* result: output buffer */
+    REAL(y),              /* y: baseline centre */
+    REAL(a)[0],           /* a: location shift */
+    REAL(b)[0],           /* b: precision parameter */
+    n,                    /* n: vector length */
+    INTEGER(add_a)[0]     /* add_a: apply shift flag */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -171,24 +205,35 @@ SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_) {
 /**
  * @brief Run a single adaptive update of the CWMH proposal parameters.
  *
- * @param theta_updated_ Matrix (stored as a vector) containing the most recent
- *        lagged theta values.
- * @param log_sigma_ Numeric vector with the current log standard deviations.
- * @param lag_update_ Integer scalar specifying the adaptation window length.
- * @param n_ Integer scalar representing the dimensionality of the parameter.
- * @param iter_ Integer scalar with the current iteration index.
- * @param max_step_size_ Double scalar limiting per-iteration sigma growth.
- * @param base_adaptation_rate_ Double scalar providing the adaptation learning rate.
- * @param decay_exponent_ Double scalar controlling how fast learning decays.
- * @param target_acceptance_ Double scalar giving the desired acceptance probability.
+ * @details Exposes @c adapt_cwmh_parameters to R so that tests can verify the
+ *          Robbins--Monro adaptation schedule. Returns both acceptance
+ *          proportions and updated log standard deviations.
+ *
+ * @param theta_updated_           Matrix (stored as a vector) containing the most recent
+ *                                  lagged theta values.
+ * @param log_sigma_               Numeric vector with the current log standard deviations.
+ * @param lag_update_              Integer scalar specifying the adaptation window length.
+ * @param n_                       Integer scalar representing the dimensionality of the parameter.
+ * @param iter_                    Integer scalar with the current iteration index.
+ * @param max_step_size_           Double scalar limiting per-iteration sigma growth.
+ * @param base_adaptation_rate_    Double scalar providing the adaptation learning rate.
+ * @param decay_exponent_          Double scalar controlling how fast learning decays.
+ * @param target_acceptance_       Double scalar giving the desired acceptance probability.
  * @param min_deviation_threshold_ Double scalar setting the minimum deviation threshold.
  *
  * @return A named list with updated acceptance proportions and log standard deviations.
+ *
+ * @note Requires @p theta_updated_ to have length @p lag_update_ * @p n_.
  */
-SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
-                                SEXP lag_update_, SEXP n_, SEXP iter_,
-                                SEXP max_step_size_, SEXP base_adaptation_rate_,
-                                SEXP decay_exponent_, SEXP target_acceptance_,
+SEXP test_adapt_cwmh_parameters(SEXP theta_updated_,
+                                SEXP log_sigma_,
+                                SEXP lag_update_,
+                                SEXP n_,
+                                SEXP iter_,
+                                SEXP max_step_size_,
+                                SEXP base_adaptation_rate_,
+                                SEXP decay_exponent_,
+                                SEXP target_acceptance_,
                                 SEXP min_deviation_threshold_) {
 
   int protect_count = 0;
@@ -226,9 +271,19 @@ SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
   protect_count++;
   memcpy(REAL(log_sigma_out), REAL(log_sigma_in), n * sizeof(double));
 
-  adapt_cwmh_parameters(REAL(theta_updated), REAL(accept_prop_sexp), REAL(log_sigma_out),
-                        lag_update, n, iter, max_step_size, base_adaptation_rate,
-                        decay_exponent, target_acceptance, min_deviation_threshold);
+  adapt_cwmh_parameters(
+    REAL(theta_updated),       /* theta_updated: lagged theta window */
+    REAL(accept_prop_sexp),    /* accept_prop: output acceptance proportions */
+    REAL(log_sigma_out),       /* log_sigma_out: output log sigma */
+    lag_update,                /* lag_update: adaptation window length */
+    n,                         /* n: parameter dimension */
+    iter,                      /* iter: current iteration */
+    max_step_size,             /* max_step_size: adaptation cap */
+    base_adaptation_rate,      /* base_adaptation_rate: initial learning rate */
+    decay_exponent,            /* decay_exponent: decay schedule */
+    target_acceptance,         /* target_acceptance: desired acceptance */
+    min_deviation_threshold    /* min_deviation_threshold: deviation trigger */
+  );
 
   SEXP names = PROTECT(allocVector(STRSXP, 2));
   protect_count++;
@@ -246,6 +301,9 @@ SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
 /**
  * @brief Reset the global cache used by adaptive CWMH routines between runs.
  *
+ * @details Provides tests with explicit control over the shared adaptation
+ *          cache to ensure deterministic behaviour.
+ *
  * @return R's @c NULL value.
  */
 SEXP reset_adaptation_cache_wrapper(void) {
@@ -260,14 +318,21 @@ SEXP reset_adaptation_cache_wrapper(void) {
 /**
  * @brief Sample the conditional data precision for the first time slice.
  *
- * @param y_ Observed data vector.
- * @param theta_1_ Latent state vector for time one.
- * @param nu_y_ Shape hyperparameter of the Gamma prior.
- * @param eta_y_ Rate hyperparameter of the Gamma prior.
+ * @details Wraps @c generate_precision_data to validate arguments before
+ *          sampling from the Gamma full conditional of the observation
+ *          precision.
+ *
+ * @param y_        Observed data vector.
+ * @param theta_1_  Latent state vector for time one.
+ * @param nu_y_     Shape hyperparameter of the Gamma prior.
+ * @param eta_y_    Rate hyperparameter of the Gamma prior.
  *
  * @return A length-one numeric vector containing the sampled precision.
  */
-SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y_) {
+SEXP test_generate_precision_data(SEXP y_,
+                                  SEXP theta_1_,
+                                  SEXP nu_y_,
+                                  SEXP eta_y_) {
   int protect_count = 0;
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   protect_count++;
@@ -282,7 +347,13 @@ SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y
   int n = LENGTH(y);
 
   GetRNGstate();
-  double sample = generate_precision_data(REAL(y), REAL(theta_1), nu_y, eta_y, n);
+  double sample = generate_precision_data(
+    REAL(y),         /* y: observed data */
+    REAL(theta_1),   /* theta_1: latent state draws */
+    nu_y,            /* nu_y: Gamma shape */
+    eta_y,           /* eta_y: Gamma rate */
+    n                /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -292,17 +363,24 @@ SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y
 /**
  * @brief Sample the conditional precision for an interior latent state.
  *
- * @param theta_0k_ Scalar prior mean for @f$\theta_k@f$.
- * @param theta_0kp1_ Scalar prior mean for @f$\theta_{k+1}@f$.
- * @param theta_k_ Numeric vector with the current state draws at @f$k@f$.
- * @param theta_kp1_ Numeric vector with the state draws at @f$k+1@f$.
- * @param nu_0k_ Shape hyperparameter for the precision prior.
- * @param eta_0k_ Rate hyperparameter for the precision prior.
+ * @details Verifies length compatibility before sampling the Gamma
+ *          conditional precision governing @f$\theta_k@f$ transitions.
+ *
+ * @param theta_0k_    Scalar prior mean for @f$\theta_k@f$.
+ * @param theta_0kp1_  Scalar prior mean for @f$\theta_{k+1}@f$.
+ * @param theta_k_     Numeric vector with the current state draws at @f$k@f$.
+ * @param theta_kp1_   Numeric vector with the state draws at @f$k+1@f$.
+ * @param nu_0k_       Shape hyperparameter for the precision prior.
+ * @param eta_0k_      Rate hyperparameter for the precision prior.
  *
  * @return A length-one numeric vector containing the sampled precision.
  */
-SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP theta_k_,
-                                     SEXP theta_kp1_, SEXP nu_0k_, SEXP eta_0k_) {
+SEXP test_generate_precision_theta_k(SEXP theta_0k_,
+                                     SEXP theta_0kp1_,
+                                     SEXP theta_k_,
+                                     SEXP theta_kp1_,
+                                     SEXP nu_0k_,
+                                     SEXP eta_0k_) {
   int protect_count = 0;
   double theta_0k = require_real_scalar(theta_0k_, "theta_0k");
   double theta_0kp1 = require_real_scalar(theta_0kp1_, "theta_0kp1");
@@ -316,8 +394,15 @@ SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP thet
   int n = LENGTH(theta_k);
 
   GetRNGstate();
-  double sample = generate_precision_theta_k(theta_0k, theta_0kp1, REAL(theta_k), REAL(theta_kp1),
-                                             nu_0k, eta_0k, n);
+  double sample = generate_precision_theta_k(
+    theta_0k,         /* theta_0k: prior mean for theta_k */
+    theta_0kp1,       /* theta_0kp1: prior mean for theta_{k+1} */
+    REAL(theta_k),    /* theta_k: draws at k */
+    REAL(theta_kp1),  /* theta_kp1: draws at k+1 */
+    nu_0k,            /* nu_0k: Gamma shape */
+    eta_0k,           /* eta_0k: Gamma rate */
+    n                 /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -327,14 +412,20 @@ SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP thet
 /**
  * @brief Sample the conditional precision for the final latent state.
  *
- * @param theta_0p_ Scalar prior mean for @f$\theta_p@f$.
- * @param theta_p_ Numeric vector with the terminal state draws.
- * @param nu_0p_ Shape hyperparameter for the precision prior.
- * @param eta_0p_ Rate hyperparameter for the precision prior.
+ * @details Ensures consistency between arguments before invoking the Gamma
+ *          conditional sampler for @f$\theta_p@f$.
+ *
+ * @param theta_0p_  Scalar prior mean for @f$\theta_p@f$.
+ * @param theta_p_   Numeric vector with the terminal state draws.
+ * @param nu_0p_     Shape hyperparameter for the precision prior.
+ * @param eta_0p_    Rate hyperparameter for the precision prior.
  *
  * @return A length-one numeric vector containing the sampled precision.
  */
-SEXP test_generate_precision_theta_p(SEXP theta_0p_, SEXP theta_p_, SEXP nu_0p_, SEXP eta_0p_) {
+SEXP test_generate_precision_theta_p(SEXP theta_0p_,
+                                     SEXP theta_p_,
+                                     SEXP nu_0p_,
+                                     SEXP eta_0p_) {
   int protect_count = 0;
   double theta_0p = require_real_scalar(theta_0p_, "theta_0p");
   SEXP theta_p = PROTECT(coerceVector(theta_p_, REALSXP));
@@ -344,7 +435,13 @@ SEXP test_generate_precision_theta_p(SEXP theta_0p_, SEXP theta_p_, SEXP nu_0p_,
   int n = LENGTH(theta_p);
 
   GetRNGstate();
-  double sample = generate_precision_theta_p(theta_0p, REAL(theta_p), nu_0p, eta_0p, n);
+  double sample = generate_precision_theta_p(
+    theta_0p,        /* theta_0p: prior mean */
+    REAL(theta_p),   /* theta_p: terminal state draws */
+    nu_0p,           /* nu_0p: Gamma shape */
+    eta_0p,          /* eta_0p: Gamma rate */
+    n                /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -358,14 +455,21 @@ SEXP test_generate_precision_theta_p(SEXP theta_0p_, SEXP theta_p_, SEXP nu_0p_,
 /**
  * @brief Sample the first latent state for the local level model.
  *
- * @param data_ Observed data vector.
- * @param prec_data_ Scalar precision associated with the observation model.
- * @param prec_theta_1_ Scalar prior precision for the first state.
- * @param theta_01_ Prior mean for the first state.
+ * @details Performs argument coercion and length extraction prior to sampling
+ *          the normal conditional posterior for @f$\theta_1@f$ in the local
+ *          level model.
+ *
+ * @param data_          Observed data vector.
+ * @param prec_data_     Scalar precision associated with the observation model.
+ * @param prec_theta_1_  Scalar prior precision for the first state.
+ * @param theta_01_      Prior mean for the first state.
  *
  * @return A numeric vector containing sampled values for @f$\theta_1@f$.
  */
-SEXP test_generate_theta_1_locallevel(SEXP data_, SEXP prec_data_, SEXP prec_theta_1_, SEXP theta_01_) {
+SEXP test_generate_theta_1_locallevel(SEXP data_,
+                                      SEXP prec_data_,
+                                      SEXP prec_theta_1_,
+                                      SEXP theta_01_) {
   int protect_count = 0;
   SEXP data = PROTECT(coerceVector(data_, REALSXP));
   protect_count++;
@@ -378,7 +482,14 @@ SEXP test_generate_theta_1_locallevel(SEXP data_, SEXP prec_data_, SEXP prec_the
   protect_count++;
 
   GetRNGstate();
-  generate_theta_1_locallevel(REAL(data), REAL(result), prec_data, prec_theta_1, theta_01, n);
+  generate_theta_1_locallevel(
+    REAL(data),      /* data: observed sequence */
+    REAL(result),    /* result: output theta_1 draws */
+    prec_data,       /* prec_data: observation precision */
+    prec_theta_1,    /* prec_theta_1: prior precision */
+    theta_01,        /* theta_01: prior mean */
+    n                /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -388,17 +499,24 @@ SEXP test_generate_theta_1_locallevel(SEXP data_, SEXP prec_data_, SEXP prec_the
 /**
  * @brief Sample the first latent state for the dynamic binomial model.
  *
- * @param data_ Observed data vector.
- * @param theta_2_ Numeric vector containing draws for @f$\theta_2@f$.
- * @param prec_data_ Scalar precision associated with the observation model.
- * @param prec_theta_1_ Scalar prior precision for @f$\theta_1@f$.
- * @param theta_01_ Prior mean for @f$\theta_1@f$.
- * @param theta_02_ Prior mean for @f$\theta_2@f$.
+ * @details Extends the local level wrapper by incorporating the companion
+ *          state @f$\theta_2@f$ when forming the conditional posterior.
+ *
+ * @param data_          Observed data vector.
+ * @param theta_2_       Numeric vector containing draws for @f$\theta_2@f$.
+ * @param prec_data_     Scalar precision associated with the observation model.
+ * @param prec_theta_1_  Scalar prior precision for @f$\theta_1@f$.
+ * @param theta_01_      Prior mean for @f$\theta_1@f$.
+ * @param theta_02_      Prior mean for @f$\theta_2@f$.
  *
  * @return A numeric vector containing sampled values for @f$\theta_1@f$.
  */
-SEXP test_generate_theta_1(SEXP data_, SEXP theta_2_, SEXP prec_data_, SEXP prec_theta_1_,
-                           SEXP theta_01_, SEXP theta_02_) {
+SEXP test_generate_theta_1(SEXP data_,
+                           SEXP theta_2_,
+                           SEXP prec_data_,
+                           SEXP prec_theta_1_,
+                           SEXP theta_01_,
+                           SEXP theta_02_) {
   int protect_count = 0;
   SEXP data = PROTECT(coerceVector(data_, REALSXP));
   protect_count++;
@@ -415,7 +533,16 @@ SEXP test_generate_theta_1(SEXP data_, SEXP theta_2_, SEXP prec_data_, SEXP prec
   protect_count++;
 
   GetRNGstate();
-  generate_theta_1(REAL(data), REAL(result), REAL(theta_2), prec_data, prec_theta_1, theta_01, theta_02, n);
+  generate_theta_1(
+    REAL(data),     /* data: observed sequence */
+    REAL(result),   /* result: output theta_1 draws */
+    REAL(theta_2),  /* theta_2: companion state */
+    prec_data,      /* prec_data: observation precision */
+    prec_theta_1,   /* prec_theta_1: prior precision */
+    theta_01,       /* theta_01: prior mean for theta_1 */
+    theta_02,       /* theta_02: prior mean for theta_2 */
+    n               /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -425,17 +552,24 @@ SEXP test_generate_theta_1(SEXP data_, SEXP theta_2_, SEXP prec_data_, SEXP prec
 /**
  * @brief Sample an interior latent state for the dynamic binomial model.
  *
- * @param theta_km1_ Numeric vector with draws at @f$k-1@f$.
- * @param theta_kp1_ Numeric vector with draws at @f$k+1@f$.
- * @param prec_km1_ Scalar precision for the backward transition.
- * @param prec_k_ Scalar precision for the forward transition.
- * @param theta_0k_ Prior mean for @f$\theta_k@f$.
+ * @details Applies validation before calling the Gaussian conditional sampler
+ *          for interior states in the dynamic model.
+ *
+ * @param theta_km1_  Numeric vector with draws at @f$k-1@f$.
+ * @param theta_kp1_  Numeric vector with draws at @f$k+1@f$.
+ * @param prec_km1_   Scalar precision for the backward transition.
+ * @param prec_k_     Scalar precision for the forward transition.
+ * @param theta_0k_   Prior mean for @f$\theta_k@f$.
  * @param theta_0kp1_ Prior mean for @f$\theta_{k+1}@f$.
  *
  * @return A numeric vector containing sampled values for @f$\theta_k@f$.
  */
-SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEXP prec_k_,
-                           SEXP theta_0k_, SEXP theta_0kp1_) {
+SEXP test_generate_theta_k(SEXP theta_km1_,
+                           SEXP theta_kp1_,
+                           SEXP prec_km1_,
+                           SEXP prec_k_,
+                           SEXP theta_0k_,
+                           SEXP theta_0kp1_) {
   int protect_count = 0;
   SEXP theta_km1 = PROTECT(coerceVector(theta_km1_, REALSXP));
   protect_count++;
@@ -452,8 +586,16 @@ SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEX
   protect_count++;
 
   GetRNGstate();
-  generate_theta_k(REAL(theta_km1), REAL(result), REAL(theta_kp1),
-                   prec_km1, prec_k, theta_0k, theta_0kp1, n);
+  generate_theta_k(
+    REAL(theta_km1),  /* theta_km1: state draws at k-1 */
+    REAL(result),     /* result: output theta_k draws */
+    REAL(theta_kp1),  /* theta_kp1: state draws at k+1 */
+    prec_km1,         /* prec_km1: backward precision */
+    prec_k,           /* prec_k: forward precision */
+    theta_0k,         /* theta_0k: prior mean at k */
+    theta_0kp1,       /* theta_0kp1: prior mean at k+1 */
+    n                 /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -463,14 +605,21 @@ SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEX
 /**
  * @brief Sample the terminal latent state for the dynamic binomial model.
  *
- * @param theta_pm1_ Numeric vector with draws at @f$p-1@f$.
- * @param prec_pm1_ Scalar precision for the backward transition.
- * @param prec_p_ Scalar precision for the forward transition.
- * @param theta_0p_ Prior mean for @f$\theta_p@f$.
+ * @details Finishes the state trajectory by sampling @f$\theta_p@f$ from its
+ *          conditional distribution given @f$\theta_{p-1}@f$ and precision
+ *          parameters.
+ *
+ * @param theta_pm1_  Numeric vector with draws at @f$p-1@f$.
+ * @param prec_pm1_   Scalar precision for the backward transition.
+ * @param prec_p_     Scalar precision for the forward transition.
+ * @param theta_0p_   Prior mean for @f$\theta_p@f$.
  *
  * @return A numeric vector containing sampled values for @f$\theta_p@f$.
  */
-SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP theta_0p_) {
+SEXP test_generate_theta_p(SEXP theta_pm1_,
+                           SEXP prec_pm1_,
+                           SEXP prec_p_,
+                           SEXP theta_0p_) {
   int protect_count = 0;
   SEXP theta_pm1 = PROTECT(coerceVector(theta_pm1_, REALSXP));
   protect_count++;
@@ -483,7 +632,14 @@ SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP t
   protect_count++;
 
   GetRNGstate();
-  generate_theta_p(REAL(theta_pm1), REAL(result), prec_pm1, prec_p, theta_0p, n);
+  generate_theta_p(
+    REAL(theta_pm1),  /* theta_pm1: state draws at p-1 */
+    REAL(result),     /* result: output theta_p draws */
+    prec_pm1,         /* prec_pm1: backward precision */
+    prec_p,           /* prec_p: forward precision */
+    theta_0p,         /* theta_0p: prior mean at p */
+    n                 /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -497,15 +653,20 @@ SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP t
 /**
  * @brief Sample the prior mean of the first latent state in the local level model.
  *
- * @param theta_1_ Numeric vector of first-state draws.
- * @param prec_theta_1_ Scalar precision for the first state.
- * @param mean_theta_01_ Prior mean hyperparameter.
- * @param prec_theta_01_ Prior precision hyperparameter.
+ * @details Handles coercion and validation before invoking the Gaussian
+ *          conditional sampler for the hyper-mean @f$\theta_{0,1}@f$.
+ *
+ * @param theta_1_        Numeric vector of first-state draws.
+ * @param prec_theta_1_   Scalar precision for the first state.
+ * @param mean_theta_01_  Prior mean hyperparameter.
+ * @param prec_theta_01_  Prior precision hyperparameter.
  *
  * @return A length-one numeric vector with the sampled @f$\theta_{0,1}@f$.
  */
-SEXP test_generate_theta_01_locallevel(SEXP theta_1_, SEXP prec_theta_1_,
-                                       SEXP mean_theta_01_, SEXP prec_theta_01_) {
+SEXP test_generate_theta_01_locallevel(SEXP theta_1_,
+                                       SEXP prec_theta_1_,
+                                       SEXP mean_theta_01_,
+                                       SEXP prec_theta_01_) {
   int protect_count = 0;
   SEXP theta_1 = PROTECT(coerceVector(theta_1_, REALSXP));
   protect_count++;
@@ -515,8 +676,13 @@ SEXP test_generate_theta_01_locallevel(SEXP theta_1_, SEXP prec_theta_1_,
   int n = LENGTH(theta_1);
 
   GetRNGstate();
-  double sample = generate_theta_01_locallevel(REAL(theta_1), prec_theta_1,
-                                               mean_theta_01, prec_theta_01, n);
+  double sample = generate_theta_01_locallevel(
+    REAL(theta_1),     /* theta_1: first-state draws */
+    prec_theta_1,      /* prec_theta_1: state precision */
+    mean_theta_01,     /* mean_theta_01: prior mean */
+    prec_theta_01,     /* prec_theta_01: prior precision */
+    n                  /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -526,16 +692,22 @@ SEXP test_generate_theta_01_locallevel(SEXP theta_1_, SEXP prec_theta_1_,
 /**
  * @brief Sample the prior mean of the first latent state in the full dynamic model.
  *
- * @param theta_1_ Numeric vector of first-state draws.
- * @param theta_02_ Prior mean hyperparameter for @f$\theta_2@f$.
- * @param prec_theta_1_ Scalar precision for the first state.
- * @param mean_theta_01_ Prior mean hyperparameter.
- * @param prec_theta_01_ Prior precision hyperparameter.
+ * @details Includes dependence on @f$\theta_2@f$ when generating the
+ *          conditional posterior for the hyper-mean @f$\theta_{0,1}@f$.
+ *
+ * @param theta_1_        Numeric vector of first-state draws.
+ * @param theta_02_       Prior mean hyperparameter for @f$\theta_2@f$.
+ * @param prec_theta_1_   Scalar precision for the first state.
+ * @param mean_theta_01_  Prior mean hyperparameter.
+ * @param prec_theta_01_  Prior precision hyperparameter.
  *
  * @return A length-one numeric vector with the sampled @f$\theta_{0,1}@f$.
  */
-SEXP test_generate_theta_01(SEXP theta_1_, SEXP theta_02_, SEXP prec_theta_1_,
-                            SEXP mean_theta_01_, SEXP prec_theta_01_) {
+SEXP test_generate_theta_01(SEXP theta_1_,
+                            SEXP theta_02_,
+                            SEXP prec_theta_1_,
+                            SEXP mean_theta_01_,
+                            SEXP prec_theta_01_) {
   int protect_count = 0;
   SEXP theta_1 = PROTECT(coerceVector(theta_1_, REALSXP));
   protect_count++;
@@ -546,8 +718,14 @@ SEXP test_generate_theta_01(SEXP theta_1_, SEXP theta_02_, SEXP prec_theta_1_,
   int n = LENGTH(theta_1);
 
   GetRNGstate();
-  double sample = generate_theta_01(REAL(theta_1), theta_02, prec_theta_1,
-                                    mean_theta_01, prec_theta_01, n);
+  double sample = generate_theta_01(
+    REAL(theta_1),    /* theta_1: first-state draws */
+    theta_02,         /* theta_02: prior mean for theta_2 */
+    prec_theta_1,     /* prec_theta_1: state precision */
+    mean_theta_01,    /* mean_theta_01: prior mean */
+    prec_theta_01,    /* prec_theta_01: prior precision */
+    n                 /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -557,19 +735,28 @@ SEXP test_generate_theta_01(SEXP theta_1_, SEXP theta_02_, SEXP prec_theta_1_,
 /**
  * @brief Sample the prior mean for an interior latent state.
  *
- * @param theta_km1_ Numeric vector with draws at @f$k-1@f$.
- * @param theta_k_ Numeric vector with draws at @f$k@f$.
- * @param theta_0km1_ Scalar prior mean for @f$\theta_{k-1}@f$.
- * @param theta_0kp1_ Scalar prior mean for @f$\theta_{k+1}@f$.
- * @param prec_km1_ Scalar precision for the backward transition.
- * @param prec_k_ Scalar precision for the forward transition.
- * @param mean_0k_ Scalar prior mean hyperparameter.
- * @param prec_0k_ Scalar prior precision hyperparameter.
+ * @details Validates neighbour lengths before sampling the conditional normal
+ *          distribution for the hyper-mean @f$\theta_{0,k}@f$.
+ *
+ * @param theta_km1_   Numeric vector with draws at @f$k-1@f$.
+ * @param theta_k_     Numeric vector with draws at @f$k@f$.
+ * @param theta_0km1_  Scalar prior mean for @f$\theta_{k-1}@f$.
+ * @param theta_0kp1_  Scalar prior mean for @f$\theta_{k+1}@f$.
+ * @param prec_km1_    Scalar precision for the backward transition.
+ * @param prec_k_      Scalar precision for the forward transition.
+ * @param mean_0k_     Scalar prior mean hyperparameter.
+ * @param prec_0k_     Scalar prior precision hyperparameter.
  *
  * @return A length-one numeric vector with the sampled @f$\theta_{0,k}@f$.
  */
-SEXP test_generate_theta_0k(SEXP theta_km1_, SEXP theta_k_, SEXP theta_0km1_, SEXP theta_0kp1_,
-                            SEXP prec_km1_, SEXP prec_k_, SEXP mean_0k_, SEXP prec_0k_) {
+SEXP test_generate_theta_0k(SEXP theta_km1_,
+                            SEXP theta_k_,
+                            SEXP theta_0km1_,
+                            SEXP theta_0kp1_,
+                            SEXP prec_km1_,
+                            SEXP prec_k_,
+                            SEXP mean_0k_,
+                            SEXP prec_0k_) {
   int protect_count = 0;
   SEXP theta_km1 = PROTECT(coerceVector(theta_km1_, REALSXP));
   protect_count++;
@@ -585,8 +772,17 @@ SEXP test_generate_theta_0k(SEXP theta_km1_, SEXP theta_k_, SEXP theta_0km1_, SE
   int n = LENGTH(theta_km1);
 
   GetRNGstate();
-  double sample = generate_theta_0k(REAL(theta_km1), REAL(theta_k), theta_0km1, theta_0kp1,
-                                    prec_km1, prec_k, mean_0k, prec_0k, n);
+  double sample = generate_theta_0k(
+    REAL(theta_km1),  /* theta_km1: state draws at k-1 */
+    REAL(theta_k),    /* theta_k: state draws at k */
+    theta_0km1,       /* theta_0km1: prior mean at k-1 */
+    theta_0kp1,       /* theta_0kp1: prior mean at k+1 */
+    prec_km1,         /* prec_km1: backward precision */
+    prec_k,           /* prec_k: forward precision */
+    mean_0k,          /* mean_0k: prior mean hyperparameter */
+    prec_0k,          /* prec_0k: prior precision hyperparameter */
+    n                 /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -596,18 +792,26 @@ SEXP test_generate_theta_0k(SEXP theta_km1_, SEXP theta_k_, SEXP theta_0km1_, SE
 /**
  * @brief Sample the prior mean for the terminal latent state.
  *
- * @param theta_pm1_ Numeric vector with draws at @f$p-1@f$.
- * @param theta_p_ Numeric vector with draws at @f$p@f$.
- * @param theta_0pm1_ Scalar prior mean for @f$\theta_{p-1}@f$.
- * @param prec_pm1_ Scalar precision for the backward transition.
- * @param prec_p_ Scalar precision for the forward transition.
- * @param mean_0p_ Scalar prior mean hyperparameter.
- * @param prec_0p_ Scalar prior precision hyperparameter.
+ * @details Ensures terminal vectors align before drawing the conditional
+ *          Gaussian hyper-mean @f$\theta_{0,p}@f$.
+ *
+ * @param theta_pm1_   Numeric vector with draws at @f$p-1@f$.
+ * @param theta_p_     Numeric vector with draws at @f$p@f$.
+ * @param theta_0pm1_  Scalar prior mean for @f$\theta_{p-1}@f$.
+ * @param prec_pm1_    Scalar precision for the backward transition.
+ * @param prec_p_      Scalar precision for the forward transition.
+ * @param mean_0p_     Scalar prior mean hyperparameter.
+ * @param prec_0p_     Scalar prior precision hyperparameter.
  *
  * @return A length-one numeric vector with the sampled @f$\theta_{0,p}@f$.
  */
-SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_,
-                            SEXP prec_pm1_, SEXP prec_p_, SEXP mean_0p_, SEXP prec_0p_) {
+SEXP test_generate_theta_0p(SEXP theta_pm1_,
+                            SEXP theta_p_,
+                            SEXP theta_0pm1_,
+                            SEXP prec_pm1_,
+                            SEXP prec_p_,
+                            SEXP mean_0p_,
+                            SEXP prec_0p_) {
   int protect_count = 0;
   SEXP theta_pm1 = PROTECT(coerceVector(theta_pm1_, REALSXP));
   protect_count++;
@@ -622,8 +826,16 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_,
   int n = LENGTH(theta_pm1);
 
   GetRNGstate();
-  double sample = generate_theta_0p(REAL(theta_pm1), REAL(theta_p), theta_0pm1,
-                                    prec_pm1, prec_p, mean_0p, prec_0p, n);
+  double sample = generate_theta_0p(
+    REAL(theta_pm1),  /* theta_pm1: state draws at p-1 */
+    REAL(theta_p),    /* theta_p: state draws at p */
+    theta_0pm1,       /* theta_0pm1: prior mean at p-1 */
+    prec_pm1,         /* prec_pm1: backward precision */
+    prec_p,           /* prec_p: forward precision */
+    mean_0p,          /* mean_0p: prior mean hyperparameter */
+    prec_0p,          /* prec_0p: prior precision hyperparameter */
+    n                 /* n: number of observations */
+  );
   PutRNGstate();
 
   UNPROTECT(protect_count);
@@ -637,17 +849,24 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_,
 /**
  * @brief Run a single CWMH update for the logit-binomial local level model.
  *
- * @param theta_1_in_ Numeric vector with the previous state draws.
- * @param theta_01_in_ Scalar prior mean for the initial state.
- * @param prec_1_in_ Scalar prior precision for the state.
- * @param y_ Observed binomial counts.
- * @param n_trials_ Scalar number of trials for the binomial likelihood.
- * @param log_sigma_in_ Numeric vector of proposal log standard deviations.
+ * @details Provides deterministic wrappers around the production sampler by
+ *          setting small adaptation windows and exposing the resulting states
+ *          and acceptance diagnostics.
+ *
+ * @param theta_1_in_     Numeric vector with the previous state draws.
+ * @param theta_01_in_    Scalar prior mean for the initial state.
+ * @param prec_1_in_      Scalar prior precision for the state.
+ * @param y_              Observed binomial counts.
+ * @param n_trials_       Scalar number of trials for the binomial likelihood.
+ * @param log_sigma_in_   Numeric vector of proposal log standard deviations.
  *
  * @return A list containing updated state draws and logit-scale alphas.
  */
-SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
-                                               SEXP prec_1_in_, SEXP y_, SEXP n_trials_,
+SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
+                                               SEXP theta_01_in_,
+                                               SEXP prec_1_in_,
+                                               SEXP y_,
+                                               SEXP n_trials_,
                                                SEXP log_sigma_in_) {
   const int LAG_UPDATE = 10;
   const int ITER = 1;
@@ -676,11 +895,24 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
   double *log_accept_prob = (double *) R_alloc(n, sizeof(double));
 
   GetRNGstate();
-  cwmh_alpha_logit_binomial_locallevel(REAL(theta_1_prev), theta_1_current, alpha_current,
-                                       theta_01_prev, prec_1_prev, theta_1_updated,
-                                       REAL(y), REAL(log_sigma), hat_theta_1,
-                                       theta_1_new, log_accept_prob,
-                                       LAG_UPDATE, n_trials, n, ITER, COMPUTE_ALPHA);
+  cwmh_alpha_logit_binomial_locallevel(
+    REAL(theta_1_prev),  /* theta_1_previous: previous theta_1 draws */
+    theta_1_current,     /* theta_1_current: output theta_1 values */
+    alpha_current,       /* alpha_current: output probabilities */
+    theta_01_prev,       /* theta_01_previous: prior mean */
+    prec_1_prev,         /* prec_1_previous: prior precision */
+    theta_1_updated,     /* theta_1_updated: sliding window states */
+    REAL(y),             /* y: observed counts */
+    REAL(log_sigma),     /* log_sigma: proposal log standard deviations */
+    hat_theta_1,         /* hat_theta_1: conditional means */
+    theta_1_new,         /* theta_1_new: proposal buffer */
+    log_accept_prob,     /* log_accept_prob: log acceptance storage */
+    LAG_UPDATE,          /* lag_update: adaptation window length */
+    n_trials,            /* n_trials: number of binomial trials */
+    n,                   /* n: number of observations */
+    ITER,                /* iter: current iteration */
+    COMPUTE_ALPHA        /* compute_alpha: flag to compute alpha */
+  );
   PutRNGstate();
 
   SEXP res = PROTECT(allocVector(VECSXP, 2));
@@ -708,19 +940,26 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_i
 /**
  * @brief Run a single CWMH update for the two-parameter logit-binomial model.
  *
- * @param theta_1_in_ Numeric vector with the previous state draws.
- * @param theta_2_in_ Numeric vector with the companion state draws.
- * @param theta_01_in_ Scalar prior mean for the first state.
- * @param theta_02_in_ Scalar prior mean for the second state.
- * @param prec_1_in_ Scalar prior precision for the first state.
- * @param y_ Observed binomial counts.
- * @param n_trials_ Scalar number of trials for the binomial likelihood.
+ * @details Mirrors the production sampler while keeping proposals fixed so
+ *          that unit tests can inspect latent states and alpha values.
+ *
+ * @param theta_1_in_   Numeric vector with the previous state draws.
+ * @param theta_2_in_   Numeric vector with the companion state draws.
+ * @param theta_01_in_  Scalar prior mean for the first state.
+ * @param theta_02_in_  Scalar prior mean for the second state.
+ * @param prec_1_in_    Scalar prior precision for the first state.
+ * @param y_            Observed binomial counts.
+ * @param n_trials_     Scalar number of trials for the binomial likelihood.
  *
  * @return A list containing updated state draws and logit-scale alphas.
  */
-SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_,
-                                    SEXP theta_01_in_, SEXP theta_02_in_,
-                                    SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
+SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
+                                    SEXP theta_2_in_,
+                                    SEXP theta_01_in_,
+                                    SEXP theta_02_in_,
+                                    SEXP prec_1_in_,
+                                    SEXP y_,
+                                    SEXP n_trials_) {
   const int LAG_UPDATE = 10;
   const int ITER = 1;
   const int COMPUTE_ALPHA = 1;
@@ -754,11 +993,26 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_,
   double *log_accept_prob = (double *) R_alloc(n, sizeof(double));
 
   GetRNGstate();
-  cwmh_alpha_logit_binomial(REAL(theta_1_prev), theta_1_current, REAL(theta_2_curr), alpha_current,
-                            theta_01_prev, theta_02_prev, theta_1_updated,
-                            prec_1_prev, REAL(y), log_sigma, hat_theta_1,
-                            theta_1_new, log_accept_prob,
-                            LAG_UPDATE, n_trials, n, ITER, COMPUTE_ALPHA);
+  cwmh_alpha_logit_binomial(
+    REAL(theta_1_prev),  /* theta_1_previous: previous theta_1 draws */
+    theta_1_current,     /* theta_1_current: output theta_1 values */
+    REAL(theta_2_curr),  /* theta_2_current: current theta_2 draws */
+    alpha_current,       /* alpha_current: output probabilities */
+    theta_01_prev,       /* theta_01_previous: prior mean for theta_1 */
+    theta_02_prev,       /* theta_02_previous: prior mean for theta_2 */
+    theta_1_updated,     /* theta_1_updated: sliding window states */
+    prec_1_prev,         /* prec_1_previous: prior precision */
+    REAL(y),             /* y: observed counts */
+    log_sigma,           /* log_sigma: proposal log standard deviations */
+    hat_theta_1,         /* hat_theta_1: conditional means */
+    theta_1_new,         /* theta_1_new: proposal buffer */
+    log_accept_prob,     /* log_accept_prob: log acceptance storage */
+    LAG_UPDATE,          /* lag_update: adaptation window length */
+    n_trials,            /* n_trials: number of binomial trials */
+    n,                   /* n: number of observations */
+    ITER,                /* iter: current iteration */
+    COMPUTE_ALPHA        /* compute_alpha: flag to compute alpha */
+  );
   PutRNGstate();
 
   SEXP res = PROTECT(allocVector(VECSXP, 2));
@@ -789,16 +1043,22 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_,
 /**
  * @brief Adaptively generate alphas for the logit-binomial local level model.
  *
- * @param theta_1_in_ Numeric vector with the previous state draws.
+ * @details Runs @c generate_alpha_logit_binomial_locallevel with predetermined
+ *          tuning constants so that tests can confirm adaptive behaviour.
+ *
+ * @param theta_1_in_  Numeric vector with the previous state draws.
  * @param theta_01_in_ Scalar prior mean for the initial state.
- * @param prec_1_in_ Scalar prior precision for the state.
- * @param y_ Observed binomial counts.
- * @param n_trials_ Scalar number of trials for the binomial likelihood.
+ * @param prec_1_in_   Scalar prior precision for the state.
+ * @param y_           Observed binomial counts.
+ * @param n_trials_    Scalar number of trials for the binomial likelihood.
  *
  * @return A list containing updated state draws and logit-scale alphas.
  */
-SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
-                                                   SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
+SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
+                                                   SEXP theta_01_in_,
+                                                   SEXP prec_1_in_,
+                                                   SEXP y_,
+                                                   SEXP n_trials_) {
   const int LAG_UPDATE = 50;
   const int ITER = 1;
   const double MAX_STEP = 0.1;
@@ -833,12 +1093,30 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
   double *log_accept_prob = (double *) R_alloc(n, sizeof(double));
 
   GetRNGstate();
-  generate_alpha_logit_binomial_locallevel(REAL(theta_1_prev), theta_1_current, alpha_current,
-                                           theta_01_prev, prec_1_prev, theta_1_updated,
-                                           REAL(y), accept_prop, log_sigma, hat_theta_1,
-                                           theta_1_new, log_accept_prob, LAG_UPDATE, n_trials,
-                                           n, ITER, MAX_STEP, BASE_ADAPT, DECAY, TARGET,
-                                           MIN_DEV, 1);
+  generate_alpha_logit_binomial_locallevel(
+    REAL(theta_1_prev),              /* theta_1_previous: level states from previous iteration */
+    theta_1_current,                 /* theta_1_current: output level states for current iteration */
+    alpha_current,                   /* alpha_current: output probabilities */
+    theta_01_prev,                   /* theta_01_previous: initial level state from previous */
+    prec_1_prev,                     /* prec_1_previous: level precision from previous */
+    theta_1_updated,                 /* theta_1_updated: sliding window acceptance indicators */
+    REAL(y),                         /* y: observed counts */
+    accept_prop,                     /* accept_prop: acceptance proportions */
+    log_sigma,                       /* log_sigma: proposal log standard deviations */
+    hat_theta_1,                     /* hat_theta_1: conditional means */
+    theta_1_new,                     /* theta_1_new: proposal buffer */
+    log_accept_prob,                 /* log_accept_prob: log acceptance storage */
+    LAG_UPDATE,                      /* lag_update: adaptation window length */
+    n_trials,                        /* n_trials: number of binomial trials */
+    n,                               /* n: number of observations */
+    ITER,                            /* iter: current iteration */
+    MAX_STEP,                        /* max_step_size: adaptation step cap */
+    BASE_ADAPT,                      /* base_adaptation_rate: initial adaptation rate */
+    DECAY,                           /* decay_exponent: diminishing schedule */
+    TARGET,                          /* target_acceptance: desired acceptance proportion */
+    MIN_DEV,                         /* min_deviation_threshold: deviation trigger */
+    1                                /* compute_alpha: flag to compute alpha (1 = compute) */
+  );
   PutRNGstate();
 
   SEXP res = PROTECT(allocVector(VECSXP, 2));
@@ -865,18 +1143,26 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_
 /**
  * @brief Adaptively generate alphas for the two-parameter logit-binomial model.
  *
- * @param theta_1_in_ Numeric vector with the previous state draws.
- * @param theta_2_in_ Numeric vector with the companion state draws.
+ * @details Exposes the adaptive alpha generator with deterministic tuning so
+ *          that regression tests can verify joint state updates.
+ *
+ * @param theta_1_in_  Numeric vector with the previous state draws.
+ * @param theta_2_in_  Numeric vector with the companion state draws.
  * @param theta_01_in_ Scalar prior mean for the first state.
  * @param theta_02_in_ Scalar prior mean for the second state.
- * @param prec_1_in_ Scalar prior precision for the first state.
- * @param y_ Observed binomial counts.
- * @param n_trials_ Scalar number of trials for the binomial likelihood.
+ * @param prec_1_in_   Scalar prior precision for the first state.
+ * @param y_           Observed binomial counts.
+ * @param n_trials_    Scalar number of trials for the binomial likelihood.
  *
  * @return A list containing updated state draws and logit-scale alphas.
  */
-SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
-                                        SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_) {
+SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_,
+                                        SEXP theta_2_in_,
+                                        SEXP theta_01_in_,
+                                        SEXP theta_02_in_,
+                                        SEXP prec_1_in_,
+                                        SEXP y_,
+                                        SEXP n_trials_) {
   const int LAG_UPDATE = 50;
   const int ITER = 1;
   const double MAX_STEP = 0.1;
@@ -915,12 +1201,32 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
   double *log_accept_prob = (double *) R_alloc(n, sizeof(double));
 
   GetRNGstate();
-  generate_alpha_logit_binomial(REAL(theta_1_prev), theta_1_current, REAL(theta_2_curr),
-                                alpha_current, theta_01_prev, theta_02_prev, prec_1_prev,
-                                theta_1_updated, REAL(y), accept_prop, log_sigma,
-                                hat_theta_1, theta_1_new, log_accept_prob, LAG_UPDATE,
-                                n_trials, n, ITER, MAX_STEP, BASE_ADAPT, DECAY,
-                                TARGET, MIN_DEV, 1);
+  generate_alpha_logit_binomial(
+    REAL(theta_1_prev),              /* theta_1_previous: level states from previous iteration */
+    theta_1_current,                 /* theta_1_current: output level states for current iteration */
+    REAL(theta_2_curr),              /* theta_2_current: companion state draws */
+    alpha_current,                   /* alpha_current: output probabilities */
+    theta_01_prev,                   /* theta_01_previous: initial level state from previous */
+    theta_02_prev,                   /* theta_02_previous: second-state prior mean */
+    prec_1_prev,                     /* prec_1_previous: level precision from previous */
+    theta_1_updated,                 /* theta_1_updated: sliding window acceptance indicators */
+    REAL(y),                         /* y: observed counts */
+    accept_prop,                     /* accept_prop: acceptance proportions */
+    log_sigma,                       /* log_sigma: proposal log standard deviations */
+    hat_theta_1,                     /* hat_theta_1: conditional means */
+    theta_1_new,                     /* theta_1_new: proposal buffer */
+    log_accept_prob,                 /* log_accept_prob: log acceptance storage */
+    LAG_UPDATE,                      /* lag_update: adaptation window length */
+    n_trials,                        /* n_trials: number of binomial trials */
+    n,                               /* n: number of observations */
+    ITER,                            /* iter: current iteration */
+    MAX_STEP,                        /* max_step_size: adaptation step cap */
+    BASE_ADAPT,                      /* base_adaptation_rate: initial adaptation rate */
+    DECAY,                           /* decay_exponent: diminishing schedule */
+    TARGET,                          /* target_acceptance: desired acceptance proportion */
+    MIN_DEV,                         /* min_deviation_threshold: deviation trigger */
+    1                                /* compute_alpha: flag to compute alpha (1 = compute) */
+  );
   PutRNGstate();
 
   SEXP res = PROTECT(allocVector(VECSXP, 2));
@@ -951,15 +1257,20 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP
 /**
  * @brief Generate alphas for the probit-Bernoulli local level model.
  *
- * @param theta_1_in_ Numeric vector with previous state draws.
+ * @details Wraps the probit alpha generator while supplying deterministic
+ *          control flags for reproducible testing.
+ *
+ * @param theta_1_in_  Numeric vector with previous state draws.
  * @param theta_01_in_ Scalar prior mean for the initial state.
- * @param prec_1_in_ Scalar prior precision for the state.
- * @param y_ Observed Bernoulli outcomes.
+ * @param prec_1_in_   Scalar prior precision for the state.
+ * @param y_           Observed Bernoulli outcomes.
  *
  * @return A list containing updated state draws and probit-scale alphas.
  */
-SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
-                                                     SEXP prec_1_in_, SEXP y_) {
+SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_,
+                                                     SEXP theta_01_in_,
+                                                     SEXP prec_1_in_,
+                                                     SEXP y_) {
   int protect_count = 0;
   SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
   protect_count++;
@@ -975,9 +1286,17 @@ SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP thet
   double *rhs_vector = (double *) R_alloc(n, sizeof(double));
 
   GetRNGstate();
-  generate_alpha_probit_bernoulli_locallevel(REAL(theta_1_prev), theta_1_current,
-                                             alpha_current, theta_01_prev, prec_1_prev,
-                                             REAL(y), rhs_vector, n, 1);
+  generate_alpha_probit_bernoulli_locallevel(
+    REAL(theta_1_prev),  /* theta_1_previous: previous theta_1 draws */
+    theta_1_current,     /* theta_1_current: output theta_1 values */
+    alpha_current,       /* alpha_current: output probabilities */
+    theta_01_prev,       /* theta_01_previous: prior mean */
+    prec_1_prev,         /* prec_1_previous: prior precision */
+    REAL(y),             /* y: observed Bernoulli outcomes */
+    rhs_vector,          /* rhs_vector: working buffer */
+    n,                   /* n: number of observations */
+    1                    /* compute_alpha: flag to compute alpha */
+  );
   PutRNGstate();
 
   SEXP res = PROTECT(allocVector(VECSXP, 2));
@@ -1004,18 +1323,24 @@ SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP thet
 /**
  * @brief Generate alphas for the two-parameter probit-Bernoulli model.
  *
- * @param theta_1_in_ Numeric vector with previous state draws.
- * @param theta_2_in_ Numeric vector with companion state draws.
+ * @details Similar to the local level variant but incorporates the second
+ *          state when computing probit link updates.
+ *
+ * @param theta_1_in_  Numeric vector with previous state draws.
+ * @param theta_2_in_  Numeric vector with companion state draws.
  * @param theta_01_in_ Scalar prior mean for the first state.
  * @param theta_02_in_ Scalar prior mean for the second state.
- * @param prec_1_in_ Scalar prior precision for the first state.
- * @param y_ Observed Bernoulli outcomes.
+ * @param prec_1_in_   Scalar prior precision for the first state.
+ * @param y_           Observed Bernoulli outcomes.
  *
  * @return A list containing updated state draws and probit-scale alphas.
  */
-SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_, SEXP theta_2_in_,
-                                          SEXP theta_01_in_, SEXP theta_02_in_,
-                                          SEXP prec_1_in_, SEXP y_) {
+SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
+                                          SEXP theta_2_in_,
+                                          SEXP theta_01_in_,
+                                          SEXP theta_02_in_,
+                                          SEXP prec_1_in_,
+                                          SEXP y_) {
   int protect_count = 0;
   SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
   protect_count++;
@@ -1035,9 +1360,19 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_, SEXP theta_2_in_,
   double *rhs_vector = (double *) R_alloc(n, sizeof(double));
 
   GetRNGstate();
-  generate_alpha_probit_bernoulli(REAL(theta_1_prev), theta_1_current, alpha_current,
-                                  REAL(theta_2_curr), theta_01_prev, theta_02_prev,
-                                  prec_1_prev, REAL(y), rhs_vector, n, 1);
+  generate_alpha_probit_bernoulli(
+    REAL(theta_1_prev),  /* theta_1_previous: previous theta_1 draws */
+    theta_1_current,     /* theta_1_current: output theta_1 values */
+    alpha_current,       /* alpha_current: output probabilities */
+    REAL(theta_2_curr),  /* theta_2_current: companion state draws */
+    theta_01_prev,       /* theta_01_previous: prior mean for theta_1 */
+    theta_02_prev,       /* theta_02_previous: prior mean for theta_2 */
+    prec_1_prev,         /* prec_1_previous: prior precision */
+    REAL(y),             /* y: observed Bernoulli outcomes */
+    rhs_vector,          /* rhs_vector: working buffer */
+    n,                   /* n: number of observations */
+    1                    /* compute_alpha: flag to compute alpha */
+  );
   PutRNGstate();
 
   SEXP res = PROTECT(allocVector(VECSXP, 2));

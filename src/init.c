@@ -35,91 +35,8 @@
 #include "mcmc_bernoulli_locallevel.h"
 #include "mcmc_bernoulli_localtrend.h"
 #include "mcmc_bernoulli_localacceleration.h"
+#include "test_helpers.h"
 #include "utils.h"
-
-//==============================================================================
-// FORWARD DECLARATIONS FOR TEST HELPER FUNCTIONS
-//==============================================================================
-
-/**
- * @brief Forward declarations for test helper functions defined in test_helpers.c
- * @details These functions expose internal C routines through R's .Call interface
- *          to enable comprehensive unit testing and validation of MCMC components.
- */
-
-// --- Utility and basic function tests ---
-SEXP test_ilogit(SEXP x_);
-SEXP test_generate_normal_vector(SEXP y_, SEXP a_, SEXP b_, SEXP add_a_);
-
-// --- Adaptive MCMC parameter tests ---
-SEXP test_adapt_cwmh_parameters(SEXP theta_updated_, SEXP log_sigma_,
-                                SEXP lag_update_, SEXP n_, SEXP iter_,
-                                SEXP max_step_size_, SEXP base_adaptation_rate_,
-                                SEXP decay_exponent_, SEXP target_acceptance_,
-                                SEXP min_deviation_threshold_);
-SEXP reset_adaptation_cache_wrapper(void);
-
-// --- Precision parameter sampling tests ---
-SEXP test_generate_precision_data(SEXP y_, SEXP theta_1_, SEXP nu_y_, SEXP eta_y_);
-SEXP test_generate_precision_theta_k(SEXP theta_0k_, SEXP theta_0kp1_, SEXP theta_k_,
-                                     SEXP theta_kp1_, SEXP nu_0k_, SEXP eta_0k_);
-SEXP test_generate_precision_theta_p(SEXP theta_0p_, SEXP theta_p_, SEXP nu_0p_, SEXP eta_0p_);
-
-// --- State parameter sampling tests (Gaussian models) ---
-SEXP test_generate_theta_1_locallevel(SEXP data_, SEXP prec_data_, SEXP prec_theta_1_, SEXP theta_01_);
-SEXP test_generate_theta_1(SEXP data_, SEXP theta_2_, SEXP prec_data_, SEXP prec_theta_1_,
-                           SEXP theta_01_, SEXP theta_02_);
-SEXP test_generate_theta_k(SEXP theta_km1_, SEXP theta_kp1_, SEXP prec_km1_, SEXP prec_k_,
-                           SEXP theta_0k_, SEXP theta_0kp1_);
-SEXP test_generate_theta_p(SEXP theta_pm1_, SEXP prec_pm1_, SEXP prec_p_, SEXP theta_0p_);
-
-// --- Initial state parameter sampling tests ---
-SEXP test_generate_theta_01_locallevel(SEXP theta_1_, SEXP prec_theta_1_, SEXP mean_theta_01_,
-                                       SEXP prec_theta_01_);
-SEXP test_generate_theta_01(SEXP theta_1_, SEXP theta_02_, SEXP prec_theta_1_, SEXP mean_theta_01_,
-                            SEXP prec_theta_01_);
-SEXP test_generate_theta_0k(SEXP theta_km1_, SEXP theta_k_, SEXP theta_0km1_, SEXP theta_0kp1_,
-                            SEXP prec_km1_, SEXP prec_k_, SEXP mean_0k_, SEXP prec_0k_);
-SEXP test_generate_theta_0p(SEXP theta_pm1_, SEXP theta_p_, SEXP theta_0pm1_, SEXP prec_pm1_,
-                            SEXP prec_p_, SEXP mean_0p_, SEXP prec_0p_);
-
-// --- Binomial model component tests (logit link) ---
-SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
-                                                   SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
-SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_, SEXP theta_01_in_, SEXP prec_1_in_,
-                                               SEXP y_, SEXP n_trials_, SEXP log_sigma_in_);
-SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
-                                        SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
-SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_, SEXP theta_2_in_, SEXP theta_01_in_,
-                                    SEXP theta_02_in_, SEXP prec_1_in_, SEXP y_, SEXP n_trials_);
-
-// --- Bernoulli model component tests (probit link) ---
-SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_, SEXP theta_01_in_,
-                                                     SEXP prec_1_in_, SEXP y_);
-SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_, SEXP theta_2_in_,
-                                          SEXP theta_01_in_, SEXP theta_02_in_,
-                                          SEXP prec_1_in_, SEXP y_);
-
-// --- Complete MCMC simulation tests with parameter fixing ---
-SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
-                                                SEXP n_trials_,
-                                                SEXP burnin_,
-                                                SEXP thinning_,
-                                                SEXP n_chain_,
-                                                SEXP theta_1_true_,
-                                                SEXP theta_01_true_,
-                                                SEXP prec_1_true_,
-                                                SEXP prior_theta01_mean_,
-                                                SEXP prior_theta01_prec_,
-                                                SEXP prior_prec1_shape_,
-                                                SEXP prior_prec1_rate_, SEXP lag_update_,
-                                                SEXP max_step_size_, SEXP base_adaptation_rate_,
-                                                SEXP decay_exponent_, SEXP target_acceptance_,
-                                                SEXP return_log_sigma_, SEXP return_accept_prop_);
-SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_, SEXP burnin_, SEXP thinning_, SEXP n_chain_,
-                                                        SEXP theta_1_true_, SEXP theta_01_true_, SEXP prec_1_true_,
-                                                        SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
-                                                        SEXP prior_prec1_shape_, SEXP prior_prec1_rate_);
 
 //==============================================================================
 // METHOD REGISTRATION TABLE
@@ -278,64 +195,36 @@ static const R_CallMethodDef CallEntries[] = {
 //==============================================================================
 
 /**
- * @brief Package initialization function called when pdm package is loaded
+ * @brief Register compiled routines for the pdm package.
  *
- * @details Mandatory initialization function for R packages with compiled code.
- *          Registers all C functions with R's dynamic loading system and configures
- *          security settings for symbol resolution. This function is automatically
- *          called by R when the package is loaded via library() or require().
+ * @details The initialization routine registers every compiled entry point with
+ *          R's dynamic loader and disables runtime symbol lookup to enforce
+ *          encapsulation. The registration covers production MCMC samplers and
+ *          comprehensive test helpers so that R's .Call interface can safely
+ *          dispatch to the corresponding C implementations.
  *
- *          **Registration Process:**
- *          The function registers three categories of C functions:
+ * @param dll Pointer to the DllInfo structure supplied automatically by R during library loading.
  *
- *          1. **Production MCMC Algorithms (9 functions)**:
- *             - Gaussian models: local level, trend, acceleration
- *             - Binomial models with logit link: local level, trend, acceleration
- *             - Bernoulli models with probit link: local level, trend, acceleration
+ * @return Nothing. Registration occurs for its side effects on R's loader state.
  *
- *          2. **Test Helper Functions (23 functions)**:
- *             - Utility functions (4): transformations, sampling, adaptation
- *             - Precision samplers (3): data, intermediate, final
- *             - State samplers (4): first, intermediate, final states
- *             - Initial state samplers (4): level, trend, intermediate, final
- *             - Binomial components (4): alpha generation and CWMH testing
- *             - Bernoulli components (2): probit link testing
- *             - Complete MCMC (2): full sampler validation with parameter fixing
+ * @note The function name must follow the "R_init_<package>" convention so that
+ *       R invokes it during library() calls.
+ * @note Disabling dynamic symbol lookup prevents unregistered entry points from
+ *       being resolved at runtime.
+ * @note All production and testing routines must appear in CallEntries to remain
+ *       accessible from R wrappers.
  *
- *          **Initialization Sequence:**
- *          1. Register .Call entry points from CallEntries table
- *          2. Disable dynamic symbol lookup for security
- *          3. Return control to R loading system
- *
- *          **Security Implications:**
- *          R_useDynamicSymbols(dll, FALSE) prevents external packages from
- *          accessing internal symbols, improving package encapsulation and
- *          reducing potential conflicts or security vulnerabilities. This is
- *          a recommended security practice for all R packages with compiled code.
- *
- * @param dll Pointer to DllInfo structure containing package loading information.
- *            Provided automatically by R's loading system.
- *
- * @note This function name must be exactly "R_init_<packagename>" for R to find it
- * @note Called automatically during package loading - not intended for manual invocation
- * @note Disabling dynamic symbols is a recommended security practice per R-exts manual
- * @note All .Call functions must be registered here to be accessible from R
- * @note Test functions enable comprehensive validation of MCMC algorithm components
- * @note The registration enforces type safety and argument count validation at runtime
- *
- * @warning Do not call this function manually from user code
- * @warning Modifying registration without updating R code will break package functionality
- * @warning Function must be exported in package's NAMESPACE file
- * @warning Test functions should only be exposed in development/testing builds
- * @warning Ensure all forward declarations match actual function signatures
+ * @warning Calling this function manually from user code is unsupported.
+ * @warning Updating CallEntries without synchronising the R wrappers will break
+ *          the package interface.
  *
  * @see R_registerRoutines
  * @see R_useDynamicSymbols
- * @see DllInfo
- * @see Writing R Extensions manual, section 5.4
+ * @see Writing R Extensions manual, Section 5.4
  * @since version 1.0
  */
-void R_init_pdm(DllInfo *dll) {
+void R_init_pdm(DllInfo *dll)
+{
   /* Register .Call entry points for C functions accessible from R */
   R_registerRoutines(
     dll,         /* dll: package DLL information */

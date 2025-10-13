@@ -1264,12 +1264,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   }
 
   /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
-  double *theta_1_post  = (double *) R_Calloc(2 * n, double);  /* [0:n-1] previous, [n:2n-1] current */
-  double *alpha_post    = (double *) R_Calloc(2 * n, double);  /* [0:n-1] previous, [n:2n-1] current */
+  double *theta_1_current  = (double *) R_Calloc(n, double);
+  double *theta_1_previous = (double *) R_Calloc(n, double);
+  double *alpha_current    = (double *) R_Calloc(n, double);
 
   /* Scalar parameters for current and previous iterations */
-  double *theta_01_post = (double *) R_Calloc(2, double);  /* [0] previous, [1] current */
-  double *prec_1_post   = (double *) R_Calloc(2, double);  /* [0] previous, [1] current */
+  double theta_01_current, theta_01_previous;
+  double prec_1_current,   prec_1_previous;
 
   /* Sliding window buffer for acceptance tracking */
   double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
@@ -1292,19 +1293,19 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
-  theta_01_post[0] = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_1_post[0]   = fix_prec_1 ? prec_1_true : rgamma(nu_01, 1.0 / eta_01);
+  theta_01_previous = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
+  prec_1_previous   = fix_prec_1 ? prec_1_true : rgamma(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   if (fix_theta_1) {
-    memcpy(theta_1_post, theta_1_true, n * sizeof(double));
+    memcpy(theta_1_previous, theta_1_true, n * sizeof(double));
     for (int t = 0; t < n; t++) {
-      alpha_post[t] = ilogit(theta_1_true[t]);
+      alpha_current[t] = ilogit(theta_1_true[t]);
     }
   } else {
     for (int t = 0; t < n; t++) {
-      theta_1_post[t] = 0.0;   /* Zeros for state trajectory */
-      alpha_post[t]   = 0.5;   /* Neutral probability for success rates */
+      theta_1_previous[t] = 0.0;   /* Zeros for state trajectory */
+      alpha_current[t]    = 0.5;   /* Neutral probability for success rates */
     }
   }
 
@@ -1319,20 +1320,20 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
     /* ===== Step 1: Sample State Vector theta_1 and Success Probabilities alpha ===== */
     if (fix_theta_1) {
       /* Use fixed true values instead of sampling */
-      memcpy(theta_1_post + ii * n, theta_1_true, n * sizeof(double));
+      memcpy(theta_1_current, theta_1_true, n * sizeof(double));
       if (compute_alpha) {
         for (int t = 0; t < n; t++) {
-          alpha_post[ii * n + t] = ilogit(theta_1_true[t]);
+          alpha_current[t] = ilogit(theta_1_true[t]);
         }
       }
     } else {
       /* Sample theta_1 | y, theta_01, prec_1 using component-wise Metropolis-Hastings */
       generate_alpha_logit_binomial_locallevel(
-        theta_1_post + (ii - 1) * n,  /* theta_1_previous: level states from previous iteration */
-        theta_1_post + ii * n,         /* theta_1_current: output level states for current iteration */
-        compute_alpha ? (alpha_post + ii * n) : NULL,  /* alpha_current: output probabilities */
-        theta_01_post[ii - 1],         /* theta_01_previous: initial level state from previous */
-        prec_1_post[ii - 1],           /* prec_1_previous: level precision from previous */
+        theta_1_previous,              /* theta_1_previous: level states from previous iteration */
+        theta_1_current,               /* theta_1_current: output level states for current iteration */
+        compute_alpha ? alpha_current : NULL,  /* alpha_current: output probabilities */
+        theta_01_previous,             /* theta_01_previous: initial level state from previous */
+        prec_1_previous,               /* prec_1_previous: level precision from previous */
         theta_1_updated,               /* theta_1_updated: sliding window acceptance indicators */
         y_ptr,                         /* y: observed counts */
         accept_prop,                   /* accept_prop: acceptance proportions */
@@ -1356,12 +1357,12 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
     if (fix_prec_1) {
       /* Use fixed true value instead of sampling */
-      prec_1_post[ii] = prec_1_true;
+      prec_1_current = prec_1_true;
     } else {
       /* Sample 1/W_1 | theta_1, theta_01 from Gamma posterior */
-      prec_1_post[ii] = generate_precision_theta_p(
-        theta_01_post[ii - 1],     /* theta_0p: initial level from previous iteration */
-        theta_1_post + ii * n,     /* theta_p_current: current level trajectory [n] */
+      prec_1_current = generate_precision_theta_p(
+        theta_01_previous,         /* theta_0p: initial level from previous iteration */
+        theta_1_current,           /* theta_p_current: current level trajectory [n] */
         nu_01,                     /* nu_0p: prior shape parameter */
         eta_01,                    /* eta_0p: prior rate parameter */
         n                          /* n: number of time points */
@@ -1371,12 +1372,12 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
     /* ===== Step 3: Sample Initial State theta_{0,1} ===== */
     if (fix_theta_01) {
       /* Use fixed true value instead of sampling */
-      theta_01_post[ii] = theta_01_true;
+      theta_01_current = theta_01_true;
     } else {
       /* Sample theta_{0,1} | theta_1, prec_1 from Normal posterior */
-      theta_01_post[ii] = generate_theta_01_locallevel(
-        theta_1_post + ii * n,     /* theta_1_current: current level trajectory [n] */
-        prec_1_post[ii],           /* prec_1: current level precision */
+      theta_01_current = generate_theta_01_locallevel(
+        theta_1_current,           /* theta_1_current: current level trajectory [n] */
+        prec_1_current,            /* prec_1: current level precision */
         mean_theta01,              /* mean_theta01: prior mean */
         prec_theta01,              /* prec_theta01: prior precision */
         n                          /* n: number of time points */
@@ -1389,8 +1390,8 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
 
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_post[ii * n + t];
-        REAL(alpha_samples)[idx + t * n_chain]   = alpha_post[ii * n + t];
+        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
+        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
 
         /* Store diagnostics if requested */
         if (return_log_sigma) {
@@ -1402,19 +1403,23 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
       }
 
       /* Copy scalar parameters to output vectors */
-      REAL(theta_01_samples)[idx] = theta_01_post[ii];
-      REAL(prec_1_samples)[idx]   = prec_1_post[ii];
+      REAL(theta_01_samples)[idx] = theta_01_current;
+      REAL(prec_1_samples)[idx]   = prec_1_current;
     }
+
+    /* ===== Update Previous Values for Next Iteration ===== */
+    memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
+    theta_01_previous = theta_01_current;
+    prec_1_previous   = prec_1_current;
   }
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();
 
   /* ========== Free Temporary Buffers ========== */
-  R_Free(theta_1_post);
-  R_Free(alpha_post);
-  R_Free(theta_01_post);
-  R_Free(prec_1_post);
+  R_Free(theta_1_current);
+  R_Free(theta_1_previous);
+  R_Free(alpha_current);
   R_Free(theta_1_updated);
   R_Free(accept_prop);
   R_Free(log_sigma);
@@ -1606,12 +1611,13 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
   int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_1, alpha */
 
   /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
-  double *theta_1_post  = (double *) R_Calloc(2 * n, double);  /* [0:n-1] previous, [n:2n-1] current */
-  double *alpha_post    = (double *) R_Calloc(2 * n, double);  /* [0:n-1] previous, [n:2n-1] current */
+  double *theta_1_current  = (double *) R_Calloc(n, double);
+  double *theta_1_previous = (double *) R_Calloc(n, double);
+  double *alpha_current    = (double *) R_Calloc(n, double);
 
   /* Scalar parameters for current and previous iterations */
-  double *theta_01_post = (double *) R_Calloc(2, double);  /* [0] previous, [1] current */
-  double *prec_1_post   = (double *) R_Calloc(2, double);  /* [0] previous, [1] current */
+  double theta_01_current, theta_01_previous;
+  double prec_1_current,   prec_1_previous;
 
   /* Working array for probit algorithm */
   double *rhs_vector = (double *) R_Calloc(n, double);
@@ -1621,19 +1627,19 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
-  theta_01_post[0] = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_1_post[0]   = fix_prec_1 ? prec_1_true : rgamma(nu_01, 1.0 / eta_01);
+  theta_01_previous = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
+  prec_1_previous   = fix_prec_1 ? prec_1_true : rgamma(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   if (fix_theta_1) {
-    memcpy(theta_1_post, theta_1_true, n * sizeof(double));
+    memcpy(theta_1_previous, theta_1_true, n * sizeof(double));
     for (int t = 0; t < n; t++) {
-      alpha_post[t] = pnorm(theta_1_true[t], 0.0, 1.0, 1, 0);
+      alpha_current[t] = pnorm(theta_1_true[t], 0.0, 1.0, 1, 0);
     }
   } else {
     for (int t = 0; t < n; t++) {
-      theta_1_post[t] = 0.0;   /* Zeros for state trajectory */
-      alpha_post[t]   = 0.5;   /* Neutral probability for success rates */
+      theta_1_previous[t] = 0.0;   /* Zeros for state trajectory */
+      alpha_current[t]    = 0.5;   /* Neutral probability for success rates */
     }
   }
 
@@ -1648,36 +1654,36 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
     /* ===== Step 1: Sample Latent Utilities, theta_1, and alpha ===== */
     if (fix_theta_1) {
       /* Use fixed true values instead of sampling */
-      memcpy(theta_1_post + ii * n, theta_1_true, n * sizeof(double));
+      memcpy(theta_1_current, theta_1_true, n * sizeof(double));
       if (compute_alpha) {
         for (int t = 0; t < n; t++) {
-          alpha_post[ii * n + t] = pnorm(theta_1_true[t], 0.0, 1.0, 1, 0);
+          alpha_current[t] = pnorm(theta_1_true[t], 0.0, 1.0, 1, 0);
         }
       }
     } else {
       /* Sample via Albert-Chib augmentation */
       generate_alpha_probit_bernoulli_locallevel(
-        theta_1_post + (ii - 1) * n,   /* theta_1_previous: level from previous iteration [n] */
-        theta_1_post + ii * n,          /* theta_1_current: output for current iteration [n] */
-        compute_alpha ? (alpha_post + ii * n) : NULL,  /* alpha_current: NULL if not retained */
-        theta_01_post[ii - 1],          /* theta_01_previous: initial level from previous iteration */
-        prec_1_post[ii - 1],            /* prec_1_previous: level precision from previous iteration */
-        y_ptr,                          /* y: Bernoulli observations */
-        rhs_vector,                     /* rhs_vector: solver right-hand side */
-        n,                              /* n: number of time points */
-        compute_alpha                   /* compute_alpha: flag for alpha computation */
+        theta_1_previous,              /* theta_1_previous: level from previous iteration [n] */
+        theta_1_current,               /* theta_1_current: output for current iteration [n] */
+        compute_alpha ? alpha_current : NULL,  /* alpha_current: NULL if not retained */
+        theta_01_previous,             /* theta_01_previous: initial level from previous iteration */
+        prec_1_previous,               /* prec_1_previous: level precision from previous iteration */
+        y_ptr,                         /* y: Bernoulli observations */
+        rhs_vector,                    /* rhs_vector: solver right-hand side */
+        n,                             /* n: number of time points */
+        compute_alpha                  /* compute_alpha: flag for alpha computation */
       );
     }
 
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
     if (fix_prec_1) {
       /* Use fixed true value instead of sampling */
-      prec_1_post[ii] = prec_1_true;
+      prec_1_current = prec_1_true;
     } else {
       /* Sample 1/W_1 | theta_1, theta_01 from Gamma posterior */
-      prec_1_post[ii] = generate_precision_theta_p(
-        theta_01_post[ii - 1],     /* theta_0p: initial level from previous iteration */
-        theta_1_post + ii * n,     /* theta_p_current: current level trajectory [n] */
+      prec_1_current = generate_precision_theta_p(
+        theta_01_previous,         /* theta_0p: initial level from previous iteration */
+        theta_1_current,           /* theta_p_current: current level trajectory [n] */
         nu_01,                     /* nu_0p: prior shape */
         eta_01,                    /* eta_0p: prior rate */
         n                          /* n: number of time points */
@@ -1687,12 +1693,12 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
     /* ===== Step 3: Sample Initial State theta_{0,1} ===== */
     if (fix_theta_01) {
       /* Use fixed true value instead of sampling */
-      theta_01_post[ii] = theta_01_true;
+      theta_01_current = theta_01_true;
     } else {
       /* Sample theta_{0,1} | theta_1, prec_1 from Normal posterior */
-      theta_01_post[ii] = generate_theta_01_locallevel(
-        theta_1_post + ii * n,     /* theta_1_current: current level trajectory [n] */
-        prec_1_post[ii],           /* prec_1: current level precision */
+      theta_01_current = generate_theta_01_locallevel(
+        theta_1_current,           /* theta_1_current: current level trajectory [n] */
+        prec_1_current,            /* prec_1: current level precision */
         mean_theta01,              /* mean_theta01: prior mean */
         prec_theta01,              /* prec_theta01: prior precision */
         n                          /* n: number of time points */
@@ -1705,24 +1711,28 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
 
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_post[ii * n + t];
-        REAL(alpha_samples)[idx + t * n_chain]   = alpha_post[ii * n + t];
+        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
+        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
       }
 
       /* Copy scalar parameters to output vectors */
-      REAL(theta_01_samples)[idx] = theta_01_post[ii];
-      REAL(prec_1_samples)[idx]   = prec_1_post[ii];
+      REAL(theta_01_samples)[idx] = theta_01_current;
+      REAL(prec_1_samples)[idx]   = prec_1_current;
     }
+
+    /* ===== Update Previous Values for Next Iteration ===== */
+    memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
+    theta_01_previous = theta_01_current;
+    prec_1_previous   = prec_1_current;
   }
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();
 
   /* ========== Free Temporary Buffers ========== */
-  R_Free(theta_1_post);
-  R_Free(alpha_post);
-  R_Free(theta_01_post);
-  R_Free(prec_1_post);
+  R_Free(theta_1_current);
+  R_Free(theta_1_previous);
+  R_Free(alpha_current);
   R_Free(rhs_vector);
 
   /* ========== Package Results into Named List ========== */

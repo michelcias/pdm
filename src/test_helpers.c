@@ -2150,18 +2150,42 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
       }
     } else {
       generate_alpha_logit_binomial_locallevel(
-        theta_1_post, theta_01_post, theta_1_updated, alpha_post, prec_1_post, y_ptr,
-        accept_prop, log_sigma, hat_theta_1, theta_1_new, log_accept_prob,
-        lag_update, n_trials, n, ii, max_step_size, base_adaptation_rate,
-        decay_exponent, target_acceptance, min_deviation_threshold);
+        theta_1_post + (ii - 1) * n, /* theta_1_previous: level states from previous iteration */
+        theta_1_post + ii * n, /* theta_1_current: output level states for current iteration */
+        alpha_post + ii * n, /* alpha_current: output probabilities */
+        theta_01_post[ii - 1], /* theta_01_previous: initial level state from previous */
+        prec_1_post[ii - 1], /* prec_1_previous: level precision from previous */
+        theta_1_updated, /* theta_1_updated: sliding window acceptance indicators */
+        y_ptr, /* y: observed counts */
+        accept_prop, /* accept_prop: acceptance proportions */
+        log_sigma, /* log_sigma: proposal log standard deviations */
+        hat_theta_1, /* hat_theta_1: conditional means */
+        theta_1_new, /* theta_1_new: proposal buffer */
+        log_accept_prob, /* log_accept_prob: log acceptance storage */
+        lag_update, /* lag_update: adaptation window length */
+        n_trials, /* n_trials: number of binomial trials */
+        n, /* n: number of observations */
+        ii, /* iter: current iteration */
+        max_step_size, /* max_step_size: adaptation step cap */
+        base_adaptation_rate, /* base_adaptation_rate: initial adaptation rate */
+        decay_exponent, /* decay_exponent: diminishing schedule */
+        target_acceptance, /* target_acceptance: desired acceptance proportion */
+        min_deviation_threshold, /* min_deviation_threshold: deviation trigger */
+        1 /* compute_alpha: flag to compute alpha (1 = compute) */
+      );
     }
 
     /* Step 2: Sample prec_1 */
     if (fix_prec_1) {
       prec_1_post[ii] = prec_1_true;
     } else {
-      generate_precision_theta_p(theta_01_post, theta_1_post, prec_1_post,
-                                 prior_prec1_shape, prior_prec1_rate, n, ii);
+      prec_1_post[ii] = generate_precision_theta_p(
+        theta_01_post[ii], /* theta_0p: scalar initial state p */
+        theta_1_post + ii * n, /* theta_p_current: current state p values */
+        prior_prec1_shape, /* nu_0p: prior shape */
+        prior_prec1_rate, /* eta_0p: prior rate */
+        n /* n: number of observations */
+      );
 
       /* Enhanced sanity check for precision with better error handling */
       if (prec_1_post[ii] <= 0 || !isfinite(prec_1_post[ii])) {
@@ -2177,8 +2201,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_, SEXP n_trials_, SEXP bu
     if (fix_theta_01) {
       theta_01_post[ii] = theta_01_true;
     } else {
-      generate_theta_01_locallevel(theta_01_post, theta_1_post, prec_1_post,
-                                   prior_theta01_mean, prior_theta01_prec, n, ii);
+      theta_01_post[ii] = generate_theta_01_locallevel(
+        theta_1_post + ii * n, /* theta_1_current: current level states */
+        prec_1_post[ii], /* prec_1: level precision */
+        prior_theta01_mean, /* mean_theta_01: prior mean */
+        prior_theta01_prec, /* prec_theta_01: prior precision */
+        n /* n: number of observations */
+      );
     }
 
     /* Store samples after burn-in with thinning */
@@ -2504,9 +2533,12 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_, SEXP burnin_, S
     if (fix_prec_1) {
       prec_1_post[iter] = prec_1_true;
     } else {
-      generate_precision_theta_p(
-        theta_01_post, theta_1_post, prec_1_post,
-        prior_prec1_shape, prior_prec1_rate, n, iter
+      prec_1_post[iter] = generate_precision_theta_p(
+        theta_01_post[iter], /* theta_0p: scalar initial state p */
+        theta_1_post + iter * n, /* theta_p_current: current state p values */
+        prior_prec1_shape, /* nu_0p: prior shape */
+        prior_prec1_rate, /* eta_0p: prior rate */
+        n /* n: number of observations */
       );
 
       if (!R_FINITE(prec_1_post[iter]) || prec_1_post[iter] < MIN_PRECISION_THRESHOLD) {
@@ -2517,9 +2549,12 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_, SEXP burnin_, S
     if (fix_theta_01) {
       theta_01_post[iter] = theta_01_true;
     } else {
-      generate_theta_01_locallevel(
-        theta_01_post, theta_1_post, prec_1_post,
-        prior_theta01_mean, prior_theta01_prec, n, iter
+      theta_01_post[iter] = generate_theta_01_locallevel(
+        theta_1_post + iter * n, /* theta_1_current: current level states */
+        prec_1_post[iter], /* prec_1: level precision */
+        prior_theta01_mean, /* mean_theta_01: prior mean */
+        prior_theta01_prec, /* prec_theta_01: prior precision */
+        n /* n: number of observations */
       );
     }
   }

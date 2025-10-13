@@ -359,7 +359,7 @@ double generate_theta_0p(const double *theta_pm1_current,
                                double  prec_p,
                                double  mean_theta_0p,
                                double  prec_theta_0p,
-                               int     n);{
+                               int     n){
 
   /* ========== Compute Posterior Precision ========== */
   /* Combine three precision sources: prior, penultimate component, final component.

@@ -38,6 +38,7 @@
 #include "cwmh_binomial.h"
 #include "generate_alpha_binomial.h"
 #include "mcmc_binomial_locallevel.h"
+#include "test_helpers.h"
 
 //==============================================================================
 // INTERNAL UTILITIES

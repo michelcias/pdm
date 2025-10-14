@@ -77,7 +77,7 @@
 #' ## Description
 #' # This example demonstrates how to:
 #' # 1. Simulate data from a local-level dynamic model
-#' # 2. Use `mcmc_locallevel` to estimate parameters and latent states
+#' # 2. Use `mcmc_normal_locallevel` to estimate parameters and latent states
 #' # 3. Perform a detailed posterior analysis with visualizations
 #' # 4. Set a seed for reproducibility
 #'
@@ -102,7 +102,7 @@
 #'
 #' ## Running the Gibbs sampler
 #' # Run the Gibbs sampler with specified priors and a seed
-#' out <- mcmc_locallevel(
+#' out <- mcmc_normal_locallevel(
 #'   y,
 #'   burnin   = 1000,
 #'   thinning = 10,
@@ -386,7 +386,7 @@ mcmc_normal_locallevel <- function(y,
 
   # Call the C function
   .Call(
-    "_pdm_C_MCMC_locallevel",
+    "_pdm_C_MCMC_normal_locallevel",
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),

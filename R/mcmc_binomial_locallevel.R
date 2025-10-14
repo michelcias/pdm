@@ -461,7 +461,7 @@
 #'   )
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_locallevel}
+#' @seealso \link[pdm]{mcmc_normal_locallevel}
 #' @export
 mcmc_binomial_locallevel <- function(y,
                                      n_trials,

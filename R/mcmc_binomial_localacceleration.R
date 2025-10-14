@@ -867,7 +867,7 @@
 #'   )
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_localacceleration}
+#' @seealso \link[pdm]{mcmc_normal_localacceleration}
 #' @export
 mcmc_binomial_localacceleration <- function(y,
                                             n_trials,

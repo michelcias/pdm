@@ -49,9 +49,9 @@
  *          **Registered Functions:**
  *
  *          **Main MCMC Functions (Production):**
- *          - C_MCMC_locallevel: Gaussian local level model (10 args)
- *          - C_MCMC_localtrend: Gaussian local trend model (14 args)
- *          - C_MCMC_localacceleration: Gaussian local acceleration model (18 args)
+ *          - C_MCMC_normal_locallevel: Gaussian local level model (10 args)
+ *          - C_MCMC_normal_localtrend: Gaussian local trend model (14 args)
+ *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (18 args)
  *          - C_MCMC_logit_binomial_locallevel: Binomial local level with logit link (17 args)
  *          - C_MCMC_logit_binomial_localtrend: Binomial local trend with logit link (21 args)
  *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration with logit (25 args)

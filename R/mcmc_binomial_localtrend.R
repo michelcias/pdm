@@ -656,7 +656,7 @@
 #'   )
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_localtrend}
+#' @seealso \link[pdm]{mcmc_normal_localtrend}
 #' @export
 mcmc_binomial_localtrend <- function(y,
                                      n_trials,

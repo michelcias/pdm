@@ -126,9 +126,9 @@ static const R_CallMethodDef CallEntries[] = {
   //============================================================================
 
   // --- Gaussian Dynamic Models ---
-  {"_pdm_C_MCMC_locallevel",               (DL_FUNC) &C_MCMC_locallevel,                              10},
-  {"_pdm_C_MCMC_localtrend",               (DL_FUNC) &C_MCMC_localtrend,                              14},
-  {"_pdm_C_MCMC_localacceleration",        (DL_FUNC) &C_MCMC_localacceleration,                       18},
+  {"_pdm_C_MCMC_normal_locallevel",               (DL_FUNC) &C_MCMC_normal_locallevel,        10},
+  {"_pdm_C_MCMC_normal_localtrend",               (DL_FUNC) &C_MCMC_normal_localtrend,        14},
+  {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 18},
 
   // --- Binomial Dynamic Models (Logit Link) ---
   {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel,               17},

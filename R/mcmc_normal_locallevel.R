@@ -327,19 +327,19 @@
 #'   )
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_localtrend}
+#' @seealso \link[pdm]{mcmc_normal_localtrend}
 #' @export
-mcmc_locallevel <- function(y,
-                            burnin,
-                            thinning,
-                            n_chain,
-                            prior_theta01_mean,
-                            prior_theta01_prec,
-                            prior_prec1_shape,
-                            prior_prec1_rate,
-                            prior_prec_y_shape,
-                            prior_prec_y_rate,
-                            seed = NULL) {
+mcmc_normal_locallevel <- function(y,
+                                   burnin,
+                                   thinning,
+                                   n_chain,
+                                   prior_theta01_mean,
+                                   prior_theta01_prec,
+                                   prior_prec1_shape,
+                                   prior_prec1_rate,
+                                   prior_prec_y_shape,
+                                   prior_prec_y_rate,
+                                   seed = NULL) {
   # --- Input Validation ---
   if (!is.numeric(y)) {
     stop("`y` must be a numeric vector")

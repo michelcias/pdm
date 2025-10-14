@@ -27,8 +27,9 @@ mcmc_binomial_localacceleration(
   base_adaptation_rate = 0.01,
   decay_exponent = 0.6,
   target_acceptance = 0.44,
+  min_deviation_threshold = NULL,
   return_log_sigma = FALSE,
-  return_accrate = FALSE,
+  return_accept_prop = FALSE,
   seed = NULL
 )
 }
@@ -76,11 +77,17 @@ element must satisfy \eqn{0 \leq y_t \leq n_{trials}}.}
 
 \item{decay_exponent}{Numeric > 0, adaptation decay exponent for diminishing adaptation.}
 
-\item{target_acceptance}{Numeric in (0,1), target acceptance rate for Metropolis-Hastings.}
+\item{target_acceptance}{Numeric in (0,1), target acceptance proportion for Metropolis-Hastings.}
+
+\item{min_deviation_threshold}{Numeric \eqn{\geq 0}, minimum absolute deviation
+from `target_acceptance` required to trigger log_sigma updates. If `NULL`
+(default), computes practical threshold as `1.0/lag_update`. Set to `0.0`
+for maximum sensitivity (update for any deviation). Larger values make
+adaptation more conservative.}
 
 \item{return_log_sigma}{Logical, whether to return proposal scale diagnostics. Default is `FALSE`.}
 
-\item{return_accrate}{Logical, whether to return acceptance rate diagnostics. Default is `FALSE`.}
+\item{return_accept_prop}{Logical, whether to return acceptance proportion diagnostics. Default is `FALSE`.}
 
 \item{seed}{Optional integer used to set the random number generator seed. Default is `NULL`.}
 }
@@ -98,7 +105,7 @@ A list with components:
   \item{`prec_3`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_3}.}
   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
   \item{`log_sigma`}{Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics (if requested).}
-  \item{`accrate`}{Numeric matrix \eqn{[n_{chain} \times n]} of acceptance rate diagnostics (if requested).}
+  \item{`accept_prop`}{Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion diagnostics (if requested).}
 }
 }
 \description{
@@ -162,8 +169,16 @@ The prior hyperparameters correspond to function arguments as follows:
 
 Due to the non-linear observation model with logit link, the algorithm
 employs component-wise Metropolis-Hastings for sampling the latent states
-\eqn{\theta_{t,1}}, with adaptive proposal tuning based on acceptance rates.
+\eqn{\theta_{t,1}}, with adaptive proposal tuning based on acceptance proportions.
 Innovation precisions are sampled from conjugate Gamma posteriors.
+
+**Version 1.2 Enhancement:**
+This version introduces a configurable adaptation threshold parameter
+`min_deviation_threshold` that controls the sensitivity of proposal variance
+adjustments. The default value of `NULL` computes a practical threshold of
+`1.0/lag_update`, which triggers adaptation when the observed acceptance
+proportion deviates from the target by at least the amount corresponding
+to one additional acceptance/rejection in the sliding window.
 
 Burn‐in and thinning are applied so that exactly `n_chain` posterior samples
 are returned.
@@ -215,30 +230,31 @@ y <- rbinom(n, size = n_trials, prob = alpha_true)  # Observed binomial counts
 # Run the Gibbs sampler with specified priors and a seed
 out <- mcmc_binomial_localacceleration(
   y,
-  n_trials             = n_trials,
-  burnin               = 1000,
-  thinning             = 50,
-  n_chain              = 1000,
-  prior_theta01_mean   = 0,
-  prior_theta01_prec   = 1,
-  prior_theta02_mean   = 0,
-  prior_theta02_prec   = 1,
-  prior_theta03_mean   = 0,
-  prior_theta03_prec   = 1,
-  prior_prec1_shape    = 100,
-  prior_prec1_rate     = 1,
-  prior_prec2_shape    = 400,
-  prior_prec2_rate     = 1,
-  prior_prec3_shape    = 1600,
-  prior_prec3_rate     = 1,
-  lag_update           = 50,
-  max_step_size        = 0.1,
-  base_adaptation_rate = 1,
-  decay_exponent       = 0.6,
-  target_acceptance    = 0.44,
-  return_log_sigma     = FALSE,
-  return_accrate       = TRUE,
-  seed                 = 456
+  n_trials                = n_trials,
+  burnin                  = 1000,
+  thinning                = 50,
+  n_chain                 = 1000,
+  prior_theta01_mean      = 0,
+  prior_theta01_prec      = 1,
+  prior_theta02_mean      = 0,
+  prior_theta02_prec      = 1,
+  prior_theta03_mean      = 0,
+  prior_theta03_prec      = 1,
+  prior_prec1_shape       = 100,
+  prior_prec1_rate        = 1,
+  prior_prec2_shape       = 400,
+  prior_prec2_rate        = 1,
+  prior_prec3_shape       = 1600,
+  prior_prec3_rate        = 1,
+  lag_update              = 50,
+  max_step_size           = 0.1,
+  base_adaptation_rate    = 1,
+  decay_exponent          = 0.6,
+  target_acceptance       = 0.44,
+  min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
+  return_log_sigma        = FALSE,
+  return_accept_prop      = TRUE,
+  seed                    = 456
 )
 
 ## Posterior analysis and visualization
@@ -256,9 +272,9 @@ out <- mcmc_binomial_localacceleration(
     cex = 0.7
   )
 
-  # --- 1. Metropolis-Hastings Acceptance Rate Diagnostics ---
-  # Extract acceptance rate statistics for adaptive MCMC performance evaluation
-  acc <- out$accrate
+  # --- 1. Metropolis-Hastings Acceptance Proportion Diagnostics ---
+  # Extract acceptance proportion statistics for adaptive MCMC performance evaluation
+  acc <- out$accept_prop
   min_acc <- apply(X = acc, MARGIN = 2, FUN = min)
   max_acc <- apply(X = acc, MARGIN = 2, FUN = max)
   med_acc <- apply(X = acc, MARGIN = 2, FUN = median)
@@ -268,7 +284,7 @@ out <- mcmc_binomial_localacceleration(
   r1_acc <- range_acc[1] - 0.05
   r2_acc <- range_acc[2] + 0.15 * diff(range_acc)
 
-  # Plot acceptance rates with target reference line and confidence bands
+  # Plot acceptance proportions with target reference line and confidence bands
   plot(
     med_acc,
     type = "l",
@@ -288,13 +304,13 @@ out <- mcmc_binomial_localacceleration(
     border = NA
   )
 
-  # Overlay target acceptance rate
+  # Overlay target acceptance proportion
   abline(h = 0.44, col = "red", lty = 2, lwd = 2)
 
   # Add informative legend positioned in the expanded y-range
   legend(
     "topright",
-    legend = c("Median acceptance rate", "Min-Max range", "Target rate (0.44)"),
+    legend = c("Median acceptance proportion", "Min-Max range", "Target proportion (0.44)"),
     col = c("black", "gray", "red"),
     lty = c(1, 1, 2),
     lwd = c(2, 8, 2),
@@ -915,5 +931,5 @@ out <- mcmc_binomial_localacceleration(
 
 }
 \seealso{
-\link[pdm]{mcmc_localacceleration}
+\link[pdm]{mcmc_normal_localacceleration}
 }

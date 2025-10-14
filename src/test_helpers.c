@@ -1001,8 +1001,8 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
     alpha_current,       /* alpha_current: output probabilities */
     theta_01_prev,       /* theta_01_previous: prior mean for theta_1 */
     theta_02_prev,       /* theta_02_previous: prior mean for theta_2 */
-    theta_1_updated,     /* theta_1_updated: sliding window states */
     prec_1_prev,         /* prec_1_previous: prior precision */
+    theta_1_updated,     /* theta_1_updated: sliding window states */
     REAL(y),             /* y: observed counts */
     log_sigma,           /* log_sigma: proposal log standard deviations */
     hat_theta_1,         /* hat_theta_1: conditional means */

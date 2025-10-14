@@ -105,7 +105,7 @@
 #' ## Description
 #' # This example demonstrates how to:
 #' # 1. Simulate data from a local acceleration dynamic model
-#' # 2. Use `mcmc_localacceleration` to estimate parameters and latent states
+#' # 2. Use `mcmc_normal_localacceleration` to estimate parameters and latent states
 #' # 3. Perform a detailed posterior analysis with visualizations
 #' # 4. Set a seed for reproducibility
 #'
@@ -146,7 +146,7 @@
 #'
 #' ## Running the Gibbs sampler
 #' # Run the Gibbs sampler with specified priors and a seed
-#' out <- mcmc_localacceleration(
+#' out <- mcmc_normal_localacceleration(
 #'   y,
 #'   burnin   = 2000,
 #'   thinning = 100,
@@ -620,28 +620,28 @@
 #'   )
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_locallevel}, \link[pdm]{mcmc_localtrend}
+#' @seealso \link[pdm]{mcmc_normal_locallevel}, \link[pdm]{mcmc_normal_localtrend}
 #' @export
 #'
-mcmc_localacceleration <- function(y,
-                                   burnin,
-                                   thinning,
-                                   n_chain,
-                                   prior_theta01_mean,
-                                   prior_theta01_prec,
-                                   prior_theta02_mean,
-                                   prior_theta02_prec,
-                                   prior_theta03_mean,
-                                   prior_theta03_prec,
-                                   prior_prec1_shape,
-                                   prior_prec1_rate,
-                                   prior_prec2_shape,
-                                   prior_prec2_rate,
-                                   prior_prec3_shape,
-                                   prior_prec3_rate,
-                                   prior_prec_y_shape,
-                                   prior_prec_y_rate,
-                                   seed = NULL) {
+mcmc_normal_localacceleration <- function(y,
+                                          burnin,
+                                          thinning,
+                                          n_chain,
+                                          prior_theta01_mean,
+                                          prior_theta01_prec,
+                                          prior_theta02_mean,
+                                          prior_theta02_prec,
+                                          prior_theta03_mean,
+                                          prior_theta03_prec,
+                                          prior_prec1_shape,
+                                          prior_prec1_rate,
+                                          prior_prec2_shape,
+                                          prior_prec2_rate,
+                                          prior_prec3_shape,
+                                          prior_prec3_rate,
+                                          prior_prec_y_shape,
+                                          prior_prec_y_rate,
+                                          seed = NULL) {
   # --- Input Validation ---
   if (!is.numeric(y)) {
     stop("`y` must be a numeric vector")
@@ -719,7 +719,7 @@ mcmc_localacceleration <- function(y,
 
   # Call the C function
   .Call(
-    "_pdm_C_MCMC_localacceleration",
+    "_pdm_C_MCMC_normal_localacceleration",
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),

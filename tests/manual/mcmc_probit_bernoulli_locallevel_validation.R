@@ -62,7 +62,7 @@ n <- 1000          # Number of observations
 
 # True parameters (probit scale)
 theta01_true <- 0.1   # Initial level theta_{0,1}
-prec1_true   <- 1     # Innovation precision 1/W_1
+prec1_true   <- 100     # Innovation precision 1/W_1
 
 # set.seed(123) # For reproducibility
 
@@ -77,7 +77,7 @@ for (t in 2:n) {
 # Observations
 alpha_true <- pnorm(theta1_true)
 y <- rbinom(n, size = 1, prob = alpha_true)
-
+plot.ts(alpha_true)
 #-------------------------------------------------------------------------------
 # 2) MCMC Configuration
 #-------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ n_iter   <- burnin + (n_chain - 1) * thinning + 1
 
 # Priors (matching naming from C implementations)
 mean_theta01 <- 0       # prior_theta01_mean
-prec_theta01 <- 0.1    # prior_theta01_prec
+prec_theta01 <- 1.0    # prior_theta01_prec
 nu_01        <- 1e-1     # prior_prec1_shape
 eta_01       <- 1e-1     # prior_prec1_rate
 
@@ -123,11 +123,12 @@ prec_1_post[1]   <- rgamma(1, nu_01, rate = eta_01)  # R uses 'rate'
 init_sd          <- sqrt(1.0 / prec_1_post[1])
 
 # Initialize theta_1 as random walk from theta_01
-theta_1_post[1, 1] <- rnorm(1, theta_01_post[1], init_sd)
-for (j in 2:n) {
-  theta_1_post[1, j] <- rnorm(1, theta_1_post[1, j-1], init_sd)
-}
-alpha_post[1, ] <- pnorm(theta_1_post[1, ])
+# theta_1_post[1, 1] <- rnorm(1, theta_01_post[1], init_sd)
+# for (j in 2:n) {
+#   theta_1_post[1, j] <- rnorm(1, theta_1_post[1, j-1], init_sd)
+# }
+theta_1_post[1, ] <- 0
+alpha_post[1, ] <- .5#pnorm(theta_1_post[1, ])
 
 #-------------------------------------------------------------------------------
 # 5) MCMC Loop (Gibbs state update)
@@ -297,3 +298,4 @@ run_adaptation_diagnostics(
 )
 
 cat("=== PROBIT BERNOULLI LOCAL LEVEL VALIDATION COMPLETED ===\n")
+

@@ -6,10 +6,14 @@
  *          ensuring proper interface between R and C code. Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
- * @date 2025-10-13
- * @version 1.3
+ * @date 2025-10-15
+ * @version 1.4
  *
  * @changelog
+ * - v1.4 (2025-10-15): Updated argument counts for binomial MCMC functions to
+ *     include new verbose and bar_width parameters for progress bar support.
+ *     C_MCMC_logit_binomial_localtrend: 21 -> 23 args
+ *     C_MCMC_probit_bernoulli_localtrend: 12 -> 14 args
  * - v1.3 (2025-10-13): Added missing includes for probit-Bernoulli functions,
  *     corrected documentation to reflect all registered test helpers, and
  *     updated version metadata to match current development state.
@@ -53,10 +57,10 @@
  *          - C_MCMC_normal_localtrend: Gaussian local trend model (14 args)
  *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (18 args)
  *          - C_MCMC_logit_binomial_locallevel: Binomial local level with logit link (17 args)
- *          - C_MCMC_logit_binomial_localtrend: Binomial local trend with logit link (21 args)
+ *          - C_MCMC_logit_binomial_localtrend: Binomial local trend with logit link (23 args)
  *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration with logit (25 args)
  *          - C_MCMC_probit_bernoulli_locallevel: Bernoulli local level with probit link (8 args)
- *          - C_MCMC_probit_bernoulli_localtrend: Bernoulli local trend with probit link (12 args)
+ *          - C_MCMC_probit_bernoulli_localtrend: Bernoulli local trend with probit link (14 args)
  *          - C_MCMC_probit_bernoulli_localacceleration: Bernoulli local acceleration with probit (16 args)
  *
  *          **Test Helper Functions:**
@@ -103,6 +107,7 @@
  *          - v1.1 (2025-09-23): Enhanced adaptive MCMC with threshold parameters
  *          - v1.2 (2025-10-05): Added probit-Bernoulli samplers, updated binomial arg counts
  *          - v1.3 (2025-10-13): Corrected documentation and added missing includes
+ *          - v1.4 (2025-10-15): Added progress bar support (verbose, bar_width parameters)
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism at runtime
@@ -132,12 +137,12 @@ static const R_CallMethodDef CallEntries[] = {
 
   // --- Binomial Dynamic Models (Logit Link) ---
   {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel,               17},
-  {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend,               21},
+  {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend,               23},
   {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 25},
 
   // --- Bernoulli Dynamic Models (Probit Link) ---
   {"_pdm_C_MCMC_probit_bernoulli_locallevel",       (DL_FUNC) &C_MCMC_probit_bernoulli_locallevel,         8},
-  {"_pdm_C_MCMC_probit_bernoulli_localtrend",       (DL_FUNC) &C_MCMC_probit_bernoulli_localtrend,        12},
+  {"_pdm_C_MCMC_probit_bernoulli_localtrend",       (DL_FUNC) &C_MCMC_probit_bernoulli_localtrend,        14},
   {"_pdm_C_MCMC_probit_bernoulli_localacceleration",(DL_FUNC) &C_MCMC_probit_bernoulli_localacceleration, 16},
 
   //============================================================================
@@ -225,15 +230,15 @@ void R_init_pdm(DllInfo *dll)
   /* Register .Call entry points for C functions accessible from R */
   R_registerRoutines(
     dll,         /* dll: package DLL information */
-    NULL,        /* cMethods: no .C registrations */
-    CallEntries, /* callMethods: .Call registration table */
-    NULL,        /* fMethods: no .Fortran registrations */
-    NULL         /* rMethods: no .External registrations */
+  NULL,        /* cMethods: no .C registrations */
+  CallEntries, /* callMethods: .Call registration table */
+  NULL,        /* fMethods: no .Fortran registrations */
+  NULL         /* rMethods: no .External registrations */
   );
 
   /* Disable dynamic symbol lookup for improved security and encapsulation */
   R_useDynamicSymbols(
     dll,   /* dll: package DLL information */
-    FALSE  /* value: disable dynamic symbol lookup */
+  FALSE  /* value: disable dynamic symbol lookup */
   );
 }

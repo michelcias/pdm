@@ -14,7 +14,7 @@ Description: Provides tools for estimating polynomial dynamic models, which are
 NeedsCompilation: yes
 License: GPL (>= 2)
 Encoding: UTF-8
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 LazyData: true
 Suggests: 
     testthat (>= 3.0.0)

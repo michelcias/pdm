@@ -99,6 +99,10 @@
  *                              prior on 1/V. Typical value: 0.001 (vague prior).
  * @param prior_prec_y_rate_    SEXP Double scalar, rate parameter eta_y for Gamma(nu_y, eta_y)
  *                              prior on 1/V. Typical value: 0.001 (vague prior).
+ * @param verbose_              SEXP Logical scalar controlling progress bar display
+ *                              (0 = disabled, non-zero = enabled).
+ * @param bar_width_            SEXP Integer scalar defining progress bar width in
+ *                              characters. Recommended range: 10-120.
  *
  * @return SEXP R list containing posterior samples with named components:
  *         - theta_1: Numeric matrix [n_chain × n] of level state trajectory samples

@@ -111,6 +111,8 @@
  * @param min_deviation_threshold_ Minimum deviation to trigger adaptation (>= 0).
  * @param return_log_sigma_        Flag to return log_sigma diagnostics.
  * @param return_accept_prop_      Flag to return accept_prop diagnostics.
+ * @param verbose_                 Logical: display progress bar (0 = FALSE, 1 = TRUE).
+ * @param bar_width_               Integer: width of progress bar in characters (10-120).
  *
  * @return R list with components:
  *         - theta_1:     Matrix [n_chain * n] of level state trajectory samples
@@ -646,6 +648,8 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @param prior_prec2_rate_   Gamma rate for 1/W_2.
  * @param prior_prec3_shape_  Gamma shape for 1/W_3.
  * @param prior_prec3_rate_   Gamma rate for 1/W_3.
+ * @param verbose_            Logical: display progress bar (0 = FALSE, 1 = TRUE).
+ * @param bar_width_          Integer: width of progress bar in characters (10-120).
  *
  * @return R list with components:
  *         - theta_1:  Matrix [n_chain * n] of level state trajectory samples

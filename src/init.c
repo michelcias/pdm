@@ -131,19 +131,19 @@ static const R_CallMethodDef CallEntries[] = {
   //============================================================================
 
   // --- Gaussian Dynamic Models ---
-  {"_pdm_C_MCMC_normal_locallevel",               (DL_FUNC) &C_MCMC_normal_locallevel,        10},
-  {"_pdm_C_MCMC_normal_localtrend",               (DL_FUNC) &C_MCMC_normal_localtrend,        14},
-  {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 18},
+  {"_pdm_C_MCMC_normal_locallevel",               (DL_FUNC) &C_MCMC_normal_locallevel,        12},
+  {"_pdm_C_MCMC_normal_localtrend",               (DL_FUNC) &C_MCMC_normal_localtrend,        16},
+  {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 20},
 
   // --- Binomial Dynamic Models (Logit Link) ---
-  {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel,               17},
+  {"_pdm_C_MCMC_logit_binomial_locallevel",(DL_FUNC) &C_MCMC_logit_binomial_locallevel,               19},
   {"_pdm_C_MCMC_logit_binomial_localtrend",(DL_FUNC) &C_MCMC_logit_binomial_localtrend,               23},
-  {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 25},
+  {"_pdm_C_MCMC_logit_binomial_localacceleration",(DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 27},
 
   // --- Bernoulli Dynamic Models (Probit Link) ---
-  {"_pdm_C_MCMC_probit_bernoulli_locallevel",       (DL_FUNC) &C_MCMC_probit_bernoulli_locallevel,         8},
+  {"_pdm_C_MCMC_probit_bernoulli_locallevel",       (DL_FUNC) &C_MCMC_probit_bernoulli_locallevel,        10},
   {"_pdm_C_MCMC_probit_bernoulli_localtrend",       (DL_FUNC) &C_MCMC_probit_bernoulli_localtrend,        14},
-  {"_pdm_C_MCMC_probit_bernoulli_localacceleration",(DL_FUNC) &C_MCMC_probit_bernoulli_localacceleration, 16},
+  {"_pdm_C_MCMC_probit_bernoulli_localacceleration",(DL_FUNC) &C_MCMC_probit_bernoulli_localacceleration, 18},
 
   //============================================================================
   // TEST HELPER FUNCTIONS

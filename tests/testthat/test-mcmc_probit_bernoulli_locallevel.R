@@ -99,7 +99,8 @@ test_that("mcmc_probit_bernoulli_locallevel handles edge cases correctly", {
   expect_no_error({
     result_zeros <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
                           y_zeros, 50L, 1L, 100L,
-                          0.0, 1.0, 1.0, 1.0)
+                          0.0, 1.0, 1.0, 1.0,
+                          FALSE, 60L)
   })
 
   # Case 2: All ones (should handle gracefully)
@@ -107,7 +108,8 @@ test_that("mcmc_probit_bernoulli_locallevel handles edge cases correctly", {
   expect_no_error({
     result_ones <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
                          y_ones, 50L, 1L, 100L,
-                         0.0, 1.0, 1.0, 1.0)
+                         0.0, 1.0, 1.0, 1.0,
+                         FALSE, 60L)
   })
 
   # Verify output structure for edge cases

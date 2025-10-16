@@ -37,6 +37,7 @@
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
 #include "mcmc_normal_localtrend.h"
+#include "mcmc_progress_bar.h"
 
 /**
  * @brief Gibbs sampler for local-trend dynamic model with Gaussian observations
@@ -139,7 +140,9 @@ SEXP C_MCMC_normal_localtrend(SEXP y_,
                               SEXP prior_prec2_shape_,
                               SEXP prior_prec2_rate_,
                               SEXP prior_prec_y_shape_,
-                              SEXP prior_prec_y_rate_) {
+                              SEXP prior_prec_y_rate_,
+                              SEXP verbose_,
+                              SEXP bar_width_) {
 
   /* ========== Parse Data Vector and Validate Length ========== */
   double   *y   = REAL(y_);
@@ -178,6 +181,14 @@ SEXP C_MCMC_normal_localtrend(SEXP y_,
   double eta_02       = REAL(prior_prec2_rate_)[0];   /* Gamma rate for 1/W_2 */
   double nu_y         = REAL(prior_prec_y_shape_)[0]; /* Gamma shape for 1/V */
   double eta_y        = REAL(prior_prec_y_rate_)[0];  /* Gamma rate for 1/V */
+
+  /* ========== Parse Progress Bar Parameters ========== */
+  int verbose   = asLogical(verbose_);
+  int bar_width = asInteger(bar_width_);
+
+  /* ===== Initiate Progress Bar ===== */
+  ProgressBar pb = progress_bar_init(n_iter, bar_width, burnin, thinning, verbose);
+  progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -347,6 +358,11 @@ SEXP C_MCMC_normal_localtrend(SEXP y_,
       REAL(prec_y_samples)[idx]   = prec_y_current;
     }
 
+    /* ===== Update Progress Bar ===== */
+    if (ii % pb.update_step == 0 || ii == n_iter - 1) {
+      progress_bar_update(&pb, ii);
+    }
+
     /* ===== Update Previous Values for Next Iteration ===== */
     /* Efficient element-wise copy for theta_1 and theta_2 trajectories */
     for (int j = 0; j < n; j++) {
@@ -359,6 +375,9 @@ SEXP C_MCMC_normal_localtrend(SEXP y_,
     prec_2_previous   = prec_2_current;
     prec_y_previous   = prec_y_current;
   }
+
+  /* ========== Finalize Progress Bar ========== */
+  progress_bar_finish(&pb, n_chain);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();

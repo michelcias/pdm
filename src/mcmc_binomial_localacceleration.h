@@ -70,6 +70,8 @@
  * @param min_deviation_threshold_ Minimum deviation to trigger adaptation
  * @param return_log_sigma_        Flag for log_sigma diagnostics
  * @param return_accept_prop_      Flag for accept_prop diagnostics
+ * @param verbose_                 Flag for progress bar display (0 = off, non-zero = on)
+ * @param bar_width_               Width of progress bar in characters (10-120 recommended)
  *
  * @return List with components:
  *         - theta_1: Matrix [n_chain * n] of level state samples
@@ -122,7 +124,9 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
                                              SEXP target_acceptance_,
                                              SEXP min_deviation_threshold_,
                                              SEXP return_log_sigma_,
-                                             SEXP return_accept_prop_);
+                                             SEXP return_accept_prop_,
+                                             SEXP verbose_,
+                                             SEXP bar_width_);
 
 /**
  * @brief Gibbs sampler for local-acceleration Bernoulli dynamic model with probit link
@@ -151,6 +155,8 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @param prior_prec2_rate_   Gamma rate for 1/W_2
  * @param prior_prec3_shape_  Gamma shape for 1/W_3
  * @param prior_prec3_rate_   Gamma rate for 1/W_3
+ * @param verbose_            Flag for progress bar display (0 = off, non-zero = on)
+ * @param bar_width_          Width of progress bar in characters (10-120 recommended)
  *
  * @return List with components:
  *         - theta_1: Matrix [n_chain * n] of level state samples
@@ -194,6 +200,8 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
                                                SEXP prior_prec2_shape_,
                                                SEXP prior_prec2_rate_,
                                                SEXP prior_prec3_shape_,
-                                               SEXP prior_prec3_rate_);
+                                               SEXP prior_prec3_rate_,
+                                               SEXP verbose_,
+                                               SEXP bar_width_);
 
 #endif /* MCMC_BINOMIAL_LOCALACCELERATION_H */

@@ -42,6 +42,7 @@
 #include "conditional_theta0.h"
 #include "generate_alpha_binomial.h"
 #include "utils.h"
+#include "mcmc_progress_bar.h"
 #include "mcmc_binomial_localacceleration.h"
 
 /**
@@ -167,7 +168,9 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
                                              SEXP target_acceptance_,
                                              SEXP min_deviation_threshold_,
                                              SEXP return_log_sigma_,
-                                             SEXP return_accept_prop_) {
+                                             SEXP return_accept_prop_,
+                                             SEXP verbose_,
+                                             SEXP bar_width_) {
 
   /* ========== Parse Data Vector and Validate Length ========== */
   double   *y   = REAL(y_);
@@ -229,6 +232,14 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
   /* ========== Parse Diagnostic Output Options ========== */
   int return_log_sigma   = LOGICAL(return_log_sigma_)[0];
   int return_accept_prop = LOGICAL(return_accept_prop_)[0];
+
+  /* ========== Parse Progress Bar Parameters ========== */
+  int verbose   = asLogical(verbose_);
+  int bar_width = asInteger(bar_width_);
+
+  /* ===== Initiate Progress Bar ===== */
+  ProgressBar pb = progress_bar_init(n_iter, bar_width, burnin, thinning, verbose);
+  progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -484,6 +495,11 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
       REAL(prec_3_samples)[idx]   = prec_3_current;
     }
 
+    /* ===== Update Progress Bar ===== */
+    if (ii % pb.update_step == 0 || ii == n_iter - 1) {
+      progress_bar_update(&pb, ii);
+    }
+
     /* ===== Update Previous Values for Next Iteration ===== */
     memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
     memcpy(theta_2_previous, theta_2_current, n * sizeof(double));
@@ -495,6 +511,12 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
     prec_2_previous   = prec_2_current;
     prec_3_previous   = prec_3_current;
   }
+
+  /* ========== Finalize Progress Bar ========== */
+  progress_bar_finish(&pb, n_chain);
+
+  /* ========== Finalize Progress Bar ========== */
+  progress_bar_finish(&pb, n_chain);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();
@@ -671,7 +693,9 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
                                                SEXP prior_prec2_shape_,
                                                SEXP prior_prec2_rate_,
                                                SEXP prior_prec3_shape_,
-                                               SEXP prior_prec3_rate_) {
+                                               SEXP prior_prec3_rate_,
+                                               SEXP verbose_,
+                                               SEXP bar_width_) {
 
   /* ========== Parse Data Vector and Validate Length ========== */
   double   *y   = REAL(y_);
@@ -717,6 +741,14 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
   double eta_02       = REAL(prior_prec2_rate_)[0];
   double nu_03        = REAL(prior_prec3_shape_)[0];
   double eta_03       = REAL(prior_prec3_rate_)[0];
+
+  /* ========== Parse Progress Bar Parameters ========== */
+  int verbose   = asLogical(verbose_);
+  int bar_width = asInteger(bar_width_);
+
+  /* ===== Initiate Progress Bar ===== */
+  ProgressBar pb = progress_bar_init(n_iter, bar_width, burnin, thinning, verbose);
+  progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -923,6 +955,11 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
       REAL(prec_1_samples)[idx]   = prec_1_current;
       REAL(prec_2_samples)[idx]   = prec_2_current;
       REAL(prec_3_samples)[idx]   = prec_3_current;
+    }
+
+    /* ===== Update Progress Bar ===== */
+    if (ii % pb.update_step == 0 || ii == n_iter - 1) {
+      progress_bar_update(&pb, ii);
     }
 
     /* ===== Update Previous Values for Next Iteration ===== */

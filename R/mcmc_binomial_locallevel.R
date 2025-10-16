@@ -93,6 +93,8 @@
 #'   diagnostics. Default is `FALSE`.
 #' @param return_accept_prop Logical, whether to return acceptance proportion diagnostics.
 #'   Default is `FALSE`.
+#' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
+#' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is `NULL`, which does not set the seed.
 #'
@@ -480,6 +482,8 @@ mcmc_binomial_locallevel <- function(y,
                                      min_deviation_threshold = NULL,
                                      return_log_sigma = FALSE,
                                      return_accept_prop = FALSE,
+                                     verbose = FALSE,
+                                     bar_width = 60,
                                      seed = NULL) {
   # --- Input Validation ---
   if (!is.numeric(y)) {
@@ -565,6 +569,13 @@ mcmc_binomial_locallevel <- function(y,
   if (!is.logical(return_accept_prop) || length(return_accept_prop) != 1) {
     stop("`return_accept_prop` must be a single logical value")
   }
+  if (!is.logical(verbose) || length(verbose) != 1) {
+    stop("`verbose` must be a single logical value")
+  }
+  if (!is.numeric(bar_width) || length(bar_width) != 1 ||
+      bar_width < 10 || bar_width > 120 || bar_width != floor(bar_width)) {
+    stop("`bar_width` must be a single integer in [10, 120]")
+  }
 
   # Validate and set seed if provided
   if (!is.null(seed)) {
@@ -594,6 +605,8 @@ mcmc_binomial_locallevel <- function(y,
     as.numeric(target_acceptance),
     as.numeric(min_deviation_threshold),
     as.logical(return_log_sigma),
-    as.logical(return_accept_prop)
+    as.logical(return_accept_prop),
+    as.logical(verbose),
+    as.integer(bar_width)
   )
 }

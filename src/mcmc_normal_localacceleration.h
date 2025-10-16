@@ -128,6 +128,8 @@
  *                              prior on 1/V. Typical value: 0.001 (vague prior).
  * @param prior_prec_y_rate_    SEXP Double scalar, rate parameter eta_y for Gamma(nu_y, eta_y)
  *                              prior on 1/V. Typical value: 0.001 (vague prior).
+ * @param verbose_              Logical flag enabling progress bar display (0 = off, non-zero = on)
+ * @param bar_width_            Integer controlling progress bar width (clamped to 10-120 characters)
  *
  * @return SEXP R list containing posterior samples with named components:
  *         - theta_1: Numeric matrix [n_chain × n] of level state trajectory samples
@@ -178,6 +180,8 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
                                      SEXP prior_prec3_shape_,
                                      SEXP prior_prec3_rate_,
                                      SEXP prior_prec_y_shape_,
-                                     SEXP prior_prec_y_rate_);
+                                     SEXP prior_prec_y_rate_,
+                                     SEXP verbose_,
+                                     SEXP bar_width_);
 
 #endif /* MCMC_NORMAL_LOCALACCELERATION_H */

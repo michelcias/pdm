@@ -26,7 +26,8 @@ test_that("probit and logit give similar results for theta near zero", {
   set.seed(702)
   result_probit <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
                          y, 200L, 2L, 500L,
-                         0.0, 1.0, 10.0, 1.0)
+                         0.0, 1.0, 10.0, 1.0,
+                         FALSE, 60L)
   
   # Logit sampler (with n_trials = 1 for Bernoulli)
   set.seed(702)
@@ -34,7 +35,8 @@ test_that("probit and logit give similar results for theta near zero", {
                         y, 1.0, 200L, 2L, 500L,
                         0.0, 1.0, 10.0, 1.0,
                         50L, 0.1, 1.0, 0.5, 0.44, 0.01,
-                        FALSE, FALSE)
+                        FALSE, FALSE,
+                        FALSE, 60L)
   
   # --- Compare posterior means ---
   
@@ -83,13 +85,15 @@ test_that("probit sampler is more efficient than logit (acceptance rate)", {
                         y, 1.0, 100L, 1L, 300L,
                         0.0, 1.0, 5.0, 1.0,
                         30L, 0.1, 1.0, 0.5, 0.44, 0.01,
-                        FALSE, TRUE)  # return_accept_prop = TRUE
+                        FALSE, TRUE,
+                        FALSE, 60L)  # return_accept_prop = TRUE
   
   # --- Run probit sampler (Gibbs has 100% acceptance) ---
   set.seed(704)
   result_probit <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
                          y, 100L, 1L, 300L,
-                         0.0, 1.0, 5.0, 1.0)
+                         0.0, 1.0, 5.0, 1.0,
+                         FALSE, 60L)
   
   # --- Compare efficiency ---
   

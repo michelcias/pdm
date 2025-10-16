@@ -62,6 +62,8 @@
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}.
 #' @param prior_prec_y_shape Numeric > 0, shape parameter of the Gamma prior for the data precision \eqn{1/V}.
 #' @param prior_prec_y_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.
+#' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
+#' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is \code{NULL}, which does not set the seed.
 #'
@@ -339,6 +341,8 @@ mcmc_normal_locallevel <- function(y,
                                    prior_prec1_rate,
                                    prior_prec_y_shape,
                                    prior_prec_y_rate,
+                                   verbose = FALSE,
+                                   bar_width = 60,
                                    seed = NULL) {
   # --- Input Validation ---
   if (!is.numeric(y)) {
@@ -375,6 +379,14 @@ mcmc_normal_locallevel <- function(y,
     stop("`prior_prec_y_rate` must be a single positive numeric value")
   }
 
+  if (!is.logical(verbose) || length(verbose) != 1) {
+    stop("`verbose` must be a single logical value")
+  }
+  if (!is.numeric(bar_width) || length(bar_width) != 1 ||
+      bar_width < 10 || bar_width > 120 || bar_width != floor(bar_width)) {
+    stop("`bar_width` must be a single integer in [10, 120]")
+  }
+
   # Validate and set seed if provided
   if (!is.null(seed)) {
     if (!is.numeric(seed) || length(seed) != 1 || seed != floor(seed)) {
@@ -396,6 +408,8 @@ mcmc_normal_locallevel <- function(y,
     as.numeric(prior_prec1_shape),
     as.numeric(prior_prec1_rate),
     as.numeric(prior_prec_y_shape),
-    as.numeric(prior_prec_y_rate)
+    as.numeric(prior_prec_y_rate),
+    as.logical(verbose),
+    as.integer(bar_width)
   )
 }

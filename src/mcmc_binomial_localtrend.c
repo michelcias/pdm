@@ -222,6 +222,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
   int verbose   = asLogical(verbose_);
   int bar_width = asInteger(bar_width_);
 
+  /* ===== Initiate Progress Bar ===== */
   ProgressBar pb = progress_bar_init(n_iter, bar_width, burnin, thinning, verbose);
   progress_bar_start(&pb);
 
@@ -657,6 +658,7 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   int verbose   = asLogical(verbose_);
   int bar_width = asInteger(bar_width_);
 
+  /* ===== Initiate Progress Bar ===== */
   ProgressBar pb = progress_bar_init(n_iter, bar_width, burnin, thinning, verbose);
   progress_bar_start(&pb);
 
@@ -817,7 +819,7 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
     }
 
     /* ===== Update Progress Bar ===== */
-    if ((verbose && ii % pb.update_step == 0) || ii == n_iter - 1) {
+    if (ii % pb.update_step == 0 || ii == n_iter - 1) {
       progress_bar_update(&pb, ii);
     }
 
@@ -832,9 +834,7 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   }
 
   /* ========== Finalize Progress Bar ========== */
-  if (verbose) {
-    progress_bar_finish(&pb, n_chain);
-  }
+  progress_bar_finish(&pb, n_chain);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();

@@ -659,15 +659,8 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   int verbose   = asLogical(verbose_);
   int bar_width = asInteger(bar_width_);
 
-  /* Validate bar width */
-  if (bar_width < 10) bar_width = 10;
-  if (bar_width > 120) bar_width = 120;
-
-  /* Calculate update step based on bar_width (one update per bar segment) */
-  int step = (int)((n_iter - 1) / (double)bar_width);
-  if (step < 1) step = 1;
-
-  const char *bar_symbol = "\u27a4";
+  ProgressBar pb = progress_bar_init(n_iter, bar_width, burnin, thinning, verbose);
+  progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -710,20 +703,8 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   /* Initialize theta_1, theta_2 and alpha with efficient neutral starting values */
   for (int t = 0; t < n; t++) {
     theta_1_previous[t] = 0.0;   /* Zeros for level trajectory */
-  theta_2_previous[t] = 0.0;   /* Zeros for trend trajectory */
-  alpha_current[t]    = 0.5;   /* Neutral probability for success rates */
-  }
-
-  /* ========== Initialize Progress Bar ========== */
-  clock_t start_time = clock();
-
-  if (verbose) {
-    Rprintf("Starting MCMC sampling...\n");
-    Rprintf("|");
-    for (int k = 0; k < bar_width; k++) Rprintf(" ");
-    Rprintf("|   0%%\n");
-    Rprintf("Elapsed: 00:00:00 | Remaining: --:--:--");
-    R_FlushConsole();
+    theta_2_previous[t] = 0.0;   /* Zeros for trend trajectory */
+    alpha_current[t]    = 0.5;   /* Neutral probability for success rates */
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */
@@ -742,11 +723,11 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
      * Uses theta_1 from previous iteration for computing differences. */
     generate_theta_p(
       theta_1_previous,   /* theta_{p-1}: level from previous iteration [n] */
-    theta_2_current,    /* output: current iteration theta_2 [n] */
-    prec_1_previous,    /* scalar: level precision from previous iteration */
-    prec_2_previous,    /* scalar: trend precision from previous iteration */
-    theta_02_previous,  /* scalar: initial trend from previous iteration */
-    n                   /* sample size */
+      theta_2_current,    /* output: current iteration theta_2 [n] */
+      prec_1_previous,    /* scalar: level precision from previous iteration */
+      prec_2_previous,    /* scalar: trend precision from previous iteration */
+      theta_02_previous,  /* scalar: initial trend from previous iteration */
+      n                   /* sample size */
     );
 
     /* ===== Step 2: Sample Trend Innovation Precision 1/W_2 ===== */
@@ -754,10 +735,10 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
      * Uses current theta_2 (just sampled) and previous theta_{0,2}. */
     prec_2_current = generate_precision_theta_p(
       theta_02_previous,  /* scalar: initial trend from previous iteration */
-    theta_2_current,    /* vector: current theta_2 [n] */
-    nu_02,              /* prior shape */
-    eta_02,             /* prior rate */
-    n                   /* sample size */
+      theta_2_current,    /* vector: current theta_2 [n] */
+      nu_02,              /* prior shape */
+      eta_02,             /* prior rate */
+      n                   /* sample size */
     );
 
     /* ===== Step 3: Sample Initial Trend State theta_{0,2} ===== */
@@ -766,29 +747,29 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
      * Uses information from both level and trend components. */
     theta_02_current = generate_theta_0p(
       theta_1_previous,   /* theta_{p-1}: level from previous iteration [n] */
-    theta_2_current,    /* theta_p: current trend [n] */
-    theta_01_previous,  /* theta_{0,p-1}: initial level from previous iteration */
-    prec_1_previous,    /* prec_{p-1}: level precision from previous iteration */
-    prec_2_current,     /* prec_p: current trend precision */
-    mean_theta02,       /* prior mean */
-    prec_theta02,       /* prior precision */
-    n                   /* sample size */
+      theta_2_current,    /* theta_p: current trend [n] */
+      theta_01_previous,  /* theta_{0,p-1}: initial level from previous iteration */
+      prec_1_previous,    /* prec_{p-1}: level precision from previous iteration */
+      prec_2_current,     /* prec_p: current trend precision */
+      mean_theta02,       /* prior mean */
+      prec_theta02,       /* prior precision */
+      n                   /* sample size */
     );
 
     /* ===== Step 4: Sample Latent Utilities, theta_1, and alpha (conditionally) ===== */
     /* Draw v_t, theta_1, alpha | y, theta_2, theta_01, W_1 via Albert-Chib augmentation */
     generate_alpha_probit_bernoulli(
       theta_1_previous,       /* theta_1_previous: level from previous iteration [n] */
-    theta_1_current,        /* theta_1_current: output for current iteration [n] */
-    compute_alpha ? alpha_current : NULL,  /* alpha_current: NULL if not retained */
-    theta_2_current,        /* theta_2_current: trend from current iteration [n] */
-    theta_01_previous,      /* theta_01_previous: initial level from previous iteration */
-    theta_02_current,       /* theta_02_current: initial trend from current iteration */
-    prec_1_previous,        /* prec_1_previous: level precision from previous iteration */
-    y,                      /* y: Bernoulli observations */
-    rhs_vector,             /* rhs_vector: solver right-hand side */
-    n,                      /* n: number of time points */
-    compute_alpha           /* compute_alpha: flag for alpha computation */
+      theta_1_current,        /* theta_1_current: output for current iteration [n] */
+      compute_alpha ? alpha_current : NULL,  /* alpha_current: NULL if not retained */
+      theta_2_current,        /* theta_2_current: trend from current iteration [n] */
+      theta_01_previous,      /* theta_01_previous: initial level from previous iteration */
+      theta_02_current,       /* theta_02_current: initial trend from current iteration */
+      prec_1_previous,        /* prec_1_previous: level precision from previous iteration */
+      y,                      /* y: Bernoulli observations */
+      rhs_vector,             /* rhs_vector: solver right-hand side */
+      n,                      /* n: number of time points */
+      compute_alpha           /* compute_alpha: flag for alpha computation */
     );
 
     /* ===== Step 5: Sample Level Innovation Precision 1/W_1 ===== */
@@ -797,12 +778,12 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
      * Uses both level and trend information to compute innovations. */
     prec_1_current = generate_precision_theta_k(
       theta_01_previous,  /* scalar: initial level from previous iteration */
-    theta_02_current,   /* scalar: current initial trend */
-    theta_1_current,    /* vector: current level [n] */
-    theta_2_current,    /* vector: current trend [n] */
-    nu_01,              /* prior shape */
-    eta_01,             /* prior rate */
-    n                   /* sample size */
+      theta_02_current,   /* scalar: current initial trend */
+      theta_1_current,    /* vector: current level [n] */
+      theta_2_current,    /* vector: current trend [n] */
+      nu_01,              /* prior shape */
+      eta_01,             /* prior rate */
+      n                   /* sample size */
     );
 
     /* ===== Step 6: Sample Initial Level State theta_{0,1} ===== */
@@ -811,11 +792,11 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
      * Uses current level and trend information. */
     theta_01_current = generate_theta_01(
       theta_1_current,    /* vector: current level [n] */
-    theta_02_current,   /* scalar: current initial trend */
-    prec_1_current,     /* scalar: current level precision */
-    mean_theta01,       /* prior mean */
-    prec_theta01,       /* prior precision */
-    n                   /* sample size */
+      theta_02_current,   /* scalar: current initial trend */
+      prec_1_current,     /* scalar: current level precision */
+      mean_theta01,       /* prior mean */
+      prec_theta01,       /* prior precision */
+      n                   /* sample size */
     );
 
     /* ===== Store Post-Burn-in Samples with Thinning ===== */
@@ -838,35 +819,8 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
     }
 
     /* ===== Update Progress Bar ===== */
-    if (verbose && (ii % step == 0 || ii == n_iter - 1)) {
-      double percent = 100.0 * ii / (n_iter - 1);
-      int filled = (int)(bar_width * ii / (n_iter - 1));
-
-      /* Calculate time estimates */
-      double elapsed = (double)(clock() - start_time) / CLOCKS_PER_SEC;
-      double est_total = (ii > 0) ? elapsed / ii * (n_iter - 1) : 0;
-      double remaining = est_total - elapsed;
-
-      int elapsed_hrs = (int)(elapsed / 3600);
-      int elapsed_min = (int)((elapsed - elapsed_hrs * 3600) / 60);
-      int elapsed_sec = (int)(elapsed - elapsed_hrs * 3600 - elapsed_min * 60);
-
-      int remain_hrs = (int)(remaining / 3600);
-      int remain_min = (int)((remaining - remain_hrs * 3600) / 60);
-      int remain_sec = (int)(remaining - remain_hrs * 3600 - remain_min * 60);
-
-      /* Print progress bar */
-      Rprintf("\r|");
-      for (int k = 0; k < filled; k++) Rprintf("%s", bar_symbol);
-      for (int k = filled; k < bar_width; k++) Rprintf(" ");
-      Rprintf("| %3.0f%%\n", percent);
-
-      /* Print time information */
-      Rprintf("Elapsed: %02d:%02d:%02d | Remaining: %02d:%02d:%02d",
-              elapsed_hrs, elapsed_min, elapsed_sec,
-              remain_hrs, remain_min, remain_sec);
-
-      R_FlushConsole();
+    if ((verbose && ii % pb.update_step == 0) || ii == n_iter - 1) {
+      progress_bar_update(&pb, ii);
     }
 
     /* ===== Update Previous Values for Next Iteration ===== */
@@ -881,8 +835,7 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
 
   /* ========== Finalize Progress Bar ========== */
   if (verbose) {
-    Rprintf("\n\nMCMC sampling completed successfully.\n");
-    R_FlushConsole();
+    progress_bar_finish(&pb, n_chain);
   }
 
   /* ========== Restore RNG State ========== */

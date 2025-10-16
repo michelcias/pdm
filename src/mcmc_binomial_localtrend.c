@@ -431,7 +431,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
     }
 
     /* ===== Update Progress Bar ===== */
-    if (verbose && ii % pb.update_step == 0 || ii == n_iter - 1) {
+    if (ii % pb.update_step == 0 || ii == n_iter - 1) {
       progress_bar_update(&pb, ii);
     }
 
@@ -446,9 +446,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
   }
 
   /* ========== Finalize Progress Bar ========== */
-  if (verbose) {
-    progress_bar_finish(&pb, n_chain);
-  }
+  progress_bar_finish(&pb, n_chain);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();

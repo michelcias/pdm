@@ -2,8 +2,8 @@
  * @file mcmc_binomial_localtrend.c
  * @brief MCMC sampling for local-trend binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
- * @date 2025-10-15
- * @version 1.1
+ * @date 2025-01-16
+ * @version 1.2
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
  *          dynamic models with different link functions and local-trend structure:
@@ -231,8 +231,6 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
   int step = (int)((n_iter - 1) / (double)bar_width);
   if (step < 1) step = 1;
 
-  const char *bar_symbol = "\u27a4";
-
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_2_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -308,8 +306,26 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
   /* ========== Initialize Progress Bar ========== */
   clock_t start_time = clock();
 
+  /* Calculate separator length dynamically */
+  int bar_line_length = bar_width + 24;  /* |bar_width| + " 100% | ETA: 00:00:00   " */
+  int sep_length = bar_line_length;
+
+  /* Calculate length of info line */
+  char info_buffer[256];
+  int info_length = snprintf(info_buffer, sizeof(info_buffer),
+                             "  Total iterations: %d (burnin = %d, thinning = %d)",
+                             n_iter, burnin, thinning);
+
+  /* Use maximum of the two */
+  if (info_length > sep_length) sep_length = info_length;
+
   if (verbose) {
-    Rprintf("Starting MCMC sampling...\n");
+    Rprintf("\n");
+    for (int k = 0; k < sep_length; k++) Rprintf("=");
+    Rprintf("\n  MCMC Sampling Progress\n");
+    Rprintf("%s\n", info_buffer);
+    for (int k = 0; k < sep_length; k++) Rprintf("=");
+    Rprintf("\n\n");
     R_FlushConsole();
   }
 
@@ -456,22 +472,17 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
       double est_total = (ii > 0) ? elapsed / ii * (n_iter - 1) : 0;
       double remaining = est_total - elapsed;
 
-      int elapsed_hrs = (int)(elapsed / 3600);
-      int elapsed_min = (int)((elapsed - elapsed_hrs * 3600) / 60);
-      int elapsed_sec = (int)(elapsed - elapsed_hrs * 3600 - elapsed_min * 60);
-
       int remain_hrs = (int)(remaining / 3600);
       int remain_min = (int)((remaining - remain_hrs * 3600) / 60);
       int remain_sec = (int)(remaining - remain_hrs * 3600 - remain_min * 60);
 
-      /* Single line progress bar with time info */
+      /* Print progress bar with overwrite */
       Rprintf("\r|");
-      for (int k = 0; k < filled; k++) Rprintf("%s", bar_symbol);
-      for (int k = filled; k < bar_width; k++) Rprintf(" ");
-      Rprintf("| %3.0f%% [%02d:%02d:%02d / %02d:%02d:%02d]",
-              percent,
-              elapsed_hrs, elapsed_min, elapsed_sec,
-              remain_hrs, remain_min, remain_sec);
+      for (int k = 0; k < filled; k++) Rprintf("█");
+      for (int k = filled; k < bar_width; k++) Rprintf("·");
+      Rprintf("| %3.0f%% | ETA: %02d:%02d:%02d   ",
+              percent, remain_hrs, remain_min, remain_sec);
+
       R_FlushConsole();
     }
 
@@ -487,7 +498,35 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
 
   /* ========== Finalize Progress Bar ========== */
   if (verbose) {
-    Rprintf("\n\nMCMC sampling completed successfully.\n");
+    double total_time = (double)(clock() - start_time) / CLOCKS_PER_SEC;
+    double iter_per_sec = (n_iter - 1) / total_time;
+
+    int total_hrs = (int)(total_time / 3600);
+    int total_min = (int)((total_time - total_hrs * 3600) / 60);
+    int total_sec = (int)(total_time - total_hrs * 3600 - total_min * 60);
+
+    /* Calculate length of summary lines */
+    char time_buffer[256];
+    char samples_buffer[256];
+
+    int time_length = snprintf(time_buffer, sizeof(time_buffer),
+                               "  Total time: %02d:%02d:%02d | Speed: %.1f iter/sec",
+                               total_hrs, total_min, total_sec, iter_per_sec);
+
+    int samples_length = snprintf(samples_buffer, sizeof(samples_buffer),
+                                  "  Samples retained: %d", n_chain);
+
+    /* Update separator length if needed */
+    if (time_length > sep_length) sep_length = time_length;
+    if (samples_length > sep_length) sep_length = samples_length;
+
+    Rprintf("\n\n");
+    for (int k = 0; k < sep_length; k++) Rprintf("=");
+    Rprintf("\n  MCMC completed successfully!\n");
+    Rprintf("%s\n", time_buffer);
+    Rprintf("%s\n", samples_buffer);
+    for (int k = 0; k < sep_length; k++) Rprintf("=");
+    Rprintf("\n\n");
     R_FlushConsole();
   }
 
@@ -632,11 +671,11 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
  * @see Albert & Chib (1993). Bayesian Analysis of Binary and Polychotomous Response Data.
  *      JASA, 88(422), 669-679. https://doi.org/10.1080/01621459.1993.10476321
  * @see generate_alpha_probit_bernoulli
- * @see generate_theta_p_current
+ * @see generate_theta_p
  * @see generate_precision_theta_p
- * @see generate_theta_0p_localtrend
- * @see generate_precision_theta_k_localtrend
- * @see generate_theta_01_localtrend
+ * @see generate_theta_0p
+ * @see generate_precision_theta_k
+ * @see generate_theta_01
  */
 SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
                                         SEXP burnin_,
@@ -708,8 +747,6 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   int step = (int)((n_iter - 1) / (double)bar_width);
   if (step < 1) step = 1;
 
-  const char *bar_symbol = "\u27a4";
-
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_2_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -758,12 +795,26 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   /* ========== Initialize Progress Bar ========== */
   clock_t start_time = clock();
 
+  /* Calculate separator length dynamically */
+  int bar_line_length = bar_width + 24;  /* |bar_width| + " 100% | ETA: 00:00:00   " */
+  int sep_length = bar_line_length;
+
+  /* Calculate length of info line */
+  char info_buffer[256];
+  int info_length = snprintf(info_buffer, sizeof(info_buffer),
+                             "  Total iterations: %d (burnin = %d, thinning = %d)",
+                             n_iter, burnin, thinning);
+
+  /* Use maximum of the two */
+  if (info_length > sep_length) sep_length = info_length;
+
   if (verbose) {
-    Rprintf("Starting MCMC sampling...\n");
-    Rprintf("|");
-    for (int k = 0; k < bar_width; k++) Rprintf(" ");
-    Rprintf("|   0%%\n");
-    Rprintf("Elapsed: 00:00:00 | Remaining: --:--:--");
+    Rprintf("\n");
+    for (int k = 0; k < sep_length; k++) Rprintf("=");
+    Rprintf("\n  MCMC Sampling Progress\n");
+    Rprintf("%s\n", info_buffer);
+    for (int k = 0; k < sep_length; k++) Rprintf("=");
+    Rprintf("\n\n");
     R_FlushConsole();
   }
 
@@ -888,24 +939,16 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
       double est_total = (ii > 0) ? elapsed / ii * (n_iter - 1) : 0;
       double remaining = est_total - elapsed;
 
-      int elapsed_hrs = (int)(elapsed / 3600);
-      int elapsed_min = (int)((elapsed - elapsed_hrs * 3600) / 60);
-      int elapsed_sec = (int)(elapsed - elapsed_hrs * 3600 - elapsed_min * 60);
-
       int remain_hrs = (int)(remaining / 3600);
       int remain_min = (int)((remaining - remain_hrs * 3600) / 60);
       int remain_sec = (int)(remaining - remain_hrs * 3600 - remain_min * 60);
 
-      /* Print progress bar */
+      /* Print progress bar with overwrite */
       Rprintf("\r|");
-      for (int k = 0; k < filled; k++) Rprintf("%s", bar_symbol);
-      for (int k = filled; k < bar_width; k++) Rprintf(" ");
-      Rprintf("| %3.0f%%\n", percent);
-
-      /* Print time information */
-      Rprintf("Elapsed: %02d:%02d:%02d | Remaining: %02d:%02d:%02d",
-              elapsed_hrs, elapsed_min, elapsed_sec,
-              remain_hrs, remain_min, remain_sec);
+      for (int k = 0; k < filled; k++) Rprintf("█");
+      for (int k = filled; k < bar_width; k++) Rprintf("·");
+      Rprintf("| %3.0f%% | ETA: %02d:%02d:%02d   ",
+              percent, remain_hrs, remain_min, remain_sec);
 
       R_FlushConsole();
     }
@@ -922,7 +965,35 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
 
   /* ========== Finalize Progress Bar ========== */
   if (verbose) {
-    Rprintf("\n\nMCMC sampling completed successfully.\n");
+    double total_time = (double)(clock() - start_time) / CLOCKS_PER_SEC;
+    double iter_per_sec = (n_iter - 1) / total_time;
+
+    int total_hrs = (int)(total_time / 3600);
+    int total_min = (int)((total_time - total_hrs * 3600) / 60);
+    int total_sec = (int)(total_time - total_hrs * 3600 - total_min * 60);
+
+    /* Calculate length of summary lines */
+    char time_buffer[256];
+    char samples_buffer[256];
+
+    int time_length = snprintf(time_buffer, sizeof(time_buffer),
+                               "  Total time: %02d:%02d:%02d | Speed: %.1f iter/sec",
+                               total_hrs, total_min, total_sec, iter_per_sec);
+
+    int samples_length = snprintf(samples_buffer, sizeof(samples_buffer),
+                                  "  Samples retained: %d", n_chain);
+
+    /* Update separator length if needed */
+    if (time_length > sep_length) sep_length = time_length;
+    if (samples_length > sep_length) sep_length = samples_length;
+
+    Rprintf("\n\n");
+    for (int k = 0; k < sep_length; k++) Rprintf("=");
+    Rprintf("\n  MCMC completed successfully!\n");
+    Rprintf("%s\n", time_buffer);
+    Rprintf("%s\n", samples_buffer);
+    for (int k = 0; k < sep_length; k++) Rprintf("=");
+    Rprintf("\n\n");
     R_FlushConsole();
   }
 

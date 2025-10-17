@@ -167,14 +167,6 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
   double nu_01        = REAL(prior_prec1_shape_)[0];  /* Gamma shape for 1/W_1 */
   double eta_01       = REAL(prior_prec1_rate_)[0];   /* Gamma rate for 1/W_1 */
 
-  /* ========== Parse Progress Bar Parameters ========== */
-  int verbose   = asLogical(verbose_);
-  int bar_width = asInteger(bar_width_);
-
-  /* ===== Initiate Progress Bar ===== */
-  ProgressBar pb = progress_bar_init(n_iter, bar_width, burnin, thinning, verbose);
-  progress_bar_start(&pb);
-
   /* ========== Parse Adaptation Parameters ========== */
   int    lag_update              = INTEGER(lag_update_)[0];
   double max_step_size           = REAL(max_step_size_)[0];
@@ -521,6 +513,14 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
   double prec_theta01 = REAL(prior_theta01_prec_)[0]; /* Prior precision for theta_{0,1} */
   double nu_01        = REAL(prior_prec1_shape_)[0];  /* Gamma shape for 1/W_1 */
   double eta_01       = REAL(prior_prec1_rate_)[0];   /* Gamma rate for 1/W_1 */
+
+  /* ========== Parse Progress Bar Parameters ========== */
+  int verbose   = asLogical(verbose_);
+  int bar_width = asInteger(bar_width_);
+
+  /* ===== Initiate Progress Bar ===== */
+  ProgressBar pb = progress_bar_init(n_iter, bar_width, burnin, thinning, verbose);
+  progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));

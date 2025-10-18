@@ -19,10 +19,10 @@
  *          **Model specifications:**
  *          Both models share the local-trend state equations:
  *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1}, u_{t,1} ~ N(0, W_1)
- *          theta_{t,2} = theta_{t-1,2} + u_{t,2},                  u_{t,2} ~ N(0, W_2)
+ *          theta_{t,2} = theta_{t-1,2} + u_{t,2},                 u_{t,2} ~ N(0, W_2)
  *
  *          Observation equations differ by link function:
- *          - Logit-binomial:  y_t ~ Binomial(n_trials, logit^{-1}(theta_{t,1}))
+ *          - Logit-binomial:   y_t ~ Binomial(n_trials, logit^{-1}(theta_{t,1}))
  *          - Probit-Bernoulli: y_t ~ Bernoulli(Phi(theta_{t,1}))
  */
 

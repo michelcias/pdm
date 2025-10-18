@@ -29,7 +29,7 @@
  *          - theta_{0,2} ~ N(mu_{0,2}, sigma_{0,2}^2)
  *          - 1/W_1 ~ Gamma(nu_1, eta_1)
  *          - 1/W_2 ~ Gamma(nu_2, eta_2)
- *          - 1/V ~ Gamma(nu_y, eta_y)
+ *          - 1/V   ~ Gamma(nu_y, eta_y)
  *
  *          **Gibbs sampling sequence:**
  *          1. theta_2 | theta_1, theta_{0,1}, theta_{0,2}, W_1, W_2 → Multivariate Normal

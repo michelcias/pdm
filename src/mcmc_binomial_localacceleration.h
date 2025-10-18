@@ -23,7 +23,7 @@
  *          theta_{t,3} = theta_{t-1,3} + u_{t,3},                 u_{t,3} ~ N(0, W_3)
  *
  *          Observation equations differ by link function:
- *          - Logit-binomial:  y_t ~ Binomial(n_trials, logit^{-1}(theta_{t,1}))
+ *          - Logit-binomial:   y_t ~ Binomial(n_trials, logit^{-1}(theta_{t,1}))
  *          - Probit-Bernoulli: y_t ~ Bernoulli(Phi(theta_{t,1}))
  */
 

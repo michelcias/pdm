@@ -114,15 +114,25 @@
  * @see generate_precision_theta_p
  * @see generate_theta_01_locallevel
  */
-SEXP C_MCMC_logit_binomial_locallevel(SEXP y_, SEXP n_trials_,
-                                      SEXP burnin_, SEXP thinning_, SEXP n_chain_,
-                                      SEXP prior_theta01_mean_, SEXP prior_theta01_prec_,
-                                      SEXP prior_prec1_shape_, SEXP prior_prec1_rate_,
-                                      SEXP lag_update_, SEXP max_step_size_,
-                                      SEXP base_adaptation_rate_, SEXP decay_exponent_,
-                                      SEXP target_acceptance_, SEXP min_deviation_threshold_,
-                                      SEXP return_log_sigma_, SEXP return_accept_prop_,
-                                      SEXP verbose_, SEXP bar_width_) {
+SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
+                                      SEXP n_trials_,
+                                      SEXP burnin_,
+                                      SEXP thinning_,
+                                      SEXP n_chain_,
+                                      SEXP prior_theta01_mean_,
+                                      SEXP prior_theta01_prec_,
+                                      SEXP prior_prec1_shape_,
+                                      SEXP prior_prec1_rate_,
+                                      SEXP lag_update_,
+                                      SEXP max_step_size_,
+                                      SEXP base_adaptation_rate_,
+                                      SEXP decay_exponent_,
+                                      SEXP target_acceptance_,
+                                      SEXP min_deviation_threshold_,
+                                      SEXP return_log_sigma_,
+                                      SEXP return_accept_prop_,
+                                      SEXP verbose_,
+                                      SEXP bar_width_) {
 
   /* ========== Parse Data Vector and Validate Length ========== */
   double   *y   = REAL(y_);

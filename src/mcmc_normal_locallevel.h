@@ -24,7 +24,7 @@
  *          **Prior distributions:**
  *          - theta_{0,1} ~ N(mu_0, sigma_0^2)
  *          - 1/W_1 ~ Gamma(nu_1, eta_1)
- *          - 1/V ~ Gamma(nu_y, eta_y)
+ *          - 1/V   ~ Gamma(nu_y, eta_y)
  *
  *          **Gibbs sampling sequence:**
  *          1. theta_1 | y, theta_{0,1}, W_1, V → Multivariate Normal

@@ -19,6 +19,8 @@ mcmc_normal_localtrend(
   prior_prec2_rate,
   prior_prec_y_shape,
   prior_prec_y_rate,
+  verbose = FALSE,
+  bar_width = 60,
   seed = NULL
 )
 }
@@ -50,6 +52,10 @@ mcmc_normal_localtrend(
 \item{prior_prec_y_shape}{Numeric > 0, shape parameter of the Gamma prior for the data precision \eqn{1/V}.}
 
 \item{prior_prec_y_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.}
+
+\item{verbose}{Logical, whether to display a progress bar during sampling. Default is `FALSE`.}
+
+\item{bar_width}{Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
 Default is \code{NULL}, which does not set the seed.}

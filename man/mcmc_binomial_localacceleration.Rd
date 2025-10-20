@@ -30,6 +30,8 @@ mcmc_binomial_localacceleration(
   min_deviation_threshold = NULL,
   return_log_sigma = FALSE,
   return_accept_prop = FALSE,
+  verbose = FALSE,
+  bar_width = 60,
   seed = NULL
 )
 }
@@ -88,6 +90,10 @@ adaptation more conservative.}
 \item{return_log_sigma}{Logical, whether to return proposal scale diagnostics. Default is `FALSE`.}
 
 \item{return_accept_prop}{Logical, whether to return acceptance proportion diagnostics. Default is `FALSE`.}
+
+\item{verbose}{Logical, whether to display a progress bar during sampling. Default is `FALSE`.}
+
+\item{bar_width}{Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.}
 
 \item{seed}{Optional integer used to set the random number generator seed. Default is `NULL`.}
 }

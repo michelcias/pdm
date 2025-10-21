@@ -1,5 +1,5 @@
 /**
- * @file conditional_normal_mixture_indicators.c
+ * @file conditional_mixture_normal_indicators.c
  * @brief Gibbs sampling for latent indicators in Gaussian mixture models
  * @author Michel H. Montoril
  * @date 2025-10-14
@@ -59,7 +59,7 @@
 
 #include <R.h>
 #include <Rmath.h>
-#include "conditional_normal_mixture_indicators.h"
+#include "conditional_mixture_normal_indicators.h"
 
 /**
  * @brief Generate latent indicators for a two-component Gaussian mixture model
@@ -139,8 +139,8 @@
  * @warning For numerical stability, ensure alpha values are not too close to 0 or 1
  *          (e.g., alpha in [0.01, 0.99]).
  *
- * @see conditional_normal_mixture_normal_2 (for sampling component parameters)
- * @see conditional_normal_mixture_indicators_k (future K-component generalization)
+ * @see conditional_mixture_normal_parameters_k2 (for sampling component parameters)
+ * @see conditional_mixture_normal_indicators_k (future K-component generalization)
  *
  * @example
  * @code
@@ -151,7 +151,7 @@
  * double alpha[n];       // dynamic weights from previous step
  *
  * // Generate latent indicators for current iteration
- * generate_mixture_indicators_2(
+ * conditional_mixture_normal_indicators_k2(
  *     y,                 // observed data
  *     z,                 // output: latent indicators
  *     params,            // current component parameters
@@ -165,11 +165,11 @@
  *
  * @version 1.0
  */
-void generate_mixture_indicators_2(const double *y,
-                                   double       *z,
-                                   const double *params,
-                                   const double *alpha,
-                                   int           n) {
+void conditional_mixture_normal_indicators_k2(const double *y,
+                                              double       *z,
+                                              const double *params,
+                                              const double *alpha,
+                                              int           n) {
 
   int t;
 

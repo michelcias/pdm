@@ -1,5 +1,5 @@
 /**
- * @file conditional_normal_mixture_parameters.c
+ * @file conditional_mixture_normal_parameters.h
  * @brief Gibbs sampling for Gaussian mixture model component parameters
  * @author Michel H. Montoril
  * @date 2025-10-14
@@ -67,8 +67,8 @@
  *          - Cache-friendly contiguous memory layout
  */
 
-#ifndef CONDITIONAL_NORMAL_MIXTURE_PARAMETERS_H
-#define CONDITIONAL_NORMAL_MIXTURE_PARAMETERS_H
+#ifndef CONDITIONAL_MIXTURE_NORMAL_PARAMETERS_H
+#define CONDITIONAL_MIXTURE_NORMAL_PARAMETERS_H
 
 /**
  * @brief Generate component parameters for a two-component Gaussian mixture model
@@ -209,7 +209,7 @@
  * double params_curr[4];
  *
  * // Generate component parameters for current iteration
- * conditional_mixture_normal_2(
+ * conditional_mixture_normal_parameters_k2(
  *     y,                      // observed data
  *     z,                      // latent indicators
  *     params_prev,            // previous [mu_1, prec_1, mu_2, prec_2]
@@ -237,19 +237,19 @@
  *
  * @version 1.0
  */
-void conditional_mixture_normal_2(const double *y,
-                                  const double *z,
-                                  const double *params_previous,
-                                  double       *params_current,
-                                  double        mu_01,
-                                  double        prec_01,
-                                  double        nu_01,
-                                  double        eta_01,
-                                  double        mu_02,
-                                  double        prec_02,
-                                  double        nu_02,
-                                  double        eta_02,
-                                  int           n);
+void conditional_mixture_normal_parameters_k2(const double *y,
+                                              const double *z,
+                                              const double *params_previous,
+                                              double       *params_current,
+                                              double        mu_01,
+                                              double        prec_01,
+                                              double        nu_01,
+                                              double        eta_01,
+                                              double        mu_02,
+                                              double        prec_02,
+                                              double        nu_02,
+                                              double        eta_02,
+                                              int           n);
 
 
-#endif /* CONDITIONAL_NORMAL_MIXTURE_PARAMETERS_H */
+#endif /* CONDITIONAL_MIXTURE_NORMAL_PARAMETERS_H */

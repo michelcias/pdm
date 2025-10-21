@@ -1,5 +1,5 @@
 /**
- * @file conditional_normal_mixture_parameters.c
+ * @file conditional_mixture_normal_parameters.c
  * @brief Gibbs sampling for Gaussian mixture model component parameters
  * @author Michel H. Montoril
  * @date 2025-10-14
@@ -69,7 +69,7 @@
 
 #include <R.h>
 #include <Rmath.h>
-#include "conditional_normal_mixture_parameters.h"
+#include "conditional_mixture_normal_parameters.h"
 
 /**
  * @brief Generate component parameters for a two-component Gaussian mixture model
@@ -208,7 +208,7 @@
  * double params_curr[4];
  *
  * // Generate component parameters for current iteration
- * conditional_normal_mixture_normal_2(
+ * conditional_mixture_normal_parameters_k2(
  *     y,                      // observed data
  *     z,                      // latent indicators
  *     params_prev,            // previous [mu_1, prec_1, mu_2, prec_2]
@@ -236,19 +236,19 @@
  *
  * @version 1.0
  */
-void conditional_mixture_normal_2(const double *y,
-                                  const double *z,
-                                  const double *params_previous,
-                                  double       *params_current,
-                                  double        mu_01,
-                                  double        prec_01,
-                                  double        nu_01,
-                                  double        eta_01,
-                                  double        mu_02,
-                                  double        prec_02,
-                                  double        nu_02,
-                                  double        eta_02,
-                                  int           n) {
+void conditional_mixture_normal_parameters_k2(const double *y,
+                                              const double *z,
+                                              const double *params_previous,
+                                              double       *params_current,
+                                              double        mu_01,
+                                              double        prec_01,
+                                              double        nu_01,
+                                              double        eta_01,
+                                              double        mu_02,
+                                              double        prec_02,
+                                              double        nu_02,
+                                              double        eta_02,
+                                              int           n) {
 
   int t;
   double T_0 = 0.0, T_1 = 0.0;

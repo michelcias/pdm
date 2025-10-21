@@ -517,9 +517,6 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
   /* ========== Finalize Progress Bar ========== */
   progress_bar_finish(&pb, n_chain);
 
-  /* ========== Finalize Progress Bar ========== */
-  progress_bar_finish(&pb, n_chain);
-
   /* ========== Restore RNG State ========== */
   PutRNGstate();
 
@@ -977,6 +974,9 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
     prec_2_previous   = prec_2_current;
     prec_3_previous   = prec_3_current;
   }
+
+  /* ========== Finalize Progress Bar ========== */
+  progress_bar_finish(&pb, n_chain);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();

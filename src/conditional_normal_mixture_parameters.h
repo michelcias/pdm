@@ -1,5 +1,5 @@
 /**
- * @file generate_normal_mixture_parameters.c
+ * @file conditional_normal_mixture_parameters.c
  * @brief Gibbs sampling for Gaussian mixture model component parameters
  * @author Michel H. Montoril
  * @date 2025-10-14
@@ -67,9 +67,8 @@
  *          - Cache-friendly contiguous memory layout
  */
 
-#include <R.h>
-#include <Rmath.h>
-#include "generate_normal_mixture_parameters.h"
+#ifndef CONDITIONAL_NORMAL_MIXTURE_PARAMETERS_H
+#define CONDITIONAL_NORMAL_MIXTURE_PARAMETERS_H
 
 /**
  * @brief Generate component parameters for a two-component Gaussian mixture model
@@ -210,7 +209,7 @@
  * double params_curr[4];
  *
  * // Generate component parameters for current iteration
- * generate_mixture_normal_2(
+ * conditional_mixture_normal_2(
  *     y,                      // observed data
  *     z,                      // latent indicators
  *     params_prev,            // previous [mu_1, prec_1, mu_2, prec_2]
@@ -238,191 +237,19 @@
  *
  * @version 1.0
  */
-void generate_mixture_normal_2(const double *y,
-                               const double *z,
-                               const double *params_previous,
-                               double       *params_current,
-                               double        mu_01,
-                               double        prec_01,
-                               double        nu_01,
-                               double        eta_01,
-                               double        mu_02,
-                               double        prec_02,
-                               double        nu_02,
-                               double        eta_02,
-                               int           n) {
+void conditional_mixture_normal_2(const double *y,
+                                  const double *z,
+                                  const double *params_previous,
+                                  double       *params_current,
+                                  double        mu_01,
+                                  double        prec_01,
+                                  double        nu_01,
+                                  double        eta_01,
+                                  double        mu_02,
+                                  double        prec_02,
+                                  double        nu_02,
+                                  double        eta_02,
+                                  int           n);
 
-  int t;
-  double T_0 = 0.0, T_1 = 0.0;
-  double s_0 = 0.0, s_1 = 0.0;
-  double v_0, v_1;
-  double diff;
 
-  /* Extract previous iteration parameters for readability */
-  double mu_1_prev = params_previous[0];
-  double prec_1_prev = params_previous[1];
-  double mu_2_prev = params_previous[2];
-  double prec_2_prev = params_previous[3];
-
-  /* ========== Input Validation ========== */
-  if (y == NULL) {
-    error("y cannot be NULL");
-  }
-  if (z == NULL) {
-    error("z cannot be NULL");
-  }
-  if (params_previous == NULL) {
-    error("params_previous cannot be NULL");
-  }
-  if (params_current == NULL) {
-    error("params_current cannot be NULL");
-  }
-  if (n <= 0) {
-    error("n must be positive, got %d", n);
-  }
-  if (prec_1_prev <= 0.0 || !R_FINITE(prec_1_prev)) {
-    error("params_previous[1] (prec_1) must be positive and finite, got %f", prec_1_prev);
-  }
-  if (prec_2_prev <= 0.0 || !R_FINITE(prec_2_prev)) {
-    error("params_previous[3] (prec_2) must be positive and finite, got %f", prec_2_prev);
-  }
-  if (prec_01 <= 0.0 || !R_FINITE(prec_01)) {
-    error("prec_01 must be positive and finite, got %f", prec_01);
-  }
-  if (prec_02 <= 0.0 || !R_FINITE(prec_02)) {
-    error("prec_02 must be positive and finite, got %f", prec_02);
-  }
-  if (nu_01 <= 0.0 || !R_FINITE(nu_01)) {
-    error("nu_01 must be positive and finite, got %f", nu_01);
-  }
-  if (eta_01 <= 0.0 || !R_FINITE(eta_01)) {
-    error("eta_01 must be positive and finite, got %f", eta_01);
-  }
-  if (nu_02 <= 0.0 || !R_FINITE(nu_02)) {
-    error("nu_02 must be positive and finite, got %f", nu_02);
-  }
-  if (eta_02 <= 0.0 || !R_FINITE(eta_02)) {
-    error("eta_02 must be positive and finite, got %f", eta_02);
-  }
-
-  /* ========== Compute Sufficient Statistics ========== */
-  /* First pass: compute counts (T_k) and sums (s_k) for each component.
-   * T_0 = number of observations assigned to component 1 (z_t = 0)
-   * T_1 = number of observations assigned to component 2 (z_t = 1)
-   * s_0 = sum of y_t for observations in component 1
-   * s_1 = sum of y_t for observations in component 2
-   *
-   * Using double precision for counts ensures numerical consistency with
-   * subsequent variance calculations, especially when T_k is large. */
-  for (t = 0; t < n; t++) {
-    if (z[t] == 1.0) {
-      T_1 += 1.0;
-      s_1 += y[t];
-    } else if (z[t] == 0.0) {
-      T_0 += 1.0;
-      s_0 += y[t];
-    } else {
-      error("z[%d] must be 0.0 or 1.0, got %f", t, z[t]);
-    }
-  }
-
-  /* ========== Sample Mean of Component 1 (Lower) ========== */
-  /* Full conditional posterior:
-   * mu_1 | y, [...] ~ N(mu_bar_1, sigma_bar^2_1)
-   * where:
-   * sigma_bar^2_1 = (T_0 * phi_1 + prec_01)^{-1}
-   * mu_bar_1 = sigma_bar^2_1 * (s_0 * phi_1 + mu_01 * prec_01)
-   *
-   * This is the standard conjugate Normal-Normal update where the posterior
-   * precision is the sum of prior precision and data precision (T_0 * phi_1). */
-  double var_mu_1 = 1.0 / (prec_01 + T_0 * prec_1_prev);
-  double mean_mu_1 = (mu_01 * prec_01 + s_0 * prec_1_prev) * var_mu_1;
-  double mu_1_curr = rnorm(mean_mu_1, sqrt(var_mu_1));
-
-  /* ========== Sample Mean of Component 2 (Upper) ========== */
-  /* Full conditional posterior:
-   * mu_2 | y, [...] ~ N(mu_bar_2, sigma_bar^2_2)
-   * where:
-   * sigma_bar^2_2 = (T_1 * phi_2 + prec_02)^{-1}
-   * mu_bar_2 = sigma_bar^2_2 * (s_1 * phi_2 + mu_02 * prec_02) */
-  double var_mu_2 = 1.0 / (prec_02 + T_1 * prec_2_prev);
-  double mean_mu_2 = (mu_02 * prec_02 + s_1 * prec_2_prev) * var_mu_2;
-  double mu_2_curr = rnorm(mean_mu_2, sqrt(var_mu_2));
-
-  /* ========== Compute Sum of Squared Deviations ========== */
-  /* Second pass: compute v_k = Sum_{t: z_t = k-1} (y_t - mu_k)^2 using newly
-   * sampled means. This ensures consistency with the full conditional posteriors
-   * for the precision parameters.
-   *
-   * Note: We use the newly sampled means (mu_1_curr, mu_2_curr) rather than
-   * the previous iteration values, as required by the Gibbs sampling algorithm. */
-  v_0 = 0.0;
-  v_1 = 0.0;
-
-  for (t = 0; t < n; t++) {
-    if (z[t] == 1.0) {
-      diff = y[t] - mu_2_curr;
-      v_1 += diff * diff;
-    } else {
-      diff = y[t] - mu_1_curr;
-      v_0 += diff * diff;
-    }
-  }
-
-  /* ========== Sample Precision of Component 1 (Lower) ========== */
-  /* Full conditional posterior:
-   * phi_1 | y, [...] ~ Gamma(nu_bar_1, eta_bar_1)
-   * where:
-   * nu_bar_1 = nu_01 + T_0 / 2
-   * eta_bar_1 = eta_01 + v_0 / 2
-   *
-   * This is the standard conjugate Gamma-Normal update where the posterior
-   * shape increases by the number of observations T_0/2 and the rate increases
-   * by half the sum of squared deviations v_0/2. */
-  double nu_bar_1 = nu_01 + T_0 / 2.0;
-  double eta_bar_1 = eta_01 + v_0 / 2.0;
-  double prec_1_curr = rgamma(nu_bar_1, 1.0 / eta_bar_1);
-
-  /* ========== Sample Precision of Component 2 (Upper) ========== */
-  /* Full conditional posterior:
-   * phi_2 | y, [...] ~ Gamma(nu_bar_2, eta_bar_2)
-   * where:
-   * nu_bar_2 = nu_02 + T_1 / 2
-   * eta_bar_2 = eta_02 + v_1 / 2 */
-  double nu_bar_2 = nu_02 + T_1 / 2.0;
-  double eta_bar_2 = eta_02 + v_1 / 2.0;
-  double prec_2_curr = rgamma(nu_bar_2, 1.0 / eta_bar_2);
-
-  /* ========== Enforce Label Switching Constraint ========== */
-  /* To ensure identifiability, enforce mu_1 < mu_2 (ordering constraint).
-   * If the constraint is violated, swap the components.
-   * This maintains consistency with the assumption that component 1 has the
-   * smaller mean (lower component) and component 2 has the larger mean
-   * (upper component).
-   *
-   * Label switching is a well-known issue in Bayesian mixture models where
-   * the posterior is invariant to permutations of component labels. Enforcing
-   * an ordering constraint on the means is a simple and effective solution. */
-  if (mu_1_curr > mu_2_curr) {
-    /* Swap means */
-    double temp_mu = mu_1_curr;
-    mu_1_curr = mu_2_curr;
-    mu_2_curr = temp_mu;
-
-    /* Swap precisions */
-    double temp_prec = prec_1_curr;
-    prec_1_curr = prec_2_curr;
-    prec_2_curr = temp_prec;
-  }
-
-  /* ========== Store Results in Output Vector ========== */
-  /* Parameter vector structure for k=2 components:
-   * params_current[0] = mu_1    (mean of lower component)
-   * params_current[1] = prec_1  (precision of lower component)
-   * params_current[2] = mu_2    (mean of upper component)
-   * params_current[3] = prec_2  (precision of upper component) */
-  params_current[0] = mu_1_curr;
-  params_current[1] = prec_1_curr;
-  params_current[2] = mu_2_curr;
-  params_current[3] = prec_2_curr;
-}
+#endif /* CONDITIONAL_NORMAL_MIXTURE_PARAMETERS_H */

@@ -1,6 +1,6 @@
 /**
  * @file conditional_mixture_normal_indicators.h
- * @brief Atualização dos indicadores latentes (z) para mistura Normal (k=2) condicional aos parâmetros.
+ * @brief Gibbs sampling for latent indicators in Gaussian mixture models
  * @author Michel H. Montoril
  * @date 2025-10-14
  * @version 1.0

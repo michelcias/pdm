@@ -208,7 +208,7 @@
  * double params_curr[4];
  *
  * // Generate component parameters for current iteration
- * conditional_mixture_normal_2(
+ * conditional_normal_mixture_normal_2(
  *     y,                      // observed data
  *     z,                      // latent indicators
  *     params_prev,            // previous [mu_1, prec_1, mu_2, prec_2]

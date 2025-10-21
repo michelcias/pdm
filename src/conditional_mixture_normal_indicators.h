@@ -2,7 +2,7 @@
  * @file conditional_mixture_normal_indicators.h
  * @brief Gibbs sampling for latent indicators in Gaussian mixture models
  * @author Michel H. Montoril
- * @date 2025-10-14
+ * @date 2025-10-21
  * @version 1.0
  *
  * @details This file declares the Gibbs sampling routine for latent indicator variables in

@@ -356,9 +356,6 @@ out <- mcmc_probit_bernoulli_localtrend(
     border = NA
   )
 
-  # Re-add point estimate on top
-  lines(theta_2_estimate, col = "black", lwd = 2)
-
   legend(
     "topright",
     legend = c(

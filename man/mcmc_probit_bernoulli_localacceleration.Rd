@@ -412,9 +412,6 @@ out <- mcmc_probit_bernoulli_localacceleration(
     border = NA
   )
 
-  # Re-add point estimate on top
-  lines(theta_2_estimate, col = "black", lwd = 2)
-
   legend(
     "topright",
     legend = c(
@@ -455,9 +452,6 @@ out <- mcmc_probit_bernoulli_localacceleration(
     col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
     border = NA
   )
-
-  # Re-add point estimate on top
-  lines(theta_3_estimate, col = "black", lwd = 2)
 
   legend(
     "topright",

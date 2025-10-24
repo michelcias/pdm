@@ -6,10 +6,13 @@
  *          ensuring proper interface between R and C code. Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
- * @date 2025-10-23
- * @version 1.5
+ * @date 2025-10-24
+ * @version 1.6
  *
  * @changelog
+ * - v1.6 (2025-10-24): Added registration for Gaussian mixture model with dynamic
+ *     weights and local-level structure.
+ *     C_MCMC_normal_mixture_locallevel: 27 args
  * - v1.5 (2025-10-23): Added registration for Gaussian mixture model with dynamic
  *     weights and local trend structure.
  *     C_MCMC_normal_mixture_localtrend: 30 args
@@ -36,6 +39,7 @@
 #include "mcmc_normal_locallevel.h"
 #include "mcmc_normal_localtrend.h"
 #include "mcmc_normal_localacceleration.h"
+#include "mcmc_normal_mixture_locallevel.h"
 #include "mcmc_normal_mixture_localtrend.h"
 #include "mcmc_binomial_locallevel.h"
 #include "mcmc_binomial_localtrend.h"
@@ -60,6 +64,7 @@
  *          - C_MCMC_normal_locallevel: Gaussian local level model (12 args)
  *          - C_MCMC_normal_localtrend: Gaussian local trend model (16 args)
  *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (20 args)
+ *          - C_MCMC_normal_mixture_locallevel: Gaussian mixture with local-level weights (27 args)
  *          - C_MCMC_normal_mixture_localtrend: Gaussian mixture with dynamic weights (30 args)
  *          - C_MCMC_logit_binomial_locallevel: Binomial local level with logit link (19 args)
  *          - C_MCMC_logit_binomial_localtrend: Binomial local trend with logit link (23 args)
@@ -113,7 +118,8 @@
  *          - v1.2 (2025-10-05): Added probit-Bernoulli samplers, updated binomial arg counts
  *          - v1.3 (2025-10-13): Corrected documentation and added missing includes
  *          - v1.4 (2025-10-15): Added progress bar support (verbose, bar_width parameters)
- *          - v1.5 (2025-10-23): Added Gaussian mixture model with dynamic weights
+ *          - v1.5 (2025-10-23): Added Gaussian mixture model with dynamic weights (local trend)
+ *          - v1.6 (2025-10-24): Added Gaussian mixture model with local-level weights
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's .Call() mechanism at runtime
@@ -142,6 +148,7 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 20},
 
   // --- Gaussian Mixture Models with Dynamic Weights ---
+  {"_pdm_C_MCMC_normal_mixture_locallevel",       (DL_FUNC) &C_MCMC_normal_mixture_locallevel, 27},
   {"_pdm_C_MCMC_normal_mixture_localtrend",       (DL_FUNC) &C_MCMC_normal_mixture_localtrend, 31},
 
   // --- Binomial Dynamic Models (Logit Link) ---

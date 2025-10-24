@@ -1439,66 +1439,60 @@ out_probit <- mcmc_normal_mixture_localtrend(
   par(mfrow = c(1, 1))
 
   # --- 15. Summary Statistics ---
-  # Print summary statistics for key parameters
-  cat("\n=== Summary Statistics (Logit Link) ===\n\n")
+  # Create a comprehensive summary table comparing Logit and Probit results
+  cat("\n=== Summary Statistics ===\n\n")
 
-  cat("Component 1 Mean (mu_1):\n")
-  cat(sprintf("  True:     \%.3f\n", mu_1_true))
-  cat(sprintf("  Estimate: \%.3f (\%.3f, \%.3f)\n",
-              median(out_logit$mu_1),
-              quantile(out_logit$mu_1, 0.025),
-              quantile(out_logit$mu_1, 0.975)))
+  # Create summary data frame
+  summary_df <- data.frame(
+    Parameter = c(
+      "mu_1 (Logit)", "mu_1 (Probit)",
+      "mu_2 (Logit)", "mu_2 (Probit)",
+      "phi_1 (Logit)", "phi_1 (Probit)",
+      "phi_2 (Logit)", "phi_2 (Probit)"
+    ),
+    True_Value = c(
+      mu_1_true, mu_1_true,
+      mu_2_true, mu_2_true,
+      phi_1_true, phi_1_true,
+      phi_2_true, phi_2_true
+    ),
+    Estimate = c(
+      median(out_logit$mu_1), median(out_probit$mu_1),
+      median(out_logit$mu_2), median(out_probit$mu_2),
+      median(out_logit$prec_1), median(out_probit$prec_1),
+      median(out_logit$prec_2), median(out_probit$prec_2)
+    ),
+    CI_Lower = c(
+      quantile(out_logit$mu_1, 0.025), quantile(out_probit$mu_1, 0.025),
+      quantile(out_logit$mu_2, 0.025), quantile(out_probit$mu_2, 0.025),
+      quantile(out_logit$prec_1, 0.025), quantile(out_probit$prec_1, 0.025),
+      quantile(out_logit$prec_2, 0.025), quantile(out_probit$prec_2, 0.025)
+    ),
+    CI_Upper = c(
+      quantile(out_logit$mu_1, 0.975), quantile(out_probit$mu_1, 0.975),
+      quantile(out_logit$mu_2, 0.975), quantile(out_probit$mu_2, 0.975),
+      quantile(out_logit$prec_1, 0.975), quantile(out_probit$prec_1, 0.975),
+      quantile(out_logit$prec_2, 0.975), quantile(out_probit$prec_2, 0.975)
+    ),
+    stringsAsFactors = FALSE
+  )
 
-  cat("\nComponent 2 Mean (mu_2):\n")
-  cat(sprintf("  True:     \%.3f\n", mu_2_true))
-  cat(sprintf("  Estimate: \%.3f (\%.3f, \%.3f)\n",
-              median(out_logit$mu_2),
-              quantile(out_logit$mu_2, 0.025),
-              quantile(out_logit$mu_2, 0.975)))
+  # Add a column for the 95\% CI as a formatted string
+  summary_df$CI_95 <- sprintf("(\%.3f, \%.3f)", summary_df$CI_Lower, summary_df$CI_Upper)
 
-  cat("\nComponent 1 Precision (phi_1):\n")
-  cat(sprintf("  True:     \%.3f\n", phi_1_true))
-  cat(sprintf("  Estimate: \%.3f (\%.3f, \%.3f)\n",
-              median(out_logit$prec_1),
-              quantile(out_logit$prec_1, 0.025),
-              quantile(out_logit$prec_1, 0.975)))
+  # Create final display table
+  display_table <- data.frame(
+    Parameter = summary_df$Parameter,
+    True_Value = sprintf("\%.3f", summary_df$True_Value),
+    Estimate = sprintf("\%.3f", summary_df$Estimate),
+    CI_95 = summary_df$CI_95,
+    stringsAsFactors = FALSE
+  )
 
-  cat("\nComponent 2 Precision (phi_2):\n")
-  cat(sprintf("  True:     \%.3f\n", phi_2_true))
-  cat(sprintf("  Estimate: \%.3f (\%.3f, \%.3f)\n",
-              median(out_logit$prec_2),
-              quantile(out_logit$prec_2, 0.025),
-              quantile(out_logit$prec_2, 0.975)))
+  # Print the table
+  print(display_table, row.names = FALSE, right = FALSE)
 
-  cat("\n=== Summary Statistics (Probit Link) ===\n\n")
-
-  cat("Component 1 Mean (mu_1):\n")
-  cat(sprintf("  True:     \%.3f\n", mu_1_true))
-  cat(sprintf("  Estimate: \%.3f (\%.3f, \%.3f)\n",
-              median(out_probit$mu_1),
-              quantile(out_probit$mu_1, 0.025),
-              quantile(out_probit$mu_1, 0.975)))
-
-  cat("\nComponent 2 Mean (mu_2):\n")
-  cat(sprintf("  True:     \%.3f\n", mu_2_true))
-  cat(sprintf("  Estimate: \%.3f (\%.3f, \%.3f)\n",
-              median(out_probit$mu_2),
-              quantile(out_probit$mu_2, 0.025),
-              quantile(out_probit$mu_2, 0.975)))
-
-  cat("\nComponent 1 Precision (phi_1):\n")
-  cat(sprintf("  True:     \%.3f\n", phi_1_true))
-  cat(sprintf("  Estimate: \%.3f (\%.3f, \%.3f)\n",
-              median(out_probit$prec_1),
-              quantile(out_probit$prec_1, 0.025),
-              quantile(out_probit$prec_1, 0.975)))
-
-  cat("\nComponent 2 Precision (phi_2):\n")
-  cat(sprintf("  True:     \%.3f\n", phi_2_true))
-  cat(sprintf("  Estimate: \%.3f (\%.3f, \%.3f)\n",
-              median(out_probit$prec_2),
-              quantile(out_probit$prec_2, 0.025),
-              quantile(out_probit$prec_2, 0.975)))
+  cat("\nNote: CI_95 represents the 95\% credible interval (2.5\% and 97.5\% quantiles)\n")
 
   # --- 16. Model Comparison: Logit vs Probit ---
   # Compare RMSE for mixture weight estimation

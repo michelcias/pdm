@@ -246,14 +246,9 @@
 #' sigma_1_true <- 0.5  # sqrt(1/4)
 #' sigma_2_true <- 0.5  # sqrt(1/4)
 #'
-#' y <- numeric(n)
-#' for (t in seq_len(n)) {
-#'   if (z_true[t] == 0) {
-#'     y[t] <- rnorm(1, mean = mu_1_true, sd = sigma_1_true)
-#'   } else {
-#'     y[t] <- rnorm(1, mean = mu_2_true, sd = sigma_2_true)
-#'   }
-#' }
+#' mu_y <- (1 - z_true) * mu_1_true + z_true * mu_2_true
+#' sigma_y <- (1 - z_true) * sigma_1_true + z_true * sigma_2_true
+#' y <- rnorm(n, mean = mu_y, sd = sigma_y)
 #'
 #' ## Running the Gibbs sampler with logit link
 #' out_logit <- mcmc_normal_mixture_localtrend(
@@ -324,6 +319,11 @@
 #' # Point estimates are based on the median of posterior samples.
 #' \dontrun{
 #'   # --- 0. Plot the simulated data with true components ---
+#'
+#'   range_y <- range(y)
+#'   r1_y <- range_y[1] - 0.1 * diff(range_y)
+#'   r2_y <- range_y[2] + 0.1 * diff(range_y)
+#'
 #'   plot(
 #'     y,
 #'     main = "Simulated Gaussian mixture data",
@@ -332,23 +332,34 @@
 #'     type = "p",
 #'     pch = 16,
 #'     cex = 0.6,
+#'     ylim = c(r1_y, r2_y),
 #'     col = ifelse(z_true == 1, "red", "blue")
 #'   )
 #'   # Overlay the true component means
 #'   abline(h = mu_1_true, col = "blue", lwd = 2, lty = 2)
 #'   abline(h = mu_2_true, col = "red", lwd = 2, lty = 2)
 #'   legend(
-#'     "topright",
+#'     "topleft",
 #'     legend = c(
-#'       expression(mu[1]),
-#'       expression(mu[2]),
 #'       "Component 1",
 #'       "Component 2"
 #'     ),
-#'     col = c("blue", "red", "blue", "red"),
-#'     lty = c(2, 2, NA, NA),
-#'     pch = c(NA, NA, 16, 16),
-#'     lwd = c(2, 2, NA, NA),
+#'     col = c("blue", "red"),
+#'     lty = c(NA, NA),
+#'     pch = c(16, 16),
+#'     lwd = c(NA, NA),
+#'     bty = "n"
+#'   )
+#'   legend(
+#'     "topright",
+#'     legend = c(
+#'       expression(mu[1]),
+#'       expression(mu[2])
+#'     ),
+#'     col = c("blue", "red"),
+#'     lty = c(2, 2),
+#'     pch = c(NA, NA),
+#'     lwd = c(2, 2),
 #'     bty = "n"
 #'   )
 #'
@@ -365,8 +376,8 @@
 #'   # Logit
 #'   range_alpha_logit <- range(alpha_true, alpha_logit_estimate,
 #'                              alpha_logit_q025, alpha_logit_q975)
-#'   r1_alpha_logit <- max(0, range_alpha_logit[1] - 0.05)
-#'   r2_alpha_logit <- min(1, range_alpha_logit[2] + 0.25 * diff(range_alpha_logit))
+#'   r1_alpha_logit <- range_alpha_logit[1] - 0.05
+#'   r2_alpha_logit <- range_alpha_logit[2] + 0.30 * diff(range_alpha_logit)
 #'
 #'   plot(
 #'     alpha_true,
@@ -377,7 +388,7 @@
 #'     ylim = c(r1_alpha_logit, r2_alpha_logit),
 #'     lty = 1,
 #'     ylab = expression(alpha[t]),
-#'     main = "Mixture weights: Logit"
+#'     main = "Mixture weights: logit link"
 #'   )
 #'   polygon(
 #'     c(1:length(alpha_logit_estimate), rev(1:length(alpha_logit_estimate))),
@@ -390,7 +401,7 @@
 #'     "topright",
 #'     legend = c(
 #'       expression(alpha[t]),
-#'       "Logit estimate",
+#'       expression(hat(alpha)[t]),
 #'       "95% CI"
 #'     ),
 #'     col = c("black", "blue", rgb(0.2, 0.5, 0.8, alpha = 0.5)),
@@ -402,8 +413,8 @@
 #'   # Probit
 #'   range_alpha_probit <- range(alpha_true, alpha_probit_estimate,
 #'                               alpha_probit_q025, alpha_probit_q975)
-#'   r1_alpha_probit <- max(0, range_alpha_probit[1] - 0.05)
-#'   r2_alpha_probit <- min(1, range_alpha_probit[2] + 0.25 * diff(range_alpha_probit))
+#'   r1_alpha_probit <- range_alpha_probit[1] - 0.05
+#'   r2_alpha_probit <- range_alpha_probit[2] + 0.25 * diff(range_alpha_probit)
 #'
 #'   plot(
 #'     alpha_true,
@@ -414,7 +425,7 @@
 #'     ylim = c(r1_alpha_probit, r2_alpha_probit),
 #'     lty = 1,
 #'     ylab = expression(alpha[t]),
-#'     main = "Mixture weights: Probit"
+#'     main = "Mixture weights: probit link"
 #'   )
 #'   polygon(
 #'     c(1:length(alpha_probit_estimate), rev(1:length(alpha_probit_estimate))),
@@ -427,7 +438,7 @@
 #'     "topright",
 #'     legend = c(
 #'       expression(alpha[t]),
-#'       "Probit estimate",
+#'       expression(hat(alpha)[t]),
 #'       "95% CI"
 #'     ),
 #'     col = c("black", "red", rgb(0.8, 0.2, 0.5, alpha = 0.5)),
@@ -439,8 +450,8 @@
 #'   par(mfrow = c(1, 1))
 #'
 #'   # --- 2. Latent Indicators (z[t]) - Logit vs Probit (side by side) ---
-#'   z_prob_logit <- apply(X = out_logit$z, MARGIN = 2, FUN = mean)
-#'   z_prob_probit <- apply(X = out_probit$z, MARGIN = 2, FUN = mean)
+#'   z_prob_logit <- apply(X = out_logit$z, MARGIN = 2, FUN = median)
+#'   z_prob_probit <- apply(X = out_probit$z, MARGIN = 2, FUN = median)
 #'
 #'   par(mfrow = c(1, 2))
 #'
@@ -452,23 +463,32 @@
 #'     pch = 16,
 #'     cex = 0.8,
 #'     xlab = "t",
-#'     ylim = c(-0.1, 1.1),
+#'     ylim = c(-0.1, 1.35),
 #'     ylab = expression(P(z[t] == 1)),
-#'     main = "Latent indicators: Logit"
+#'     main = "Latent indicators: logit link"
 #'   )
-#'   lines(z_prob_logit, col = "blue", lwd = 2)
-#'   lines(alpha_true, col = "darkgray", lwd = 2, lty = 2)
+#'   lines(z_prob_logit, col = rgb(0.2, 0.5, 0.8, alpha = 0.2), lwd = 2)
+#'   lines(alpha_true, col = "black", lwd = 2, lty = 2)
+#'   legend(
+#'     x = 0,
+#'     y = 1.35,
+#'     legend = "True z",
+#'     col = 1,
+#'     lty = NA,
+#'     pch = 16,
+#'     lwd = NA,
+#'     bty = "n"
+#'   )
 #'   legend(
 #'     "topright",
 #'     legend = c(
-#'       "True z",
-#'       expression(hat(P)(z[t] == 1)),
+#'       expression(hat(P)(z[t] == 1*" | "*data)),
 #'       expression(alpha[t])
 #'     ),
-#'     col = c("black", "blue", "darkgray"),
-#'     lty = c(NA, 1, 2),
-#'     pch = c(16, NA, NA),
-#'     lwd = c(NA, 2, 2),
+#'     col = c(rgb(0.2, 0.5, 0.8, alpha = 0.2), "black"),
+#'     lty = c(1, 2),
+#'     pch = c(NA, NA),
+#'     lwd = c(2, 2),
 #'     bty = "n"
 #'   )
 #'
@@ -480,23 +500,32 @@
 #'     pch = 16,
 #'     cex = 0.8,
 #'     xlab = "t",
-#'     ylim = c(-0.1, 1.1),
+#'     ylim = c(-0.1, 1.35),
 #'     ylab = expression(P(z[t] == 1)),
-#'     main = "Latent indicators: Probit"
+#'     main = "Latent indicators: probit link"
 #'   )
-#'   lines(z_prob_probit, col = "red", lwd = 2)
+#'   lines(z_prob_probit, col = rgb(0.8, 0.2, 0.5, alpha = 0.2), lwd = 2)
 #'   lines(alpha_true, col = "darkgray", lwd = 2, lty = 2)
+#'   legend(
+#'     x = 0,
+#'     y = 1.35,
+#'     legend = "True z",
+#'     col = 1,
+#'     lty = NA,
+#'     pch = 16,
+#'     lwd = NA,
+#'     bty = "n"
+#'   )
 #'   legend(
 #'     "topright",
 #'     legend = c(
-#'       "True z",
-#'       expression(hat(P)(z[t] == 1)),
+#'       expression(hat(P)(z[t] == 1*" | "*data)),
 #'       expression(alpha[t])
 #'     ),
-#'     col = c("black", "red", "darkgray"),
-#'     lty = c(NA, 1, 2),
-#'     pch = c(16, NA, NA),
-#'     lwd = c(NA, 2, 2),
+#'     col = c(rgb(0.8, 0.2, 0.5, alpha = 0.2), "black"),
+#'     lty = c(1, 2),
+#'     pch = c(NA, NA),
+#'     lwd = c(2, 2),
 #'     bty = "n"
 #'   )
 #'
@@ -1365,66 +1394,60 @@
 #'   par(mfrow = c(1, 1))
 #'
 #'   # --- 15. Summary Statistics ---
-#'   # Print summary statistics for key parameters
-#'   cat("\n=== Summary Statistics (Logit Link) ===\n\n")
+#'   # Create a comprehensive summary table comparing Logit and Probit results
+#'   cat("\n=== Summary Statistics ===\n\n")
 #'
-#'   cat("Component 1 Mean (mu_1):\n")
-#'   cat(sprintf("  True:     %.3f\n", mu_1_true))
-#'   cat(sprintf("  Estimate: %.3f (%.3f, %.3f)\n",
-#'               median(out_logit$mu_1),
-#'               quantile(out_logit$mu_1, 0.025),
-#'               quantile(out_logit$mu_1, 0.975)))
+#'   # Create summary data frame
+#'   summary_df <- data.frame(
+#'     Parameter = c(
+#'       "mu_1 (Logit)", "mu_1 (Probit)",
+#'       "mu_2 (Logit)", "mu_2 (Probit)",
+#'       "phi_1 (Logit)", "phi_1 (Probit)",
+#'       "phi_2 (Logit)", "phi_2 (Probit)"
+#'     ),
+#'     True_Value = c(
+#'       mu_1_true, mu_1_true,
+#'       mu_2_true, mu_2_true,
+#'       phi_1_true, phi_1_true,
+#'       phi_2_true, phi_2_true
+#'     ),
+#'     Estimate = c(
+#'       median(out_logit$mu_1), median(out_probit$mu_1),
+#'       median(out_logit$mu_2), median(out_probit$mu_2),
+#'       median(out_logit$prec_1), median(out_probit$prec_1),
+#'       median(out_logit$prec_2), median(out_probit$prec_2)
+#'     ),
+#'     CI_Lower = c(
+#'       quantile(out_logit$mu_1, 0.025), quantile(out_probit$mu_1, 0.025),
+#'       quantile(out_logit$mu_2, 0.025), quantile(out_probit$mu_2, 0.025),
+#'       quantile(out_logit$prec_1, 0.025), quantile(out_probit$prec_1, 0.025),
+#'       quantile(out_logit$prec_2, 0.025), quantile(out_probit$prec_2, 0.025)
+#'     ),
+#'     CI_Upper = c(
+#'       quantile(out_logit$mu_1, 0.975), quantile(out_probit$mu_1, 0.975),
+#'       quantile(out_logit$mu_2, 0.975), quantile(out_probit$mu_2, 0.975),
+#'       quantile(out_logit$prec_1, 0.975), quantile(out_probit$prec_1, 0.975),
+#'       quantile(out_logit$prec_2, 0.975), quantile(out_probit$prec_2, 0.975)
+#'     ),
+#'     stringsAsFactors = FALSE
+#'   )
 #'
-#'   cat("\nComponent 2 Mean (mu_2):\n")
-#'   cat(sprintf("  True:     %.3f\n", mu_2_true))
-#'   cat(sprintf("  Estimate: %.3f (%.3f, %.3f)\n",
-#'               median(out_logit$mu_2),
-#'               quantile(out_logit$mu_2, 0.025),
-#'               quantile(out_logit$mu_2, 0.975)))
+#'   # Add a column for the 95% CI as a formatted string
+#'   summary_df$CI_95 <- sprintf("(%.3f, %.3f)", summary_df$CI_Lower, summary_df$CI_Upper)
 #'
-#'   cat("\nComponent 1 Precision (phi_1):\n")
-#'   cat(sprintf("  True:     %.3f\n", phi_1_true))
-#'   cat(sprintf("  Estimate: %.3f (%.3f, %.3f)\n",
-#'               median(out_logit$prec_1),
-#'               quantile(out_logit$prec_1, 0.025),
-#'               quantile(out_logit$prec_1, 0.975)))
+#'   # Create final display table
+#'   display_table <- data.frame(
+#'     Parameter = summary_df$Parameter,
+#'     True_Value = sprintf("%.3f", summary_df$True_Value),
+#'     Estimate = sprintf("%.3f", summary_df$Estimate),
+#'     CI_95 = summary_df$CI_95,
+#'     stringsAsFactors = FALSE
+#'   )
 #'
-#'   cat("\nComponent 2 Precision (phi_2):\n")
-#'   cat(sprintf("  True:     %.3f\n", phi_2_true))
-#'   cat(sprintf("  Estimate: %.3f (%.3f, %.3f)\n",
-#'               median(out_logit$prec_2),
-#'               quantile(out_logit$prec_2, 0.025),
-#'               quantile(out_logit$prec_2, 0.975)))
+#'   # Print the table
+#'   print(display_table, row.names = FALSE, right = FALSE)
 #'
-#'   cat("\n=== Summary Statistics (Probit Link) ===\n\n")
-#'
-#'   cat("Component 1 Mean (mu_1):\n")
-#'   cat(sprintf("  True:     %.3f\n", mu_1_true))
-#'   cat(sprintf("  Estimate: %.3f (%.3f, %.3f)\n",
-#'               median(out_probit$mu_1),
-#'               quantile(out_probit$mu_1, 0.025),
-#'               quantile(out_probit$mu_1, 0.975)))
-#'
-#'   cat("\nComponent 2 Mean (mu_2):\n")
-#'   cat(sprintf("  True:     %.3f\n", mu_2_true))
-#'   cat(sprintf("  Estimate: %.3f (%.3f, %.3f)\n",
-#'               median(out_probit$mu_2),
-#'               quantile(out_probit$mu_2, 0.025),
-#'               quantile(out_probit$mu_2, 0.975)))
-#'
-#'   cat("\nComponent 1 Precision (phi_1):\n")
-#'   cat(sprintf("  True:     %.3f\n", phi_1_true))
-#'   cat(sprintf("  Estimate: %.3f (%.3f, %.3f)\n",
-#'               median(out_probit$prec_1),
-#'               quantile(out_probit$prec_1, 0.025),
-#'               quantile(out_probit$prec_1, 0.975)))
-#'
-#'   cat("\nComponent 2 Precision (phi_2):\n")
-#'   cat(sprintf("  True:     %.3f\n", phi_2_true))
-#'   cat(sprintf("  Estimate: %.3f (%.3f, %.3f)\n",
-#'               median(out_probit$prec_2),
-#'               quantile(out_probit$prec_2, 0.025),
-#'               quantile(out_probit$prec_2, 0.975)))
+#'   cat("\nNote: CI_95 represents the 95% credible interval (2.5% and 97.5% quantiles)\n")
 #'
 #'   # --- 16. Model Comparison: Logit vs Probit ---
 #'   # Compare RMSE for mixture weight estimation

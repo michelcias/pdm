@@ -17,5 +17,8 @@ Encoding: UTF-8
 RoxygenNote: 7.3.3
 LazyData: true
 Suggests: 
+    ggplot2 (>= 3.4.0),
+    hexbin,
+    patchwork (>= 1.1.0),
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

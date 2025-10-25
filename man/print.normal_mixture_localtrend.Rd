@@ -4,10 +4,12 @@
 \alias{print.normal_mixture_localtrend}
 \title{Print method for normal_mixture_localtrend objects}
 \usage{
-\method{print}{normal_mixture_localtrend}(x, ...)
+\method{print}{normal_mixture_localtrend}(x, digits = 3, ...)
 }
 \arguments{
 \item{x}{An object of class \code{normal_mixture_localtrend}.}
+
+\item{digits}{Integer, number of decimal places to display. Default is 3.}
 
 \item{...}{Additional arguments (currently unused).}
 }
@@ -15,14 +17,38 @@
 Invisibly returns the input object \code{x}.
 }
 \description{
-Prints a concise summary of a \code{normal_mixture_localtrend} object.
+Prints a concise summary showing posterior medians.
+  Use \code{summary()} for means, standard deviations, and credible intervals.
+}
+\details{
+This method provides a quick overview using posterior medians,
+  which are robust to outliers and skewness in the posterior distribution.
+
+  For comprehensive statistics including means, standard deviations, and
+  credible intervals, use \code{summary(x)}.
+
+  \strong{Why medians?}
+  \itemize{
+    \item Robust to outliers and long tails
+    \item More representative for skewed posteriors (e.g., precision parameters)
+    \item Minimizes absolute error loss
+    \item Less sensitive to incomplete MCMC convergence
+  }
 }
 \examples{
 \dontrun{
-out_logit <- mcmc_normal_mixture_localtrend(y, link = "logit", ...)
-print(out_logit)
+out <- mcmc_normal_mixture_localtrend(y, link = "logit", ...)
+
+# Quick overview (medians only)
+print(out)
 # or simply:
-out_logit
+out
+
+# For full statistics with means and credible intervals:
+summary(out)
 }
 
+}
+\seealso{
+\code{\link{summary.normal_mixture_localtrend}}
 }

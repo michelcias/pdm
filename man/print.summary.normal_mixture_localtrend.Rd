@@ -19,8 +19,7 @@ object.}
 Invisibly returns the input object \code{x}.
 }
 \description{
-Prints the summary of a \code{normal_mixture_localtrend} object
-  in a readable format.
+Prints comprehensive posterior statistics in a readable format.
 }
 \examples{
 \dontrun{

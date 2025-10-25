@@ -35,34 +35,42 @@ An object of class \code{summary.normal_mixture_localtrend}, which is
   }
 }
 \description{
-Produces a comprehensive summary of the posterior distribution
-  for a Gaussian mixture model with dynamic mixture weights.
+Produces comprehensive posterior statistics including means,
+  standard deviations, medians, and credible intervals.
 }
 \details{
-The summary includes:
-  \itemize{
-    \item Posterior mean, median, and standard deviation
-    \item Credible intervals (default 95\%)
-    \item Effective sample size (if available)
-  }
+This method provides complete posterior inference with multiple statistics:
+\describe{
+  \item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
+  \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
+  \item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
+  \item{\strong{CI}}{Credible intervals at specified probabilities}
+}
 
-  For time-varying parameters like alpha_t, only summary statistics across
-  time are reported. Use \code{plot()} to visualize the full trajectories.
+For a quick overview showing only medians, use \code{print(x)}.
+
+For time-varying parameters like alpha_t, only summary statistics across
+time are reported. Use \code{plot()} to visualize the full trajectories.
 }
 \examples{
 \dontrun{
 # Run MCMC
 out <- mcmc_normal_mixture_localtrend(y, link = "logit", ...)
 
-# Default summary (95\% CI)
+# Quick overview (medians only)
+print(out)
+
+# Full statistics
 summary(out)
 
 # Custom credible intervals
 summary(out, probs = c(0.05, 0.95))  # 90\% CI
+summary(out, probs = c(0.10, 0.90))  # 80\% CI
 }
 
 }
 \seealso{
 \code{\link{mcmc_normal_mixture_localtrend}},
+  \code{\link{print.normal_mixture_localtrend}},
   \code{\link{plot.normal_mixture_localtrend}}
 }

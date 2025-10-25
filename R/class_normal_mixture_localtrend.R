@@ -216,43 +216,103 @@ is.normal_mixture_localtrend <- function(x) {
 
 #' Print method for normal_mixture_localtrend objects
 #'
-#' @description Prints a concise summary of a \code{normal_mixture_localtrend} object.
+#' @description Prints a concise summary showing posterior medians.
+#'   Use \code{summary()} for means, standard deviations, and credible intervals.
 #'
 #' @param x An object of class \code{normal_mixture_localtrend}.
+#' @param digits Integer, number of decimal places to display. Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return Invisibly returns the input object \code{x}.
 #'
+#' @details This method provides a quick overview using posterior medians,
+#'   which are robust to outliers and skewness in the posterior distribution.
+#'
+#'   For comprehensive statistics including means, standard deviations, and
+#'   credible intervals, use \code{summary(x)}.
+#'
+#'   \strong{Why medians?}
+#'   \itemize{
+#'     \item Robust to outliers and long tails
+#'     \item More representative for skewed posteriors (e.g., precision parameters)
+#'     \item Minimizes absolute error loss
+#'     \item Less sensitive to incomplete MCMC convergence
+#'   }
+#'
 #' @examples
 #' \dontrun{
-#' out_logit <- mcmc_normal_mixture_localtrend(y, link = "logit", ...)
-#' print(out_logit)
+#' out <- mcmc_normal_mixture_localtrend(y, link = "logit", ...)
+#'
+#' # Quick overview (medians only)
+#' print(out)
 #' # or simply:
-#' out_logit
+#' out
+#'
+#' # For full statistics with means and credible intervals:
+#' summary(out)
 #' }
 #'
+#' @seealso \code{\link{summary.normal_mixture_localtrend}}
 #' @export
-print.normal_mixture_localtrend <- function(x, ...) {
+print.normal_mixture_localtrend <- function(x, digits = 3, ...) {
 
   cat("\n")
   cat("Gaussian Mixture Model with Dynamic Mixture Weights\n")
-  cat(strrep("=", 55), "\n\n", sep = "")
+  cat(strrep("=", 70), "\n\n", sep = "")
 
-  cat("Model type:        Local Trend (2nd order polynomial)\n")
-  cat("Link function:     ", attr(x, "link"), "\n", sep = "")
-  cat("Observations:      ", attr(x, "n_obs"), "\n", sep = "")
-  cat("MCMC samples:      ", attr(x, "n_chain"), "\n", sep = "")
-  cat("Burn-in:           ", attr(x, "burnin"), "\n", sep = "")
-  cat("Thinning:          ", attr(x, "thinning"), "\n\n", sep = "")
+  # Model metadata
+  cat("Model:\n")
+  cat("  Type:              ", attr(x, "model_type"),
+      " (2nd order polynomial)\n", sep = "")
+  cat("  Link function:     ", attr(x, "link"), "\n", sep = "")
+  cat("\n")
 
-  cat("Posterior medians:\n")
-  cat("  mu_1:   ", sprintf("%.3f", median(x$mu_1)), "\n", sep = "")
-  cat("  mu_2:   ", sprintf("%.3f", median(x$mu_2)), "\n", sep = "")
-  cat("  phi_1:  ", sprintf("%.3f", median(x$prec_1)), "\n", sep = "")
-  cat("  phi_2:  ", sprintf("%.3f", median(x$prec_2)), "\n\n", sep = "")
+  # MCMC metadata
+  cat("MCMC:\n")
+  cat("  Observations:      ", attr(x, "n_obs"), "\n", sep = "")
+  cat("  Samples retained:  ", attr(x, "n_chain"), "\n", sep = "")
+  cat("  Burn-in:           ", attr(x, "burnin"), "\n", sep = "")
+  cat("  Thinning:          ", attr(x, "thinning"), "\n\n", sep = "")
 
-  cat("Use summary() for detailed statistics\n")
-  cat("Use plot() for diagnostic plots\n\n")
+  # Posterior medians (mixture components)
+  cat("Posterior Medians (Mixture Components):\n")
+  cat("  mu_1:   ", sprintf(paste0("%.", digits, "f"), median(x$mu_1)),
+      "  (component 1 mean)\n", sep = "")
+  cat("  mu_2:   ", sprintf(paste0("%.", digits, "f"), median(x$mu_2)),
+      "  (component 2 mean)\n", sep = "")
+  cat("  phi_1:  ", sprintf(paste0("%.", digits, "f"), median(x$prec_1)),
+      "  (component 1 precision)\n", sep = "")
+  cat("  phi_2:  ", sprintf(paste0("%.", digits, "f"), median(x$prec_2)),
+      "  (component 2 precision)\n\n", sep = "")
+
+  # Posterior medians (dynamic states)
+  cat("Posterior Medians (Dynamic States):\n")
+  cat("  theta_01:   ", sprintf(paste0("%.", digits, "f"), median(x$theta_01)),
+      "  (initial level)\n", sep = "")
+  cat("  theta_02:   ", sprintf(paste0("%.", digits, "f"), median(x$theta_02)),
+      "  (initial trend)\n", sep = "")
+  cat("  W_1^-1:     ", sprintf(paste0("%.", digits, "f"), median(x$prec_theta1)),
+      "  (level precision)\n", sep = "")
+  cat("  W_2^-1:     ", sprintf(paste0("%.", digits, "f"), median(x$prec_theta2)),
+      "  (trend precision)\n\n", sep = "")
+
+  # Summary of time-varying alpha
+  alpha_median_time <- apply(x$alpha, 2, median)
+  cat("Mixture Weights (alpha_t):\n")
+  cat("  Range:  [",
+      sprintf(paste0("%.", digits, "f"), min(alpha_median_time)),
+      ", ",
+      sprintf(paste0("%.", digits, "f"), max(alpha_median_time)),
+      "]\n", sep = "")
+  cat("  Median: ",
+      sprintf(paste0("%.", digits, "f"), median(alpha_median_time)), "\n\n", sep = "")
+
+  # User guidance
+  cat(strrep("-", 70), "\n", sep = "")
+  cat("Note: Showing posterior medians (robust central tendency).\n")
+  cat("      For means, SDs, and credible intervals: summary(x)\n")
+  cat("      For visual diagnostics: plot(x)\n")
+  cat(strrep("-", 70), "\n\n", sep = "")
 
   invisible(x)
 }

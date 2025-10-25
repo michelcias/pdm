@@ -1,7 +1,7 @@
 #' Summary method for normal_mixture_localtrend objects
 #'
-#' @description Produces a comprehensive summary of the posterior distribution
-#'   for a Gaussian mixture model with dynamic mixture weights.
+#' @description Produces comprehensive posterior statistics including means,
+#'   standard deviations, medians, and credible intervals.
 #'
 #' @param object An object of class \code{normal_mixture_localtrend}, typically
 #'   the result of calling \code{\link{mcmc_normal_mixture_localtrend}}.
@@ -27,35 +27,48 @@
 #'       alpha_t (min, median, max across time)}
 #'   }
 #'
-#' @details The summary includes:
-#'   \itemize{
-#'     \item Posterior mean, median, and standard deviation
-#'     \item Credible intervals (default 95\%)
-#'     \item Effective sample size (if available)
-#'   }
+#' @details
+#' This method provides complete posterior inference with multiple statistics:
+#' \describe{
+#'   \item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
+#'   \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
+#'   \item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
+#'   \item{\strong{CI}}{Credible intervals at specified probabilities}
+#' }
 #'
-#'   For time-varying parameters like alpha_t, only summary statistics across
-#'   time are reported. Use \code{plot()} to visualize the full trajectories.
+#' For a quick overview showing only medians, use \code{print(x)}.
+#'
+#' For time-varying parameters like alpha_t, only summary statistics across
+#' time are reported. Use \code{plot()} to visualize the full trajectories.
 #'
 #' @examples
 #' \dontrun{
 #' # Run MCMC
 #' out <- mcmc_normal_mixture_localtrend(y, link = "logit", ...)
 #'
-#' # Default summary (95% CI)
+#' # Quick overview (medians only)
+#' print(out)
+#'
+#' # Full statistics
 #' summary(out)
 #'
 #' # Custom credible intervals
 #' summary(out, probs = c(0.05, 0.95))  # 90% CI
+#' summary(out, probs = c(0.10, 0.90))  # 80% CI
 #' }
 #'
 #' @seealso \code{\link{mcmc_normal_mixture_localtrend}},
+#'   \code{\link{print.normal_mixture_localtrend}},
 #'   \code{\link{plot.normal_mixture_localtrend}}
 #'
 #' @export
 summary.normal_mixture_localtrend <- function(object,
                                               probs = c(0.025, 0.975),
                                               ...) {
+
+  if (!inherits(object, "normal_mixture_localtrend")) {
+    stop("Object must be of class 'normal_mixture_localtrend'")
+  }
 
   # Validate input
   if (!inherits(object, "normal_mixture_localtrend")) {
@@ -64,6 +77,14 @@ summary.normal_mixture_localtrend <- function(object,
 
   if (!is.numeric(probs) || any(probs < 0) || any(probs > 1)) {
     stop("`probs` must be numeric values between 0 and 1")
+  }
+
+  if (length(probs) != 2) {
+    stop("`probs` must have exactly 2 elements for lower and upper bounds")
+  }
+
+  if (probs[1] >= probs[2]) {
+    stop("`probs[1]` must be less than `probs[2]`")
   }
 
   # Helper function to compute summary statistics
@@ -132,8 +153,7 @@ summary.normal_mixture_localtrend <- function(object,
 
 #' Print method for summary.normal_mixture_localtrend objects
 #'
-#' @description Prints the summary of a \code{normal_mixture_localtrend} object
-#'   in a readable format.
+#' @description Prints comprehensive posterior statistics in a readable format.
 #'
 #' @param x An object of class \code{summary.normal_mixture_localtrend}, typically
 #'   the result of calling \code{summary()} on a \code{normal_mixture_localtrend}
@@ -157,11 +177,11 @@ print.summary.normal_mixture_localtrend <- function(x, digits = 3, ...) {
 
   cat("\n")
   cat("Summary: Gaussian Mixture Model with Dynamic Mixture Weights\n")
-  cat(strrep("=", 65), "\n\n", sep = "")
+  cat(strrep("=", 75), "\n\n", sep = "")
 
   # Model information
   cat("Model Information:\n")
-  cat("  Model type:        ", x$model_type, "\n", sep = "")
+  cat("  Type:              ", x$model_type, "\n", sep = "")
   cat("  Link function:     ", x$link, "\n", sep = "")
   cat("  Observations:      ", x$n_obs, "\n", sep = "")
   cat("  MCMC samples:      ", x$n_chain, "\n", sep = "")
@@ -170,11 +190,18 @@ print.summary.normal_mixture_localtrend <- function(x, digits = 3, ...) {
 
   # Credible interval level
   ci_level <- (x$probs[2] - x$probs[1]) * 100
-  cat("Credible Interval: ", ci_level, "%\n\n", sep = "")
+  cat("Credible Intervals: ", sprintf("%.1f", ci_level), "%\n\n", sep = "")
+
+  # Explanation of statistics
+  cat("Statistics Legend:\n")
+  cat("  Mean   = Posterior mean (minimizes squared error)\n")
+  cat("  Median = Posterior median (minimizes absolute error, shown in print())\n")
+  cat("  SD     = Posterior standard deviation\n")
+  cat("  CI     = Credible interval at specified level\n\n")
 
   # Mixture component parameters
   cat("Mixture Component Parameters:\n")
-  cat(strrep("-", 65), "\n", sep = "")
+  cat(strrep("-", 75), "\n", sep = "")
 
   # Format the table
   mixture_print <- x$mixture_params
@@ -187,7 +214,7 @@ print.summary.normal_mixture_localtrend <- function(x, digits = 3, ...) {
 
   # Dynamic state parameters
   cat("Dynamic State Parameters:\n")
-  cat(strrep("-", 65), "\n", sep = "")
+  cat(strrep("-", 75), "\n", sep = "")
 
   state_print <- x$state_params
   state_print[, -1] <- lapply(state_print[, -1], function(col) {
@@ -199,7 +226,7 @@ print.summary.normal_mixture_localtrend <- function(x, digits = 3, ...) {
 
   # Alpha summary
   cat("Mixture Weights (alpha_t) Summary:\n")
-  cat(strrep("-", 65), "\n", sep = "")
+  cat(strrep("-", 75), "\n", sep = "")
 
   alpha_print <- x$alpha_summary
   alpha_print$Value <- sprintf(paste0("%.", digits, "f"), alpha_print$Value)
@@ -207,8 +234,10 @@ print.summary.normal_mixture_localtrend <- function(x, digits = 3, ...) {
   print(alpha_print, row.names = FALSE, right = TRUE)
 
   cat("\n")
-  cat("Note: For time-varying parameters, use plot() to visualize trajectories\n")
-  cat("\n")
+  cat(strrep("-", 75), "\n", sep = "")
+  cat("Note: For time-varying parameters, use plot() to visualize trajectories.\n")
+  cat("      For quick overview with medians only, use print().\n")
+  cat(strrep("-", 75), "\n\n", sep = "")
 
   invisible(x)
 }

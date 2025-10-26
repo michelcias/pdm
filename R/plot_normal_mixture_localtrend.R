@@ -78,13 +78,13 @@
 #'
 #' \strong{Complete Dashboard (\code{type = "all"}):}
 #'
-#' Generates 12 pages in total:
+#' Generates 13 pages in total:
 #' \itemize{
 #'   \item Pages 1-8: Individual parameter diagnostics (4 panels each)
-#'   \item Page 9: Mixture parameters overview
-#'   \item Page 10: Dynamic states overview
-#'   \item Page 11: Mixture weight alpha_t
-#'   \item Page 12: Component membership z_t
+#'   \item Page 9: Mixture parameters (bivariate relationships)
+#'   \item Pages 10-11: Dynamic state trajectories and diagnostics
+#'   \item Page 12: Mixture weight alpha_t
+#'   \item Page 13: Component membership P(z_t = 1 | data)
 #' }
 #'
 #' The \code{engine} argument allows choosing between base R graphics (lightweight,
@@ -188,7 +188,7 @@ plot.normal_mixture_localtrend <- function(x,
 #' @noRd
 plot_param_diagnostics <- function(param_samples,
                                    param_name,
-                                   param_label,
+                                   param_label,  # Já é expression()
                                    true_value = NULL,
                                    ...) {
 
@@ -201,9 +201,13 @@ plot_param_diagnostics <- function(param_samples,
   plot(param_samples, type = "l", col = "gray40", lwd = 0.8,
        xlab = "Iteration", ylab = param_label,
        main = "Trace Plot")
-  abline(h = median(param_samples), col = "red", lwd = 2, lty = 2)
+  segments(x0 = 1, y0 = median(param_samples),
+           x1 = length(param_samples), y1 = median(param_samples),
+           col = "red", lwd = 2, lty = 2)
   if (!is.null(true_value)) {
-    abline(h = true_value, col = "blue", lwd = 2, lty = 3)
+    segments(x0 = 1, y0 = true_value,
+             x1 = length(param_samples), y1 = true_value,
+             col = "blue", lwd = 2, lty = 3)
   }
   grid()
 
@@ -216,8 +220,12 @@ plot_param_diagnostics <- function(param_samples,
   plot(dens, main = "Posterior Density",
        xlab = param_label, lwd = 2, col = "darkgreen")
   polygon(dens, col = rgb(0, 0.5, 0, 0.2), border = NA)
-  abline(v = median(param_samples), col = "red", lwd = 2, lty = 2)
-  abline(v = mean(param_samples), col = "blue", lwd = 2, lty = 3)
+  segments(x0 = median(param_samples), y0 = 0,
+           x1 = median(param_samples), y1 = max(dens$y),
+           col = "red", lwd = 2, lty = 2)
+  segments(x0 = mean(param_samples), y0 = 0,
+           x1 = mean(param_samples), y1 = max(dens$y),
+           col = "blue", lwd = 2, lty = 3)
   legend("topright",
          legend = c("Median", "Mean"),
          col = c("red", "blue"),
@@ -228,14 +236,18 @@ plot_param_diagnostics <- function(param_samples,
   plot(running_mean, type = "l", col = "steelblue", lwd = 2,
        xlab = "Iteration", ylab = param_label,
        main = "Running Mean")
-  abline(h = median(param_samples), col = "red", lwd = 2, lty = 2)
+  segments(x0 = 1, y0 = median(param_samples),
+           x1 = length(param_samples), y1 = median(param_samples),
+           col = "red", lwd = 2, lty = 2)
   if (!is.null(true_value)) {
-    abline(h = true_value, col = "blue", lwd = 2, lty = 3)
+    segments(x0 = 1, y0 = true_value,
+             x1 = length(param_samples), y1 = true_value,
+             col = "blue", lwd = 2, lty = 3)
   }
   grid()
 
   # Overall title
-  mtext(paste("MCMC Diagnostics:", param_name),
+  mtext(substitute(paste("MCMC Diagnostics: ", x), list(x = param_name)),
         outer = TRUE, cex = 1.3, font = 2)
 }
 
@@ -243,7 +255,7 @@ plot_param_diagnostics <- function(param_samples,
 #' Complete dashboard with base R graphics
 #' @keywords internal
 #' @noRd
-plot_all_base <- function(x, ask = TRUE, overlay_data = TRUE, ...) {
+plot_all_base <- function(x, ask = TRUE, overlay_data = FALSE, ...) {
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
@@ -252,16 +264,16 @@ plot_all_base <- function(x, ask = TRUE, overlay_data = TRUE, ...) {
     on.exit(par(oldask), add = TRUE)
   }
 
-  # Pages 1-8: Individual parameter diagnostics
+  # Pages 1-8: Individual parameter diagnostics (4 panels each)
   plot_mcmc_diagnostics_base(x, which = 1:8, ...)
 
-  # Page 9: Mixture parameters overview
+  # Page 9: Mixture parameters (bivariate relationships)
   plot_mixture_params_base(x, ...)
 
-  # Page 10: Dynamic states
-  plot_dynamic_states_base(x, ...)
+  # Pages 10-11: Dynamic states (2 páginas: trajetórias + diagnósticos)
+  plot_dynamic_states_base(x, which = 1:2, ...)
 
-  # Pages 11-12: Mixture weights (alpha_t and z_t)
+  # Pages 12-13: Mixture weights (alpha_t e z_t)
   plot_mixture_weights_base(x, overlay_data = overlay_data, ...)
 }
 
@@ -274,29 +286,29 @@ plot_mcmc_diagnostics_base <- function(x, which = NULL, ...) {
   # Define available parameters
   all_params <- list(
     mu_1 = list(samples = x$mu_1,
-                name = "mu_1",
+                name = quote(mu[1]),
                 label = expression(mu[1])),
     mu_2 = list(samples = x$mu_2,
-                name = "mu_2",
+                name = quote(mu[2]),
                 label = expression(mu[2])),
     phi_1 = list(samples = x$prec_1,
-                 name = "phi_1",
+                 name = quote(phi[1]),
                  label = expression(phi[1])),
     phi_2 = list(samples = x$prec_2,
-                 name = "phi_2",
+                 name = quote(phi[2]),
                  label = expression(phi[2])),
     theta_01 = list(samples = x$theta_01,
-                    name = "theta_01",
+                    name = quote(theta["0,1"]),
                     label = expression(theta["0,1"])),
     theta_02 = list(samples = x$theta_02,
-                    name = "theta_02",
+                    name = quote(theta["0,2"]),
                     label = expression(theta["0,2"])),
     W1_inv = list(samples = x$prec_theta1,
-                  name = "W_1^{-1}",
-                  label = expression(W[1]^{-1})),
+                  name = quote(W[1]^{-1}),
+                  label = expression(1/W[1])),
     W2_inv = list(samples = x$prec_theta2,
-                  name = "W_2^{-1}",
-                  label = expression(W[2]^{-1}))
+                  name = quote(W[2]^{-1}),
+                  label = expression(1/W[2]))
   )
 
   # Default: all parameters
@@ -334,66 +346,52 @@ plot_mixture_params_base <- function(x, which = NULL, ...) {
 
   par(mfrow = c(2, 2), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
 
-  # Plot 1: Joint posterior mu_1 vs mu_2
+  # Plot 1: mu_1 vs mu_2
   if (1 %in% which) {
-    # Scatterplot with transparency (no dependencies)
     plot(x$mu_1, x$mu_2,
          xlab = expression(mu[1]),
          ylab = expression(mu[2]),
-         main = "Joint Posterior",
-         pch = 16, cex = 0.5, col = rgb(0.2, 0.5, 0.8, 0.15))
-
-    # Add reference line y = x
-    abline(a = 0, b = 1, col = "red", lwd = 2, lty = 2)
+         main = expression(paste(mu[1], " vs ", mu[2])),
+         pch = 16, col = rgb(0.2, 0.5, 0.8, 0.15))
     grid()
   }
 
-  # Plot 2: Marginal density mu_1
+  # Plot 2: mu_1 vs phi_1
   if (2 %in% which) {
-    dens <- density(x$mu_1)
-    plot(dens, main = expression(paste("Posterior: ", mu[1])),
-         xlab = expression(mu[1]), lwd = 2, col = "steelblue")
-    polygon(dens, col = rgb(0.2, 0.5, 0.8, 0.3), border = NA)
-    abline(v = median(x$mu_1), col = "red", lwd = 2, lty = 2)
-    abline(v = mean(x$mu_1), col = "blue", lwd = 2, lty = 3)
-    legend("topright", legend = c("Median", "Mean"),
-           col = c("red", "blue"), lty = c(2, 3), lwd = 2, bty = "n")
+    plot(x$mu_1, x$prec_1,
+         xlab = expression(mu[1]),
+         ylab = expression(phi[1]),
+         main = expression(paste(mu[1], " vs ", phi[1])),
+         pch = 16, col = rgb(0.2, 0.5, 0.8, 0.15))
+    grid()
   }
 
-  # Plot 3: Marginal density mu_2
+  # Plot 3: mu_2 vs phi_2
   if (3 %in% which) {
-    dens <- density(x$mu_2)
-    plot(dens, main = expression(paste("Posterior: ", mu[2])),
-         xlab = expression(mu[2]), lwd = 2, col = "darkgreen")
-    polygon(dens, col = rgb(0, 0.5, 0, 0.3), border = NA)
-    abline(v = median(x$mu_2), col = "red", lwd = 2, lty = 2)
-    abline(v = mean(x$mu_2), col = "blue", lwd = 2, lty = 3)
+    plot(x$mu_2, x$prec_2,
+         xlab = expression(mu[2]),
+         ylab = expression(phi[2]),
+         main = expression(paste(mu[2], " vs ", phi[2])),
+         pch = 16, col = rgb(0, 0.5, 0, 0.15))
+    grid()
   }
 
-  # Plot 4: Precision comparison
+  # Plot 4: phi_1 vs phi_2
   if (4 %in% which) {
-    xlim_range <- range(c(x$prec_1, x$prec_2))
-    dens1 <- density(x$prec_1)
-    dens2 <- density(x$prec_2)
-
-    plot(dens1, main = "Component Precisions",
-         xlab = expression(phi), lwd = 2, col = "steelblue",
-         xlim = xlim_range,
-         ylim = range(c(dens1$y, dens2$y)))
-    polygon(dens1, col = rgb(0.2, 0.5, 0.8, 0.3), border = NA)
-    lines(dens2, lwd = 2, col = "darkgreen")
-    polygon(dens2, col = rgb(0, 0.5, 0, 0.3), border = NA)
-    legend("topright",
-           legend = c(expression(phi[1]), expression(phi[2])),
-           col = c("steelblue", "darkgreen"),
-           lwd = 2, bty = "n")
+    plot(x$prec_1, x$prec_2,
+         xlab = expression(phi[1]),
+         ylab = expression(phi[2]),
+         main = expression(paste(phi[1], " vs ", phi[2])),
+         pch = 16, col = rgb(0.5, 0, 0.5, 0.15))
+    grid()
   }
 
-  mtext("Mixture Component Parameters", outer = TRUE, cex = 1.3, font = 2)
+  mtext("Mixture Component Parameters (Bivariate Relationships)",
+        outer = TRUE, cex = 1.3, font = 2)
 }
 
 
-#' Dynamic states with base R graphics
+#' Dynamic states with base R graphics (2 pages)
 #' @keywords internal
 #' @noRd
 plot_dynamic_states_base <- function(x, which = NULL, ...) {
@@ -401,28 +399,31 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
-  if (is.null(which)) which <- 1:4
-
-  par(mfrow = c(2, 2), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
-
   n_obs <- attr(x, "n_obs")
   time_grid <- seq_len(n_obs)
 
-  # Compute credible bands
-  theta1_median <- apply(x$theta_1, 2, median)
-  theta1_q025 <- apply(x$theta_1, 2, quantile, probs = 0.025)
-  theta1_q975 <- apply(x$theta_1, 2, quantile, probs = 0.975)
+  # Default: both pages
+  if (is.null(which)) which <- 1:2
 
-  theta2_median <- apply(x$theta_2, 2, median)
-  theta2_q025 <- apply(x$theta_2, 2, quantile, probs = 0.025)
-  theta2_q975 <- apply(x$theta_2, 2, quantile, probs = 0.975)
+  # =========================================================================
+  # Page 1: State Trajectories (theta_1 and theta_2)
+  # =========================================================================
 
-  # Plot 1: theta_1 trajectory
   if (1 %in% which) {
+    par(mfrow = c(2, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
+
+    # Compute credible bands for theta_1
+    theta1_median <- apply(x$theta_1, 2, median)
+    theta1_q025 <- apply(x$theta_1, 2, quantile, probs = 0.025)
+    theta1_q975 <- apply(x$theta_1, 2, quantile, probs = 0.975)
+
+    # Plot 1.1: theta_1 trajectory
+    range_theta1 <- range(c(theta1_q025, theta1_q975))
+    range_theta1[2] <- range_theta1[2] + 0.25 * diff(range_theta1)
     plot(time_grid, theta1_median, type = "l", lwd = 2,
          xlab = "Time", ylab = expression(theta["t,1"]),
-         main = expression(paste("Level State: ", theta["t,1"])),
-         ylim = range(c(theta1_q025, theta1_q975)))
+         main = "Level State",
+         ylim = range_theta1)
 
     polygon(c(time_grid, rev(time_grid)),
             c(theta1_q025, rev(theta1_q975)),
@@ -430,14 +431,22 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
 
     lines(time_grid, theta1_median, lwd = 2, col = "black")
     grid()
-  }
+    legend("topright", legend = c(expression(theta["t,1"]), "95% CI"),
+           col = c("black", rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
+           lty = c(1, 1), lwd = c(2, 8), bty = "n")
 
-  # Plot 2: theta_2 trajectory
-  if (2 %in% which) {
+    # Compute credible bands for theta_2
+    theta2_median <- apply(x$theta_2, 2, median)
+    theta2_q025 <- apply(x$theta_2, 2, quantile, probs = 0.025)
+    theta2_q975 <- apply(x$theta_2, 2, quantile, probs = 0.975)
+
+    # Plot 1.2: theta_2 trajectory
+    range_theta2 <- range(c(theta2_q025, theta2_q975))
+    range_theta2[2] <- range_theta2[2] + 0.25 * diff(range_theta2)
     plot(time_grid, theta2_median, type = "l", lwd = 2,
          xlab = "Time", ylab = expression(theta["t,2"]),
-         main = expression(paste("Trend State: ", theta["t,2"])),
-         ylim = range(c(theta2_q025, theta2_q975)))
+         main = "Trend State",
+         ylim = range_theta2)
 
     polygon(c(time_grid, rev(time_grid)),
             c(theta2_q025, rev(theta2_q975)),
@@ -445,29 +454,31 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
 
     lines(time_grid, theta2_median, lwd = 2, col = "black")
     grid()
+    legend("topright", legend = c(expression(theta["t,2"]), "95% CI"),
+           col = c("black", rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
+           lty = c(1, 1), lwd = c(2, 8), bty = "n")
+
+    mtext("Dynamic State Trajectories", outer = TRUE, cex = 1.3, font = 2)
   }
 
-  # Plot 3: Innovations (theta_1 differences)
-  if (3 %in% which) {
-    innovations <- t(apply(x$theta_1, 1, diff))
-    innov_median <- apply(innovations, 2, median)
-    innov_q025 <- apply(innovations, 2, quantile, probs = 0.025)
-    innov_q975 <- apply(innovations, 2, quantile, probs = 0.975)
+  # =========================================================================
+  # Page 2: Diagnostics (State space, innovations, etc.)
+  # =========================================================================
 
-    plot(time_grid[-1], innov_median, type = "h", lwd = 2, col = "steelblue",
-         xlab = "Time", ylab = expression(Delta*theta["t,1"]),
-         main = "Level Innovations",
-         ylim = range(c(innov_q025, innov_q975)))
-    abline(h = 0, col = "red", lty = 2, lwd = 2)
-    grid()
-  }
+  if (2 %in% which) {
+    par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
 
-  # Plot 4: State space
-  if (4 %in% which) {
+    # Recompute if not already done
+    if (!exists("theta1_median")) {
+      theta1_median <- apply(x$theta_1, 2, median)
+      theta2_median <- apply(x$theta_2, 2, median)
+    }
+
+    # Plot 2.1: State space (theta_1 vs theta_2)
     theta1_vec <- as.vector(x$theta_1)
     theta2_vec <- as.vector(x$theta_2)
 
-    # Sample if too many points (for performance)
+    # Sample if too many points
     max_points <- 5000
     if (length(theta1_vec) > max_points) {
       idx <- sample(length(theta1_vec), max_points)
@@ -479,18 +490,91 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
          xlab = expression(theta["t,1"]),
          ylab = expression(theta["t,2"]),
          main = "State Space",
-         pch = 16, cex = 0.4, col = rgb(1, 0.5, 0, 0.2))
+         pch = 16, cex = 0.9, col = rgb(1, 0.5, 0, 0.2))
     grid()
-  }
 
-  mtext("Dynamic State Trajectories", outer = TRUE, cex = 1.3, font = 2)
+    # Plot 2.2: Level innovations (u_{t,1})
+    # u_{t,1} = θ_{t,1} - θ_{t-1,1} - θ_{t-1,2}
+    # Usando álgebra matricial para eficiência
+    innovations_1 <- x$theta_1[, -1] - x$theta_1[, -ncol(x$theta_1)] - x$theta_2[, -ncol(x$theta_2)]
+
+    innov1_median <- apply(innovations_1, 2, median)
+    innov1_q025 <- apply(innovations_1, 2, quantile, probs = 0.025)
+    innov1_q975 <- apply(innovations_1, 2, quantile, probs = 0.975)
+
+    range_innov1 <- range(c(innov1_q025, innov1_q975))
+    range_innov1[2] <- range_innov1[2] + 0.25 * diff(range_innov1)
+
+    plot(time_grid[-1], innov1_median, type = "h", lwd = 2, col = "steelblue",
+         xlab = "Time", ylab = expression(u["t,1"]),
+         main = "Level Innovations",
+         ylim = range_innov1)
+
+    polygon(c(time_grid[-1], rev(time_grid[-1])),
+            c(innov1_q025, rev(innov1_q975)),
+            col = rgb(0.7, 0.7, 0.7, 0.4), border = NA)
+
+    segments(x0 = 1, y0 = 0, x1 = length(innov1_median), y1 = 0,
+             col = "red", lty = 2, lwd = 2)
+
+    grid()
+
+    legend("topright", legend = c("Median", "95% CI"),
+           col = c("steelblue", rgb(0.7, 0.7, 0.7, 0.4)), horiz = TRUE,
+           lty = c(1, 1), lwd = c(2, 8), bty = "n")
+
+    # Plot 2.3: Trend innovations (u_{t,2})
+    # u_{t,2} = θ_{t,2} - θ_{t-1,2} - θ_{t-1,3}
+    innovations_2 <- t(apply(x$theta_2, 1, diff))
+
+    innov2_median <- apply(innovations_2, 2, median)
+    innov2_q025 <- apply(innovations_2, 2, quantile, probs = 0.025)
+    innov2_q975 <- apply(innovations_2, 2, quantile, probs = 0.975)
+
+    range_innov2 <- range(c(innov2_q025, innov2_q975))
+    range_innov2[2] <- range_innov2[2] + 0.25 * diff(range_innov2)
+
+    plot(time_grid[-1], innov2_median, type = "h", lwd = 2, col = "darkgreen",
+         xlab = "Time", ylab = expression(u["t,2"]),
+         main = "Trend Innovations",
+         ylim = range_innov2)
+
+    polygon(c(time_grid[-1], rev(time_grid[-1])),
+            c(innov2_q025, rev(innov2_q975)),
+            col = rgb(0.7, 0.7, 0.7, 0.4), border = NA)
+
+    segments(x0 = 1, y0 = 0, x1 = length(innov2_median), y1 = 0,
+             col = "red", lty = 2, lwd = 2)
+    grid()
+
+    legend("topright", legend = c("Median", "95% CI"),
+           col = c("darkgreen", rgb(0.7, 0.7, 0.7, 0.4)), horiz = TRUE,
+           lty = c(1, 1), lwd = c(2, 8), bty = "n")
+
+    # Plot 2.4: Trajectory plot (theta_1 and theta_2 together)
+    ylim_range <- range(c(theta1_median, theta2_median))
+    ylim_range[2] <- ylim_range[2] + 0.25 * diff(ylim_range)
+
+    plot(time_grid, theta1_median, type = "l", lwd = 2, col = "steelblue",
+         xlab = "Time", ylab = "State Value",
+         main = "Joint Trajectories",
+         ylim = ylim_range)
+    lines(time_grid, theta2_median, lwd = 2, col = "darkgreen")
+    grid()
+    legend("topright", horiz = TRUE,
+           legend = c(expression(theta["t,1"]), expression(theta["t,2"])),
+           col = c("steelblue", "darkgreen"),
+           lty = 1, lwd = 2, bty = "n")
+
+    mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
+  }
 }
 
 
 #' Mixture weights with base R graphics (2 pages)
 #' @keywords internal
 #' @noRd
-plot_mixture_weights_base <- function(x, overlay_data = TRUE, ...) {
+plot_mixture_weights_base <- function(x, overlay_data = FALSE, ...) {
 
   n_obs <- attr(x, "n_obs")
   time_grid <- seq_len(n_obs)
@@ -507,40 +591,32 @@ plot_mixture_weights_base <- function(x, overlay_data = TRUE, ...) {
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
 
-  par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
 
-  plot(time_grid, alpha_median, type = "n", lwd = 2,
+  plot(time_grid, alpha_median, type = "l", lwd = 2.5, col = "blue",
        xlab = "Time", ylab = expression(alpha[t]),
-       main = "Mixture Weights Over Time",
-       ylim = c(0, 1))
+       ylim = c(0, 1.1), axes = FALSE)
+
+  axis(side = 1)
+  axis(side = 2, at = seq(0, 1, by = 0.2))
 
   # Credible band
   polygon(c(time_grid, rev(time_grid)),
           c(alpha_q025, rev(alpha_q975)),
           col = rgb(0.2, 0.5, 0.8, 0.3), border = NA)
 
-  # Median line
+  # Re-draw median on top
   lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
 
-  # Overlay data if available
-  if (overlay_data && !is.null(attr(x, "y"))) {
-    y <- attr(x, "y")
-    y_scaled <- (y - min(y)) / (max(y) - min(y))
-    lines(time_grid, y_scaled, col = "red", lwd = 1.5, lty = 2)
-    legend("topright",
-           legend = c(expression(alpha[t]), "Data (scaled)", "95% CI"),
-           col = c("blue", "red", rgb(0.2, 0.5, 0.8, 0.3)),
-           lty = c(1, 2, 1), lwd = c(2.5, 1.5, 10),
-           bty = "n")
-  } else {
-    legend("topright",
-           legend = c(expression(alpha[t]), "95% CI"),
-           col = c("blue", rgb(0.2, 0.5, 0.8, 0.3)),
-           lty = c(1, 1), lwd = c(2.5, 10),
-           bty = "n")
-  }
-
   grid()
+
+  # Simplified legend (moved to bottom-right to avoid overlap)
+  legend("topright", horiz = TRUE,
+         legend = c(expression(hat(alpha)[t]), "95% CI"),
+         col = c("blue", rgb(0.2, 0.5, 0.8, 0.3)),
+         lty = c(1, 1), lwd = c(2.5, 10),
+         bty = "n")
+
   mtext(expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
         outer = TRUE, cex = 1.3, font = 2)
 
@@ -548,35 +624,49 @@ plot_mixture_weights_base <- function(x, overlay_data = TRUE, ...) {
   # Page 2: z_t posterior probabilities
   # =========================================================================
 
-  par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
 
   z_prob <- apply(x$z, 2, mean)
 
-  # Create barplot
-  barplot(z_prob,
-          col = ifelse(z_prob > 0.5, "purple", "gray70"),
-          border = NA,
-          ylim = c(0, 1),
-          xlab = "Time",
-          ylab = expression(P(z[t] == 1)),
-          main = "Posterior Probability of Component 2",
-          space = 0)
+  plot(z_prob,
+       type = "h",
+       lwd = 2,
+       col = ifelse(z_prob > 0.5, "purple", "blue"),
+       xlab = "Time",
+       ylab = expression(paste("P(", z[t], " = 1 | data)")),
+       ylim = c(0, 1.1),
+       # main = "Posterior Probabilities of Component Membership",
+       axes = FALSE)
+
+  axis(side = 1)
+  axis(side = 2, at = c(0, 0.5, 1))
+
+  # # Create barplot
+  # barplot(z_prob,
+  #         col = ifelse(z_prob > 0.5, "purple", "blue"),
+  #         border = NA,
+  #         ylim = c(0, 1),
+  #         xlab = "Time",
+  #         ylab = expression(paste("P(", z[t], " = 1 | data)")),
+  #         space = 0)
 
   # Add threshold line
-  abline(h = 0.5, col = "red", lwd = 2, lty = 2)
+  segments(x0 = 1, y0 = 0.5, x1 = n_obs, y1 = 0.5,
+           col = "red", lwd = 2, lty = 2)
 
   legend("topright",
-         legend = c("P(z = 1) > 0.5", "P(z = 1) ≤ 0.5", "Threshold"),
-         fill = c("purple", "gray70", NA),
+         horiz = TRUE,
+         legend = c("P > 0.5", "P ≤ 0.5", "Threshold"),
+         fill = c("purple", "blue", NA),
          border = c(NA, NA, NA),
          lty = c(NA, NA, 2),
          lwd = c(NA, NA, 2),
          col = c(NA, NA, "red"),
          bty = "n")
 
-  grid(nx = NA, ny = NULL)  # Only horizontal lines
+  grid(nx = NA, ny = NULL)
 
-  mtext(expression(paste("Component Membership: ", z[t])),
+  mtext(expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
         outer = TRUE, cex = 1.3, font = 2)
 }
 

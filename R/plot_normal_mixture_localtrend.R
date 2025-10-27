@@ -767,23 +767,23 @@ plot_all_ggplot <- function(x, ask = TRUE, overlay_data = TRUE, ...) {
   }
 
   # Pages 1-8: Individual parameter diagnostics
-  p_mcmc <- plot_mcmc_diagnostics_ggplot(x, which = 1:8, ...)
-  if (!is.null(p_mcmc)) print(p_mcmc)
+  plot_mcmc_diagnostics_ggplot(x, which = 1:8, ...)
   if (ask) readline()
 
   # Page 9: Mixture parameters
-  p_params <- plot_mixture_params_ggplot(x, ...)
-  if (!is.null(p_params)) print(p_params)
+  plot_mixture_params_ggplot(x, ...)
   if (ask) readline()
 
-  # Page 10: Dynamic states
-  p_states <- plot_dynamic_states_ggplot(x, ...)
-  if (!is.null(p_states)) print(p_states)
+  # Page 10: Dynamic state trajectories
+  plot_dynamic_states_ggplot(x, which = 1, ...)
   if (ask) readline()
 
-  # Pages 11-12: Mixture weights
-  p_alpha <- plot_mixture_weights_ggplot(x, overlay_data = overlay_data, ...)
-  if (!is.null(p_alpha)) print(p_alpha)
+  # Page 11: Dynamic state diagnostics
+  plot_dynamic_states_ggplot(x, which = 2, ...)
+  if (ask) readline()
+
+  # Pages 12-13: Mixture weights
+  plot_mixture_weights_ggplot(x, overlay_data = overlay_data, ...)
 }
 
 
@@ -841,96 +841,108 @@ plot_mixture_params_ggplot <- function(x, which = NULL, ...) {
     stop("Package 'ggplot2' is required")
   }
 
-  if (!requireNamespace("hexbin", quietly = TRUE) && 1 %in% which) {
-    message("Note: Install 'hexbin' for improved joint posterior visualization.\n",
-            "  Run: install.packages('hexbin')")
+  if (is.null(which)) {
+    which <- 1:4
   }
 
-  if (is.null(which)) which <- 1:4
+  if (any(!which %in% 1:4)) {
+    stop("`which` must be between 1 and 4")
+  }
+
+  col_mu_mu <- grDevices::rgb(0.2, 0.5, 0.8, alpha = 0.15)
+  col_mu_phi1 <- grDevices::rgb(0.2, 0.5, 0.8, alpha = 0.15)
+  col_mu_phi2 <- grDevices::rgb(0, 0.5, 0, alpha = 0.15)
+  col_phi_phi <- grDevices::rgb(0.5, 0, 0.5, alpha = 0.15)
+
+  base_theme <- ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(color = "grey85"),
+      panel.grid.minor = ggplot2::element_line(color = "grey92"),
+      plot.title = ggplot2::element_text(face = "bold", size = 13),
+      legend.position = "none"
+    )
 
   plots <- list()
 
-  # Plot 1: Joint posterior (with hexbin fallback)
+  add_plot <- function(p) {
+    plots[[length(plots) + 1]] <<- p + base_theme
+  }
+
   if (1 %in% which) {
     df1 <- data.frame(mu_1 = x$mu_1, mu_2 = x$mu_2)
+    p1 <- ggplot2::ggplot(df1, ggplot2::aes(x = mu_1, y = mu_2)) +
+      ggplot2::geom_point(color = col_mu_mu, shape = 16, size = 1.5) +
+      ggplot2::labs(
+        title = expression(paste(mu[1], " vs ", mu[2])),
+        x = expression(mu[1]),
+        y = expression(mu[2])
+      )
+    add_plot(p1)
+  }
 
-    # Try hexbin first, fallback to geom_point
-    if (requireNamespace("hexbin", quietly = TRUE)) {
-      plots[[1]] <- ggplot2::ggplot(df1, ggplot2::aes(x = mu_1, y = mu_2)) +
-        ggplot2::geom_hex(bins = 50) +
-        ggplot2::scale_fill_gradient(low = "lightblue", high = "darkblue") +
-        ggplot2::geom_abline(slope = 1, intercept = 0,
-                             color = "red", linetype = "dashed", linewidth = 1) +
-        ggplot2::labs(title = "Joint Posterior: Component Means",
-                      x = expression(mu[1]), y = expression(mu[2])) +
-        ggplot2::theme_minimal() +
-        ggplot2::theme(legend.position = "right")
-    } else {
-      # Fallback: scatterplot with transparency
-      plots[[1]] <- ggplot2::ggplot(df1, ggplot2::aes(x = mu_1, y = mu_2)) +
-        ggplot2::geom_point(alpha = 0.15, color = "steelblue", size = 1) +
-        ggplot2::geom_abline(slope = 1, intercept = 0,
-                             color = "red", linetype = "dashed", linewidth = 1) +
-        ggplot2::labs(title = "Joint Posterior: Component Means",
-                      subtitle = "(Install 'hexbin' for hexagonal binning)",
-                      x = expression(mu[1]), y = expression(mu[2])) +
-        ggplot2::theme_minimal()
+  if (2 %in% which) {
+    df2 <- data.frame(mu_1 = x$mu_1, phi_1 = x$prec_1)
+    p2 <- ggplot2::ggplot(df2, ggplot2::aes(x = mu_1, y = phi_1)) +
+      ggplot2::geom_point(color = col_mu_phi1, shape = 16, size = 1.5) +
+      ggplot2::labs(
+        title = expression(paste(mu[1], " vs ", phi[1])),
+        x = expression(mu[1]),
+        y = expression(phi[1])
+      )
+    add_plot(p2)
+  }
+
+  if (3 %in% which) {
+    df3 <- data.frame(mu_2 = x$mu_2, phi_2 = x$prec_2)
+    p3 <- ggplot2::ggplot(df3, ggplot2::aes(x = mu_2, y = phi_2)) +
+      ggplot2::geom_point(color = col_mu_phi2, shape = 16, size = 1.5) +
+      ggplot2::labs(
+        title = expression(paste(mu[2], " vs ", phi[2])),
+        x = expression(mu[2]),
+        y = expression(phi[2])
+      )
+    add_plot(p3)
+  }
+
+  if (4 %in% which) {
+    df4 <- data.frame(phi_1 = x$prec_1, phi_2 = x$prec_2)
+    p4 <- ggplot2::ggplot(df4, ggplot2::aes(x = phi_1, y = phi_2)) +
+      ggplot2::geom_point(color = col_phi_phi, shape = 16, size = 1.5) +
+      ggplot2::labs(
+        title = expression(paste(phi[1], " vs ", phi[2])),
+        x = expression(phi[1]),
+        y = expression(phi[2])
+      )
+    add_plot(p4)
+  }
+
+  if (!length(plots)) {
+    return(invisible(NULL))
+  }
+
+  if (requireNamespace("patchwork", quietly = TRUE) && length(plots) > 1) {
+    combined <- patchwork::wrap_plots(plots, ncol = 2) +
+      patchwork::plot_annotation(
+        title = "Mixture Component Parameters (Bivariate Relationships)",
+        theme = ggplot2::theme(
+          plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+        )
+      )
+    print(combined)
+  } else {
+    if (length(plots) == 1) {
+      plots[[1]] <- plots[[1]] +
+        ggplot2::labs(subtitle = "Mixture Component Parameters (Bivariate Relationships)") +
+        ggplot2::theme(
+          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+        )
+    }
+    for (p in plots) {
+      print(p)
     }
   }
 
-  # Plot 2: Marginal mu_1
-  if (2 %in% which) {
-    df2 <- data.frame(value = x$mu_1)
-
-    plots[[2]] <- ggplot2::ggplot(df2, ggplot2::aes(x = value)) +
-      ggplot2::geom_density(fill = "steelblue", alpha = 0.4, linewidth = 1.2) +
-      ggplot2::geom_vline(xintercept = median(x$mu_1),
-                          color = "red", linetype = "dashed", linewidth = 1) +
-      ggplot2::labs(title = expression(paste("Posterior: ", mu[1])),
-                    x = expression(mu[1]), y = "Density") +
-      ggplot2::theme_minimal()
-  }
-
-  # Plot 3: Marginal mu_2
-  if (3 %in% which) {
-    df3 <- data.frame(value = x$mu_2)
-
-    plots[[3]] <- ggplot2::ggplot(df3, ggplot2::aes(x = value)) +
-      ggplot2::geom_density(fill = "darkgreen", alpha = 0.4, linewidth = 1.2) +
-      ggplot2::geom_vline(xintercept = median(x$mu_2),
-                          color = "red", linetype = "dashed", linewidth = 1) +
-      ggplot2::labs(title = expression(paste("Posterior: ", mu[2])),
-                    x = expression(mu[2]), y = "Density") +
-      ggplot2::theme_minimal()
-  }
-
-  # Plot 4: Precisions comparison
-  if (4 %in% which) {
-    df4 <- data.frame(
-      value = c(x$prec_1, x$prec_2),
-      component = rep(c("phi_1", "phi_2"), each = length(x$prec_1))
-    )
-
-    plots[[4]] <- ggplot2::ggplot(df4, ggplot2::aes(x = value, fill = component)) +
-      ggplot2::geom_density(alpha = 0.5, linewidth = 1) +
-      ggplot2::scale_fill_manual(values = c("steelblue", "darkgreen"),
-                                 labels = c(expression(phi[1]), expression(phi[2]))) +
-      ggplot2::labs(title = "Component Precisions",
-                    x = expression(phi), y = "Density") +
-      ggplot2::theme_minimal() +
-      ggplot2::theme(legend.position = "top")
-  }
-
-  # Combine plots
-  if (requireNamespace("patchwork", quietly = TRUE) && length(plots) > 1) {
-    return(patchwork::wrap_plots(plots, ncol = 2))
-  } else if (length(plots) == 1) {
-    return(plots[[1]])
-  } else {
-    # Fallback: print sequentially if patchwork not available
-    for (p in plots) print(p)
-    return(invisible(NULL))
-  }
+  invisible(NULL)
 }
 
 
@@ -943,58 +955,300 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
     stop("Package 'ggplot2' is required")
   }
 
-  if (is.null(which)) which <- 1:2
+  if (is.null(which)) {
+    which <- 1:2
+  }
+
+  if (any(!which %in% 1:2)) {
+    stop("`which` must be 1 or 2")
+  }
 
   n_obs <- attr(x, "n_obs")
   time_grid <- seq_len(n_obs)
+  patchwork_available <- requireNamespace("patchwork", quietly = TRUE)
 
-  plots <- list()
+  base_theme <- ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(color = "grey85"),
+      panel.grid.minor = ggplot2::element_line(color = "grey92"),
+      plot.title = ggplot2::element_text(face = "bold", size = 13)
+    )
 
-  # Plot 1: theta_1 trajectory
+  legend_inside <- ggplot2::theme(
+    legend.position = c(0.97, 0.9),
+    legend.justification = c("right", "top"),
+    legend.title = ggplot2::element_blank(),
+    legend.background = ggplot2::element_rect(
+      fill = ggplot2::alpha("white", 0.75), colour = NA
+    ),
+    legend.direction = "horizontal"
+  )
+
+  theta1_median <- apply(x$theta_1, 2, median)
+  theta1_lower <- apply(x$theta_1, 2, stats::quantile, probs = 0.025)
+  theta1_upper <- apply(x$theta_1, 2, stats::quantile, probs = 0.975)
+
+  theta2_median <- apply(x$theta_2, 2, median)
+  theta2_lower <- apply(x$theta_2, 2, stats::quantile, probs = 0.025)
+  theta2_upper <- apply(x$theta_2, 2, stats::quantile, probs = 0.975)
+
   if (1 %in% which) {
-    df1 <- data.frame(
+    df_theta1 <- data.frame(
       time = time_grid,
-      median = apply(x$theta_1, 2, median),
-      lower = apply(x$theta_1, 2, quantile, probs = 0.025),
-      upper = apply(x$theta_1, 2, quantile, probs = 0.975)
+      median = theta1_median,
+      lower = theta1_lower,
+      upper = theta1_upper
     )
 
-    plots[[1]] <- ggplot2::ggplot(df1, ggplot2::aes(x = time)) +
-      ggplot2::geom_ribbon(ggplot2::aes(ymin = lower, ymax = upper),
-                           fill = "gray70", alpha = 0.5) +
-      ggplot2::geom_line(ggplot2::aes(y = median), linewidth = 1.2) +
-      ggplot2::labs(title = expression(paste("Level State: ", theta["t,1"])),
-                    x = "Time", y = expression(theta["t,1"])) +
-      ggplot2::theme_minimal()
+    df_theta2 <- data.frame(
+      time = time_grid,
+      median = theta2_median,
+      lower = theta2_lower,
+      upper = theta2_upper
+    )
+
+    p_level <- ggplot2::ggplot(df_theta1, ggplot2::aes(x = time)) +
+      ggplot2::geom_ribbon(
+        ggplot2::aes(ymin = lower, ymax = upper, fill = "95% CI"),
+        alpha = 0.5, colour = NA
+      ) +
+      ggplot2::geom_line(
+        ggplot2::aes(y = median, colour = "Median"),
+        linewidth = 1.2
+      ) +
+      ggplot2::scale_color_manual(
+        values = c("Median" = "black"),
+        breaks = "Median",
+        labels = expression(theta["t,1"])
+      ) +
+      ggplot2::scale_fill_manual(
+        values = c("95% CI" = "gray70"),
+        breaks = "95% CI",
+        labels = "95% CI"
+      ) +
+      ggplot2::guides(
+        fill = ggplot2::guide_legend(order = 1),
+        colour = ggplot2::guide_legend(order = 2)
+      ) +
+      ggplot2::labs(
+        title = "Level State",
+        x = "Time",
+        y = expression(theta["t,1"])
+      ) +
+      base_theme +
+      legend_inside
+
+    p_trend <- ggplot2::ggplot(df_theta2, ggplot2::aes(x = time)) +
+      ggplot2::geom_ribbon(
+        ggplot2::aes(ymin = lower, ymax = upper, fill = "95% CI"),
+        alpha = 0.5, colour = NA
+      ) +
+      ggplot2::geom_line(
+        ggplot2::aes(y = median, colour = "Median"),
+        linewidth = 1.2
+      ) +
+      ggplot2::scale_color_manual(
+        values = c("Median" = "black"),
+        breaks = "Median",
+        labels = expression(theta["t,2"])
+      ) +
+      ggplot2::scale_fill_manual(
+        values = c("95% CI" = "gray70"),
+        breaks = "95% CI",
+        labels = "95% CI"
+      ) +
+      ggplot2::guides(
+        fill = ggplot2::guide_legend(order = 1),
+        colour = ggplot2::guide_legend(order = 2)
+      ) +
+      ggplot2::labs(
+        title = "Trend State",
+        x = "Time",
+        y = expression(theta["t,2"])
+      ) +
+      base_theme +
+      legend_inside
+
+    page1 <- list(p_level, p_trend)
+
+    if (patchwork_available) {
+      combined1 <- patchwork::wrap_plots(page1, ncol = 1) +
+        patchwork::plot_annotation(
+          title = "Dynamic State Trajectories",
+          theme = ggplot2::theme(
+            plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+          )
+        )
+      print(combined1)
+    } else {
+      page1[[1]] <- page1[[1]] +
+        ggplot2::labs(subtitle = "Dynamic State Trajectories") +
+        ggplot2::theme(
+          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+        )
+      for (p in page1) {
+        print(p)
+      }
+    }
   }
 
-  # Plot 2: theta_2 trajectory
   if (2 %in% which) {
-    df2 <- data.frame(
-      time = time_grid,
-      median = apply(x$theta_2, 2, median),
-      lower = apply(x$theta_2, 2, quantile, probs = 0.025),
-      upper = apply(x$theta_2, 2, quantile, probs = 0.975)
+    theta1_vec <- as.vector(x$theta_1)
+    theta2_vec <- as.vector(x$theta_2)
+
+    max_points <- 5000L
+    if (length(theta1_vec) > max_points) {
+      idx <- sample.int(length(theta1_vec), max_points)
+      theta1_vec <- theta1_vec[idx]
+      theta2_vec <- theta2_vec[idx]
+    }
+
+    df_state <- data.frame(theta1 = theta1_vec, theta2 = theta2_vec)
+
+    innovations_1 <- x$theta_1[, -1, drop = FALSE] - x$theta_1[, -ncol(x$theta_1), drop = FALSE] -
+      x$theta_2[, -ncol(x$theta_2), drop = FALSE]
+    innovations_2 <- t(apply(x$theta_2, 1, diff))
+
+    time_innov <- time_grid[-1]
+
+    df_innov1 <- data.frame(
+      time = time_innov,
+      median = apply(innovations_1, 2, median),
+      lower = apply(innovations_1, 2, stats::quantile, probs = 0.025),
+      upper = apply(innovations_1, 2, stats::quantile, probs = 0.975)
     )
 
-    plots[[2]] <- ggplot2::ggplot(df2, ggplot2::aes(x = time)) +
-      ggplot2::geom_ribbon(ggplot2::aes(ymin = lower, ymax = upper),
-                           fill = "gray70", alpha = 0.5) +
-      ggplot2::geom_line(ggplot2::aes(y = median), linewidth = 1.2) +
-      ggplot2::labs(title = expression(paste("Trend State: ", theta["t,2"])),
-                    x = "Time", y = expression(theta["t,2"])) +
-      ggplot2::theme_minimal()
+    df_innov2 <- data.frame(
+      time = time_innov,
+      median = apply(innovations_2, 2, median),
+      lower = apply(innovations_2, 2, stats::quantile, probs = 0.025),
+      upper = apply(innovations_2, 2, stats::quantile, probs = 0.975)
+    )
+
+    df_joint <- data.frame(
+      time = rep(time_grid, 2),
+      value = c(theta1_median, theta2_median),
+      state = factor(rep(c("theta1", "theta2"), each = n_obs),
+                     levels = c("theta1", "theta2"))
+    )
+
+    p_state <- ggplot2::ggplot(df_state, ggplot2::aes(x = theta1, y = theta2)) +
+      ggplot2::geom_point(
+        colour = grDevices::rgb(1, 0.5, 0, alpha = 0.2),
+        shape = 16, size = 1.2
+      ) +
+      ggplot2::labs(
+        title = "State Space",
+        x = expression(theta["t,1"]),
+        y = expression(theta["t,2"])
+      ) +
+      base_theme +
+      ggplot2::theme(legend.position = "none")
+
+    p_innov1 <- ggplot2::ggplot(df_innov1, ggplot2::aes(x = time)) +
+      ggplot2::geom_ribbon(
+        ggplot2::aes(ymin = lower, ymax = upper, fill = "95% CI"),
+        alpha = 0.4, colour = NA
+      ) +
+      ggplot2::geom_segment(
+        ggplot2::aes(xend = time, y = 0, yend = median, colour = "Median"),
+        linewidth = 1.1
+      ) +
+      ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed", linewidth = 0.8) +
+      ggplot2::scale_color_manual(
+        values = c("Median" = "steelblue"),
+        breaks = "Median",
+        labels = "Median"
+      ) +
+      ggplot2::scale_fill_manual(
+        values = c("95% CI" = "gray70"),
+        breaks = "95% CI",
+        labels = "95% CI"
+      ) +
+      ggplot2::guides(
+        fill = ggplot2::guide_legend(order = 1),
+        colour = ggplot2::guide_legend(order = 2)
+      ) +
+      ggplot2::labs(
+        title = "Level Innovations",
+        x = "Time",
+        y = expression(u["t,1"])
+      ) +
+      base_theme +
+      legend_inside
+
+    p_innov2 <- ggplot2::ggplot(df_innov2, ggplot2::aes(x = time)) +
+      ggplot2::geom_ribbon(
+        ggplot2::aes(ymin = lower, ymax = upper, fill = "95% CI"),
+        alpha = 0.4, colour = NA
+      ) +
+      ggplot2::geom_segment(
+        ggplot2::aes(xend = time, y = 0, yend = median, colour = "Median"),
+        linewidth = 1.1
+      ) +
+      ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed", linewidth = 0.8) +
+      ggplot2::scale_color_manual(
+        values = c("Median" = "darkgreen"),
+        breaks = "Median",
+        labels = "Median"
+      ) +
+      ggplot2::scale_fill_manual(
+        values = c("95% CI" = "gray70"),
+        breaks = "95% CI",
+        labels = "95% CI"
+      ) +
+      ggplot2::guides(
+        fill = ggplot2::guide_legend(order = 1),
+        colour = ggplot2::guide_legend(order = 2)
+      ) +
+      ggplot2::labs(
+        title = "Trend Innovations",
+        x = "Time",
+        y = expression(u["t,2"])
+      ) +
+      base_theme +
+      legend_inside
+
+    p_joint <- ggplot2::ggplot(df_joint, ggplot2::aes(x = time, y = value, colour = state)) +
+      ggplot2::geom_line(linewidth = 1.2) +
+      ggplot2::scale_color_manual(
+        values = c("theta1" = "steelblue", "theta2" = "darkgreen"),
+        breaks = c("theta1", "theta2"),
+        labels = expression(theta["t,1"], theta["t,2"])
+      ) +
+      ggplot2::guides(colour = ggplot2::guide_legend(order = 1)) +
+      ggplot2::labs(
+        title = "Joint Trajectories",
+        x = "Time",
+        y = "State Value"
+      ) +
+      base_theme +
+      legend_inside
+
+    page2 <- list(p_state, p_innov1, p_innov2, p_joint)
+
+    if (patchwork_available) {
+      combined2 <- patchwork::wrap_plots(page2, ncol = 2) +
+        patchwork::plot_annotation(
+          title = "Dynamic State Diagnostics",
+          theme = ggplot2::theme(
+            plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+          )
+        )
+      print(combined2)
+    } else {
+      page2[[1]] <- page2[[1]] +
+        ggplot2::labs(subtitle = "Dynamic State Diagnostics") +
+        ggplot2::theme(
+          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+        )
+      for (p in page2) {
+        print(p)
+      }
+    }
   }
 
-  # Combine plots
-  if (requireNamespace("patchwork", quietly = TRUE) && length(plots) > 1) {
-    return(patchwork::wrap_plots(plots, ncol = 1))
-  } else if (length(plots) == 1) {
-    return(plots[[1]])
-  } else {
-    for (p in plots) print(p)
-    return(invisible(NULL))
-  }
+  invisible(NULL)
 }
 
 

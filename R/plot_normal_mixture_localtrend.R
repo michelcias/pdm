@@ -37,6 +37,10 @@
 #'   \code{FALSE} otherwise.
 #' @param overlay_data Logical; for \code{type = "alpha"}, whether to overlay
 #'   the original data (if available). Default is \code{TRUE}.
+#' @param ci Logical; whether to display credible intervals in plots that
+#'   support them. Default is \code{TRUE}.
+#' @param ci_level Numeric; Bayesian confidence level for credible intervals
+#'   (between 0 and 1). Default is \code{0.95}.
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return Invisibly returns the input object \code{x}.
@@ -161,7 +165,8 @@ plot.normal_mixture_localtrend <- function(x,
   # Dispatch to appropriate plotting function
   if (engine == "base") {
     switch(type,
-           all = plot_all_base(x, ask = ask, overlay_data = overlay_data, ...),
+           all = plot_all_base(x, ask = ask, overlay_data = overlay_data,
+                               ci = ci, ci_level = ci_level, ...),
            mcmc = plot_mcmc_diagnostics_base(x, which = which, ...),
            params = plot_mixture_params_base(x, which = which, ...),
            states = plot_dynamic_states_base(x, which = which,
@@ -263,7 +268,8 @@ plot_param_diagnostics <- function(param_samples,
 #' Complete dashboard with base R graphics
 #' @keywords internal
 #' @noRd
-plot_all_base <- function(x, ask = TRUE, overlay_data = FALSE, ...) {
+plot_all_base <- function(x, ask = TRUE, overlay_data = FALSE,
+                          ci = TRUE, ci_level = 0.95, ...) {
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
@@ -279,10 +285,11 @@ plot_all_base <- function(x, ask = TRUE, overlay_data = FALSE, ...) {
   plot_mixture_params_base(x, ...)
 
   # Pages 10-11: Dynamic states (2 páginas: trajetórias + diagnósticos)
-  plot_dynamic_states_base(x, which = 1:2, ...)
+  plot_dynamic_states_base(x, which = 1:2, ci = ci, ci_level = ci_level, ...)
 
   # Pages 12-13: Mixture weights (alpha_t e z_t)
-  plot_mixture_weights_base(x, overlay_data = overlay_data, ...)
+  plot_mixture_weights_base(x, overlay_data = overlay_data,
+                            ci = ci, ci_level = ci_level, ...)
 }
 
 
@@ -403,7 +410,17 @@ plot_mixture_params_base <- function(x, which = NULL, ...) {
 #' Dynamic states with base R graphics (2 pages)
 #' @keywords internal
 #' @noRd
-plot_dynamic_states_base <- function(x, which = NULL, ...) {
+plot_dynamic_states_base <- function(x, which = NULL, ci = TRUE,
+                                     ci_level = 0.95, ...) {
+
+  if (ci) {
+    if (!is.numeric(ci_level) || ci_level <= 0 || ci_level >= 1) {
+      stop("`ci_level` must be a numeric value between 0 and 1")
+    }
+    ci_lower_prob <- (1 - ci_level) / 2
+    ci_upper_prob <- 1 - ci_lower_prob
+    ci_label <- paste0(round(ci_level * 100), "% CI")
+  }
 
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
@@ -424,49 +441,77 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
 
     # Compute credible bands for theta_1
     theta1_median <- apply(x$theta_1, 2, median)
-    theta1_q025 <- apply(x$theta_1, 2, quantile, probs = 0.025)
-    theta1_q975 <- apply(x$theta_1, 2, quantile, probs = 0.975)
+    if (ci) {
+      theta1_lower <- apply(x$theta_1, 2, quantile, probs = ci_lower_prob)
+      theta1_upper <- apply(x$theta_1, 2, quantile, probs = ci_upper_prob)
+      range_theta1 <- range(c(theta1_lower, theta1_upper))
+    } else {
+      range_theta1 <- range(theta1_median)
+    }
+    if (diff(range_theta1) == 0) {
+      range_theta1 <- range_theta1 + c(-0.5, 0.5)
+    }
+    range_theta1[2] <- range_theta1[2] + 0.25 * diff(range_theta1)
 
     # Plot 1.1: theta_1 trajectory
-    range_theta1 <- range(c(theta1_q025, theta1_q975))
-    range_theta1[2] <- range_theta1[2] + 0.25 * diff(range_theta1)
     plot(time_grid, theta1_median, type = "l", lwd = 2,
          xlab = "Time", ylab = expression(theta["t,1"]),
          main = "Level State",
          ylim = range_theta1)
 
-    polygon(c(time_grid, rev(time_grid)),
-            c(theta1_q025, rev(theta1_q975)),
-            col = rgb(0.7, 0.7, 0.7, 0.5), border = NA)
+    if (ci) {
+      polygon(c(time_grid, rev(time_grid)),
+              c(theta1_lower, rev(theta1_upper)),
+              col = rgb(0.7, 0.7, 0.7, 0.5), border = NA)
+    }
 
     lines(time_grid, theta1_median, lwd = 2, col = "black")
     grid()
-    legend("topright", legend = c(expression(hat(theta)["t,1"]), "95% CI"),
-           col = c("black", rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
-           lty = c(1, 1), lwd = c(2, 8), bty = "n")
+    if (ci) {
+      legend("topright", legend = c(expression(hat(theta)["t,1"]), ci_label),
+             col = c("black", rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
+             lty = c(1, 1), lwd = c(2, 8), bty = "n")
+    } else {
+      legend("topright", legend = expression(hat(theta)["t,1"]),
+             col = "black", horiz = TRUE, lty = 1, lwd = 2, bty = "n")
+    }
 
     # Compute credible bands for theta_2
     theta2_median <- apply(x$theta_2, 2, median)
-    theta2_q025 <- apply(x$theta_2, 2, quantile, probs = 0.025)
-    theta2_q975 <- apply(x$theta_2, 2, quantile, probs = 0.975)
+    if (ci) {
+      theta2_lower <- apply(x$theta_2, 2, quantile, probs = ci_lower_prob)
+      theta2_upper <- apply(x$theta_2, 2, quantile, probs = ci_upper_prob)
+      range_theta2 <- range(c(theta2_lower, theta2_upper))
+    } else {
+      range_theta2 <- range(theta2_median)
+    }
+    if (diff(range_theta2) == 0) {
+      range_theta2 <- range_theta2 + c(-0.5, 0.5)
+    }
+    range_theta2[2] <- range_theta2[2] + 0.25 * diff(range_theta2)
 
     # Plot 1.2: theta_2 trajectory
-    range_theta2 <- range(c(theta2_q025, theta2_q975))
-    range_theta2[2] <- range_theta2[2] + 0.25 * diff(range_theta2)
     plot(time_grid, theta2_median, type = "l", lwd = 2,
          xlab = "Time", ylab = expression(hat(theta)["t,2"]),
          main = "Trend State",
          ylim = range_theta2)
 
-    polygon(c(time_grid, rev(time_grid)),
-            c(theta2_q025, rev(theta2_q975)),
-            col = rgb(0.7, 0.7, 0.7, 0.5), border = NA)
+    if (ci) {
+      polygon(c(time_grid, rev(time_grid)),
+              c(theta2_lower, rev(theta2_upper)),
+              col = rgb(0.7, 0.7, 0.7, 0.5), border = NA)
+    }
 
     lines(time_grid, theta2_median, lwd = 2, col = "black")
     grid()
-    legend("topright", legend = c(expression(theta["t,2"]), "95% CI"),
-           col = c("black", rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
-           lty = c(1, 1), lwd = c(2, 8), bty = "n")
+    if (ci) {
+      legend("topright", legend = c(expression(theta["t,2"]), ci_label),
+             col = c("black", rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
+             lty = c(1, 1), lwd = c(2, 8), bty = "n")
+    } else {
+      legend("topright", legend = expression(theta["t,2"]),
+             col = "black", horiz = TRUE, lty = 1, lwd = 2, bty = "n")
+    }
 
     mtext("Dynamic State Trajectories", outer = TRUE, cex = 1.3, font = 2)
   }
@@ -509,10 +554,16 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
     innovations_1 <- x$theta_1[, -1] - x$theta_1[, -ncol(x$theta_1)] - x$theta_2[, -ncol(x$theta_2)]
 
     innov1_median <- apply(innovations_1, 2, median)
-    innov1_q025 <- apply(innovations_1, 2, quantile, probs = 0.025)
-    innov1_q975 <- apply(innovations_1, 2, quantile, probs = 0.975)
-
-    range_innov1 <- range(c(innov1_q025, innov1_q975))
+    if (ci) {
+      innov1_lower <- apply(innovations_1, 2, quantile, probs = ci_lower_prob)
+      innov1_upper <- apply(innovations_1, 2, quantile, probs = ci_upper_prob)
+      range_innov1 <- range(c(innov1_lower, innov1_upper))
+    } else {
+      range_innov1 <- range(innov1_median)
+    }
+    if (diff(range_innov1) == 0) {
+      range_innov1 <- range_innov1 + c(-0.5, 0.5)
+    }
     range_innov1[2] <- range_innov1[2] + 0.25 * diff(range_innov1)
 
     plot(time_grid[-1], innov1_median, type = "h", lwd = 2, col = "steelblue",
@@ -520,28 +571,40 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
          main = "Level Innovations",
          ylim = range_innov1)
 
-    polygon(c(time_grid[-1], rev(time_grid[-1])),
-            c(innov1_q025, rev(innov1_q975)),
-            col = rgb(0.7, 0.7, 0.7, 0.4), border = NA)
+    if (ci) {
+      polygon(c(time_grid[-1], rev(time_grid[-1])),
+              c(innov1_lower, rev(innov1_upper)),
+              col = rgb(0.7, 0.7, 0.7, 0.4), border = NA)
+    }
 
     segments(x0 = 1, y0 = 0, x1 = length(innov1_median), y1 = 0,
              col = "red", lty = 2, lwd = 2)
 
     grid()
-
-    legend("topright", legend = c("Median", "95% CI"),
-           col = c("steelblue", rgb(0.7, 0.7, 0.7, 0.4)), horiz = TRUE,
-           lty = c(1, 1), lwd = c(2, 8), bty = "n")
+    if (ci) {
+      legend("topright", legend = c("Median", ci_label),
+             col = c("steelblue", rgb(0.7, 0.7, 0.7, 0.4)), horiz = TRUE,
+             lty = c(1, 1), lwd = c(2, 8), bty = "n")
+    } else {
+      legend("topright", legend = "Median", col = "steelblue", horiz = TRUE,
+             lty = 1, lwd = 2, bty = "n")
+    }
 
     # Plot 2.3: Trend innovations (u_{t,2})
     # u_{t,2} = θ_{t,2} - θ_{t-1,2} - θ_{t-1,3}
     innovations_2 <- t(apply(x$theta_2, 1, diff))
 
     innov2_median <- apply(innovations_2, 2, median)
-    innov2_q025 <- apply(innovations_2, 2, quantile, probs = 0.025)
-    innov2_q975 <- apply(innovations_2, 2, quantile, probs = 0.975)
-
-    range_innov2 <- range(c(innov2_q025, innov2_q975))
+    if (ci) {
+      innov2_lower <- apply(innovations_2, 2, quantile, probs = ci_lower_prob)
+      innov2_upper <- apply(innovations_2, 2, quantile, probs = ci_upper_prob)
+      range_innov2 <- range(c(innov2_lower, innov2_upper))
+    } else {
+      range_innov2 <- range(innov2_median)
+    }
+    if (diff(range_innov2) == 0) {
+      range_innov2 <- range_innov2 + c(-0.5, 0.5)
+    }
     range_innov2[2] <- range_innov2[2] + 0.25 * diff(range_innov2)
 
     plot(time_grid[-1], innov2_median, type = "h", lwd = 2, col = "darkgreen",
@@ -549,17 +612,23 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
          main = "Trend Innovations",
          ylim = range_innov2)
 
-    polygon(c(time_grid[-1], rev(time_grid[-1])),
-            c(innov2_q025, rev(innov2_q975)),
-            col = rgb(0.7, 0.7, 0.7, 0.4), border = NA)
+    if (ci) {
+      polygon(c(time_grid[-1], rev(time_grid[-1])),
+              c(innov2_lower, rev(innov2_upper)),
+              col = rgb(0.7, 0.7, 0.7, 0.4), border = NA)
+    }
 
     segments(x0 = 1, y0 = 0, x1 = length(innov2_median), y1 = 0,
              col = "red", lty = 2, lwd = 2)
     grid()
-
-    legend("topright", legend = c("Median", "95% CI"),
-           col = c("darkgreen", rgb(0.7, 0.7, 0.7, 0.4)), horiz = TRUE,
-           lty = c(1, 1), lwd = c(2, 8), bty = "n")
+    if (ci) {
+      legend("topright", legend = c("Median", ci_label),
+             col = c("darkgreen", rgb(0.7, 0.7, 0.7, 0.4)), horiz = TRUE,
+             lty = c(1, 1), lwd = c(2, 8), bty = "n")
+    } else {
+      legend("topright", legend = "Median", col = "darkgreen", horiz = TRUE,
+             lty = 1, lwd = 2, bty = "n")
+    }
 
     # Plot 2.4: Trajectory plot (theta_1 and theta_2 together)
     ylim_range <- range(c(theta1_median, theta2_median))
@@ -584,15 +653,27 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
 #' Mixture weights with base R graphics (2 pages)
 #' @keywords internal
 #' @noRd
-plot_mixture_weights_base <- function(x, overlay_data = FALSE, ...) {
+plot_mixture_weights_base <- function(x, overlay_data = FALSE, ci = TRUE,
+                                      ci_level = 0.95, ...) {
+
+  if (ci) {
+    if (!is.numeric(ci_level) || ci_level <= 0 || ci_level >= 1) {
+      stop("`ci_level` must be a numeric value between 0 and 1")
+    }
+    ci_lower_prob <- (1 - ci_level) / 2
+    ci_upper_prob <- 1 - ci_lower_prob
+    ci_label <- paste0(round(ci_level * 100), "% CI")
+  }
 
   n_obs <- attr(x, "n_obs")
   time_grid <- seq_len(n_obs)
 
   # Compute credible bands for alpha
   alpha_median <- apply(x$alpha, 2, median)
-  alpha_q025 <- apply(x$alpha, 2, quantile, probs = 0.025)
-  alpha_q975 <- apply(x$alpha, 2, quantile, probs = 0.975)
+  if (ci) {
+    alpha_lower <- apply(x$alpha, 2, quantile, probs = ci_lower_prob)
+    alpha_upper <- apply(x$alpha, 2, quantile, probs = ci_upper_prob)
+  }
 
   # =========================================================================
   # Page 1: alpha_t trajectory
@@ -612,9 +693,11 @@ plot_mixture_weights_base <- function(x, overlay_data = FALSE, ...) {
   axis(side = 2, at = seq(0, 1, by = 0.2))
 
   # Credible band
-  polygon(c(time_grid, rev(time_grid)),
-          c(alpha_q025, rev(alpha_q975)),
-          col = rgb(0.2, 0.5, 0.8, 0.3), border = NA)
+  if (ci) {
+    polygon(c(time_grid, rev(time_grid)),
+            c(alpha_lower, rev(alpha_upper)),
+            col = rgb(0.2, 0.5, 0.8, 0.3), border = NA)
+  }
 
   # Re-draw median on top
   lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
@@ -622,11 +705,19 @@ plot_mixture_weights_base <- function(x, overlay_data = FALSE, ...) {
   grid()
 
   # Simplified legend (moved to bottom-right to avoid overlap)
-  legend("topright", horiz = TRUE,
-         legend = c(expression(hat(alpha)[t]), "95% CI"),
-         col = c("blue", rgb(0.2, 0.5, 0.8, 0.3)),
-         lty = c(1, 1), lwd = c(2.5, 10),
-         bty = "n")
+  if (ci) {
+    legend("topright", horiz = TRUE,
+           legend = c(expression(hat(alpha)[t]), ci_label),
+           col = c("blue", rgb(0.2, 0.5, 0.8, 0.3)),
+           lty = c(1, 1), lwd = c(2.5, 10),
+           bty = "n")
+  } else {
+    legend("topright", horiz = TRUE,
+           legend = expression(hat(alpha)[t]),
+           col = "blue",
+           lty = 1, lwd = 2.5,
+           bty = "n")
+  }
 
   mtext(expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
         outer = TRUE, cex = 1.3, font = 2)

@@ -211,8 +211,11 @@ plot_param_diagnostics <- function(param_samples,
       mgp = c(2.5, 1, 0))
 
   # 1. Trace Plot
+  range_param <- range(param_samples)
+  range_param[2] <- range_param[2] + 0.25 * diff(range_param)
+
   plot(param_samples, type = "l", col = "gray40", lwd = 0.8,
-       xlab = "Iteration", ylab = param_label,
+       xlab = "Iteration", ylab = param_label, ylim = range_param,
        main = "Trace Plot")
   segments(x0 = 1, y0 = median(param_samples),
            x1 = length(param_samples), y1 = median(param_samples),
@@ -221,6 +224,19 @@ plot_param_diagnostics <- function(param_samples,
     segments(x0 = 1, y0 = true_value,
              x1 = length(param_samples), y1 = true_value,
              col = "blue", lwd = 2, lty = 3)
+    legend("topright",
+           legend = c("Trace", "Median", "True Value"),
+           col = c("gray40", "red", "blue"),
+           lwd = c(0.8, 2, 2),
+           horiz = TRUE,
+           lty = c(1, 2, 3),
+           bty = "n", cex = 0.8)
+  } else{
+    legend("topright",
+           legend = c("Trace", "Median"),
+           col = c("gray40", "red"),
+           lwd = c(0.8, 2), horiz = TRUE,
+           lty = c(1, 2), bty = "n", cex = 0.8)
   }
   grid()
 
@@ -256,6 +272,21 @@ plot_param_diagnostics <- function(param_samples,
     segments(x0 = 1, y0 = true_value,
              x1 = length(param_samples), y1 = true_value,
              col = "blue", lwd = 2, lty = 3)
+    legend("topright",
+           legend = c("Running Mean", "Median", "True Value"),
+           col = c("steelblue", "red", "blue"),
+           lwd = c(2, 2, 2),
+           horiz = TRUE,
+           lty = c(1, 2, 3),
+           bty = "n", cex = 0.8)
+  } else{
+    legend("topright",
+           legend = c("Running Mean", "Median"),
+           col = c("steelblue", "red"),
+           lwd = c(2, 2),
+           horiz = TRUE,
+           lty = c(1, 2),
+           bty = "n", cex = 0.8)
   }
   grid()
 
@@ -455,7 +486,7 @@ plot_dynamic_states_base <- function(x, which = NULL, ci = TRUE,
 
     # Plot 1.1: theta_1 trajectory
     plot(time_grid, theta1_median, type = "l", lwd = 2,
-         xlab = "Time", ylab = expression(theta["t,1"]),
+         xlab = "Time", ylab = "State Value",
          main = "Level State",
          ylim = range_theta1)
 
@@ -492,7 +523,7 @@ plot_dynamic_states_base <- function(x, which = NULL, ci = TRUE,
 
     # Plot 1.2: theta_2 trajectory
     plot(time_grid, theta2_median, type = "l", lwd = 2,
-         xlab = "Time", ylab = expression(hat(theta)["t,2"]),
+         xlab = "Time", ylab = "State Value",
          main = "Trend State",
          ylim = range_theta2)
 
@@ -505,11 +536,11 @@ plot_dynamic_states_base <- function(x, which = NULL, ci = TRUE,
     lines(time_grid, theta2_median, lwd = 2, col = "black")
     grid()
     if (ci) {
-      legend("topright", legend = c(expression(theta["t,2"]), ci_label),
+      legend("topright", legend = c(expression(hat(theta)["t,2"]), ci_label),
              col = c("black", rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
              lty = c(1, 1), lwd = c(2, 8), bty = "n")
     } else {
-      legend("topright", legend = expression(theta["t,2"]),
+      legend("topright", legend = expression(hat(theta)["t,2"]),
              col = "black", horiz = TRUE, lty = 1, lwd = 2, bty = "n")
     }
 
@@ -642,7 +673,7 @@ plot_dynamic_states_base <- function(x, which = NULL, ci = TRUE,
     lines(time_grid, theta2_median, lwd = 2, col = "darkgreen")
     grid()
     legend("topright", horiz = TRUE,
-           legend = c(expression(theta["t,1"]), expression(theta["t,2"])),
+           legend = c(expression(hat(theta)["t,1"]), expression(hat(theta)["t,2"])),
            col = c("steelblue", "darkgreen"),
            lty = 1, lwd = 2, bty = "n")
 
@@ -738,20 +769,10 @@ plot_mixture_weights_base <- function(x, overlay_data = FALSE, ci = TRUE,
        xlab = "Time",
        ylab = expression(paste("P(", z[t], " = 1 | data)")),
        ylim = c(0, 1.1),
-       # main = "Posterior Probabilities of Component Membership",
        axes = FALSE)
 
   axis(side = 1)
   axis(side = 2, at = c(0, 0.5, 1))
-
-  # # Create barplot
-  # barplot(z_prob,
-  #         col = ifelse(z_prob > 0.5, "purple", "blue"),
-  #         border = NA,
-  #         ylim = c(0, 1),
-  #         xlab = "Time",
-  #         ylab = expression(paste("P(", z[t], " = 1 | data)")),
-  #         space = 0)
 
   # Add threshold line
   segments(x0 = 1, y0 = 0.5, x1 = n_obs, y1 = 0.5,
@@ -759,12 +780,11 @@ plot_mixture_weights_base <- function(x, overlay_data = FALSE, ci = TRUE,
 
   legend("topright",
          horiz = TRUE,
-         legend = c("P > 0.5", "P ≤ 0.5", "Threshold"),
-         fill = c("purple", "blue", NA),
-         border = c(NA, NA, NA),
-         lty = c(NA, NA, 2),
-         lwd = c(NA, NA, 2),
-         col = c(NA, NA, "red"),
+         legend = c(expression(paste("P(", z[t], " = 1 | data)") > 0.5),
+                    expression(paste("P(", z[t], " = 1 | data)") <= 0.5),
+                    "Threshold"),
+         col = c("purple", "blue", "red"),
+         lty = c(1, 1, 2), lwd = 2,
          bty = "n")
 
   grid(nx = NA, ny = NULL)
@@ -799,11 +819,21 @@ plot_param_diagnostics_ggplot <- function(param_samples,
 
   # 1. Trace plot
   p1 <- ggplot2::ggplot(df, ggplot2::aes(x = iteration, y = value)) +
-    ggplot2::geom_line(color = "gray40", linewidth = 0.5) +
-    ggplot2::geom_hline(yintercept = median(param_samples),
-                        color = "red", linetype = "dashed", linewidth = 1) +
+    ggplot2::geom_line(ggplot2::aes(color = "Trace"), linewidth = 0.5) +
+    ggplot2::geom_hline(ggplot2::aes(yintercept = median(param_samples),
+                                     color = "Median"),
+                        linetype = "dashed", linewidth = 1) +
+    ggplot2::scale_color_manual(
+      values = c("Trace" = "gray40", "Median" = "red"),
+      breaks = c("Trace", "Median")
+    ) +
     ggplot2::labs(title = "Trace Plot", x = "Iteration") +
-    ggplot2::theme_minimal()
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "top",
+      legend.title = ggplot2::element_blank(),
+      legend.direction = "horizontal"
+    )
 
   # 2. ACF plot
   acf_data <- acf(param_samples, plot = FALSE)
@@ -826,20 +856,48 @@ plot_param_diagnostics_ggplot <- function(param_samples,
   # 3. Density plot
   p3 <- ggplot2::ggplot(df, ggplot2::aes(x = value)) +
     ggplot2::geom_density(fill = "darkgreen", alpha = 0.3, linewidth = 1) +
-    ggplot2::geom_vline(xintercept = median(param_samples),
-                        color = "red", linetype = "dashed", linewidth = 1) +
-    ggplot2::geom_vline(xintercept = mean(param_samples),
-                        color = "blue", linetype = "dotted", linewidth = 1) +
+    ggplot2::geom_vline(ggplot2::aes(xintercept = median(param_samples),
+                                     color = "Median"),
+                        linetype = "dashed", linewidth = 1) +
+    ggplot2::geom_vline(ggplot2::aes(xintercept = mean(param_samples),
+                                     color = "Mean"),
+                        linetype = "dotted", linewidth = 1) +
+    ggplot2::scale_color_manual(
+      values = c("Median" = "red", "Mean" = "blue"),
+      breaks = c("Median", "Mean")
+    ) +
+    ggplot2::guides(
+      color = ggplot2::guide_legend(
+        order = 1,
+        override.aes = list(linetype = c("dashed", "dotted"),
+                            linewidth = 1)
+      )
+    ) +
     ggplot2::labs(title = "Posterior Density", y = "Density") +
-    ggplot2::theme_minimal()
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "top",
+      legend.title = ggplot2::element_blank(),
+      legend.direction = "horizontal"
+    )
 
   # 4. Running mean
   p4 <- ggplot2::ggplot(df, ggplot2::aes(x = iteration, y = running_mean)) +
-    ggplot2::geom_line(color = "steelblue", linewidth = 1) +
-    ggplot2::geom_hline(yintercept = median(param_samples),
-                        color = "red", linetype = "dashed", linewidth = 1) +
+    ggplot2::geom_line(ggplot2::aes(color = "Running Mean"), linewidth = 1) +
+    ggplot2::geom_hline(ggplot2::aes(yintercept = median(param_samples),
+                                     color = "Median"),
+                        linetype = "dashed", linewidth = 1) +
+    ggplot2::scale_color_manual(
+      values = c("Running Mean" = "steelblue", "Median" = "red"),
+      breaks = c("Running Mean", "Median")
+    ) +
     ggplot2::labs(title = "Running Mean", x = "Iteration") +
-    ggplot2::theme_minimal()
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "top",
+      legend.title = ggplot2::element_blank(),
+      legend.direction = "horizontal"
+    )
 
   # Convert parameter names to expressions for both axis labels and title
   param_expr <- switch(param_label_text,
@@ -1203,7 +1261,7 @@ plot_dynamic_states_ggplot <- function(x, which = NULL,
       ggplot2::labs(
         title = "Level State",
         x = "Time",
-        y = expression(theta["t,1"])
+        y = "State Value"
       ) +
       base_theme +
       legend_outside
@@ -1249,7 +1307,7 @@ plot_dynamic_states_ggplot <- function(x, which = NULL,
       ggplot2::labs(
         title = "Trend State",
         x = "Time",
-        y = expression(theta["t,2"])
+        y = "State Value"
       ) +
       base_theme +
       legend_outside

@@ -274,38 +274,55 @@ print.normal_mixture_localtrend <- function(x, digits = 3, ...) {
   cat("  Burn-in:           ", attr(x, "burnin"), "\n", sep = "")
   cat("  Thinning:          ", attr(x, "thinning"), "\n\n", sep = "")
 
+  # Calculate medians
+  med_mu1 <- median(x$mu_1)
+  med_mu2 <- median(x$mu_2)
+  med_phi1 <- median(x$prec_1)
+  med_phi2 <- median(x$prec_2)
+  med_theta01 <- median(x$theta_01)
+  med_theta02 <- median(x$theta_02)
+  med_prec1 <- median(x$prec_theta1)
+  med_prec2 <- median(x$prec_theta2)
+
+  # Determine field width for alignment (width = digits + 3 for sign, decimal, and padding)
+  field_width <- digits + 4
+
   # Posterior medians (mixture components)
   cat("Posterior Medians (Mixture Components):\n")
-  cat("  mu_1:   ", sprintf(paste0("%.", digits, "f"), median(x$mu_1)),
+  cat("  mu_1:   ", sprintf(paste0("%", field_width, ".", digits, "f"), med_mu1),
       "  (component 1 mean)\n", sep = "")
-  cat("  mu_2:   ", sprintf(paste0("%.", digits, "f"), median(x$mu_2)),
+  cat("  mu_2:   ", sprintf(paste0("%", field_width, ".", digits, "f"), med_mu2),
       "  (component 2 mean)\n", sep = "")
-  cat("  phi_1:  ", sprintf(paste0("%.", digits, "f"), median(x$prec_1)),
+  cat("  phi_1:  ", sprintf(paste0("%", field_width, ".", digits, "f"), med_phi1),
       "  (component 1 precision)\n", sep = "")
-  cat("  phi_2:  ", sprintf(paste0("%.", digits, "f"), median(x$prec_2)),
+  cat("  phi_2:  ", sprintf(paste0("%", field_width, ".", digits, "f"), med_phi2),
       "  (component 2 precision)\n\n", sep = "")
 
   # Posterior medians (dynamic states)
   cat("Posterior Medians (Dynamic States):\n")
-  cat("  theta_01:   ", sprintf(paste0("%.", digits, "f"), median(x$theta_01)),
+  cat("  theta_01:   ", sprintf(paste0("%", field_width, ".", digits, "f"), med_theta01),
       "  (initial level)\n", sep = "")
-  cat("  theta_02:   ", sprintf(paste0("%.", digits, "f"), median(x$theta_02)),
+  cat("  theta_02:   ", sprintf(paste0("%", field_width, ".", digits, "f"), med_theta02),
       "  (initial trend)\n", sep = "")
-  cat("  W_1^-1:     ", sprintf(paste0("%.", digits, "f"), median(x$prec_theta1)),
+  cat("  W_1^-1:     ", sprintf(paste0("%", field_width, ".", digits, "f"), med_prec1),
       "  (level precision)\n", sep = "")
-  cat("  W_2^-1:     ", sprintf(paste0("%.", digits, "f"), median(x$prec_theta2)),
+  cat("  W_2^-1:     ", sprintf(paste0("%", field_width, ".", digits, "f"), med_prec2),
       "  (trend precision)\n\n", sep = "")
 
   # Summary of time-varying alpha
   alpha_median_time <- apply(x$alpha, 2, median)
+  alpha_min <- min(alpha_median_time)
+  alpha_max <- max(alpha_median_time)
+  alpha_med <- median(alpha_median_time)
+
   cat("Mixture Weights (alpha_t):\n")
   cat("  Range:  [",
-      sprintf(paste0("%.", digits, "f"), min(alpha_median_time)),
+      sprintf(paste0("%", field_width, ".", digits, "f"), alpha_min),
       ", ",
-      sprintf(paste0("%.", digits, "f"), max(alpha_median_time)),
+      sprintf(paste0("%", field_width, ".", digits, "f"), alpha_max),
       "]\n", sep = "")
   cat("  Median: ",
-      sprintf(paste0("%.", digits, "f"), median(alpha_median_time)), "\n\n", sep = "")
+      sprintf(paste0("%", field_width, ".", digits, "f"), alpha_med), "\n\n", sep = "")
 
   # User guidance
   cat(strrep("-", 70), "\n", sep = "")

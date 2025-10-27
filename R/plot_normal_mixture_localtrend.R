@@ -551,7 +551,8 @@ plot_dynamic_states_base <- function(x, which = NULL, ci = TRUE,
     # Plot 2.2: Level innovations (u_{t,1})
     # u_{t,1} = theta_{t,1} - theta_{t-1,1} - theta_{t-1,2}
     # Uses matrix algebra for efficiency
-    innovations_1 <- x$theta_1[, -1] - x$theta_1[, -ncol(x$theta_1)] - x$theta_2[, -ncol(x$theta_2)]
+    innovations_1 <- x$theta_1[, -1] - x$theta_1[, -ncol(x$theta_1)] -
+      x$theta_2[, -ncol(x$theta_2)]
 
     innov1_median <- apply(innovations_1, 2, median)
     if (ci) {
@@ -758,7 +759,7 @@ plot_mixture_weights_base <- function(x, overlay_data = FALSE, ci = TRUE,
 
   legend("topright",
          horiz = TRUE,
-         legend = c("P > 0.5", "P <= 0.5", "Threshold"),
+         legend = c("P > 0.5", "P ≤ 0.5", "Threshold"),
          fill = c("purple", "blue", NA),
          border = c(NA, NA, NA),
          lty = c(NA, NA, 2),
@@ -876,7 +877,8 @@ plot_param_diagnostics_ggplot <- function(param_samples,
     combined <- (p1 + p2) / (p3 + p4) +
       patchwork::plot_annotation(
         title = title_expr,
-        theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 16, face = "bold"))
+        theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 16,
+                                                                  face = "bold"))
       )
     return(combined)
   } else {
@@ -1060,7 +1062,8 @@ plot_mixture_params_ggplot <- function(x, which = NULL, ...) {
       patchwork::plot_annotation(
         title = "Mixture Component Parameters (Bivariate Relationships)",
         theme = ggplot2::theme(
-          plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+          plot.title = ggplot2::element_text(size = 14, face = "bold",
+                                             hjust = 0.5)
         )
       )
     print(combined)
@@ -1069,7 +1072,8 @@ plot_mixture_params_ggplot <- function(x, which = NULL, ...) {
       plots[[1]] <- plots[[1]] +
         ggplot2::labs(subtitle = "Mixture Component Parameters (Bivariate Relationships)") +
         ggplot2::theme(
-          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+          plot.subtitle = ggplot2::element_text(size = 14, face = "bold",
+                                                hjust = 0.5)
         )
     }
     for (p in plots) {
@@ -1084,7 +1088,8 @@ plot_mixture_params_ggplot <- function(x, which = NULL, ...) {
 #' Dynamic states with ggplot2
 #' @keywords internal
 #' @noRd
-plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.95, ...) {
+plot_dynamic_states_ggplot <- function(x, which = NULL,
+                                       ci = TRUE, ci_level = 0.95, ...) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required")
@@ -1256,7 +1261,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
         patchwork::plot_annotation(
           title = "Dynamic State Trajectories",
           theme = ggplot2::theme(
-            plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+            plot.title = ggplot2::element_text(size = 14, face = "bold",
+                                               hjust = 0.5)
           )
         )
       print(combined1)
@@ -1264,7 +1270,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
       page1[[1]] <- page1[[1]] +
         ggplot2::labs(subtitle = "Dynamic State Trajectories") +
         ggplot2::theme(
-          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+          plot.subtitle = ggplot2::element_text(size = 14, face = "bold",
+                                                hjust = 0.5)
         )
       for (p in page1) {
         print(p)
@@ -1285,7 +1292,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
 
     df_state <- data.frame(theta1 = theta1_vec, theta2 = theta2_vec)
 
-    innovations_1 <- x$theta_1[, -1, drop = FALSE] - x$theta_1[, -ncol(x$theta_1), drop = FALSE] -
+    innovations_1 <- x$theta_1[, -1, drop = FALSE] -
+      x$theta_1[, -ncol(x$theta_1), drop = FALSE] -
       x$theta_2[, -ncol(x$theta_2), drop = FALSE]
     innovations_2 <- t(apply(x$theta_2, 1, diff))
 
@@ -1300,8 +1308,10 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
     )
 
     if (ci) {
-      df_innov1$lower <- apply(innovations_1, 2, stats::quantile, probs = ci_lower_prob)
-      df_innov1$upper <- apply(innovations_1, 2, stats::quantile, probs = ci_upper_prob)
+      df_innov1$lower <- apply(innovations_1, 2, stats::quantile,
+                               probs = ci_lower_prob)
+      df_innov1$upper <- apply(innovations_1, 2, stats::quantile,
+                               probs = ci_upper_prob)
     }
 
     df_innov2 <- data.frame(
@@ -1310,8 +1320,10 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
     )
 
     if (ci) {
-      df_innov2$lower <- apply(innovations_2, 2, stats::quantile, probs = ci_lower_prob)
-      df_innov2$upper <- apply(innovations_2, 2, stats::quantile, probs = ci_upper_prob)
+      df_innov2$lower <- apply(innovations_2, 2, stats::quantile,
+                               probs = ci_lower_prob)
+      df_innov2$upper <- apply(innovations_2, 2, stats::quantile,
+                               probs = ci_upper_prob)
     }
 
     df_joint <- data.frame(
@@ -1351,7 +1363,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
         ggplot2::aes(xend = time, y = 0, yend = median, colour = "Median"),
         linewidth = 1.1
       ) +
-      ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed", linewidth = 0.8) +
+      ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed",
+                          linewidth = 0.8) +
       ggplot2::scale_color_manual(
         values = c("Median" = "steelblue"),
         breaks = "Median",
@@ -1398,7 +1411,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
         ggplot2::aes(xend = time, y = 0, yend = median, colour = "Median"),
         linewidth = 1.1
       ) +
-      ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed", linewidth = 0.8) +
+      ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed",
+                          linewidth = 0.8) +
       ggplot2::scale_color_manual(
         values = c("Median" = "darkgreen"),
         breaks = "Median",
@@ -1430,12 +1444,13 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
       base_theme +
       legend_outside
 
-    p_joint <- ggplot2::ggplot(df_joint, ggplot2::aes(x = time, y = value, colour = state)) +
+    p_joint <- ggplot2::ggplot(df_joint, ggplot2::aes(x = time, y = value,
+                                                      colour = state)) +
       ggplot2::geom_line(linewidth = 1.2) +
       ggplot2::scale_color_manual(
         values = c("theta1" = "steelblue", "theta2" = "darkgreen"),
         breaks = c("theta1", "theta2"),
-        labels = c(expression(theta["t,1"]), expression(theta["t,2"]))
+        labels = c(expression(hat(theta)["t,1"]), expression(hat(theta)["t,2"]))
       ) +
       ggplot2::guides(colour = ggplot2::guide_legend(order = 1)) +
       ggplot2::labs(
@@ -1453,7 +1468,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
         patchwork::plot_annotation(
           title = "Dynamic State Diagnostics",
           theme = ggplot2::theme(
-            plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+            plot.title = ggplot2::element_text(size = 14, face = "bold",
+                                               hjust = 0.5)
           )
         )
       print(combined2)
@@ -1461,7 +1477,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
       page2[[1]] <- page2[[1]] +
         ggplot2::labs(subtitle = "Dynamic State Diagnostics") +
         ggplot2::theme(
-          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
+          plot.subtitle = ggplot2::element_text(size = 14, face = "bold",
+                                                hjust = 0.5)
         )
       for (p in page2) {
         print(p)
@@ -1476,7 +1493,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.
 #' Mixture weights with ggplot2 (2 pages)
 #' @keywords internal
 #' @noRd
-plot_mixture_weights_ggplot <- function(x, overlay_data = TRUE, ci = TRUE, ci_level = 0.95, ...) {
+plot_mixture_weights_ggplot <- function(x, overlay_data = TRUE,
+                                        ci = TRUE, ci_level = 0.95, ...) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required")
@@ -1532,7 +1550,7 @@ plot_mixture_weights_ggplot <- function(x, overlay_data = TRUE, ci = TRUE, ci_le
       labels = expression(hat(alpha)[t])
     ) +
     ggplot2::scale_y_continuous(
-      limits = c(0, 1.1),
+      limits = c(0, 1.0),
       breaks = seq(0, 1, by = 0.2)
     ) +
     ggplot2::labs(
@@ -1575,7 +1593,7 @@ plot_mixture_weights_ggplot <- function(x, overlay_data = TRUE, ci = TRUE, ci_le
     ggplot2::scale_fill_manual(
       values = c("TRUE" = "purple", "FALSE" = "blue"),
       breaks = c("FALSE", "TRUE"),
-      labels = c("P(z = 1 | data) <= 0.5", "P(z = 1 | data) > 0.5")
+      labels = c("P(z = 1 | data) ≤ 0.5", "P(z = 1 | data) > 0.5")
     ) +
     ggplot2::geom_hline(
       yintercept = 0.5,
@@ -1584,7 +1602,7 @@ plot_mixture_weights_ggplot <- function(x, overlay_data = TRUE, ci = TRUE, ci_le
       linewidth = 1
     ) +
     ggplot2::scale_y_continuous(
-      limits = c(0, 1.1),
+      limits = c(0, 1.0),
       breaks = c(0, 0.5, 1)
     ) +
     ggplot2::labs(

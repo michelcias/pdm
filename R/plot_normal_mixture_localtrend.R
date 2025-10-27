@@ -139,6 +139,8 @@ plot.normal_mixture_localtrend <- function(x,
                                            engine = c("base", "ggplot2"),
                                            ask = NULL,
                                            overlay_data = TRUE,
+                                           ci = TRUE,
+                                           ci_level = 0.95,
                                            ...) {
 
   # Validate inputs
@@ -162,16 +164,21 @@ plot.normal_mixture_localtrend <- function(x,
            all = plot_all_base(x, ask = ask, overlay_data = overlay_data, ...),
            mcmc = plot_mcmc_diagnostics_base(x, which = which, ...),
            params = plot_mixture_params_base(x, which = which, ...),
-           states = plot_dynamic_states_base(x, which = which, ...),
-           alpha = plot_mixture_weights_base(x, overlay_data = overlay_data, ...)
+           states = plot_dynamic_states_base(x, which = which,
+                                             ci = ci, ci_level = ci_level, ...),
+           alpha = plot_mixture_weights_base(x, overlay_data = overlay_data,
+                                             ci = ci, ci_level = ci_level, ...),
     )
   } else {
     switch(type,
-           all = plot_all_ggplot(x, ask = ask, overlay_data = overlay_data, ...),
+           all = plot_all_ggplot(x, ask = ask, overlay_data = overlay_data,
+                                 ci = ci, ci_level = ci_level, ...),
            mcmc = plot_mcmc_diagnostics_ggplot(x, which = which, ...),
            params = plot_mixture_params_ggplot(x, which = which, ...),
-           states = plot_dynamic_states_ggplot(x, which = which, ...),
-           alpha = plot_mixture_weights_ggplot(x, overlay_data = overlay_data, ...)
+           states = plot_dynamic_states_ggplot(x, which = which,
+                                               ci = ci, ci_level = ci_level, ...),
+           alpha = plot_mixture_weights_ggplot(x, overlay_data = overlay_data,
+                                               ci = ci, ci_level = ci_level, ...)
     )
   }
 
@@ -188,14 +195,15 @@ plot.normal_mixture_localtrend <- function(x,
 #' @noRd
 plot_param_diagnostics <- function(param_samples,
                                    param_name,
-                                   param_label,  # Já é expression()
+                                   param_label,
                                    true_value = NULL,
                                    ...) {
 
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
-  par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 3, 0))
+  par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 3, 0),
+      mgp = c(2.5, 1, 0))
 
   # 1. Trace Plot
   plot(param_samples, type = "l", col = "gray40", lwd = 0.8,
@@ -344,7 +352,8 @@ plot_mixture_params_base <- function(x, which = NULL, ...) {
 
   if (is.null(which)) which <- 1:4
 
-  par(mfrow = c(2, 2), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
+  par(mfrow = c(2, 2), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
+      mgp = c(2.5, 1, 0))
 
   # Plot 1: mu_1 vs mu_2
   if (1 %in% which) {
@@ -410,7 +419,8 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
   # =========================================================================
 
   if (1 %in% which) {
-    par(mfrow = c(2, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
+    par(mfrow = c(2, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0),
+        mgp = c(2.5, 1, 0))
 
     # Compute credible bands for theta_1
     theta1_median <- apply(x$theta_1, 2, median)
@@ -431,7 +441,7 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
 
     lines(time_grid, theta1_median, lwd = 2, col = "black")
     grid()
-    legend("topright", legend = c(expression(theta["t,1"]), "95% CI"),
+    legend("topright", legend = c(expression(hat(theta)["t,1"]), "95% CI"),
            col = c("black", rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
            lty = c(1, 1), lwd = c(2, 8), bty = "n")
 
@@ -444,7 +454,7 @@ plot_dynamic_states_base <- function(x, which = NULL, ...) {
     range_theta2 <- range(c(theta2_q025, theta2_q975))
     range_theta2[2] <- range_theta2[2] + 0.25 * diff(range_theta2)
     plot(time_grid, theta2_median, type = "l", lwd = 2,
-         xlab = "Time", ylab = expression(theta["t,2"]),
+         xlab = "Time", ylab = expression(hat(theta)["t,2"]),
          main = "Trend State",
          ylim = range_theta2)
 
@@ -591,7 +601,8 @@ plot_mixture_weights_base <- function(x, overlay_data = FALSE, ...) {
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
 
-  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
+      mgp = c(2.5, 1, 0))
 
   plot(time_grid, alpha_median, type = "l", lwd = 2.5, col = "blue",
        xlab = "Time", ylab = expression(alpha[t]),
@@ -699,7 +710,7 @@ plot_param_diagnostics_ggplot <- function(param_samples,
     ggplot2::geom_line(color = "gray40", linewidth = 0.5) +
     ggplot2::geom_hline(yintercept = median(param_samples),
                         color = "red", linetype = "dashed", linewidth = 1) +
-    ggplot2::labs(title = "Trace Plot", x = "Iteration", y = param_label_text) +
+    ggplot2::labs(title = "Trace Plot", x = "Iteration") +
     ggplot2::theme_minimal()
 
   # 2. ACF plot
@@ -727,7 +738,7 @@ plot_param_diagnostics_ggplot <- function(param_samples,
                         color = "red", linetype = "dashed", linewidth = 1) +
     ggplot2::geom_vline(xintercept = mean(param_samples),
                         color = "blue", linetype = "dotted", linewidth = 1) +
-    ggplot2::labs(title = "Posterior Density", x = param_label_text, y = "Density") +
+    ggplot2::labs(title = "Posterior Density", y = "Density") +
     ggplot2::theme_minimal()
 
   # 4. Running mean
@@ -735,14 +746,45 @@ plot_param_diagnostics_ggplot <- function(param_samples,
     ggplot2::geom_line(color = "steelblue", linewidth = 1) +
     ggplot2::geom_hline(yintercept = median(param_samples),
                         color = "red", linetype = "dashed", linewidth = 1) +
-    ggplot2::labs(title = "Running Mean", x = "Iteration", y = param_label_text) +
+    ggplot2::labs(title = "Running Mean", x = "Iteration") +
     ggplot2::theme_minimal()
+
+  # Convert parameter names to expressions for both axis labels and title
+  param_expr <- switch(param_label_text,
+                       "mu_1" = expression(mu[1]),
+                       "mu_2" = expression(mu[2]),
+                       "phi_1" = expression(phi[1]),
+                       "phi_2" = expression(phi[2]),
+                       "theta_01" = expression(theta["0,1"]),
+                       "theta_02" = expression(theta["0,2"]),
+                       "W_1^{-1}" = expression(W[1]^{-1}),
+                       "W_2^{-1}" = expression(W[2]^{-1}),
+                       param_label_text  # fallback to original text
+  )
+
+  # Create title expression
+  title_expr <- switch(param_label_text,
+                       "mu_1" = expression(paste("MCMC Diagnostics: ", mu[1])),
+                       "mu_2" = expression(paste("MCMC Diagnostics: ", mu[2])),
+                       "phi_1" = expression(paste("MCMC Diagnostics: ", phi[1])),
+                       "phi_2" = expression(paste("MCMC Diagnostics: ", phi[2])),
+                       "theta_01" = expression(paste("MCMC Diagnostics: ", theta["0,1"])),
+                       "theta_02" = expression(paste("MCMC Diagnostics: ", theta["0,2"])),
+                       "W_1^{-1}" = expression(paste("MCMC Diagnostics: ", W[1]^{-1})),
+                       "W_2^{-1}" = expression(paste("MCMC Diagnostics: ", W[2]^{-1})),
+                       paste("MCMC Diagnostics:", param_name)  # fallback
+  )
+
+  # Add y-axis labels with expressions
+  p1 <- p1 + ggplot2::ylab(param_expr)
+  p3 <- p3 + ggplot2::xlab(param_expr)
+  p4 <- p4 + ggplot2::ylab(param_expr)
 
   # Combine with patchwork if available
   if (requireNamespace("patchwork", quietly = TRUE)) {
     combined <- (p1 + p2) / (p3 + p4) +
       patchwork::plot_annotation(
-        title = paste("MCMC Diagnostics:", param_name),
+        title = title_expr,
         theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 16, face = "bold"))
       )
     return(combined)
@@ -760,7 +802,8 @@ plot_param_diagnostics_ggplot <- function(param_samples,
 #' Complete dashboard with ggplot2 graphics
 #' @keywords internal
 #' @noRd
-plot_all_ggplot <- function(x, ask = TRUE, overlay_data = TRUE, ...) {
+plot_all_ggplot <- function(x, ask = TRUE, overlay_data = TRUE,
+                            ci = TRUE, ci_level = 0.95, ...) {
 
   if (ask) {
     message("Press [Enter] to see next plot...")
@@ -775,15 +818,16 @@ plot_all_ggplot <- function(x, ask = TRUE, overlay_data = TRUE, ...) {
   if (ask) readline()
 
   # Page 10: Dynamic state trajectories
-  plot_dynamic_states_ggplot(x, which = 1, ...)
+  plot_dynamic_states_ggplot(x, which = 1, ci = ci, ci_level = ci_level, ...)
   if (ask) readline()
 
   # Page 11: Dynamic state diagnostics
-  plot_dynamic_states_ggplot(x, which = 2, ...)
+  plot_dynamic_states_ggplot(x, which = 2, ci = ci, ci_level = ci_level, ...)
   if (ask) readline()
 
   # Pages 12-13: Mixture weights
-  plot_mixture_weights_ggplot(x, overlay_data = overlay_data, ...)
+  plot_mixture_weights_ggplot(x, overlay_data = overlay_data,
+                              ci = ci, ci_level = ci_level, ...)
 }
 
 
@@ -949,10 +993,15 @@ plot_mixture_params_ggplot <- function(x, which = NULL, ...) {
 #' Dynamic states with ggplot2
 #' @keywords internal
 #' @noRd
-plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
+plot_dynamic_states_ggplot <- function(x, which = NULL, ci = TRUE, ci_level = 0.95, ...) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required")
+  }
+
+  # Validate ci_level
+  if (!is.numeric(ci_level) || ci_level <= 0 || ci_level >= 1) {
+    stop("`ci_level` must be a numeric value between 0 and 1")
   }
 
   if (is.null(which)) {
@@ -967,6 +1016,10 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
   time_grid <- seq_len(n_obs)
   patchwork_available <- requireNamespace("patchwork", quietly = TRUE)
 
+  # Calculate quantile probabilities
+  ci_lower_prob <- (1 - ci_level) / 2
+  ci_upper_prob <- 1 - ci_lower_prob
+
   base_theme <- ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(
       panel.grid.major = ggplot2::element_line(color = "grey85"),
@@ -974,44 +1027,56 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
       plot.title = ggplot2::element_text(face = "bold", size = 13)
     )
 
-  legend_inside <- ggplot2::theme(
-    legend.position = c(0.97, 0.9),
-    legend.justification = c("right", "top"),
+  legend_outside <- ggplot2::theme(
+    legend.position = "top",
     legend.title = ggplot2::element_blank(),
-    legend.background = ggplot2::element_rect(
-      fill = ggplot2::alpha("white", 0.75), colour = NA
-    ),
     legend.direction = "horizontal"
   )
 
   theta1_median <- apply(x$theta_1, 2, median)
-  theta1_lower <- apply(x$theta_1, 2, stats::quantile, probs = 0.025)
-  theta1_upper <- apply(x$theta_1, 2, stats::quantile, probs = 0.975)
-
   theta2_median <- apply(x$theta_2, 2, median)
-  theta2_lower <- apply(x$theta_2, 2, stats::quantile, probs = 0.025)
-  theta2_upper <- apply(x$theta_2, 2, stats::quantile, probs = 0.975)
+
+  if (ci) {
+    theta1_lower <- apply(x$theta_1, 2, stats::quantile, probs = ci_lower_prob)
+    theta1_upper <- apply(x$theta_1, 2, stats::quantile, probs = ci_upper_prob)
+    theta2_lower <- apply(x$theta_2, 2, stats::quantile, probs = ci_lower_prob)
+    theta2_upper <- apply(x$theta_2, 2, stats::quantile, probs = ci_upper_prob)
+  }
 
   if (1 %in% which) {
     df_theta1 <- data.frame(
       time = time_grid,
-      median = theta1_median,
-      lower = theta1_lower,
-      upper = theta1_upper
+      median = theta1_median
     )
+
+    if (ci) {
+      df_theta1$lower <- theta1_lower
+      df_theta1$upper <- theta1_upper
+    }
 
     df_theta2 <- data.frame(
       time = time_grid,
-      median = theta2_median,
-      lower = theta2_lower,
-      upper = theta2_upper
+      median = theta2_median
     )
 
-    p_level <- ggplot2::ggplot(df_theta1, ggplot2::aes(x = time)) +
-      ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = lower, ymax = upper, fill = "95% CI"),
-        alpha = 0.5, colour = NA
-      ) +
+    if (ci) {
+      df_theta2$lower <- theta2_lower
+      df_theta2$upper <- theta2_upper
+    }
+
+    ci_pct <- round(ci_level * 100)
+
+    p_level <- ggplot2::ggplot(df_theta1, ggplot2::aes(x = time))
+
+    if (ci) {
+      p_level <- p_level +
+        ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = lower, ymax = upper, fill = "CI"),
+          alpha = 0.5, colour = NA
+        )
+    }
+
+    p_level <- p_level +
       ggplot2::geom_line(
         ggplot2::aes(y = median, colour = "Median"),
         linewidth = 1.2
@@ -1019,30 +1084,45 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
       ggplot2::scale_color_manual(
         values = c("Median" = "black"),
         breaks = "Median",
-        labels = expression(theta["t,1"])
-      ) +
-      ggplot2::scale_fill_manual(
-        values = c("95% CI" = "gray70"),
-        breaks = "95% CI",
-        labels = "95% CI"
-      ) +
-      ggplot2::guides(
-        fill = ggplot2::guide_legend(order = 1),
-        colour = ggplot2::guide_legend(order = 2)
-      ) +
+        labels = expression(hat(theta)["t,1"])
+      )
+
+    if (ci) {
+      p_level <- p_level +
+        ggplot2::scale_fill_manual(
+          values = c("CI" = "gray70"),
+          breaks = "CI",
+          labels = paste0(ci_pct, "% CI")
+        ) +
+        ggplot2::guides(
+          colour = ggplot2::guide_legend(order = 1),
+          fill = ggplot2::guide_legend(order = 2)
+        )
+    } else {
+      p_level <- p_level +
+        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+    }
+
+    p_level <- p_level +
       ggplot2::labs(
         title = "Level State",
         x = "Time",
         y = expression(theta["t,1"])
       ) +
       base_theme +
-      legend_inside
+      legend_outside
 
-    p_trend <- ggplot2::ggplot(df_theta2, ggplot2::aes(x = time)) +
-      ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = lower, ymax = upper, fill = "95% CI"),
-        alpha = 0.5, colour = NA
-      ) +
+    p_trend <- ggplot2::ggplot(df_theta2, ggplot2::aes(x = time))
+
+    if (ci) {
+      p_trend <- p_trend +
+        ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = lower, ymax = upper, fill = "CI"),
+          alpha = 0.5, colour = NA
+        )
+    }
+
+    p_trend <- p_trend +
       ggplot2::geom_line(
         ggplot2::aes(y = median, colour = "Median"),
         linewidth = 1.2
@@ -1050,24 +1130,33 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
       ggplot2::scale_color_manual(
         values = c("Median" = "black"),
         breaks = "Median",
-        labels = expression(theta["t,2"])
-      ) +
-      ggplot2::scale_fill_manual(
-        values = c("95% CI" = "gray70"),
-        breaks = "95% CI",
-        labels = "95% CI"
-      ) +
-      ggplot2::guides(
-        fill = ggplot2::guide_legend(order = 1),
-        colour = ggplot2::guide_legend(order = 2)
-      ) +
+        labels = expression(hat(theta)["t,2"])
+      )
+
+    if (ci) {
+      p_trend <- p_trend +
+        ggplot2::scale_fill_manual(
+          values = c("CI" = "gray70"),
+          breaks = "CI",
+          labels = paste0(ci_pct, "% CI")
+        ) +
+        ggplot2::guides(
+          colour = ggplot2::guide_legend(order = 1),
+          fill = ggplot2::guide_legend(order = 2)
+        )
+    } else {
+      p_trend <- p_trend +
+        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+    }
+
+    p_trend <- p_trend +
       ggplot2::labs(
         title = "Trend State",
         x = "Time",
         y = expression(theta["t,2"])
       ) +
       base_theme +
-      legend_inside
+      legend_outside
 
     page1 <- list(p_level, p_trend)
 
@@ -1111,19 +1200,28 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
 
     time_innov <- time_grid[-1]
 
+    innov1_median <- apply(innovations_1, 2, median)
+    innov2_median <- apply(innovations_2, 2, median)
+
     df_innov1 <- data.frame(
       time = time_innov,
-      median = apply(innovations_1, 2, median),
-      lower = apply(innovations_1, 2, stats::quantile, probs = 0.025),
-      upper = apply(innovations_1, 2, stats::quantile, probs = 0.975)
+      median = innov1_median
     )
+
+    if (ci) {
+      df_innov1$lower <- apply(innovations_1, 2, stats::quantile, probs = ci_lower_prob)
+      df_innov1$upper <- apply(innovations_1, 2, stats::quantile, probs = ci_upper_prob)
+    }
 
     df_innov2 <- data.frame(
       time = time_innov,
-      median = apply(innovations_2, 2, median),
-      lower = apply(innovations_2, 2, stats::quantile, probs = 0.025),
-      upper = apply(innovations_2, 2, stats::quantile, probs = 0.975)
+      median = innov2_median
     )
+
+    if (ci) {
+      df_innov2$lower <- apply(innovations_2, 2, stats::quantile, probs = ci_lower_prob)
+      df_innov2$upper <- apply(innovations_2, 2, stats::quantile, probs = ci_upper_prob)
+    }
 
     df_joint <- data.frame(
       time = rep(time_grid, 2),
@@ -1131,6 +1229,8 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
       state = factor(rep(c("theta1", "theta2"), each = n_obs),
                      levels = c("theta1", "theta2"))
     )
+
+    ci_pct <- round(ci_level * 100)
 
     p_state <- ggplot2::ggplot(df_state, ggplot2::aes(x = theta1, y = theta2)) +
       ggplot2::geom_point(
@@ -1145,11 +1245,17 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
       base_theme +
       ggplot2::theme(legend.position = "none")
 
-    p_innov1 <- ggplot2::ggplot(df_innov1, ggplot2::aes(x = time)) +
-      ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = lower, ymax = upper, fill = "95% CI"),
-        alpha = 0.4, colour = NA
-      ) +
+    p_innov1 <- ggplot2::ggplot(df_innov1, ggplot2::aes(x = time))
+
+    if (ci) {
+      p_innov1 <- p_innov1 +
+        ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = lower, ymax = upper, fill = "CI"),
+          alpha = 0.4, colour = NA
+        )
+    }
+
+    p_innov1 <- p_innov1 +
       ggplot2::geom_segment(
         ggplot2::aes(xend = time, y = 0, yend = median, colour = "Median"),
         linewidth = 1.1
@@ -1159,29 +1265,44 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
         values = c("Median" = "steelblue"),
         breaks = "Median",
         labels = "Median"
-      ) +
-      ggplot2::scale_fill_manual(
-        values = c("95% CI" = "gray70"),
-        breaks = "95% CI",
-        labels = "95% CI"
-      ) +
-      ggplot2::guides(
-        fill = ggplot2::guide_legend(order = 1),
-        colour = ggplot2::guide_legend(order = 2)
-      ) +
+      )
+
+    if (ci) {
+      p_innov1 <- p_innov1 +
+        ggplot2::scale_fill_manual(
+          values = c("CI" = "gray70"),
+          breaks = "CI",
+          labels = paste0(ci_pct, "% CI")
+        ) +
+        ggplot2::guides(
+          colour = ggplot2::guide_legend(order = 1),
+          fill = ggplot2::guide_legend(order = 2)
+        )
+    } else {
+      p_innov1 <- p_innov1 +
+        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+    }
+
+    p_innov1 <- p_innov1 +
       ggplot2::labs(
         title = "Level Innovations",
         x = "Time",
         y = expression(u["t,1"])
       ) +
       base_theme +
-      legend_inside
+      legend_outside
 
-    p_innov2 <- ggplot2::ggplot(df_innov2, ggplot2::aes(x = time)) +
-      ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = lower, ymax = upper, fill = "95% CI"),
-        alpha = 0.4, colour = NA
-      ) +
+    p_innov2 <- ggplot2::ggplot(df_innov2, ggplot2::aes(x = time))
+
+    if (ci) {
+      p_innov2 <- p_innov2 +
+        ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = lower, ymax = upper, fill = "CI"),
+          alpha = 0.4, colour = NA
+        )
+    }
+
+    p_innov2 <- p_innov2 +
       ggplot2::geom_segment(
         ggplot2::aes(xend = time, y = 0, yend = median, colour = "Median"),
         linewidth = 1.1
@@ -1191,30 +1312,39 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
         values = c("Median" = "darkgreen"),
         breaks = "Median",
         labels = "Median"
-      ) +
-      ggplot2::scale_fill_manual(
-        values = c("95% CI" = "gray70"),
-        breaks = "95% CI",
-        labels = "95% CI"
-      ) +
-      ggplot2::guides(
-        fill = ggplot2::guide_legend(order = 1),
-        colour = ggplot2::guide_legend(order = 2)
-      ) +
+      )
+
+    if (ci) {
+      p_innov2 <- p_innov2 +
+        ggplot2::scale_fill_manual(
+          values = c("CI" = "gray70"),
+          breaks = "CI",
+          labels = paste0(ci_pct, "% CI")
+        ) +
+        ggplot2::guides(
+          colour = ggplot2::guide_legend(order = 1),
+          fill = ggplot2::guide_legend(order = 2)
+        )
+    } else {
+      p_innov2 <- p_innov2 +
+        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+    }
+
+    p_innov2 <- p_innov2 +
       ggplot2::labs(
         title = "Trend Innovations",
         x = "Time",
         y = expression(u["t,2"])
       ) +
       base_theme +
-      legend_inside
+      legend_outside
 
     p_joint <- ggplot2::ggplot(df_joint, ggplot2::aes(x = time, y = value, colour = state)) +
       ggplot2::geom_line(linewidth = 1.2) +
       ggplot2::scale_color_manual(
         values = c("theta1" = "steelblue", "theta2" = "darkgreen"),
         breaks = c("theta1", "theta2"),
-        labels = expression(theta["t,1"], theta["t,2"])
+        labels = c(expression(theta["t,1"]), expression(theta["t,2"]))
       ) +
       ggplot2::guides(colour = ggplot2::guide_legend(order = 1)) +
       ggplot2::labs(
@@ -1223,7 +1353,7 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
         y = "State Value"
       ) +
       base_theme +
-      legend_inside
+      legend_outside
 
     page2 <- list(p_state, p_innov1, p_innov2, p_joint)
 
@@ -1255,40 +1385,89 @@ plot_dynamic_states_ggplot <- function(x, which = NULL, ...) {
 #' Mixture weights with ggplot2 (2 pages)
 #' @keywords internal
 #' @noRd
-plot_mixture_weights_ggplot <- function(x, overlay_data = TRUE, ...) {
+plot_mixture_weights_ggplot <- function(x, overlay_data = TRUE, ci = TRUE, ci_level = 0.95, ...) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required")
   }
 
+  # Validate ci_level
+  if (!is.numeric(ci_level) || ci_level <= 0 || ci_level >= 1) {
+    stop("`ci_level` must be a numeric value between 0 and 1")
+  }
+
   n_obs <- attr(x, "n_obs")
   time_grid <- seq_len(n_obs)
+
+  # Calculate quantile probabilities
+  ci_lower_prob <- (1 - ci_level) / 2
+  ci_upper_prob <- 1 - ci_lower_prob
+  ci_pct <- round(ci_level * 100)
 
   # Page 1: alpha_t
   df_alpha <- data.frame(
     time = time_grid,
-    median = apply(x$alpha, 2, median),
-    lower = apply(x$alpha, 2, quantile, probs = 0.025),
-    upper = apply(x$alpha, 2, quantile, probs = 0.975)
+    median = apply(x$alpha, 2, median)
   )
 
-  p1 <- ggplot2::ggplot(df_alpha, ggplot2::aes(x = time)) +
-    ggplot2::geom_ribbon(ggplot2::aes(ymin = lower, ymax = upper),
-                         fill = "steelblue", alpha = 0.3) +
-    ggplot2::geom_line(ggplot2::aes(y = median), color = "blue", linewidth = 1.2) +
-    ggplot2::labs(title = expression(paste("Mixture Weights: ", alpha[t])),
-                  x = "Time", y = expression(alpha[t])) +
-    ggplot2::ylim(0, 1) +
-    ggplot2::theme_minimal()
+  if (ci) {
+    df_alpha$lower <- apply(x$alpha, 2, quantile, probs = ci_lower_prob)
+    df_alpha$upper <- apply(x$alpha, 2, quantile, probs = ci_upper_prob)
+  }
 
-  if (overlay_data && !is.null(attr(x, "y"))) {
-    y <- attr(x, "y")
-    y_scaled <- (y - min(y)) / (max(y) - min(y))
-    df_data <- data.frame(time = time_grid, y_scaled = y_scaled)
+  p1 <- ggplot2::ggplot(df_alpha, ggplot2::aes(x = time))
 
-    p1 <- p1 + ggplot2::geom_line(data = df_data,
-                                  ggplot2::aes(y = y_scaled),
-                                  color = "red", linetype = "dashed", linewidth = 1)
+  if (ci) {
+    p1 <- p1 +
+      ggplot2::geom_ribbon(
+        ggplot2::aes(ymin = lower, ymax = upper, fill = "CI"),
+        alpha = 0.3
+      ) +
+      ggplot2::scale_fill_manual(
+        values = c("CI" = "steelblue"),
+        breaks = "CI",
+        labels = paste0(ci_pct, "% CI")
+      )
+  }
+
+  p1 <- p1 +
+    ggplot2::geom_line(
+      ggplot2::aes(y = median, colour = "Median"),
+      linewidth = 1.2
+    ) +
+    ggplot2::scale_color_manual(
+      values = c("Median" = "blue"),
+      breaks = "Median",
+      labels = expression(hat(alpha)[t])
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1.1),
+      breaks = seq(0, 1, by = 0.2)
+    ) +
+    ggplot2::labs(
+      title = expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
+      x = "Time",
+      y = expression(alpha[t])
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(color = "grey85"),
+      panel.grid.minor = ggplot2::element_line(color = "grey92"),
+      plot.title = ggplot2::element_text(face = "bold", size = 13),
+      legend.position = "top",
+      legend.title = ggplot2::element_blank(),
+      legend.direction = "horizontal"
+    )
+
+  if (ci) {
+    p1 <- p1 +
+      ggplot2::guides(
+        colour = ggplot2::guide_legend(order = 1),
+        fill = ggplot2::guide_legend(order = 2)
+      )
+  } else {
+    p1 <- p1 +
+      ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
   }
 
   print(p1)
@@ -1298,16 +1477,40 @@ plot_mixture_weights_ggplot <- function(x, overlay_data = TRUE, ...) {
   df_z <- data.frame(time = time_grid, prob = z_prob)
 
   p2 <- ggplot2::ggplot(df_z, ggplot2::aes(x = time, y = prob)) +
-    ggplot2::geom_col(ggplot2::aes(fill = prob > 0.5), width = 1) +
-    ggplot2::scale_fill_manual(values = c("gray70", "purple"),
-                               labels = c("P(z = 1) ≤ 0.5", "P(z = 1) > 0.5")) +
-    ggplot2::geom_hline(yintercept = 0.5, color = "red", linetype = "dashed", linewidth = 1) +
-    ggplot2::labs(title = expression(paste("Component Membership: ", z[t])),
-                  x = "Time", y = expression(P(z[t] == 1)),
-                  fill = NULL) +
-    ggplot2::ylim(0, 1) +
+    ggplot2::geom_col(
+      ggplot2::aes(fill = prob > 0.5),
+      width = 1
+    ) +
+    ggplot2::scale_fill_manual(
+      values = c("TRUE" = "purple", "FALSE" = "blue"),
+      breaks = c("FALSE", "TRUE"),
+      labels = c("P(z = 1 | data) ≤ 0.5", "P(z = 1 | data) > 0.5")
+    ) +
+    ggplot2::geom_hline(
+      yintercept = 0.5,
+      color = "red",
+      linetype = "dashed",
+      linewidth = 1
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1.1),
+      breaks = c(0, 0.5, 1)
+    ) +
+    ggplot2::labs(
+      title = expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
+      x = "Time",
+      y = expression(paste("P(", z[t], " = 1 | data)")),
+      fill = NULL
+    ) +
     ggplot2::theme_minimal() +
-    ggplot2::theme(legend.position = "top")
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(color = "grey85"),
+      panel.grid.minor = ggplot2::element_line(color = "grey92"),
+      panel.grid.major.x = ggplot2::element_blank(),
+      plot.title = ggplot2::element_text(face = "bold", size = 13),
+      legend.position = "top",
+      legend.direction = "horizontal"
+    )
 
   print(p2)
 

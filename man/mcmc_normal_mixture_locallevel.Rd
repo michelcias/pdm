@@ -1018,10 +1018,10 @@ out_probit <- mcmc_normal_mixture_locallevel(
 
   summary_df <- data.frame(
     Parameter = c(
-      "mu_1 (Logit)", "mu_1 (Probit)",
-      "mu_2 (Logit)", "mu_2 (Probit)",
-      "phi_1 (Logit)", "phi_1 (Probit)",
-      "phi_2 (Logit)", "phi_2 (Probit)"
+      "mu_1   (Logit)", "mu_1  (Probit)",
+      "mu_2   (Logit)", "mu_2  (Probit)",
+      "phi_1  (Logit)", "phi_1 (Probit)",
+      "phi_2  (Logit)", "phi_2 (Probit)"
     ),
     True_Value = c(
       mu_1_true, mu_1_true,
@@ -1060,7 +1060,7 @@ out_probit <- mcmc_normal_mixture_locallevel(
     stringsAsFactors = FALSE
   )
 
-  print(display_table, row.names = FALSE, right = FALSE)
+  print(display_table, row.names = FALSE, right = TRUE)
 
   cat("\nNote: CI_95 represents the 95\% credible interval (2.5\% and 97.5\% quantiles)\n")
 

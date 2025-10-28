@@ -110,26 +110,82 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Fit model
-#' out <- mcmc_normal_mixture_localtrend(y, link = "logit", ...)
+#' ## Simulation of data
+#' n <- 400  # Number of observations to simulate
+#'
+#' # Use a fixed seed for data simulation
+#' set.seed(123)
+#'
+#' # Generate true mixture weights following a sinusoidal pattern
+#' grid_vals <- seq_len(n) / n
+#' alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
+#'
+#' # Generate latent component indicators
+#' z_true <- rbinom(n, size = 1, prob = alpha_true)
+#'
+#' # Generate observations from mixture of N(0, 1/4) and N(2, 1/4)
+#' mu_1_true <- 0
+#' mu_2_true <- 2
+#' sigma_1_true <- 0.5  # sqrt(1/4)
+#' sigma_2_true <- 0.5  # sqrt(1/4)
+#'
+#' mu_y <- (1 - z_true) * mu_1_true + z_true * mu_2_true
+#' sigma_y <- (1 - z_true) * sigma_1_true + z_true * sigma_2_true
+#' y <- rnorm(n, mean = mu_y, sd = sigma_y)
+#'
+#' ## Running the Gibbs sampler with logit link
+#' out_logit <- mcmc_normal_mixture_localtrend(
+#'   y,
+#'   link               = "logit",
+#'   burnin             = 2000,
+#'   thinning           = 10,
+#'   n_chain            = 1000,
+#'   prior_mu01_mean    = NULL,  # Use default (25th percentile)
+#'   prior_mu01_prec    = 0.01,
+#'   prior_prec01_shape = 0.01,
+#'   prior_prec01_rate  = 0.01,
+#'   prior_mu02_mean    = NULL,  # Use default (75th percentile)
+#'   prior_mu02_prec    = 0.01,
+#'   prior_prec02_shape = 0.01,
+#'   prior_prec02_rate  = 0.01,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_theta02_mean = 0,
+#'   prior_theta02_prec = 1,
+#'   prior_prec1_shape  = 100,
+#'   prior_prec1_rate   = 1,
+#'   prior_prec2_shape  = 400,
+#'   prior_prec2_rate   = 1,
+#'   lag_update         = 50,
+#'   max_step_size      = 1.0,
+#'   base_adaptation_rate = 0.01,
+#'   decay_exponent     = 0.6,
+#'   target_acceptance  = 0.44,
+#'   min_deviation_threshold = NULL,  # Use default (1/lag_update)
+#'   return_log_sigma   = FALSE,
+#'   return_accept_prop = FALSE,
+#'   verbose            = TRUE,
+#'   bar_width          = 60,
+#'   seed               = 456
+#' )
 #'
 #' # Complete dashboard (12 pages)
-#' plot(out, type = "all", engine = "base")
+#' plot(out_logit, type = "all", engine = "base")
 #'
 #' # Diagnostics for specific parameters
-#' plot(out, type = "mcmc", which = 1:2)  # Only mu_1 and mu_2
-#' plot(out, type = "mcmc", which = 3:4)  # Only phi_1 and phi_2
+#' plot(out_logit, type = "mcmc", which = 1:2)  # Only mu_1 and mu_2
+#' plot(out_logit, type = "mcmc", which = 3:4)  # Only phi_1 and phi_2
 #'
 #' # Mixture weights (2 pages: alpha_t and z_t)
-#' plot(out, type = "alpha")
+#' plot(out_logit, type = "alpha")
 #'
 #' # Save to multi-page PDF
 #' pdf("diagnostics.pdf", width = 10, height = 8)
-#' plot(out, type = "all", ask = FALSE)
+#' plot(out_logit, type = "all", ask = FALSE)
 #' dev.off()
 #'
 #' # Use ggplot2 engine
-#' plot(out, type = "mcmc", which = 1, engine = "ggplot2")
+#' plot(out_logit, type = "mcmc", which = 1, engine = "ggplot2")
 #' }
 #'
 #' @seealso \code{\link{mcmc_normal_mixture_localtrend}},

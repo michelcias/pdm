@@ -824,7 +824,7 @@ plot_param_diagnostics_ggplot <- function(param_samples,
                        "phi_1" = expression(phi[1]),
                        "phi_2" = expression(phi[2]),
                        "theta_01" = expression(theta["0,1"]),
-                       "W_1^{-1}" = expression(W[1]^{-1]),
+                       "W_1^{-1}" = expression(W[1]^{-1}),
                        param_label_text  # fallback to original text
   )
 

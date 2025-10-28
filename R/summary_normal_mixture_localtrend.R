@@ -122,10 +122,6 @@ summary.normal_mixture_localtrend <- function(object,
                                               probs = c(0.025, 0.975),
                                               ...) {
 
-  if (!inherits(object, "normal_mixture_localtrend")) {
-    stop("Object must be of class 'normal_mixture_localtrend'")
-  }
-
   # Validate input
   if (!inherits(object, "normal_mixture_localtrend")) {
     stop("Object must be of class 'normal_mixture_localtrend'")

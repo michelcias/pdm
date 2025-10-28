@@ -330,8 +330,11 @@ plot_param_diagnostics <- function(param_samples,
 
   # 4. Running Mean (Convergence Check)
   running_mean <- cumsum(param_samples) / seq_along(param_samples)
+  range_running <- range(running_mean, median(param_samples))
+  range_running[2] <- range_running[2] + 0.25 * diff(range_running)
+
   plot(running_mean, type = "l", col = "steelblue", lwd = 2,
-       xlab = "Iteration", ylab = param_label,
+       xlab = "Iteration", ylab = param_label, ylim = range_running,
        main = "Running Mean")
   segments(x0 = 1, y0 = median(param_samples),
            x1 = length(param_samples), y1 = median(param_samples),

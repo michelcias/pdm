@@ -192,7 +192,7 @@ out_logit <- mcmc_normal_mixture_locallevel(
   seed               = 456
 )
 
-# Complete dashboard (12 pages)
+# Complete dashboard (10 pages)
 plot(out_logit, type = "all", engine = "base")
 
 # Diagnostics for specific parameters

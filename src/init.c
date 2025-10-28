@@ -10,12 +10,15 @@
  * @version 1.6
  *
  * @changelog
+ * - v1.7 (2025-10-25): Added registration for Gaussian mixture model with
+ *     local-acceleration weights.
+ *     C_MCMC_normal_mixture_localacceleration: 35 args
  * - v1.6 (2025-10-24): Added registration for Gaussian mixture model with dynamic
  *     weights and local-level structure.
  *     C_MCMC_normal_mixture_locallevel: 27 args
  * - v1.5 (2025-10-23): Added registration for Gaussian mixture model with dynamic
  *     weights and local trend structure.
- *     C_MCMC_normal_mixture_localtrend: 30 args
+ *     C_MCMC_normal_mixture_localtrend: 31 args
  * - v1.4 (2025-10-15): Updated argument counts for binomial MCMC functions to
  *     include new verbose and bar_width parameters for progress bar support.
  *     C_MCMC_logit_binomial_localtrend: 21 -> 23 args
@@ -40,6 +43,7 @@
 #include "mcmc_normal_localtrend.h"
 #include "mcmc_normal_localacceleration.h"
 #include "mcmc_normal_mixture_locallevel.h"
+#include "mcmc_normal_mixture_localacceleration.h"
 #include "mcmc_normal_mixture_localtrend.h"
 #include "mcmc_binomial_locallevel.h"
 #include "mcmc_binomial_localtrend.h"
@@ -65,7 +69,8 @@
  *          - C_MCMC_normal_localtrend: Gaussian local trend model (16 args)
  *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (20 args)
  *          - C_MCMC_normal_mixture_locallevel: Gaussian mixture with local-level weights (27 args)
- *          - C_MCMC_normal_mixture_localtrend: Gaussian mixture with dynamic weights (30 args)
+ *          - C_MCMC_normal_mixture_localacceleration: Gaussian mixture with local-acceleration weights (35 args)
+ *          - C_MCMC_normal_mixture_localtrend: Gaussian mixture with dynamic weights (31 args)
  *          - C_MCMC_logit_binomial_locallevel: Binomial local level with logit link (19 args)
  *          - C_MCMC_logit_binomial_localtrend: Binomial local trend with logit link (23 args)
  *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration with logit (27 args)
@@ -148,8 +153,9 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 20},
 
   // --- Gaussian Mixture Models with Dynamic Weights ---
-  {"_pdm_C_MCMC_normal_mixture_locallevel",       (DL_FUNC) &C_MCMC_normal_mixture_locallevel, 27},
-  {"_pdm_C_MCMC_normal_mixture_localtrend",       (DL_FUNC) &C_MCMC_normal_mixture_localtrend, 31},
+  {"_pdm_C_MCMC_normal_mixture_locallevel",             (DL_FUNC) &C_MCMC_normal_mixture_locallevel,             27},
+  {"_pdm_C_MCMC_normal_mixture_localacceleration",      (DL_FUNC) &C_MCMC_normal_mixture_localacceleration,      35},
+  {"_pdm_C_MCMC_normal_mixture_localtrend",             (DL_FUNC) &C_MCMC_normal_mixture_localtrend,             31},
 
   // --- Binomial Dynamic Models (Logit Link) ---
   {"_pdm_C_MCMC_logit_binomial_locallevel",              (DL_FUNC) &C_MCMC_logit_binomial_locallevel,        19},

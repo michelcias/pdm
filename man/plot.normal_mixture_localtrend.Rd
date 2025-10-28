@@ -11,6 +11,8 @@
   engine = c("base", "ggplot2"),
   ask = NULL,
   overlay_data = TRUE,
+  ci = TRUE,
+  ci_level = 0.95,
   ...
 )
 }
@@ -54,6 +56,12 @@ If \code{NULL} (default), all available plots are shown.}
 
 \item{overlay_data}{Logical; for \code{type = "alpha"}, whether to overlay
 the original data (if available). Default is \code{TRUE}.}
+
+\item{ci}{Logical; whether to display credible intervals in plots that
+support them. Default is \code{TRUE}.}
+
+\item{ci_level}{Numeric; Bayesian confidence level for credible intervals
+(between 0 and 1). Default is \code{0.95}.}
 
 \item{...}{Additional arguments passed to plotting functions.}
 }
@@ -101,13 +109,13 @@ Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, theta_02, W_1^{-1}, W_
 
 \strong{Complete Dashboard (\code{type = "all"}):}
 
-Generates 12 pages in total:
+Generates 13 pages in total:
 \itemize{
   \item Pages 1-8: Individual parameter diagnostics (4 panels each)
-  \item Page 9: Mixture parameters overview
-  \item Page 10: Dynamic states overview
-  \item Page 11: Mixture weight alpha_t
-  \item Page 12: Component membership z_t
+  \item Page 9: Mixture parameters (bivariate relationships)
+  \item Pages 10-11: Dynamic state trajectories and diagnostics
+  \item Page 12: Mixture weight alpha_t
+  \item Page 13: Component membership P(z_t = 1 | data)
 }
 
 The \code{engine} argument allows choosing between base R graphics (lightweight,

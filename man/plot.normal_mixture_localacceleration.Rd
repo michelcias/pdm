@@ -42,7 +42,7 @@ For \code{type = "mcmc"}:
   \item{9}{W_2^{-1} (trend innovation precision)}
   \item{10}{W_3^{-1} (acceleration innovation precision)}
 }
-For \code{type = "params"}: indices of subplots.
+For \code{type = "params"}: indices of subplots (1-4).
 For \code{type = "states"}:
 \describe{
   \item{1}{State trajectories for level, trend, and acceleration}
@@ -93,7 +93,8 @@ Each parameter gets a dedicated page with 4 panels:
   \item \strong{Running Mean:} Cumulative mean to assess convergence
 }
 
-Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, theta_02, theta_03, W_1^{-1}, W_2^{-1}, W_3^{-1}
+Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, theta_02, theta_03,
+W_1^{-1}, W_2^{-1}, W_3^{-1}
 
 \strong{Mixture Parameters (\code{type = "params"}):}
 \itemize{
@@ -106,7 +107,7 @@ Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, theta_02, theta_03, W_
 \itemize{
   \item Time-varying trajectories for level, trend, and acceleration states with credible bands
   \item Innovation sequences for each latent state component
-  \item Pairwise state-space visualisations for (theta_1, theta_2, theta_3)
+  \item Pairwise state-space visualizations for (theta_1, theta_2, theta_3)
 }
 
 \strong{Mixture Weights (\code{type = "alpha"}):}
@@ -136,13 +137,11 @@ with a warning.
 
 The ggplot2 engine has optional dependencies for enhanced visualizations:
 \itemize{
-  \item \pkg{hexbin}: For hexagonal binning in joint posterior plots
   \item \pkg{patchwork}: For combining multiple plots into layouts
 }
 
-If these packages are not installed, the function will use fallback methods
-(e.g., scatterplots instead of hexbins). Install with:
-\code{install.packages(c("hexbin", "patchwork"))}
+If this package is not installed, plots will be displayed sequentially.
+Install with: \code{install.packages("patchwork")}
 }
 
 \examples{
@@ -153,9 +152,9 @@ n <- 400  # Number of observations to simulate
 # Use a fixed seed for data simulation
 set.seed(123)
 
-# Generate true mixture weights following a sinusoidal pattern
+# Generate true mixture weights following a multi-frequency sinusoidal pattern
 grid_vals <- seq_len(n) / n
-alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
+alpha_true <- (sin(4 * pi * grid_vals) + sin(8 * pi * grid_vals) + 2) / 4
 
 # Generate latent component indicators
 z_true <- rbinom(n, size = 1, prob = alpha_true)
@@ -215,7 +214,10 @@ plot(out_logit, type = "all", engine = "base")
 
 # Diagnostics for specific parameters
 plot(out_logit, type = "mcmc", which = 1:2)  # Only mu_1 and mu_2
-plot(out_logit, type = "mcmc", which = 3:4)  # Only phi_1 and phi_2
+plot(out_logit, type = "mcmc", which = 5:7)  # Initial states
+
+# Dynamic states only
+plot(out_logit, type = "states")
 
 # Mixture weights (2 pages: alpha_t and z_t)
 plot(out_logit, type = "alpha")
@@ -232,5 +234,6 @@ plot(out_logit, type = "mcmc", which = 1, engine = "ggplot2")
 }
 \seealso{
 \code{\link{mcmc_normal_mixture_localacceleration}},
-  \code{\link{summary.normal_mixture_localacceleration}}
+  \code{\link{summary.normal_mixture_localacceleration}},
+  \code{\link{print.normal_mixture_localacceleration}}
 }

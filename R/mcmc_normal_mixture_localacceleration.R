@@ -626,6 +626,21 @@
 #'   par(mfrow = c(1, 1))
 #' }
 #'
+#' @references
+#' Albert, J. H., & Chib, S. (1993). Bayesian Analysis of Binary and Polychotomous
+#' Response Data. \emph{Journal of the American Statistical Association}, 88(422), 669-679.
+#' https://doi.org/10.1080/01621459.1993.10476321
+#'
+#' Montoril, M. H., Correia, L. T., & Migon, H. S. (2021). Bayesian estimation of
+#' dynamic weights in Gaussian mixture models. arXiv:2104.03395.
+#'
+#' Roberts, G. O., & Rosenthal, J. S. (2009). Examples of Adaptive MCMC.
+#' \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
+#' https://doi.org/10.1198/jcgs.2009.06134
+#'
+#' @seealso \code{\link{mcmc_normal_mixture_locallevel}},
+#'  \code{\link{mcmc_normal_mixture_localtrend}}
+#'
 #' @export
 mcmc_normal_mixture_localacceleration <- function(y,
                                                   link = c("logit", "probit"),
@@ -663,6 +678,9 @@ mcmc_normal_mixture_localacceleration <- function(y,
                                                   verbose = FALSE,
                                                   bar_width = 60,
                                                   seed = NULL) {
+  # --- Input Validation ---
+
+  # Validate y
   if (!is.numeric(y)) {
     stop("`y` must be a numeric vector")
   }
@@ -673,8 +691,10 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`y` must have at least 3 observations")
   }
 
+  # Validate and match link argument
   link <- match.arg(link)
 
+  # Validate MCMC control parameters
   if (!is.numeric(burnin) || length(burnin) != 1 || burnin < 0 || burnin != floor(burnin)) {
     stop("`burnin` must be a single non-negative integer")
   }
@@ -685,6 +705,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`n_chain` must be a single positive integer")
   }
 
+  # Set intelligent defaults for mixture component priors based on data
   if (is.null(prior_mu01_mean)) {
     prior_mu01_mean <- as.numeric(quantile(y, 0.25))
   }
@@ -692,6 +713,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     prior_mu02_mean <- as.numeric(quantile(y, 0.75))
   }
 
+  # Validate mixture component prior parameters
   if (!is.numeric(prior_mu01_mean) || length(prior_mu01_mean) != 1) {
     stop("`prior_mu01_mean` must be a single numeric value")
   }
@@ -718,6 +740,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`prior_prec02_rate` must be a single positive numeric value")
   }
 
+  # Validate dynamic state prior parameters
   if (!is.numeric(prior_theta01_mean) || length(prior_theta01_mean) != 1) {
     stop("`prior_theta01_mean` must be a single numeric value")
   }
@@ -756,6 +779,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`prior_prec3_rate` must be a single positive numeric value")
   }
 
+  # Validate adaptation parameters (used only for logit link)
   if (!is.numeric(lag_update) || length(lag_update) != 1 || lag_update < 1 || lag_update != floor(lag_update)) {
     stop("`lag_update` must be a single positive integer")
   }
@@ -772,6 +796,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`target_acceptance` must be a single numeric value in (0, 1)")
   }
 
+  # Set default for min_deviation_threshold if NULL
   if (is.null(min_deviation_threshold)) {
     min_deviation_threshold <- 1.0 / lag_update
   }
@@ -779,6 +804,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`min_deviation_threshold` must be a single non-negative numeric value")
   }
 
+  # Validate diagnostic output flags
   if (!is.logical(return_log_sigma) || length(return_log_sigma) != 1) {
     stop("`return_log_sigma` must be a single logical value")
   }
@@ -786,6 +812,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`return_accept_prop` must be a single logical value")
   }
 
+  # Validate progress bar parameters
   if (!is.logical(verbose) || length(verbose) != 1) {
     stop("`verbose` must be a single logical value")
   }
@@ -793,6 +820,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`bar_width` must be a single integer in [10, 120]")
   }
 
+  # Validate and set seed if provided
   if (!is.null(seed)) {
     if (!is.numeric(seed) || length(seed) != 1 || seed != floor(seed)) {
       stop("`seed` must be a single integer value")
@@ -800,6 +828,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     set.seed(seed)
   }
 
+  # Issue warning if diagnostic flags are set for probit link (they will be ignored)
   if (link == "probit") {
     if (return_log_sigma) {
       warning("Argument `return_log_sigma` is ignored when link = 'probit'")
@@ -808,6 +837,8 @@ mcmc_normal_mixture_localacceleration <- function(y,
       warning("Argument `return_accept_prop` is ignored when link = 'probit'")
     }
   }
+
+  # --- End Input Validation ---
 
   result <- .Call(
     "_pdm_C_MCMC_normal_mixture_localacceleration",

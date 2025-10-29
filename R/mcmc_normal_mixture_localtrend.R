@@ -1209,7 +1209,8 @@
 #' \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
 #' https://doi.org/10.1198/jcgs.2009.06134
 #'
-#' @seealso \code{\link{mcmc_probit_bernoulli_localtrend}}, \code{\link{mcmc_binomial_localtrend}}
+#' @seealso \code{\link{mcmc_probit_bernoulli_localtrend}},
+#'  \code{\link{mcmc_binomial_localtrend}}
 #' @export
 mcmc_normal_mixture_localtrend <- function(y,
                                            link = c("logit", "probit"),

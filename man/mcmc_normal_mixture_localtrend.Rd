@@ -1285,5 +1285,6 @@ Roberts, G. O., & Rosenthal, J. S. (2009). Examples of Adaptive MCMC.
 https://doi.org/10.1198/jcgs.2009.06134
 }
 \seealso{
-\code{\link{mcmc_probit_bernoulli_localtrend}}, \code{\link{mcmc_binomial_localtrend}}
+\code{\link{mcmc_probit_bernoulli_localtrend}},
+ \code{\link{mcmc_binomial_localtrend}}
 }

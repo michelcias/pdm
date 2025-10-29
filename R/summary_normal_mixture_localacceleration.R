@@ -22,8 +22,7 @@
 #'     \item{\code{mixture_params}}{Data frame with summary statistics for
 #'       mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
 #'     \item{\code{state_params}}{Data frame with summary statistics for
-#'       dynamic state parameters (theta_01, theta_02, theta_03, W_1^{-1},
-#'       W_2^{-1}, W_3^{-1})}
+#'       dynamic state parameters (theta_01, theta_02, theta_03, W_1^{-1}, W_2^{-1}, W_3^{-1})}
 #'     \item{\code{alpha_summary}}{Summary statistics for the mixture weights
 #'       alpha_t (min, median, max across time)}
 #'   }
@@ -50,9 +49,9 @@
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
 #'
-#' # Generate true mixture weights following a sinusoidal pattern
+#' # Generate true mixture weights following a multi-frequency sinusoidal pattern
 #' grid_vals <- seq_len(n) / n
-#' alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
+#' alpha_true <- (sin(4 * pi * grid_vals) + sin(8 * pi * grid_vals) + 2) / 4
 #'
 #' # Generate latent component indicators
 #' z_true <- rbinom(n, size = 1, prob = alpha_true)
@@ -127,10 +126,6 @@ summary.normal_mixture_localacceleration <- function(object,
                                                      probs = c(0.025, 0.975),
                                                      ...) {
 
-  if (!inherits(object, "normal_mixture_localacceleration")) {
-    stop("Object must be of class 'normal_mixture_localacceleration'")
-  }
-
   # Validate input
   if (!inherits(object, "normal_mixture_localacceleration")) {
     stop("Object must be of class 'normal_mixture_localacceleration'")
@@ -171,9 +166,10 @@ summary.normal_mixture_localacceleration <- function(object,
     )
   )
 
-  # Dynamic state parameters
+  # Dynamic state parameters (local acceleration: 6 parameters)
   state_params <- data.frame(
-    Parameter = c("theta_01", "theta_02", "theta_03", "W_1^-1", "W_2^-1", "W_3^-1"),
+    Parameter = c("theta_01", "theta_02", "theta_03",
+                  "W_1^-1", "W_2^-1", "W_3^-1"),
     rbind(
       compute_stats(object$theta_01, probs),
       compute_stats(object$theta_02, probs),
@@ -234,9 +230,9 @@ summary.normal_mixture_localacceleration <- function(object,
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
 #'
-#' # Generate true mixture weights following a sinusoidal pattern
+#' # Generate true mixture weights following a multi-frequency sinusoidal pattern
 #' grid_vals <- seq_len(n) / n
-#' alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
+#' alpha_true <- (sin(4 * pi * grid_vals) + sin(8 * pi * grid_vals) + 2) / 4
 #'
 #' # Generate latent component indicators
 #' z_true <- rbinom(n, size = 1, prob = alpha_true)
@@ -328,7 +324,6 @@ print.summary.normal_mixture_localacceleration <- function(x, digits = 3, ...) {
   cat("Mixture Component Parameters:\n")
   cat(strrep("-", 75), "\n", sep = "")
 
-  # Format the table
   mixture_print <- x$mixture_params
   mixture_print[, -1] <- lapply(mixture_print[, -1], function(col) {
     sprintf(paste0("%.", digits, "f"), col)

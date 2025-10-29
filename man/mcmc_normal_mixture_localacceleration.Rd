@@ -709,3 +709,19 @@ out_probit <- mcmc_normal_mixture_localacceleration(
 }
 
 }
+\references{
+Albert, J. H., & Chib, S. (1993). Bayesian Analysis of Binary and Polychotomous
+Response Data. \emph{Journal of the American Statistical Association}, 88(422), 669-679.
+https://doi.org/10.1080/01621459.1993.10476321
+
+Montoril, M. H., Correia, L. T., & Migon, H. S. (2021). Bayesian estimation of
+dynamic weights in Gaussian mixture models. arXiv:2104.03395.
+
+Roberts, G. O., & Rosenthal, J. S. (2009). Examples of Adaptive MCMC.
+\emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
+https://doi.org/10.1198/jcgs.2009.06134
+}
+\seealso{
+\code{\link{mcmc_normal_mixture_locallevel}},
+ \code{\link{mcmc_normal_mixture_localtrend}}
+}

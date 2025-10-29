@@ -29,9 +29,9 @@ n <- 400  # Number of observations to simulate
 # Use a fixed seed for data simulation
 set.seed(123)
 
-# Generate true mixture weights following a sinusoidal pattern
+# Generate true mixture weights following a multi-frequency sinusoidal pattern
 grid_vals <- seq_len(n) / n
-alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
+alpha_true <- (sin(4 * pi * grid_vals) + sin(8 * pi * grid_vals) + 2) / 4
 
 # Generate latent component indicators
 z_true <- rbinom(n, size = 1, prob = alpha_true)

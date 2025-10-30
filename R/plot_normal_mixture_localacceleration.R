@@ -364,10 +364,9 @@ plot_mcmc_diagnostics_base_localacceleration <- function(x, which = NULL, ...) {
 plot_dynamic_states_base_localacceleration <- function(x, which = NULL, ci = TRUE,
                                                        ci_level = 0.95, ...) {
 
+  validate_ci_level(ci_level)
+
   if (ci) {
-    if (!is.numeric(ci_level) || length(ci_level) != 1 || ci_level <= 0 || ci_level >= 1) {
-      stop("`ci_level` must be a single numeric value between 0 and 1")
-    }
     ci_lower_prob <- (1 - ci_level) / 2
     ci_upper_prob <- 1 - ci_lower_prob
     ci_label <- paste0(round(ci_level * 100), "% CI")
@@ -413,7 +412,7 @@ plot_dynamic_states_base_localacceleration <- function(x, which = NULL, ci = TRU
       if (diff(range_vals) == 0) {
         range_vals <- range_vals + c(-0.5, 0.5)
       }
-      range_vals[2] <- range_vals[2] + 0.25 * diff(range_vals)
+      range_vals[2] <- range_vals[2] + 0.3 * diff(range_vals)
 
       plot(time_grid, summary$median, type = "l", lwd = 2, col = col_line,
            xlab = "Time", ylab = "State Value",
@@ -493,7 +492,7 @@ plot_dynamic_states_base_localacceleration <- function(x, which = NULL, ci = TRU
       if (diff(range_vals) == 0) {
         range_vals <- range_vals + c(-0.5, 0.5)
       }
-      range_vals[2] <- range_vals[2] + 0.25 * diff(range_vals)
+      range_vals[2] <- range_vals[2] + 0.3 * diff(range_vals)
 
       plot(time_grid, summary$median, type = "h", lwd = 2, col = col_bar,
            xlab = "Time", ylab = ylab, main = main_title, ylim = range_vals)
@@ -523,9 +522,9 @@ plot_dynamic_states_base_localacceleration <- function(x, which = NULL, ci = TRU
                           theta2_summary$median,
                           theta3_summary$median))
     if (diff(ylim_range) == 0) {
-      ylim_range <- ylim_range + c(-0.5, 0.5)
+      ylim_range <- ylim_range + c(-0.75, 0.75)
     }
-    ylim_range[2] <- ylim_range[2] + 0.25 * diff(ylim_range)
+    ylim_range[2] <- ylim_range[2] + 0.3 * diff(ylim_range)
 
     plot(time_grid, theta1_summary$median, type = "l", lwd = 2,
          col = "black", xlab = "Time", ylab = "State Value",
@@ -658,9 +657,7 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
     stop("Package 'ggplot2' is required")
   }
 
-  if (!is.numeric(ci_level) || length(ci_level) != 1 || ci_level <= 0 || ci_level >= 1) {
-    stop("`ci_level` must be a single numeric value between 0 and 1")
-  }
+  validate_ci_level(ci_level)
 
   if (is.null(which)) {
     which <- 1:3
@@ -677,6 +674,7 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
   if (ci) {
     ci_lower_prob <- (1 - ci_level) / 2
     ci_upper_prob <- 1 - ci_lower_prob
+    ci_pct <- round(ci_level * 100)
   }
 
   base_theme <- ggplot2::theme_minimal(base_size = 12) +
@@ -685,6 +683,12 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
       panel.grid.minor = ggplot2::element_line(color = "grey92"),
       plot.title = ggplot2::element_text(face = "bold", size = 13)
     )
+
+  legend_outside <- ggplot2::theme(
+    legend.position = "top",
+    legend.title = ggplot2::element_blank(),
+    legend.direction = "horizontal"
+  )
 
   summarise_series <- function(mat) {
     df <- data.frame(
@@ -730,45 +734,148 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
   trend_df <- summarise_series(trend_innov)
   accel_df <- summarise_series(accel_innov)
 
-  create_state_plot <- function(df, title, colour) {
-    p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$time))
-    if (ci && "lower" %in% names(df)) {
-      p <- p + ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = .data$lower, ymax = .data$upper),
-        fill = "gray80", alpha = 0.4, colour = NA
-      )
-    }
-    p + ggplot2::geom_line(ggplot2::aes(y = .data$median),
-                           colour = colour, linewidth = 1.2) +
-      ggplot2::labs(title = title, x = "Time", y = "State Value") +
-      base_theme
-  }
-
-  create_innovation_plot <- function(df, title, ylab, colour) {
-    p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$time))
-    if (ci && "lower" %in% names(df)) {
-      p <- p + ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = .data$lower, ymax = .data$upper),
-        fill = "gray80", alpha = 0.35, colour = NA
-      )
-    }
-    p + ggplot2::geom_segment(
-      ggplot2::aes(xend = .data$time, y = 0, yend = .data$median),
-      colour = colour, linewidth = 1.05
-    ) +
-      ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed",
-                          linewidth = 0.8) +
-      ggplot2::labs(title = title, x = "Time", y = ylab) +
-      base_theme
-  }
-
   # Page 1: State trajectories
   if (1 %in% which) {
-    plots <- list(
-      create_state_plot(theta1_df, "Level State", "black"),
-      create_state_plot(theta2_df, "Trend State", "steelblue"),
-      create_state_plot(theta3_df, "Acceleration State", "firebrick")
-    )
+    # Create individual state plots with proper legends
+    p_level <- ggplot2::ggplot(theta1_df, ggplot2::aes(x = .data$time))
+
+    if (ci) {
+      p_level <- p_level +
+        ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
+          alpha = 0.5, colour = NA
+        )
+    }
+
+    p_level <- p_level +
+      ggplot2::geom_line(
+        ggplot2::aes(y = .data$median, colour = "Median"),
+        linewidth = 1.2
+      ) +
+      ggplot2::scale_color_manual(
+        values = c("Median" = "black"),
+        breaks = "Median",
+        labels = expression(hat(theta)["t,1"])
+      )
+
+    if (ci) {
+      p_level <- p_level +
+        ggplot2::scale_fill_manual(
+          values = c("CI" = "gray70"),
+          breaks = "CI",
+          labels = paste0(ci_pct, "% CI")
+        ) +
+        ggplot2::guides(
+          colour = ggplot2::guide_legend(order = 1),
+          fill = ggplot2::guide_legend(order = 2)
+        )
+    } else {
+      p_level <- p_level +
+        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+    }
+
+    p_level <- p_level +
+      ggplot2::labs(
+        title = "Level State",
+        x = "Time",
+        y = "State Value"
+      ) +
+      base_theme +
+      legend_outside
+
+    p_trend <- ggplot2::ggplot(theta2_df, ggplot2::aes(x = .data$time))
+
+    if (ci) {
+      p_trend <- p_trend +
+        ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
+          alpha = 0.5, colour = NA
+        )
+    }
+
+    p_trend <- p_trend +
+      ggplot2::geom_line(
+        ggplot2::aes(y = .data$median, colour = "Median"),
+        linewidth = 1.2
+      ) +
+      ggplot2::scale_color_manual(
+        values = c("Median" = "steelblue"),
+        breaks = "Median",
+        labels = expression(hat(theta)["t,2"])
+      )
+
+    if (ci) {
+      p_trend <- p_trend +
+        ggplot2::scale_fill_manual(
+          values = c("CI" = "gray70"),
+          breaks = "CI",
+          labels = paste0(ci_pct, "% CI")
+        ) +
+        ggplot2::guides(
+          colour = ggplot2::guide_legend(order = 1),
+          fill = ggplot2::guide_legend(order = 2)
+        )
+    } else {
+      p_trend <- p_trend +
+        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+    }
+
+    p_trend <- p_trend +
+      ggplot2::labs(
+        title = "Trend State",
+        x = "Time",
+        y = "State Value"
+      ) +
+      base_theme +
+      legend_outside
+
+    p_accel <- ggplot2::ggplot(theta3_df, ggplot2::aes(x = .data$time))
+
+    if (ci) {
+      p_accel <- p_accel +
+        ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
+          alpha = 0.5, colour = NA
+        )
+    }
+
+    p_accel <- p_accel +
+      ggplot2::geom_line(
+        ggplot2::aes(y = .data$median, colour = "Median"),
+        linewidth = 1.2
+      ) +
+      ggplot2::scale_color_manual(
+        values = c("Median" = "firebrick"),
+        breaks = "Median",
+        labels = expression(hat(theta)["t,3"])
+      )
+
+    if (ci) {
+      p_accel <- p_accel +
+        ggplot2::scale_fill_manual(
+          values = c("CI" = "gray70"),
+          breaks = "CI",
+          labels = paste0(ci_pct, "% CI")
+        ) +
+        ggplot2::guides(
+          colour = ggplot2::guide_legend(order = 1),
+          fill = ggplot2::guide_legend(order = 2)
+        )
+    } else {
+      p_accel <- p_accel +
+        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+    }
+
+    p_accel <- p_accel +
+      ggplot2::labs(
+        title = "Acceleration State",
+        x = "Time",
+        y = "State Value"
+      ) +
+      base_theme +
+      legend_outside
+
+    plots <- list(p_level, p_trend, p_accel)
 
     if (patchwork_available) {
       combined <- patchwork::wrap_plots(plots, ncol = 1) +
@@ -793,11 +900,50 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
 
   # Page 2: Innovations and joint trajectories
   if (2 %in% which) {
+    create_innovation_plot <- function(df, title, ylab, colour) {
+      p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$time))
+      if (ci && "lower" %in% names(df)) {
+        p <- p + ggplot2::geom_ribbon(
+          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
+          alpha = 0.4, colour = NA
+        )
+      }
+      p <- p + ggplot2::geom_segment(
+        ggplot2::aes(xend = .data$time, y = 0, yend = .data$median, colour = "Median"),
+        linewidth = 1.05
+      ) +
+        ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed",
+                            linewidth = 0.8) +
+        ggplot2::scale_color_manual(
+          values = c("Median" = colour),
+          breaks = "Median",
+          labels = "Median"
+        )
+
+      if (ci && "lower" %in% names(df)) {
+        p <- p + ggplot2::scale_fill_manual(
+          values = c("CI" = "gray70"),
+          breaks = "CI",
+          labels = paste0(ci_pct, "% CI")
+        ) +
+          ggplot2::guides(
+            colour = ggplot2::guide_legend(order = 1),
+            fill = ggplot2::guide_legend(order = 2)
+          )
+      } else {
+        p <- p + ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+      }
+
+      p + ggplot2::labs(title = title, x = "Time", y = ylab) +
+        base_theme +
+        legend_outside
+    }
+
     df_joint <- data.frame(
       time = rep(time_grid, 3),
       median = c(theta1_df$median, theta2_df$median, theta3_df$median),
-      state = factor(rep(c("Level", "Trend", "Acceleration"), each = n_obs),
-                     levels = c("Level", "Trend", "Acceleration"))
+      state = factor(rep(c("level", "trend", "acceleration"), each = n_obs),
+                     levels = c("level", "trend", "acceleration"))
     )
 
     p_joint <- ggplot2::ggplot(df_joint, ggplot2::aes(x = .data$time,
@@ -805,16 +951,22 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
                                                       colour = .data$state)) +
       ggplot2::geom_line(linewidth = 1.1) +
       ggplot2::scale_colour_manual(
-        values = c(Level = "black", Trend = "steelblue", Acceleration = "firebrick")
+        values = c(level = "black", trend = "steelblue", acceleration = "firebrick"),
+        breaks = c("level", "trend", "acceleration"),
+        labels = c(
+          expression(hat(theta)["t,1"]),
+          expression(hat(theta)["t,2"]),
+          expression(hat(theta)["t,3"])
+        )
       ) +
+      ggplot2::guides(colour = ggplot2::guide_legend(order = 1)) +
       ggplot2::labs(
         title = "Joint Trajectories",
         x = "Time",
-        y = "State Value",
-        colour = "State"
+        y = "State Value"
       ) +
       base_theme +
-      ggplot2::theme(legend.position = "top")
+      legend_outside
 
     plots <- list(
       create_innovation_plot(level_df, "Level Innovations",
@@ -863,7 +1015,6 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
     p12 <- ggplot2::ggplot(theta_df, ggplot2::aes(x = .data$theta1, y = .data$theta2)) +
       ggplot2::geom_point(colour = grDevices::rgb(0.2, 0.5, 0.8, 0.2), size = 1.2) +
       ggplot2::labs(
-        title = expression(paste(theta["t,1"], " vs ", theta["t,2"])),
         x = expression(theta["t,1"]),
         y = expression(theta["t,2"])
       ) +
@@ -873,7 +1024,6 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
     p13 <- ggplot2::ggplot(theta_df, ggplot2::aes(x = .data$theta1, y = .data$theta3)) +
       ggplot2::geom_point(colour = grDevices::rgb(0.8, 0.3, 0.3, 0.2), size = 1.2) +
       ggplot2::labs(
-        title = expression(paste(theta["t,1"], " vs ", theta["t,3"])),
         x = expression(theta["t,1"]),
         y = expression(theta["t,3"])
       ) +
@@ -883,7 +1033,6 @@ plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
     p23 <- ggplot2::ggplot(theta_df, ggplot2::aes(x = .data$theta2, y = .data$theta3)) +
       ggplot2::geom_point(colour = grDevices::rgb(0.3, 0.8, 0.4, 0.2), size = 1.2) +
       ggplot2::labs(
-        title = expression(paste(theta["t,2"], " vs ", theta["t,3"])),
         x = expression(theta["t,2"]),
         y = expression(theta["t,3"])
       ) +

@@ -440,10 +440,12 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
       labels = c("P(z = 1 | data) ≤ 0.5", "P(z = 1 | data) > 0.5")
     ) +
     ggplot2::geom_hline(
-      yintercept = 0.5,
+      ggplot2::aes(yintercept = 0.5, linetype = "Threshold"),
       color = "red",
-      linetype = "dashed",
       linewidth = 1
+    ) +
+    ggplot2::scale_linetype_manual(
+      values = c("Threshold" = "dashed")
     ) +
     ggplot2::scale_y_continuous(
       limits = c(0, 1.0),
@@ -453,7 +455,8 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
       title = expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
       x = "Time",
       y = expression(paste("P(", z[t], " = 1 | data)")),
-      fill = NULL
+      fill = NULL,
+      linetype = NULL
     ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
@@ -463,6 +466,10 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
       plot.title = ggplot2::element_text(face = "bold", size = 13),
       legend.position = "top",
       legend.direction = "horizontal"
+    ) +
+    ggplot2::guides(
+      fill = ggplot2::guide_legend(order = 1),
+      linetype = ggplot2::guide_legend(order = 2)
     )
 
   print(p2)

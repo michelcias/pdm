@@ -67,13 +67,17 @@
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is \code{NULL}, which does not set the seed.
 #'
-#' @return A list with components:
-#' \describe{
-#'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
-#'   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
-#'   \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
-#'   \item{`prec_y`}{Numeric vector of length `n_chain` of posterior samples for the data precision \eqn{1/V}.}
-#' }
+#' @return An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
+#'   containing the following components:
+#'   \describe{
+#'     \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
+#'     \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
+#'     \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
+#'     \item{`prec_y`}{Numeric vector of length `n_chain` of posterior samples for the data precision \eqn{1/V}.}
+#'   }
+#'   Metadata about the MCMC run (burn-in, thinning, number of retained
+#'   samples, and original data) are stored as attributes to facilitate S3
+#'   method dispatch.
 #'
 #' @examples
 #' ## Description
@@ -397,7 +401,7 @@ mcmc_normal_locallevel <- function(y,
   # --- End Input Validation ---
 
   # Call the C function
-  .Call(
+  result <- .Call(
     "_pdm_C_MCMC_normal_locallevel",
     as.numeric(y),
     as.integer(burnin),
@@ -412,4 +416,17 @@ mcmc_normal_locallevel <- function(y,
     as.logical(verbose),
     as.integer(bar_width)
   )
+
+  result <- new_normal_locallevel(
+    result = result,
+    n_obs = length(y),
+    n_chain = n_chain,
+    burnin = burnin,
+    thinning = thinning,
+    y = y
+  )
+
+  result <- validate_normal_locallevel(result)
+
+  return(result)
 }

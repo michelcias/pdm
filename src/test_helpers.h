@@ -368,7 +368,7 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_,
  *
  * @param theta_1_in_     Numeric vector with the previous state draws.
  * @param theta_01_in_    Scalar prior mean for the initial state.
- * @param prec_1_in_      Scalar prior precision for the state.
+ * @param prec_theta1_in_      Scalar prior precision for the state.
  * @param y_              Observed binomial counts.
  * @param n_trials_       Scalar number of trials for the binomial likelihood.
  * @param log_sigma_in_   Numeric vector of proposal log standard deviations.
@@ -377,7 +377,7 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_,
  */
 SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
                                                SEXP theta_01_in_,
-                                               SEXP prec_1_in_,
+                                               SEXP prec_theta1_in_,
                                                SEXP y_,
                                                SEXP n_trials_,
                                                SEXP log_sigma_in_);
@@ -392,7 +392,7 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
  * @param theta_2_in_   Numeric vector with the companion state draws.
  * @param theta_01_in_  Scalar prior mean for the first state.
  * @param theta_02_in_  Scalar prior mean for the second state.
- * @param prec_1_in_    Scalar prior precision for the first state.
+ * @param prec_theta1_in_    Scalar prior precision for the first state.
  * @param y_            Observed binomial counts.
  * @param n_trials_     Scalar number of trials for the binomial likelihood.
  *
@@ -402,7 +402,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
                                     SEXP theta_2_in_,
                                     SEXP theta_01_in_,
                                     SEXP theta_02_in_,
-                                    SEXP prec_1_in_,
+                                    SEXP prec_theta1_in_,
                                     SEXP y_,
                                     SEXP n_trials_);
 
@@ -414,7 +414,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
  *
  * @param theta_1_in_  Numeric vector with the previous state draws.
  * @param theta_01_in_ Scalar prior mean for the initial state.
- * @param prec_1_in_   Scalar prior precision for the state.
+ * @param prec_theta1_in_   Scalar prior precision for the state.
  * @param y_           Observed binomial counts.
  * @param n_trials_    Scalar number of trials for the binomial likelihood.
  *
@@ -422,7 +422,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
  */
 SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
                                                    SEXP theta_01_in_,
-                                                   SEXP prec_1_in_,
+                                                   SEXP prec_theta1_in_,
                                                    SEXP y_,
                                                    SEXP n_trials_);
 
@@ -436,7 +436,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
  * @param theta_2_in_  Numeric vector with the companion state draws.
  * @param theta_01_in_ Scalar prior mean for the first state.
  * @param theta_02_in_ Scalar prior mean for the second state.
- * @param prec_1_in_   Scalar prior precision for the first state.
+ * @param prec_theta1_in_   Scalar prior precision for the first state.
  * @param y_           Observed binomial counts.
  * @param n_trials_    Scalar number of trials for the binomial likelihood.
  *
@@ -446,7 +446,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_,
                                         SEXP theta_2_in_,
                                         SEXP theta_01_in_,
                                         SEXP theta_02_in_,
-                                        SEXP prec_1_in_,
+                                        SEXP prec_theta1_in_,
                                         SEXP y_,
                                         SEXP n_trials_);
 
@@ -458,14 +458,14 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_,
  *
  * @param theta_1_in_  Numeric vector with previous state draws.
  * @param theta_01_in_ Scalar prior mean for the initial state.
- * @param prec_1_in_   Scalar prior precision for the state.
+ * @param prec_theta1_in_   Scalar prior precision for the state.
  * @param y_           Observed Bernoulli outcomes.
  *
  * @return A list containing updated state draws and probit-scale alphas.
  */
 SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_,
                                                      SEXP theta_01_in_,
-                                                     SEXP prec_1_in_,
+                                                     SEXP prec_theta1_in_,
                                                      SEXP y_);
 
 /**
@@ -478,7 +478,7 @@ SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_,
  * @param theta_2_in_  Numeric vector with companion state draws.
  * @param theta_01_in_ Scalar prior mean for the first state.
  * @param theta_02_in_ Scalar prior mean for the second state.
- * @param prec_1_in_   Scalar prior precision for the first state.
+ * @param prec_theta1_in_   Scalar prior precision for the first state.
  * @param y_           Observed Bernoulli outcomes.
  *
  * @return A list containing updated state draws and probit-scale alphas.
@@ -487,7 +487,7 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
                                           SEXP theta_2_in_,
                                           SEXP theta_01_in_,
                                           SEXP theta_02_in_,
-                                          SEXP prec_1_in_,
+                                          SEXP prec_theta1_in_,
                                           SEXP y_);
 
 /**
@@ -500,13 +500,13 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
  *          **Conditional sampling behavior:**
  *          - If theta_1_true is provided (not NULL): theta_1 is fixed to true values (not sampled)
  *          - If theta_01_true is provided (not NULL): theta_01 is fixed to true value (not sampled)
- *          - If prec_1_true is provided (not NULL): prec_1 is fixed to true value (not sampled)
+ *          - If prec_theta1_true is provided (not NULL): prec_theta1 is fixed to true value (not sampled)
  *          - Otherwise: parameter is sampled normally from its conditional posterior
  *
  *          **Sampling sequence per iteration (when not fixed):**
- *          1. theta_1, alpha | y, theta_01, prec_1 -> CWMH with adaptive tuning
- *          2. prec_1 | theta_1, theta_01 -> Gamma posterior
- *          3. theta_01 | theta_1, prec_1 -> Normal posterior
+ *          1. theta_1, alpha | y, theta_01, prec_theta1 -> CWMH with adaptive tuning
+ *          2. prec_theta1 | theta_1, theta_01 -> Gamma posterior
+ *          3. theta_01 | theta_1, prec_theta1 -> Normal posterior
  *
  * @param y_                       Observed binomial counts [n].
  * @param n_trials_                Number of trials for each observation.
@@ -515,7 +515,7 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
  * @param n_chain_                 Number of chains to simulate.
  * @param theta_1_true_            Optional: true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_           Optional: true theta_01 value to fix (NULL = sample normally).
- * @param prec_1_true_             Optional: true prec_1 value to fix (NULL = sample normally).
+ * @param prec_theta1_true_             Optional: true prec_theta1 value to fix (NULL = sample normally).
  * @param prior_theta01_mean_      Prior mean hyperparameter for theta_{0,1}.
  * @param prior_theta01_prec_      Prior precision hyperparameter for theta_{0,1}.
  * @param prior_prec1_shape_       Gamma shape hyperparameter for 1/W_1.
@@ -544,7 +544,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
                                                 SEXP n_chain_,
                                                 SEXP theta_1_true_,
                                                 SEXP theta_01_true_,
-                                                SEXP prec_1_true_,
+                                                SEXP prec_theta1_true_,
                                                 SEXP prior_theta01_mean_,
                                                 SEXP prior_theta01_prec_,
                                                 SEXP prior_prec1_shape_,
@@ -567,13 +567,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
  *          **Conditional sampling behavior:**
  *          - If theta_1_true is provided (not NULL): theta_1 is fixed to true values (not sampled)
  *          - If theta_01_true is provided (not NULL): theta_01 is fixed to true value (not sampled)
- *          - If prec_1_true is provided (not NULL): prec_1 is fixed to true value (not sampled)
+ *          - If prec_theta1_true is provided (not NULL): prec_theta1 is fixed to true value (not sampled)
  *          - Otherwise: parameter is sampled normally from its conditional posterior
  *
  *          **Sampling sequence per iteration (when not fixed):**
- *          1. theta_1, alpha | y, theta_01, prec_1 -> Gibbs sampling via Albert-Chib augmentation
- *          2. prec_1 | theta_1, theta_01 -> Gamma posterior
- *          3. theta_01 | theta_1, prec_1 -> Normal posterior
+ *          1. theta_1, alpha | y, theta_01, prec_theta1 -> Gibbs sampling via Albert-Chib augmentation
+ *          2. prec_theta1 | theta_1, theta_01 -> Gamma posterior
+ *          3. theta_01 | theta_1, prec_theta1 -> Normal posterior
  *
  * @param y_                  Observed Bernoulli outcomes [n] (0 or 1).
  * @param burnin_             Number of burn-in iterations (discarded).
@@ -581,7 +581,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
  * @param n_chain_            Number of chains to simulate.
  * @param theta_1_true_       Optional: true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_      Optional: true theta_01 value to fix (NULL = sample normally).
- * @param prec_1_true_        Optional: true prec_1 value to fix (NULL = sample normally).
+ * @param prec_theta1_true_        Optional: true prec_theta1 value to fix (NULL = sample normally).
  * @param prior_theta01_mean_ Prior mean hyperparameter for theta_{0,1}.
  * @param prior_theta01_prec_ Prior precision hyperparameter for theta_{0,1}.
  * @param prior_prec1_shape_  Gamma shape hyperparameter for 1/W_1.
@@ -602,7 +602,7 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
                                                         SEXP n_chain_,
                                                         SEXP theta_1_true_,
                                                         SEXP theta_01_true_,
-                                                        SEXP prec_1_true_,
+                                                        SEXP prec_theta1_true_,
                                                         SEXP prior_theta01_mean_,
                                                         SEXP prior_theta01_prec_,
                                                         SEXP prior_prec1_shape_,

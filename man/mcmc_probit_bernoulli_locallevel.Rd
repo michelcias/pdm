@@ -54,7 +54,7 @@ A list with components:
     samples for the latent state \eqn{\theta_{t,1}}.}
   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples
     for the initial state \eqn{\theta_{0,1}}.}
-  \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples
+  \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples
     for the innovation precision \eqn{1/W_1}.}
   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
     samples for the Bernoulli probabilities \eqn{\alpha_t}.}
@@ -369,19 +369,19 @@ out <- mcmc_probit_bernoulli_locallevel(
 
   # --- 5. Innovation Precision (1/W[1]) Diagnostics ---
   # Trace plot for 1/W[1] to assess parameter convergence
-  range_prec_1 <- range(out$prec_1)
-  r1_prec1 <- range_prec_1[1] - 0.1 * diff(range_prec_1)
-  r2_prec1 <- range_prec_1[2] + 0.25 * diff(range_prec_1)
+  range_prec_theta1 <- range(out$prec_theta1)
+  r1_prec1 <- range_prec_theta1[1] - 0.1 * diff(range_prec_theta1)
+  r2_prec1 <- range_prec_theta1[2] + 0.25 * diff(range_prec_theta1)
 
   plot.ts(
-    out$prec_1,
+    out$prec_theta1,
     ylab = expression(1/W[1]),
     main = "Trace plot of innovation precision",
     xlab = "Iterations",
     col = "gray",
     ylim = c(r1_prec1, r2_prec1)
   )
-  abline(h = median(out$prec_1), col = "black", lty = 1, lwd = 2)
+  abline(h = median(out$prec_theta1), col = "black", lty = 1, lwd = 2)
   legend(
     "topright",
     legend = expression(hat(W)[1]^-1),
@@ -392,19 +392,19 @@ out <- mcmc_probit_bernoulli_locallevel(
   )
 
   # Posterior density estimate for 1/W[1]
-  range_dens_prec1 <- range(out$prec_1)
+  range_dens_prec1 <- range(out$prec_theta1)
   r1_dens_prec1 <- range_dens_prec1[1] - 0.1 * diff(range_dens_prec1)
   r2_dens_prec1 <- range_dens_prec1[2] + 0.25 * diff(range_dens_prec1)
 
   plot(
-    density(out$prec_1),
+    density(out$prec_theta1),
     main = "Posterior density estimate of innovation precision",
     xlab = expression(W[1]^-1),
     ylab = "Density",
     lwd = 2,
     xlim = c(r1_dens_prec1, r2_dens_prec1)
   )
-  abline(v = median(out$prec_1), col = "black", lty = 1, lwd = 2)
+  abline(v = median(out$prec_theta1), col = "black", lty = 1, lwd = 2)
   legend(
     "topright",
     legend = expression(hat(W)[1]^-1),

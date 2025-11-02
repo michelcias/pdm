@@ -66,7 +66,7 @@
  * @param alpha_current           Output probability vector [n] for current iteration.
  *                                Can be NULL if compute_alpha = 0.
  * @param theta_01_previous       Scalar initial level state from previous iteration.
- * @param prec_1_previous         Scalar level precision from previous iteration.
+ * @param prec_theta1_previous         Scalar level precision from previous iteration.
  * @param theta_1_updated         Sliding window matrix [lag_update * n] of acceptance indicators.
  * @param y                       Observed binomial counts vector [n] (const, read-only).
  *                                Each y[t] must satisfy 0 <= y[t] <= n_trials.
@@ -109,7 +109,7 @@ void generate_alpha_logit_binomial_locallevel(const double *theta_1_previous,
                                               double       *theta_1_current,
                                               double       *alpha_current,
                                               double        theta_01_previous,
-                                              double        prec_1_previous,
+                                              double        prec_theta1_previous,
                                               double       *theta_1_updated,
                                               const double *y,
                                               double       *accept_prop,
@@ -162,7 +162,7 @@ void generate_alpha_logit_binomial_locallevel(const double *theta_1_previous,
     theta_1_current,    /* theta_1_current: output for current iteration [n] */
     alpha_current,      /* alpha_current: success probabilities (NULL if compute_alpha=0) */
     theta_01_previous,  /* theta_01_previous: initial level from previous iteration */
-    prec_1_previous,    /* prec_1_previous: level precision from previous iteration */
+    prec_theta1_previous,    /* prec_theta1_previous: level precision from previous iteration */
     theta_1_updated,    /* theta_1_updated: sliding window indicators */
     y,                  /* y: observed counts */
     log_sigma,          /* log_sigma: proposal log standard deviations */
@@ -221,7 +221,7 @@ void generate_alpha_logit_binomial_locallevel(const double *theta_1_previous,
  *                                Must be sampled before calling this function.
  * @param theta_01_previous       Scalar initial level state from previous iteration.
  * @param theta_02_previous       Scalar initial trend state from previous iteration.
- * @param prec_1_previous         Scalar level precision from previous iteration.
+ * @param prec_theta1_previous         Scalar level precision from previous iteration.
  * @param theta_1_updated         Sliding window matrix [lag_update * n] of acceptance indicators.
  * @param y                       Observed binomial counts vector [n] (const, read-only).
  * @param accept_prop             Workspace vector [n] for acceptance proportions.
@@ -265,7 +265,7 @@ void generate_alpha_logit_binomial(const double *theta_1_previous,
                                    const double *theta_2_current,
                                    double        theta_01_previous,
                                    double        theta_02_previous,
-                                   double        prec_1_previous,
+                                   double        prec_theta1_previous,
                                    double       *theta_1_updated,
                                    const double *y,
                                    double       *accept_prop,
@@ -320,7 +320,7 @@ void generate_alpha_logit_binomial(const double *theta_1_previous,
     theta_2_current,    /* theta_2_current: trend from current iteration [n] */
     theta_01_previous,  /* theta_01_previous: initial level from previous iteration */
     theta_02_previous,  /* theta_02_previous: initial trend from previous iteration */
-    prec_1_previous,    /* prec_1_previous: level precision from previous iteration */
+    prec_theta1_previous,    /* prec_theta1_previous: level precision from previous iteration */
     theta_1_updated,    /* theta_1_updated: sliding window indicators */
     y,                  /* y: observed counts */
     log_sigma,          /* log_sigma: proposal log standard deviations */
@@ -529,7 +529,7 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
  * @param alpha_current      Output probability vector [n] for current iteration.
  *                           Can be NULL if compute_alpha = 0.
  * @param theta_01_previous  Scalar initial level state from previous iteration.
- * @param prec_1_previous    Scalar level precision from previous iteration.
+ * @param prec_theta1_previous    Scalar level precision from previous iteration.
  * @param y                  Observed Bernoulli outcomes vector [n] (const, read-only).
  *                           Each y[t] must be exactly 0 or 1.
  * @param rhs_vector         Workspace vector [n] for right-hand side of linear system.
@@ -557,7 +557,7 @@ void generate_alpha_probit_bernoulli_locallevel(const double *theta_1_previous,
                                                 double       *theta_1_current,
                                                 double       *alpha_current,
                                                 double        theta_01_previous,
-                                                double        prec_1_previous,
+                                                double        prec_theta1_previous,
                                                 const double *y,
                                                 double       *rhs_vector,
                                                 int           n,
@@ -584,25 +584,25 @@ void generate_alpha_probit_bernoulli_locallevel(const double *theta_1_previous,
   }
 
   /* Adjust first element to incorporate initial state contribution.
-   * This implements the boundary condition rhs[0] = v_0 + prec_1 * theta_0. */
-  rhs_vector[0] += prec_1_previous * theta_01_previous;
+   * This implements the boundary condition rhs[0] = v_0 + prec_theta1 * theta_0. */
+  rhs_vector[0] += prec_theta1_previous * theta_01_previous;
 
   /* ========== Sample theta_1 from Multivariate Normal ========== */
   /* Sample from: theta_1 | v, [...] ~ N(mu_posterior, Sigma_posterior)
    * where Sigma_posterior^{-1} = I + prec_theta_1 * H'H
    *
    * The precision matrix has tridiagonal structure with:
-   * - Diagonal: 1 + 2*prec_1 for t = 0,...,n-2
-   * - Last diagonal: 1 + prec_1
-   * - Off-diagonal: -prec_1
+   * - Diagonal: 1 + 2*prec_theta1 for t = 0,...,n-2
+   * - Last diagonal: 1 + prec_theta1
+   * - Off-diagonal: -prec_theta1
    *
    * This corresponds to generate_normal_vector with:
-   * a = 1.0 (observational precision), b = prec_1 (state precision) */
+   * a = 1.0 (observational precision), b = prec_theta1 (state precision) */
   generate_normal_vector(
     theta_1_current,    /* r: output vector [n] */
     rhs_vector,         /* y: right-hand side [n] */
     1.0,                /* a: observational precision (from latent variance = 1) */
-    prec_1_previous,    /* b: state precision */
+    prec_theta1_previous,    /* b: state precision */
     n,                  /* n: dimension */
     1                   /* add_a: use (a + b) for last diagonal element */
   );
@@ -662,7 +662,7 @@ void generate_alpha_probit_bernoulli_locallevel(const double *theta_1_previous,
  *                           Must be sampled before calling this function in Gibbs sequence.
  * @param theta_01_previous  Scalar initial level state from previous iteration.
  * @param theta_02_previous  Scalar initial trend state from previous iteration.
- * @param prec_1_previous    Scalar level precision from previous iteration.
+ * @param prec_theta1_previous    Scalar level precision from previous iteration.
  * @param y                  Observed Bernoulli outcomes vector [n] (const, read-only).
  *                           Each y[t] must be exactly 0 or 1.
  * @param rhs_vector         Workspace vector [n] for right-hand side of linear system.
@@ -693,7 +693,7 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
                                      const double *theta_2_current,
                                      double        theta_01_previous,
                                      double        theta_02_previous,
-                                     double        prec_1_previous,
+                                     double        prec_theta1_previous,
                                      const double *y,
                                      double       *rhs_vector,
                                      int           n,
@@ -720,7 +720,7 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
     v_0 = rtruncnorm(theta_1_previous[0], 1.0, R_NegInf, 0.0);
   }
 
-  rhs_vector[0] = v_0 + prec_1_previous * (theta_01_previous + theta_02_previous +
+  rhs_vector[0] = v_0 + prec_theta1_previous * (theta_01_previous + theta_02_previous +
     theta_2_current[0] - theta_02_previous);
 
   /* Remaining time points */
@@ -734,7 +734,7 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
     }
 
     double theta_2_diff = theta_2_current[t] - theta_2_current[t - 1];
-    rhs_vector[t] = v_t + prec_1_previous * theta_2_diff;
+    rhs_vector[t] = v_t + prec_theta1_previous * theta_2_diff;
   }
 
   /* ========== Sample theta_1 from Multivariate Normal ========== */
@@ -742,17 +742,17 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
    * where Sigma_posterior^{-1} = I + prec_theta_1 * H'H
    *
    * The precision matrix has tridiagonal structure with:
-   * - Diagonal: 1 + 2*prec_1 for t = 0,...,n-2
-   * - Last diagonal: 1 + prec_1
-   * - Off-diagonal: -prec_1
+   * - Diagonal: 1 + 2*prec_theta1 for t = 0,...,n-2
+   * - Last diagonal: 1 + prec_theta1
+   * - Off-diagonal: -prec_theta1
    *
    * This corresponds to generate_normal_vector with:
-   * a = 1.0 (observational precision), b = prec_1 (state precision) */
+   * a = 1.0 (observational precision), b = prec_theta1 (state precision) */
   generate_normal_vector(
     theta_1_current,    /* r: output vector [n] */
     rhs_vector,         /* y: right-hand side [n] */
     1.0,                /* a: observational precision (from latent variance = 1) */
-    prec_1_previous,    /* b: state precision */
+    prec_theta1_previous,    /* b: state precision */
     n,                  /* n: dimension */
     1                   /* add_a: use (a + b) for last diagonal element */
   );

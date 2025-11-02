@@ -100,8 +100,8 @@
  *         - theta_2:     Matrix [n_chain * n] of trend state trajectory samples
  *         - theta_01:    Vector [n_chain] of initial level state samples
  *         - theta_02:    Vector [n_chain] of initial trend state samples
- *         - prec_1:      Vector [n_chain] of level innovation precision samples
- *         - prec_2:      Vector [n_chain] of trend innovation precision samples
+ *         - prec_theta1:      Vector [n_chain] of level innovation precision samples
+ *         - prec_theta2:      Vector [n_chain] of trend innovation precision samples
  *         - alpha:       Matrix [n_chain * n] of success probability samples
  *         - log_sigma:   Matrix [n_chain * n] of proposal scales (if requested)
  *         - accept_prop: Matrix [n_chain * n] of acceptance proportions (if requested)
@@ -209,8 +209,8 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
  *         - theta_2:  Matrix [n_chain * n] of trend state trajectory samples
  *         - theta_01: Vector [n_chain] of initial level state samples
  *         - theta_02: Vector [n_chain] of initial trend state samples
- *         - prec_1:   Vector [n_chain] of level innovation precision samples
- *         - prec_2:   Vector [n_chain] of trend innovation precision samples
+ *         - prec_theta1:   Vector [n_chain] of level innovation precision samples
+ *         - prec_theta2:   Vector [n_chain] of trend innovation precision samples
  *         - alpha:    Matrix [n_chain * n] of Bernoulli probabilities
  *
  * @note Complexity: O(n_iter * n) time, O(n) space

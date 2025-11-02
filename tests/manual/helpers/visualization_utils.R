@@ -5,7 +5,7 @@
 #   (b) Per-level parameter triptychs using expression() via bquote:
 #       For each level k, produce a 2x3 figure:
 #        • Row 1: theta_0k  -> Histogram, Trace, ACF
-#        • Row 2: prec_k    -> Histogram, Trace, ACF
+#        • Row 2: prec_theta_k -> Histogram, Trace, ACF
 #   (c) Improved state labels using expression for theta[t,k] with robust k-detection
 #   (d) Figure titles for per-level panels positioned above all subplots (outer mtext)
 #   (e) New: dedicated triptych for data precision 1/V (hist, trace, ACF)
@@ -18,7 +18,7 @@
 #' Internal: build an expression label from a conventional parameter name
 #' Recognized patterns:
 #'  - "theta_0k"  (e.g., "theta_01", "theta_02", ...)
-#'  - "prec_k"    (e.g., "prec_1",  "prec_2", ...)
+#'  - "prec_theta_k" (e.g., "prec_theta1",  "prec_theta2", ...)
 #'  - "prec_y"    -> 1/V
 #' Returns an expression object, or NULL if not recognized.
 .param_label_expr <- function(param_name) {
@@ -27,9 +27,9 @@
     k <- as.integer(sub("^theta_0([0-9]+)$", "\\1", param_name))
     return(bquote(theta[.(paste0("0", k))]))
   }
-  # prec_k
-  if (grepl("^prec_[0-9]+$", param_name)) {
-    k <- as.integer(sub("^prec_([0-9]+)$", "\\1", param_name))
+  # prec_theta_k
+  if (grepl("^prec_theta[0-9]+$", param_name)) {
+    k <- as.integer(sub("^prec_theta([0-9]+)$", "\\1", param_name))
     return(bquote(1/W[.(k)]))
   }
   # prec_y
@@ -223,7 +223,7 @@ generate_state_plots <- function(states, n_plot = 200, use_state_expressions = T
 }
 
 #-------------------------------------------------------------#
-# Per-level parameter triptychs (theta_0k and prec_k panels)  #
+# Per-level parameter triptychs (theta_0k and prec_theta_k panels)  #
 #-------------------------------------------------------------#
 
 #' Internal: draw histogram panel
@@ -328,9 +328,9 @@ generate_data_precision_triptych <- function(prec_y_chain,
   )
 }
 
-#' Generate one figure (2x3) per level k with theta_0k and prec_k triptychs
+#' Generate one figure (2x3) per level k with theta_0k and prec_theta_k triptychs
 #' The figure title is drawn above all six subplots (using outer margins).
-#' @param param_chains named list of numeric chains (theta_01, theta_02, ..., prec_1, prec_2, ...)
+#' @param param_chains named list of numeric chains (theta_01, theta_02, ..., prec_theta1, prec_theta2, ...)
 #' @param true_values named numeric vector of true values (optional)
 #' @param max_lag_acf maximum lag for ACF
 #' @param palette optional list with colors per param type: list(theta_fill, theta_line, prec_fill, prec_line)
@@ -350,20 +350,20 @@ generate_level_parameter_triptychs <- function(param_chains,
   }
 
   theta_names <- grep("^theta_0[0-9]+$", names(param_chains), value = TRUE)
-  prec_names  <- grep("^prec_[0-9]+$",     names(param_chains), value = TRUE)
+  prec_names  <- grep("^prec_theta[0-9]+$", names(param_chains), value = TRUE)
 
   lev_theta <- suppressWarnings(as.integer(sub("^theta_0([0-9]+)$", "\\1", theta_names)))
-  lev_prec  <- suppressWarnings(as.integer(sub("^prec_([0-9]+)$",    "\\1", prec_names)))
+  lev_prec  <- suppressWarnings(as.integer(sub("^prec_theta([0-9]+)$",    "\\1", prec_names)))
   levels_k  <- sort(intersect(lev_theta, lev_prec))
 
   if (length(levels_k) == 0) {
-    cat("No matching pairs (theta_0k, prec_k) found in param_chains.\n")
+    cat("No matching pairs (theta_0k, prec_theta_k) found in param_chains.\n")
     return(invisible(NULL))
   }
 
   for (k in levels_k) {
     theta_key <- sprintf("theta_0%d", k)
-    prec_key  <- sprintf("prec_%d", k)
+    prec_key  <- sprintf("prec_theta%d", k)
     if (!all(c(theta_key, prec_key) %in% names(param_chains))) next
 
     theta_chain <- param_chains[[theta_key]]
@@ -404,7 +404,7 @@ generate_level_parameter_triptychs <- function(param_chains,
 
 #' Organized visualization suite:
 #' - Optional individual parameter plots (disabled by default)
-#' - Per-level triptychs (theta_0k & prec_k)
+#' - Per-level triptychs (theta_0k & prec_theta_k)
 #' - State plots with improved labels (expression(theta[t,k]))
 #' - New: data precision triptych (1/V) auto-rendered if available
 #' @param param_chains named list of parameter chains
@@ -445,9 +445,9 @@ generate_organized_plots <- function(param_chains,
     }
   }
 
-  # Per-level triptychs (theta_0k and prec_k)
+  # Per-level triptychs (theta_0k and prec_theta_k)
   if (per_level_panels && !is.null(param_chains) && length(param_chains) > 0) {
-    cat("Generating per-level triptychs: theta_0k and prec_k (Histogram, Trace, ACF)...\n")
+    cat("Generating per-level triptychs: theta_0k and prec_theta_k (Histogram, Trace, ACF)...\n")
     generate_level_parameter_triptychs(
       param_chains  = param_chains,
       true_values   = true_values,

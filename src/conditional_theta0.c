@@ -39,7 +39,7 @@
  *          theta_{0,1} ~ N(mu_0, sigma_0^2)
  *
  *          **Conditional posterior:**
- *          theta_{0,1} | theta_1, prec_1 ~ N(mu_post, sigma_post^2)
+ *          theta_{0,1} | theta_1, prec_theta1 ~ N(mu_post, sigma_post^2)
  *          where sigma_post^2 = 1 / (tau_0 + tau_1)
  *                mu_post = (mu_0 * tau_0 + theta_{1,1} * tau_1) / (tau_0 + tau_1)
  *          with tau_0 = 1/sigma_0^2 (prior precision)
@@ -50,15 +50,15 @@
  *          2. Compute posterior mean as precision-weighted average
  *          3. Sample from Normal(mu_post, sigma_post^2)
  *
- * @param theta_1_current   Current level state vector [n] (const, read-only).
- *                          Only first element theta_{1,1} is used.
- * @param prec_1            Scalar innovation precision 1/W_1.
- *                          Controls strength of information from first observation.
- * @param mean_theta_01     Prior mean mu_0.
- *                          Center of prior distribution for initial state.
- * @param prec_theta_01     Prior precision tau_0 = 1/sigma_0^2.
- *                          Controls strength of prior information.
- * @param n                 Sample size (used for interface consistency, not computation).
+ * @param theta_1_current  Current level state vector [n] (const, read-only).
+ *                         Only first element theta_{1,1} is used.
+ * @param prec_theta1      Scalar innovation precision 1/W_1.
+ *                         Controls strength of information from first observation.
+ * @param mean_theta_01    Prior mean mu_0.
+ *                         Center of prior distribution for initial state.
+ * @param prec_theta_01    Prior precision tau_0 = 1/sigma_0^2.
+ *                         Controls strength of prior information.
+ * @param n                Sample size (used for interface consistency, not computation).
  *
  * @return Sampled initial state theta_{0,1} from Normal posterior.
  *
@@ -68,7 +68,7 @@
  * @note Only uses first element of theta_1_current (theta_{1,1}).
  * @note Typical values: mean_theta_01 = 0, prec_theta_01 = 0.001 (vague prior).
  *
- * @warning No validation of prior parameter positivity (prec_theta_01 > 0, prec_1 > 0).
+ * @warning No validation of prior parameter positivity (prec_theta_01 > 0, prec_theta1 > 0).
  *          Caller must ensure valid inputs to avoid division by zero.
  * @warning Requires GetRNGstate()/PutRNGstate() bracket in calling function.
  * @warning Parameter n is not used in computation but maintained for interface consistency.
@@ -78,16 +78,16 @@
  * @see rnorm
  */
 double generate_theta_01_locallevel(const double *theta_1_current,
-                                          double  prec_1,
-                                          double  mean_theta_01,
-                                          double  prec_theta_01,
-                                          int     n) {
+                                    double        prec_theta1,
+                                    double        mean_theta_01,
+                                    double        prec_theta_01,
+                                    int           n) {
 
   /* ========== Compute Posterior Precision ========== */
   /* Combine prior precision with innovation precision.
    * Higher precision → more concentrated posterior distribution.
    * tau_post = tau_0 + tau_1 */
-  double prec_theta_01_post = prec_theta_01 + prec_1;
+  double prec_theta_01_post = prec_theta_01 + prec_theta1;
 
   /* ========== Compute Posterior Mean ========== */
   /* Precision-weighted average of prior mean and observed first state.
@@ -95,7 +95,7 @@ double generate_theta_01_locallevel(const double *theta_1_current,
    * As tau_0 increases (stronger prior), posterior pulls toward mu_0.
    * mu_post = (mu_0 * tau_0 + theta_{1,1} * tau_1) / (tau_0 + tau_1) */
   double mean_theta_01_post = (mean_theta_01 * prec_theta_01 +
-  theta_1_current[0] * prec_1) / prec_theta_01_post;
+                               theta_1_current[0] * prec_theta1) / prec_theta_01_post;
 
   /* ========== Sample from Normal Posterior ========== */
   /* Draw theta_{0,1} ~ N(mu_post, 1/tau_post)
@@ -122,7 +122,7 @@ double generate_theta_01_locallevel(const double *theta_1_current,
  *          theta_{0,1} ~ N(mu_0, sigma_0^2)
  *
  *          **Conditional posterior:**
- *          theta_{0,1} | theta_1, theta_{0,2}, prec_1 ~ N(mu_post, sigma_post^2)
+ *          theta_{0,1} | theta_1, theta_{0,2}, prec_theta1 ~ N(mu_post, sigma_post^2)
  *          where sigma_post^2 = 1 / (tau_0 + tau_1)
  *                mu_post = (mu_0 * tau_0 + (theta_{1,1} - theta_{0,2}) * tau_1) / (tau_0 + tau_1)
  *
@@ -132,17 +132,17 @@ double generate_theta_01_locallevel(const double *theta_1_current,
  *          3. Compute posterior mean as precision-weighted average
  *          4. Sample from Normal(mu_post, sigma_post^2)
  *
- * @param theta_1_current   Current level state vector [n] (const, read-only).
- *                          Only first element theta_{1,1} is used.
- * @param theta_02          Scalar initial trend state theta_{0,2}.
- *                          Trend contribution to be removed from first observation.
- * @param prec_1            Scalar innovation precision 1/W_1.
- *                          Controls strength of information from first observation.
- * @param mean_theta_01     Prior mean mu_0.
- *                          Center of prior distribution for initial level.
- * @param prec_theta_01     Prior precision tau_0 = 1/sigma_0^2.
- *                          Controls strength of prior information.
- * @param n                 Sample size (used for interface consistency, not computation).
+ * @param theta_1_current  Current level state vector [n] (const, read-only).
+ *                         Only first element theta_{1,1} is used.
+ * @param theta_02         Scalar initial trend state theta_{0,2}.
+ *                         Trend contribution to be removed from first observation.
+ * @param prec_theta1      Scalar innovation precision 1/W_1.
+ *                         Controls strength of information from first observation.
+ * @param mean_theta_01    Prior mean mu_0.
+ *                         Center of prior distribution for initial level.
+ * @param prec_theta_01    Prior precision tau_0 = 1/sigma_0^2.
+ *                         Controls strength of prior information.
+ * @param n                Sample size (used for interface consistency, not computation).
  *
  * @return Sampled initial state theta_{0,1} from Normal posterior.
  *
@@ -152,7 +152,7 @@ double generate_theta_01_locallevel(const double *theta_1_current,
  * @note Only uses first element of theta_1_current (theta_{1,1}).
  * @note Typical values: mean_theta_01 = 0, prec_theta_01 = 0.001 (vague prior).
  *
- * @warning No validation of prior parameter positivity (prec_theta_01 > 0, prec_1 > 0).
+ * @warning No validation of prior parameter positivity (prec_theta_01 > 0, prec_theta1 > 0).
  *          Caller must ensure valid inputs to avoid division by zero.
  * @warning Requires GetRNGstate()/PutRNGstate() bracket in calling function.
  * @warning Parameter n is not used in computation but maintained for interface consistency.
@@ -162,23 +162,23 @@ double generate_theta_01_locallevel(const double *theta_1_current,
  * @see rnorm
  */
 double generate_theta_01(const double *theta_1_current,
-                               double  theta_02,
-                               double  prec_1,
-                               double  mean_theta_01,
-                               double  prec_theta_01,
-                               int     n) {
+                         double        theta_02,
+                         double        prec_theta1,
+                         double        mean_theta_01,
+                         double        prec_theta_01,
+                         int           n) {
 
   /* ========== Compute Posterior Precision ========== */
   /* Combine prior precision with innovation precision.
    * tau_post = tau_0 + tau_1 */
-  double prec_theta_01_post = prec_theta_01 + prec_1;
+  double prec_theta_01_post = prec_theta_01 + prec_theta1;
 
   /* ========== Compute Posterior Mean ========== */
   /* Precision-weighted average of prior mean and trend-adjusted first state.
    * The term (theta_{1,1} - theta_{0,2}) isolates the level component contribution.
    * mu_post = (mu_0 * tau_0 + (theta_{1,1} - theta_{0,2}) * tau_1) / (tau_0 + tau_1) */
   double mean_theta_01_post = (mean_theta_01 * prec_theta_01 +
-  (theta_1_current[0] - theta_02) * prec_1) / prec_theta_01_post;
+                               (theta_1_current[0] - theta_02) * prec_theta1) / prec_theta_01_post;
 
   /* ========== Sample from Normal Posterior ========== */
   /* Draw theta_{0,1} ~ N(mu_post, 1/tau_post)
@@ -249,13 +249,13 @@ double generate_theta_01(const double *theta_1_current,
  */
 double generate_theta_0k(const double *theta_km1_current,
                          const double *theta_k_current,
-                               double  theta_0km1,
-                               double  theta_0kp1,
-                               double  prec_km1,
-                               double  prec_k,
-                               double  mean_theta_0k,
-                               double  prec_theta_0k,
-                               int     n) {
+                         double        theta_0km1,
+                         double        theta_0kp1,
+                         double        prec_km1,
+                         double        prec_k,
+                         double        mean_theta_0k,
+                         double        prec_theta_0k,
+                         int           n) {
 
   /* ========== Compute Posterior Precision ========== */
   /* Combine three precision sources: prior, lower component, current component.
@@ -278,7 +278,7 @@ double generate_theta_0k(const double *theta_km1_current,
   /* Precision-weighted average of prior mean and information from two components.
    * mu_post = (mu_{0k} * tau_{0k} + term_{k-1} + term_k) / tau_post */
   double mean_theta_0k_post = (mean_theta_0k * prec_theta_0k +
-  info_from_km1 + info_from_k) / prec_theta_0k_post;
+                               info_from_km1 + info_from_k) / prec_theta_0k_post;
 
   /* ========== Sample from Normal Posterior ========== */
   /* Draw theta_{0,k} ~ N(mu_post, 1/tau_post)
@@ -354,12 +354,12 @@ double generate_theta_0k(const double *theta_km1_current,
  */
 double generate_theta_0p(const double *theta_pm1_current,
                          const double *theta_p_current,
-                               double  theta_0pm1,
-                               double  prec_pm1,
-                               double  prec_p,
-                               double  mean_theta_0p,
-                               double  prec_theta_0p,
-                               int     n){
+                         double        theta_0pm1,
+                         double        prec_pm1,
+                         double        prec_p,
+                         double        mean_theta_0p,
+                         double        prec_theta_0p,
+                         int           n) {
 
   /* ========== Compute Posterior Precision ========== */
   /* Combine three precision sources: prior, penultimate component, final component.
@@ -381,7 +381,7 @@ double generate_theta_0p(const double *theta_pm1_current,
   /* Precision-weighted average of prior mean and information from two components.
    * mu_post = (mu_{0p} * tau_{0p} + term_{p-1} + term_p) / tau_post */
   double mean_theta_0p_post = (mean_theta_0p * prec_theta_0p +
-  info_from_pm1 + info_from_p) / prec_theta_0p_post;
+                               info_from_pm1 + info_from_p) / prec_theta_0p_post;
 
   /* ========== Sample from Normal Posterior ========== */
   /* Draw theta_{0,p} ~ N(mu_post, 1/tau_post)

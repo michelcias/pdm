@@ -42,7 +42,7 @@
  * @param theta_1_current         Output level state [n] for current iteration
  * @param alpha_current           Output probabilities [n] (NULL if compute_alpha=0)
  * @param theta_01_previous       Scalar initial level from previous iteration
- * @param prec_1_previous         Scalar level precision from previous iteration
+ * @param prec_theta1_previous         Scalar level precision from previous iteration
  * @param theta_1_updated         Sliding window [lag_update * n] of acceptances
  * @param y                       Observed counts [n] (const)
  * @param accept_prop             Workspace [n] for acceptance proportions
@@ -71,7 +71,7 @@ void generate_alpha_logit_binomial_locallevel(const double *theta_1_previous,
                                               double       *theta_1_current,
                                               double       *alpha_current,
                                               double        theta_01_previous,
-                                              double        prec_1_previous,
+                                              double        prec_theta1_previous,
                                               double       *theta_1_updated,
                                               const double *y,
                                               double       *accept_prop,
@@ -106,7 +106,7 @@ void generate_alpha_logit_binomial_locallevel(const double *theta_1_previous,
  * @param theta_2_current         Trend state [n] from current iteration (const)
  * @param theta_01_previous       Scalar initial level from previous iteration
  * @param theta_02_previous       Scalar initial trend from previous iteration
- * @param prec_1_previous         Scalar level precision from previous iteration
+ * @param prec_theta1_previous         Scalar level precision from previous iteration
  * @param theta_1_updated         Sliding window [lag_update * n] of acceptances
  * @param y                       Observed counts [n] (const)
  * @param accept_prop             Workspace [n] for acceptance proportions
@@ -138,7 +138,7 @@ void generate_alpha_logit_binomial(const double *theta_1_previous,
                                    const double *theta_2_current,
                                    double        theta_01_previous,
                                    double        theta_02_previous,
-                                   double        prec_1_previous,
+                                   double        prec_theta1_previous,
                                    double       *theta_1_updated,
                                    const double *y,
                                    double       *accept_prop,
@@ -171,7 +171,7 @@ void generate_alpha_logit_binomial(const double *theta_1_previous,
  * @param theta_1_current    Output level state [n] for current iteration
  * @param alpha_current      Output probabilities [n] (NULL if compute_alpha=0)
  * @param theta_01_previous  Scalar initial level from previous iteration
- * @param prec_1_previous    Scalar level precision from previous iteration
+ * @param prec_theta1_previous    Scalar level precision from previous iteration
  * @param y                  Observed Bernoulli outcomes [n] (const, 0 or 1)
  * @param rhs_vector         Workspace [n] for linear system RHS
  * @param n                  Time series length (must be > 2)
@@ -188,7 +188,7 @@ void generate_alpha_probit_bernoulli_locallevel(const double *theta_1_previous,
                                                 double       *theta_1_current,
                                                 double       *alpha_current,
                                                 double        theta_01_previous,
-                                                double        prec_1_previous,
+                                                double        prec_theta1_previous,
                                                 const double *y,
                                                 double       *rhs_vector,
                                                 int           n,
@@ -210,7 +210,7 @@ void generate_alpha_probit_bernoulli_locallevel(const double *theta_1_previous,
  * @param theta_2_current    Trend state [n] from current iteration (const)
  * @param theta_01_previous  Scalar initial level from previous iteration
  * @param theta_02_previous  Scalar initial trend from previous iteration
- * @param prec_1_previous    Scalar level precision from previous iteration
+ * @param prec_theta1_previous    Scalar level precision from previous iteration
  * @param y                  Observed Bernoulli outcomes [n] (const, 0 or 1)
  * @param rhs_vector         Workspace [n] for linear system RHS
  * @param n                  Time series length (must be > 2)
@@ -230,7 +230,7 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
                                      const double *theta_2_current,
                                      double        theta_01_previous,
                                      double        theta_02_previous,
-                                     double        prec_1_previous,
+                                     double        prec_theta1_previous,
                                      const double *y,
                                      double       *rhs_vector,
                                      int           n,

@@ -138,9 +138,9 @@
  *         - theta_01: Numeric vector [n_chain] of initial level state theta_{0,1} samples
  *         - theta_02: Numeric vector [n_chain] of initial trend state theta_{0,2} samples
  *         - theta_03: Numeric vector [n_chain] of initial acceleration state theta_{0,3} samples
- *         - prec_1: Numeric vector [n_chain] of level innovation precision 1/W_1 samples
- *         - prec_2: Numeric vector [n_chain] of trend innovation precision 1/W_2 samples
- *         - prec_3: Numeric vector [n_chain] of acceleration innovation precision 1/W_3 samples
+ *         - prec_theta1: Numeric vector [n_chain] of level innovation precision 1/W_1 samples
+ *         - prec_theta2: Numeric vector [n_chain] of trend innovation precision 1/W_2 samples
+ *         - prec_theta3: Numeric vector [n_chain] of acceleration innovation precision 1/W_3 samples
  *         - prec_y: Numeric vector [n_chain] of observation precision 1/V samples
  *
  * @note Computational complexity: O(n_iter × n) for n_iter total iterations.

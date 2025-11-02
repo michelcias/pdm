@@ -413,7 +413,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
 
       for (int t = 0; t < n; t++) {
         REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
+        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
         REAL(z_samples)[idx + t * n_chain]       = z_current[t];
 
         if (use_logit) {

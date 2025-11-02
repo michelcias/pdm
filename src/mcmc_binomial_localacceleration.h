@@ -80,9 +80,9 @@
  *         - theta_01: Vector [n_chain] of initial level samples
  *         - theta_02: Vector [n_chain] of initial trend samples
  *         - theta_03: Vector [n_chain] of initial acceleration samples
- *         - prec_1: Vector [n_chain] of level precision samples
- *         - prec_2: Vector [n_chain] of trend precision samples
- *         - prec_3: Vector [n_chain] of acceleration precision samples
+ *         - prec_theta1: Vector [n_chain] of level precision samples
+ *         - prec_theta2: Vector [n_chain] of trend precision samples
+ *         - prec_theta3: Vector [n_chain] of acceleration precision samples
  *         - alpha: Matrix [n_chain * n] of probability samples
  *         - log_sigma: Matrix [n_chain * n] (if requested)
  *         - accept_prop: Matrix [n_chain * n] (if requested)
@@ -165,9 +165,9 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  *         - theta_01: Vector [n_chain] of initial level samples
  *         - theta_02: Vector [n_chain] of initial trend samples
  *         - theta_03: Vector [n_chain] of initial acceleration samples
- *         - prec_1: Vector [n_chain] of level precision samples
- *         - prec_2: Vector [n_chain] of trend precision samples
- *         - prec_3: Vector [n_chain] of acceleration precision samples
+ *         - prec_theta1: Vector [n_chain] of level precision samples
+ *         - prec_theta2: Vector [n_chain] of trend precision samples
+ *         - prec_theta3: Vector [n_chain] of acceleration precision samples
  *         - alpha: Matrix [n_chain * n] of probability samples
  *
  * @note Complexity: O(n_iter * n) time, O(n) space

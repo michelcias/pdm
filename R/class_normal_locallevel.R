@@ -16,7 +16,7 @@
 #'   with the following structure:
 #'   \describe{
 #'     \item{Data components}{All elements from \code{result} (theta_1, theta_01,
-#'       prec_1, prec_y)}
+#'       prec_theta1, prec_y)}
 #'     \item{Attributes}{
 #'       \itemize{
 #'         \item \code{n_obs}: Number of observations
@@ -88,7 +88,7 @@ validate_normal_locallevel <- function(x) {
   }
 
   # Required components
-  required_components <- c("theta_1", "theta_01", "prec_1", "prec_y")
+  required_components <- c("theta_1", "theta_01", "prec_theta1", "prec_y")
 
   missing <- setdiff(required_components, names(x))
   if (length(missing) > 0) {
@@ -107,7 +107,7 @@ validate_normal_locallevel <- function(x) {
   }
 
   # Scalar parameters should have length n_chain
-  scalar_params <- c("theta_01", "prec_1", "prec_y")
+  scalar_params <- c("theta_01", "prec_theta1", "prec_y")
 
   for (param in scalar_params) {
     if (length(x[[param]]) != n_chain) {
@@ -270,7 +270,7 @@ print.normal_locallevel <- function(x, digits = 3, ...) {
 
   # Calculate medians
   med_theta01 <- median(x$theta_01)
-  med_prec1 <- median(x$prec_1)
+  med_prec1 <- median(x$prec_theta1)
   med_precy <- median(x$prec_y)
 
   # Determine field width for alignment (width = digits + 4 for sign, decimal, padding)

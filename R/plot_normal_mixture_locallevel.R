@@ -9,7 +9,7 @@
 #'     \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
 #'     \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
 #'     \item{\code{"params"}}{Mixture component parameters (mu, phi)}
-#'     \item{\code{"states"}}{Dynamic state diagnostics for the local-level state}
+#'     \item{\code{"states"}}{Dynamic states (theta_1 trajectory)}
 #'     \item{\code{"alpha"}}{Mixture weights over time (alpha_t and z_t)}
 #'   }
 #' @param which Integer vector specifying which diagnostic plots to display.
@@ -22,8 +22,7 @@
 #'     \item{5}{theta_01 (initial level)}
 #'     \item{6}{W_1^{-1} (level innovation precision)}
 #'   }
-#'   For \code{type = "params"}: indices of subplots.
-#'   For \code{type = "states"}: use \code{1} (local-level diagnostics).
+#'   For \code{type = "params"}, \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"}: not used (both alpha_t and z_t are shown).
 #'   If \code{NULL} (default), all available plots are shown.
 #' @param engine Character string specifying the graphics engine. One of:
@@ -66,10 +65,10 @@
 #'   \item Component separation diagnostics
 #' }
 #'
-#' \strong{Dynamic State (\code{type = "states"}):}
+#' \strong{Dynamic States (\code{type = "states"}):}
 #' \itemize{
-#'   \item Time-varying local-level trajectory with credible bands
-#'   \item Innovation sequence diagnostics
+#'   \item Time-varying state trajectory with credible bands
+#'   \item Innovation sequence
 #' }
 #'
 #' \strong{Mixture Weights (\code{type = "alpha"}):}
@@ -84,9 +83,9 @@
 #' \itemize{
 #'   \item Pages 1-6: Individual parameter diagnostics (4 panels each)
 #'   \item Page 7: Mixture parameters (bivariate relationships)
-#'   \item Page 8: Dynamic state diagnostics
-#'   \item Page 9: Mixture weight alpha_t
-#'   \item Page 10: Component membership P(z_t = 1 | data)
+#'   \item Pages 8-9: Dynamic state trajectory and diagnostics
+#'   \item Page 10: Mixture weight alpha_t
+#'   \item Page 11: Component membership P(z_t = 1 | data)
 #' }
 #'
 #' The \code{engine} argument allows choosing between base R graphics (lightweight,
@@ -197,514 +196,45 @@ plot.normal_mixture_locallevel <- function(x,
                                            ci_level = 0.95,
                                            ...) {
 
-  # Validate inputs
   type <- match.arg(type)
   engine <- match.arg(engine)
 
-  # Check ggplot2 availability
   if (engine == "ggplot2" && !requireNamespace("ggplot2", quietly = TRUE)) {
     warning("Package 'ggplot2' is not installed. Falling back to base graphics.")
     engine <- "base"
   }
 
-  # Set default for ask
   if (is.null(ask)) {
     ask <- interactive() && type == "all"
   }
 
-  # Dispatch to appropriate plotting function
   if (engine == "base") {
     switch(type,
-           all = plot_all_base_ll(x, ask = ask, overlay_data = overlay_data,
-                                  ci = ci, ci_level = ci_level, ...),
-           mcmc = plot_mcmc_diagnostics_base_ll(x, which = which, ...),
+           all = plot_all_mixture_generic_base(x, ask = ask, ci = ci,
+                                               ci_level = ci_level, ...),
+           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
+                                                engine = "base", ...),
            params = plot_mixture_params_base(x$mu_1, x$mu_2, x$prec_1, x$prec_2,
                                              which = which, ...),
-           states = plot_dynamic_states_base_ll(x, which = which,
-                                                ci = ci, ci_level = ci_level, ...),
+           states = plot_dynamic_states_generic_base(x, which = which,
+                                                     ci = ci, ci_level = ci_level, ...),
            alpha = plot_mixture_weights_base(x$alpha, x$z,
                                              ci = ci, ci_level = ci_level, ...),
     )
   } else {
     switch(type,
-           all = plot_all_ggplot_ll(x, ask = ask, overlay_data = overlay_data,
-                                    ci = ci, ci_level = ci_level, ...),
-           mcmc = plot_mcmc_diagnostics_ggplot_ll(x, which = which, ...),
+           all = plot_all_mixture_generic_ggplot(x, ask = ask, ci = ci,
+                                                 ci_level = ci_level, ...),
+           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
+                                                engine = "ggplot2", ...),
            params = plot_mixture_params_ggplot(x$mu_1, x$mu_2, x$prec_1, x$prec_2,
                                                which = which, ...),
-           states = plot_dynamic_states_ggplot_ll(x, which = which,
-                                                  ci = ci, ci_level = ci_level, ...),
+           states = plot_dynamic_states_generic_ggplot(x, which = which,
+                                                       ci = ci, ci_level = ci_level, ...),
            alpha = plot_mixture_weights_ggplot(x$alpha, x$z,
                                                ci = ci, ci_level = ci_level, ...)
     )
   }
 
   invisible(x)
-}
-
-
-# ============================================================================
-# Local-Level Specific Functions (Base R Graphics)
-# ============================================================================
-
-#' Complete dashboard with base R graphics (local-level)
-#' @keywords internal
-#' @noRd
-plot_all_base_ll <- function(x, ask = TRUE, overlay_data = FALSE,
-                             ci = TRUE, ci_level = 0.95, ...) {
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
-
-  if (ask) {
-    oldask <- par(ask = TRUE)
-    on.exit(par(oldask), add = TRUE)
-  }
-
-  # Pages 1-6: Individual parameter diagnostics (4 panels each)
-  plot_mcmc_diagnostics_base_ll(x, which = 1:6, ...)
-
-  # Page 7: Mixture parameters (bivariate relationships)
-  plot_mixture_params_base(x$mu_1, x$mu_2, x$prec_1, x$prec_2, ...)
-
-  # Page 8: Dynamic state diagnostics
-  plot_dynamic_states_base_ll(x, which = 1, ci = ci, ci_level = ci_level, ...)
-
-  # Pages 9-10: Mixture weights (alpha_t and z_t)
-  plot_mixture_weights_base(x$alpha, x$z, ci = ci, ci_level = ci_level, ...)
-}
-
-
-#' MCMC diagnostics with base R graphics (local-level)
-#' @keywords internal
-#' @noRd
-plot_mcmc_diagnostics_base_ll <- function(x, which = NULL, ...) {
-
-  # Define available parameters
-  all_params <- list(
-    mu_1 = list(samples = x$mu_1,
-                name = quote(mu[1]),
-                label = expression(mu[1])),
-    mu_2 = list(samples = x$mu_2,
-                name = quote(mu[2]),
-                label = expression(mu[2])),
-    phi_1 = list(samples = x$prec_1,
-                 name = quote(phi[1]),
-                 label = expression(phi[1])),
-    phi_2 = list(samples = x$prec_2,
-                 name = quote(phi[2]),
-                 label = expression(phi[2])),
-    theta_01 = list(samples = x$theta_01,
-                    name = quote(theta["0,1"]),
-                    label = expression(theta["0,1"])),
-    W1_inv = list(samples = x$prec_theta1,
-                  name = quote(W[1]^{-1}),
-                  label = expression(1/W[1]))
-  )
-
-  # Default: all parameters
-  if (is.null(which)) {
-    which <- seq_along(all_params)
-  }
-
-  # Validate which
-  if (any(which < 1) || any(which > length(all_params))) {
-    stop(sprintf("`which` must be between 1 and %d", length(all_params)))
-  }
-
-  # Plot each selected parameter on its own page
-  for (i in which) {
-    param_info <- all_params[[i]]
-    plot_param_diagnostics_base(
-      param_samples = param_info$samples,
-      param_name = param_info$name,
-      param_label = param_info$label,
-      ...
-    )
-  }
-}
-
-
-#' Dynamic state diagnostics with base R graphics (local-level)
-#' @keywords internal
-#' @noRd
-plot_dynamic_states_base_ll <- function(x, which = NULL, ci = TRUE,
-                                        ci_level = 0.95, ...) {
-
-  validate_ci_level(ci_level)
-
-  if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    ci_label <- paste0(round(ci_level * 100), "% CI")
-  }
-
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
-
-  n_obs <- attr(x, "n_obs")
-  time_grid <- seq_len(n_obs)
-
-  if (is.null(which)) which <- 1
-
-  if (any(which < 1) || any(which > 1)) {
-    stop("`which` must be 1 for local-level models")
-  }
-
-  if (1 %in% which) {
-    par(mfrow = c(1, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0),
-        mgp = c(2.5, 1, 0))
-
-    theta_median <- apply(x$theta_1, 2, stats::median)
-    if (ci) {
-      theta_lower <- apply(x$theta_1, 2, stats::quantile, probs = ci_lower_prob)
-      theta_upper <- apply(x$theta_1, 2, stats::quantile, probs = ci_upper_prob)
-      range_theta <- range(c(theta_lower, theta_upper))
-    } else {
-      range_theta <- range(theta_median)
-    }
-    if (diff(range_theta) == 0) {
-      range_theta <- range_theta + c(-0.5, 0.5)
-    }
-    range_theta[2] <- range_theta[2] + 0.25 * diff(range_theta)
-
-    plot(time_grid, theta_median, type = "l", lwd = 2,
-         xlab = "Time", ylab = "State Value",
-         main = "Local-Level State",
-         ylim = range_theta)
-
-    if (ci) {
-      polygon(c(time_grid, rev(time_grid)),
-              c(theta_lower, rev(theta_upper)),
-              col = grDevices::rgb(0.7, 0.7, 0.7, 0.5), border = NA)
-    }
-
-    lines(time_grid, theta_median, lwd = 2, col = "black")
-    grid()
-    if (ci) {
-      legend("topright", legend = c(expression(hat(theta)["t,1"]), ci_label),
-             col = c("black", grDevices::rgb(0.7, 0.7, 0.7, 0.5)), horiz = TRUE,
-             lty = c(1, 1), lwd = c(2, 8), bty = "n")
-    } else {
-      legend("topright", legend = expression(hat(theta)["t,1"]),
-             col = "black", horiz = TRUE, lty = 1, lwd = 2, bty = "n")
-    }
-
-    if (n_obs >= 2) {
-      innovations <- x$theta_1[, -1, drop = FALSE] -
-        x$theta_1[, -ncol(x$theta_1), drop = FALSE]
-
-      innov_median <- apply(innovations, 2, stats::median)
-      if (ci) {
-        innov_lower <- apply(innovations, 2, stats::quantile, probs = ci_lower_prob)
-        innov_upper <- apply(innovations, 2, stats::quantile, probs = ci_upper_prob)
-        range_innov <- range(c(innov_lower, innov_upper))
-      } else {
-        range_innov <- range(innov_median)
-      }
-      if (diff(range_innov) == 0) {
-        range_innov <- range_innov + c(-0.5, 0.5)
-      }
-      range_innov[2] <- range_innov[2] + 0.25 * diff(range_innov)
-
-      plot(time_grid[-1], innov_median, type = "l", lwd = 2, col = "steelblue",
-           xlab = "Time", ylab = expression(u["t,1"]),
-           main = "Level Innovations",
-           ylim = range_innov)
-
-      if (ci) {
-        polygon(c(time_grid[-1], rev(time_grid[-1])),
-                c(innov_lower, rev(innov_upper)),
-                col = grDevices::rgb(0.7, 0.7, 0.7, 0.4), border = NA)
-      }
-
-      segments(x0 = 1, y0 = 0, x1 = length(innov_median), y1 = 0,
-               col = "red", lty = 2, lwd = 2)
-      grid()
-      if (ci) {
-        legend("topright", legend = c("Median", ci_label),
-               col = c("steelblue", grDevices::rgb(0.7, 0.7, 0.7, 0.4)), horiz = TRUE,
-               lty = c(1, 1), lwd = c(2, 8), bty = "n")
-      } else {
-        legend("topright", legend = "Median", col = "steelblue", horiz = TRUE,
-               lty = 1, lwd = 2, bty = "n")
-      }
-    } else {
-      plot.new()
-      title("Level Innovations")
-      text(x = 0.5, y = 0.5,
-           labels = "Innovations require at least 2 observations",
-           cex = 1.1)
-    }
-
-    mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
-  }
-}
-
-
-# ============================================================================
-# Local-Level Specific Functions (ggplot2 Graphics)
-# ============================================================================
-
-#' Complete dashboard with ggplot2 graphics (local-level)
-#' @keywords internal
-#' @noRd
-plot_all_ggplot_ll <- function(x, ask = TRUE, overlay_data = TRUE,
-                               ci = TRUE, ci_level = 0.95, ...) {
-
-  if (ask) {
-    message("Press [Enter] to see next plot...")
-  }
-
-  # Pages 1-6: Individual parameter diagnostics
-  plot_mcmc_diagnostics_ggplot_ll(x, which = 1:6, ...)
-  if (ask) readline()
-
-  # Page 7: Mixture parameters
-  plot_mixture_params_ggplot(x$mu_1, x$mu_2, x$prec_1, x$prec_2, ...)
-  if (ask) readline()
-
-  # Page 8: Dynamic state diagnostics
-  plot_dynamic_states_ggplot_ll(x, which = 1, ci = ci, ci_level = ci_level, ...)
-  if (ask) readline()
-
-  # Pages 9-10: Mixture weights
-  plot_mixture_weights_ggplot(x$alpha, x$z, ci = ci, ci_level = ci_level, ...)
-}
-
-
-#' MCMC diagnostics with ggplot2 (local-level)
-#' @keywords internal
-#' @noRd
-plot_mcmc_diagnostics_ggplot_ll <- function(x, which = NULL, ...) {
-
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required")
-  }
-
-  # Define available parameters
-  all_params <- list(
-    mu_1 = list(samples = x$mu_1, name = "mu_1", label = "mu_1"),
-    mu_2 = list(samples = x$mu_2, name = "mu_2", label = "mu_2"),
-    phi_1 = list(samples = x$prec_1, name = "phi_1", label = "phi_1"),
-    phi_2 = list(samples = x$prec_2, name = "phi_2", label = "phi_2"),
-    theta_01 = list(samples = x$theta_01, name = "theta_01", label = "theta_01"),
-    W1_inv = list(samples = x$prec_theta1, name = "W_1^{-1}", label = "W_1^{-1}")
-  )
-
-  if (is.null(which)) {
-    which <- seq_along(all_params)
-  }
-
-  if (any(which < 1) || any(which > length(all_params))) {
-    stop(sprintf("`which` must be between 1 and %d", length(all_params)))
-  }
-
-  # Plot each selected parameter
-  for (i in which) {
-    param_info <- all_params[[i]]
-    p <- plot_param_diagnostics_ggplot(
-      param_samples = param_info$samples,
-      param_name = param_info$name,
-      param_label_text = param_info$label,
-      ...
-    )
-    if (!is.null(p)) print(p)
-  }
-
-  return(invisible(NULL))
-}
-
-
-#' Dynamic state diagnostics with ggplot2 (local-level)
-#' @keywords internal
-#' @noRd
-plot_dynamic_states_ggplot_ll <- function(x, which = NULL,
-                                          ci = TRUE, ci_level = 0.95, ...) {
-
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required")
-  }
-
-  validate_ci_level(ci_level)
-
-  if (is.null(which)) {
-    which <- 1
-  }
-
-  if (any(which < 1) || any(which > 1)) {
-    stop("`which` must be 1 for local-level models")
-  }
-
-  n_obs <- attr(x, "n_obs")
-  time_grid <- seq_len(n_obs)
-  patchwork_available <- requireNamespace("patchwork", quietly = TRUE)
-
-  if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    ci_label <- paste0(round(ci_level * 100), "% CI")
-  }
-
-  base_theme <- ggplot2::theme_minimal(base_size = 12) +
-    ggplot2::theme(
-      panel.grid.major = ggplot2::element_line(color = "grey85"),
-      panel.grid.minor = ggplot2::element_line(color = "grey92"),
-      plot.title = ggplot2::element_text(face = "bold", size = 13)
-    )
-
-  legend_outside <- ggplot2::theme(
-    legend.position = "top",
-    legend.title = ggplot2::element_blank(),
-    legend.direction = "horizontal"
-  )
-
-  theta_median <- apply(x$theta_1, 2, stats::median)
-  df_state <- data.frame(time = time_grid, median = theta_median)
-  if (ci) {
-    df_state$lower <- apply(x$theta_1, 2, stats::quantile, probs = ci_lower_prob)
-    df_state$upper <- apply(x$theta_1, 2, stats::quantile, probs = ci_upper_prob)
-  }
-
-  ci_pct <- round(ci_level * 100)
-
-  p_state <- ggplot2::ggplot(df_state, ggplot2::aes(x = .data$time))
-
-  if (ci) {
-    p_state <- p_state +
-      ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
-        alpha = 0.5, colour = NA
-      )
-  }
-
-  p_state <- p_state +
-    ggplot2::geom_line(
-      ggplot2::aes(y = .data$median, colour = "Median"),
-      linewidth = 1.2
-    ) +
-    ggplot2::scale_color_manual(
-      values = c("Median" = "black"),
-      breaks = "Median",
-      labels = expression(hat(theta)["t,1"])
-    )
-
-  if (ci) {
-    p_state <- p_state +
-      ggplot2::scale_fill_manual(
-        values = c("CI" = "gray70"),
-        breaks = "CI",
-        labels = paste0(ci_pct, "% CI")
-      ) +
-      ggplot2::guides(
-        colour = ggplot2::guide_legend(order = 1),
-        fill = ggplot2::guide_legend(order = 2)
-      )
-  } else {
-    p_state <- p_state +
-      ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
-  }
-
-  p_state <- p_state +
-    ggplot2::labs(
-      title = "Local-Level State",
-      x = "Time",
-      y = "State Value"
-    ) +
-    base_theme +
-    legend_outside
-
-  if (n_obs >= 2) {
-    innovations <- x$theta_1[, -1, drop = FALSE] -
-      x$theta_1[, -ncol(x$theta_1), drop = FALSE]
-
-    df_innov <- data.frame(
-      time = time_grid[-1],
-      median = apply(innovations, 2, stats::median)
-    )
-
-    if (ci) {
-      df_innov$lower <- apply(innovations, 2, stats::quantile, probs = ci_lower_prob)
-      df_innov$upper <- apply(innovations, 2, stats::quantile, probs = ci_upper_prob)
-    }
-
-    p_innov <- ggplot2::ggplot(df_innov, ggplot2::aes(x = .data$time))
-
-    if (ci) {
-      p_innov <- p_innov +
-        ggplot2::geom_ribbon(
-          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
-          alpha = 0.5, colour = NA
-        )
-    }
-
-    p_innov <- p_innov +
-      ggplot2::geom_line(
-        ggplot2::aes(y = .data$median, colour = "Median"),
-        linewidth = 1.2
-      ) +
-      ggplot2::geom_hline(yintercept = 0, linetype = "dashed", colour = "red") +
-      ggplot2::scale_color_manual(
-        values = c("Median" = "steelblue"),
-        breaks = "Median",
-        labels = "Median"
-      )
-
-    if (ci) {
-      p_innov <- p_innov +
-        ggplot2::scale_fill_manual(
-          values = c("CI" = "gray70"),
-          breaks = "CI",
-          labels = paste0(ci_pct, "% CI")
-        ) +
-        ggplot2::guides(
-          colour = ggplot2::guide_legend(order = 1),
-          fill = ggplot2::guide_legend(order = 2)
-        )
-    } else {
-      p_innov <- p_innov +
-        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
-    }
-
-    p_innov <- p_innov +
-      ggplot2::labs(
-        title = "Level Innovations",
-        x = "Time",
-        y = expression(u["t,1"])
-      ) +
-      base_theme +
-      legend_outside
-  } else {
-    p_innov <- ggplot2::ggplot() +
-      ggplot2::annotate("text", x = 0, y = 0,
-                        label = "Innovations require at least 2 observations",
-                        size = 4) +
-      ggplot2::theme_void() +
-      ggplot2::labs(title = "Level Innovations")
-  }
-
-  plots <- list(p_state, p_innov)
-
-  if (patchwork_available) {
-    combined <- patchwork::wrap_plots(plots, ncol = 2) +
-      patchwork::plot_annotation(
-        title = "Dynamic State Diagnostics",
-        theme = ggplot2::theme(
-          plot.title = ggplot2::element_text(size = 14, face = "bold",
-                                             hjust = 0.5)
-        )
-      )
-    print(combined)
-  } else {
-    plots[[1]] <- plots[[1]] +
-      ggplot2::labs(subtitle = "Dynamic State Diagnostics") +
-      ggplot2::theme(
-        plot.subtitle = ggplot2::element_text(size = 14, face = "bold",
-                                              hjust = 0.5)
-      )
-    for (p in plots) {
-      print(p)
-    }
-  }
-
-  invisible(NULL)
 }

@@ -26,13 +26,7 @@
 #'     \item{9}{W_2^{-1} (trend innovation precision)}
 #'     \item{10}{W_3^{-1} (acceleration innovation precision)}
 #'   }
-#'   For \code{type = "params"}: indices of subplots (1-4).
-#'   For \code{type = "states"}:
-#'   \describe{
-#'     \item{1}{State trajectories for level, trend, and acceleration}
-#'     \item{2}{Innovation diagnostics and joint trajectories}
-#'     \item{3}{Pairwise state-space relationships}
-#'   }
+#'   For \code{type = "params"}, \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"}: not used (both alpha_t and z_t are shown).
 #'   If \code{NULL} (default), all available plots are shown.
 #' @param engine Character string specifying the graphics engine. One of:
@@ -78,9 +72,9 @@
 #'
 #' \strong{Dynamic States (\code{type = "states"}):}
 #' \itemize{
-#'   \item Time-varying trajectories for level, trend, and acceleration states with credible bands
-#'   \item Innovation sequences for each latent state component
-#'   \item Pairwise state-space visualizations for (theta_1, theta_2, theta_3)
+#'   \item Time-varying state trajectories with credible bands
+#'   \item Innovation sequences
+#'   \item State space representations
 #' }
 #'
 #' \strong{Mixture Weights (\code{type = "alpha"}):}
@@ -95,7 +89,7 @@
 #' \itemize{
 #'   \item Pages 1-10: Individual parameter diagnostics (4 panels each)
 #'   \item Page 11: Mixture parameters (bivariate relationships)
-#'   \item Pages 12-14: Dynamic state trajectories, diagnostics, and pairwise relationships
+#'   \item Pages 12-14: Dynamic state trajectories and diagnostics
 #'   \item Page 15: Mixture weight alpha_t
 #'   \item Page 16: Component membership P(z_t = 1 | data)
 #' }
@@ -109,11 +103,13 @@
 #'
 #' The ggplot2 engine has optional dependencies for enhanced visualizations:
 #' \itemize{
+#'   \item \pkg{hexbin}: For hexagonal binning in joint posterior plots
 #'   \item \pkg{patchwork}: For combining multiple plots into layouts
 #' }
 #'
-#' If this package is not installed, plots will be displayed sequentially.
-#' Install with: \code{install.packages("patchwork")}
+#' If these packages are not installed, the function will use fallback methods
+#' (e.g., scatterplots instead of hexbins). Install with:
+#' \code{install.packages(c("hexbin", "patchwork"))}
 #'
 #' @examples
 #' \dontrun{
@@ -123,7 +119,7 @@
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
 #'
-#' # Generate true mixture weights following a multi-frequency sinusoidal pattern
+#' # Generate true mixture weights following a sinusoidal pattern
 #' grid_vals <- seq_len(n) / n
 #' alpha_true <- (sin(4 * pi * grid_vals) + sin(8 * pi * grid_vals) + 2) / 4
 #'
@@ -185,10 +181,7 @@
 #'
 #' # Diagnostics for specific parameters
 #' plot(out_logit, type = "mcmc", which = 1:2)  # Only mu_1 and mu_2
-#' plot(out_logit, type = "mcmc", which = 5:7)  # Initial states
-#'
-#' # Dynamic states only
-#' plot(out_logit, type = "states")
+#' plot(out_logit, type = "mcmc", which = 3:4)  # Only phi_1 and phi_2
 #'
 #' # Mixture weights (2 pages: alpha_t and z_t)
 #' plot(out_logit, type = "alpha")
@@ -203,8 +196,7 @@
 #' }
 #'
 #' @seealso \code{\link{mcmc_normal_mixture_localacceleration}},
-#'   \code{\link{summary.normal_mixture_localacceleration}},
-#'   \code{\link{print.normal_mixture_localacceleration}}
+#'   \code{\link{summary.normal_mixture_localacceleration}}
 #'
 #' @export
 plot.normal_mixture_localacceleration <- function(x,
@@ -218,849 +210,45 @@ plot.normal_mixture_localacceleration <- function(x,
                                                   ci_level = 0.95,
                                                   ...) {
 
-  # Validate inputs
   type <- match.arg(type)
   engine <- match.arg(engine)
 
-  # Check ggplot2 availability
   if (engine == "ggplot2" && !requireNamespace("ggplot2", quietly = TRUE)) {
     warning("Package 'ggplot2' is not installed. Falling back to base graphics.")
     engine <- "base"
   }
 
-  # Set default for ask
   if (is.null(ask)) {
     ask <- interactive() && type == "all"
   }
 
-  # Dispatch to appropriate plotting function
   if (engine == "base") {
     switch(type,
-           all = plot_all_base_localacceleration(x, ask = ask, overlay_data = overlay_data,
-                                                 ci = ci, ci_level = ci_level, ...),
-           mcmc = plot_mcmc_diagnostics_base_localacceleration(x, which = which, ...),
+           all = plot_all_mixture_generic_base(x, ask = ask, ci = ci,
+                                               ci_level = ci_level, ...),
+           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
+                                                engine = "base", ...),
            params = plot_mixture_params_base(x$mu_1, x$mu_2, x$prec_1, x$prec_2,
                                              which = which, ...),
-           states = plot_dynamic_states_base_localacceleration(x, which = which,
-                                                               ci = ci, ci_level = ci_level, ...),
-           alpha = plot_mixture_weights_base(x$alpha, x$z, ci = ci,
-                                             ci_level = ci_level, ...)
+           states = plot_dynamic_states_generic_base(x, which = which,
+                                                     ci = ci, ci_level = ci_level, ...),
+           alpha = plot_mixture_weights_base(x$alpha, x$z,
+                                             ci = ci, ci_level = ci_level, ...),
     )
   } else {
     switch(type,
-           all = plot_all_ggplot_localacceleration(x, ask = ask, overlay_data = overlay_data,
-                                                   ci = ci, ci_level = ci_level, ...),
-           mcmc = plot_mcmc_diagnostics_ggplot_localacceleration(x, which = which, ...),
+           all = plot_all_mixture_generic_ggplot(x, ask = ask, ci = ci,
+                                                 ci_level = ci_level, ...),
+           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
+                                                engine = "ggplot2", ...),
            params = plot_mixture_params_ggplot(x$mu_1, x$mu_2, x$prec_1, x$prec_2,
                                                which = which, ...),
-           states = plot_dynamic_states_ggplot_localacceleration(x, which = which,
-                                                                 ci = ci, ci_level = ci_level, ...),
-           alpha = plot_mixture_weights_ggplot(x$alpha, x$z, ci = ci,
-                                               ci_level = ci_level, ...)
+           states = plot_dynamic_states_generic_ggplot(x, which = which,
+                                                       ci = ci, ci_level = ci_level, ...),
+           alpha = plot_mixture_weights_ggplot(x$alpha, x$z,
+                                               ci = ci, ci_level = ci_level, ...)
     )
   }
 
   invisible(x)
-}
-
-
-# ============================================================================
-# Base R Graphics Functions (Specific to localacceleration)
-# ============================================================================
-
-#' Complete dashboard with base R graphics
-#' @keywords internal
-#' @noRd
-plot_all_base_localacceleration <- function(x, ask = TRUE, overlay_data = FALSE,
-                                            ci = TRUE, ci_level = 0.95, ...) {
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
-
-  if (ask) {
-    oldask <- par(ask = TRUE)
-    on.exit(par(oldask), add = TRUE)
-  }
-
-  # Pages 1-10: Individual parameter diagnostics (4 panels each)
-  plot_mcmc_diagnostics_base_localacceleration(x, which = 1:10, ...)
-
-  # Page 11: Mixture parameters (bivariate relationships)
-  plot_mixture_params_base(x$mu_1, x$mu_2, x$prec_1, x$prec_2, ...)
-
-  # Pages 12-14: Dynamic states (trajectories and diagnostics)
-  plot_dynamic_states_base_localacceleration(x, which = 1:3,
-                                             ci = ci, ci_level = ci_level, ...)
-
-  # Pages 15-16: Mixture weights (alpha_t and z_t)
-  plot_mixture_weights_base(x$alpha, x$z, ci = ci, ci_level = ci_level, ...)
-}
-
-
-#' MCMC diagnostics with base R graphics
-#' @keywords internal
-#' @noRd
-plot_mcmc_diagnostics_base_localacceleration <- function(x, which = NULL, ...) {
-
-  # Define available parameters (specific to localacceleration: 10 parameters)
-  all_params <- list(
-    mu_1 = list(samples = x$mu_1,
-                name = quote(mu[1]),
-                label = expression(mu[1])),
-    mu_2 = list(samples = x$mu_2,
-                name = quote(mu[2]),
-                label = expression(mu[2])),
-    phi_1 = list(samples = x$prec_1,
-                 name = quote(phi[1]),
-                 label = expression(phi[1])),
-    phi_2 = list(samples = x$prec_2,
-                 name = quote(phi[2]),
-                 label = expression(phi[2])),
-    theta_01 = list(samples = x$theta_01,
-                    name = quote(theta["0,1"]),
-                    label = expression(theta["0,1"])),
-    theta_02 = list(samples = x$theta_02,
-                    name = quote(theta["0,2"]),
-                    label = expression(theta["0,2"])),
-    theta_03 = list(samples = x$theta_03,
-                    name = quote(theta["0,3"]),
-                    label = expression(theta["0,3"])),
-    W1_inv = list(samples = x$prec_theta1,
-                  name = quote(W[1]^{-1}),
-                  label = expression(W[1]^{-1})),
-    W2_inv = list(samples = x$prec_theta2,
-                  name = quote(W[2]^{-1}),
-                  label = expression(W[2]^{-1})),
-    W3_inv = list(samples = x$prec_theta3,
-                  name = quote(W[3]^{-1}),
-                  label = expression(W[3]^{-1}))
-  )
-
-  # Default: all parameters
-  if (is.null(which)) {
-    which <- seq_along(all_params)
-  }
-
-  # Validate which
-  if (any(which < 1) || any(which > length(all_params))) {
-    stop(sprintf("`which` must be between 1 and %d", length(all_params)))
-  }
-
-  # Plot each selected parameter on its own page using SHARED utility function
-  for (i in which) {
-    param_info <- all_params[[i]]
-    plot_param_diagnostics_base(
-      param_samples = param_info$samples,
-      param_name = param_info$name,
-      param_label = param_info$label,
-      ...
-    )
-  }
-}
-
-
-#' Dynamic states with base R graphics (3 pages)
-#' @keywords internal
-#' @noRd
-plot_dynamic_states_base_localacceleration <- function(x, which = NULL, ci = TRUE,
-                                                       ci_level = 0.95, ...) {
-
-  validate_ci_level(ci_level)
-
-  if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    ci_label <- paste0(round(ci_level * 100), "% CI")
-  }
-
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
-
-  n_obs <- attr(x, "n_obs")
-  time_grid <- seq_len(n_obs)
-
-  if (is.null(which)) which <- 1:3
-  if (any(which < 1) || any(which > 3)) {
-    stop("`which` must be between 1 and 3")
-  }
-
-  summarise_state <- function(mat) {
-    med <- apply(mat, 2, stats::median)
-    if (ci) {
-      lower <- apply(mat, 2, stats::quantile, probs = ci_lower_prob)
-      upper <- apply(mat, 2, stats::quantile, probs = ci_upper_prob)
-    } else {
-      lower <- upper <- NULL
-    }
-    list(median = med, lower = lower, upper = upper)
-  }
-
-  theta1_summary <- summarise_state(x$theta_1)
-  theta2_summary <- summarise_state(x$theta_2)
-  theta3_summary <- summarise_state(x$theta_3)
-
-  # Page 1: Trajectories for level, trend, acceleration
-  if (1 %in% which) {
-    par(mfrow = c(3, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0),
-        mgp = c(2.5, 1, 0))
-
-    plot_state <- function(summary, main_title, col_line) {
-      if (ci && !is.null(summary$lower)) {
-        range_vals <- range(c(summary$lower, summary$upper))
-      } else {
-        range_vals <- range(summary$median)
-      }
-      if (diff(range_vals) == 0) {
-        range_vals <- range_vals + c(-0.5, 0.5)
-      }
-      range_vals[2] <- range_vals[2] + 0.3 * diff(range_vals)
-
-      plot(time_grid, summary$median, type = "l", lwd = 2, col = col_line,
-           xlab = "Time", ylab = "State Value",
-           main = main_title, ylim = range_vals)
-      if (ci && !is.null(summary$lower)) {
-        polygon(c(time_grid, rev(time_grid)),
-                c(summary$lower, rev(summary$upper)),
-                col = grDevices::rgb(0.7, 0.7, 0.7, 0.5), border = NA)
-        lines(time_grid, summary$median, lwd = 2, col = col_line)
-        legend("topright",
-               legend = c(main_title, ci_label),
-               col = c(col_line, grDevices::rgb(0.7, 0.7, 0.7, 0.5)),
-               horiz = TRUE,
-               lty = c(1, 1),
-               lwd = c(2, 8),
-               bty = "n")
-      } else {
-        lines(time_grid, summary$median, lwd = 2, col = col_line)
-        legend("topright",
-               legend = main_title,
-               col = col_line,
-               horiz = TRUE,
-               lty = 1,
-               lwd = 2,
-               bty = "n")
-      }
-      grid()
-    }
-
-    plot_state(theta1_summary, "Level State", "black")
-    plot_state(theta2_summary, "Trend State", "steelblue")
-    plot_state(theta3_summary, "Acceleration State", "firebrick")
-
-    mtext("Dynamic State Trajectories", outer = TRUE, cex = 1.3, font = 2)
-  }
-
-  # Compute innovations (include first time point using initial states)
-  theta01 <- x$theta_01
-  theta02 <- x$theta_02
-  theta03 <- x$theta_03
-
-  level_innov <- x$theta_1
-  trend_innov <- x$theta_2
-  accel_innov <- x$theta_3
-
-  # First time point innovations
-  level_innov[, 1] <- x$theta_1[, 1] - (theta01 + theta02)
-  trend_innov[, 1] <- x$theta_2[, 1] - (theta02 + theta03)
-  accel_innov[, 1] <- x$theta_3[, 1] - theta03
-
-  # Subsequent time points
-  if (n_obs > 1) {
-    level_innov[, 2:n_obs] <- x$theta_1[, 2:n_obs, drop = FALSE] -
-      x$theta_1[, 1:(n_obs - 1), drop = FALSE] -
-      x$theta_2[, 1:(n_obs - 1), drop = FALSE]
-    trend_innov[, 2:n_obs] <- x$theta_2[, 2:n_obs, drop = FALSE] -
-      x$theta_2[, 1:(n_obs - 1), drop = FALSE] -
-      x$theta_3[, 1:(n_obs - 1), drop = FALSE]
-    accel_innov[, 2:n_obs] <- x$theta_3[, 2:n_obs, drop = FALSE] -
-      x$theta_3[, 1:(n_obs - 1), drop = FALSE]
-  }
-
-  level_summary <- summarise_state(level_innov)
-  trend_summary <- summarise_state(trend_innov)
-  accel_summary <- summarise_state(accel_innov)
-
-  # Page 2: Innovations and joint trajectories
-  if (2 %in% which) {
-    par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
-
-    plot_innov <- function(summary, main_title, ylab, col_bar) {
-      if (ci && !is.null(summary$lower)) {
-        range_vals <- range(c(summary$lower, summary$upper))
-      } else {
-        range_vals <- range(summary$median)
-      }
-      if (diff(range_vals) == 0) {
-        range_vals <- range_vals + c(-0.5, 0.5)
-      }
-      range_vals[2] <- range_vals[2] + 0.3 * diff(range_vals)
-
-      plot(time_grid, summary$median, type = "h", lwd = 2, col = col_bar,
-           xlab = "Time", ylab = ylab, main = main_title, ylim = range_vals)
-      if (ci && !is.null(summary$lower)) {
-        polygon(c(time_grid, rev(time_grid)),
-                c(summary$lower, rev(summary$upper)),
-                col = grDevices::rgb(0.7, 0.7, 0.7, 0.4), border = NA)
-      }
-      abline(h = 0, col = "red", lty = 2, lwd = 2)
-      grid()
-      if (ci && !is.null(summary$lower)) {
-        legend("topright", legend = c("Median", ci_label), horiz = TRUE,
-               col = c(col_bar, grDevices::rgb(0.7, 0.7, 0.7, 0.4)),
-               lty = c(1, 1), lwd = c(2, 8), bty = "n")
-      } else {
-        legend("topright", legend = "Median", horiz = TRUE,
-               col = col_bar, lty = 1, lwd = 2, bty = "n")
-      }
-    }
-
-    plot_innov(level_summary, "Level Innovations", expression(u["t,1"]), "steelblue")
-    plot_innov(trend_summary, "Trend Innovations", expression(u["t,2"]), "darkgreen")
-    plot_innov(accel_summary, "Acceleration Innovations", expression(u["t,3"]), "firebrick")
-
-    # Joint trajectories (median states)
-    ylim_range <- range(c(theta1_summary$median,
-                          theta2_summary$median,
-                          theta3_summary$median))
-    if (diff(ylim_range) == 0) {
-      ylim_range <- ylim_range + c(-0.75, 0.75)
-    }
-    ylim_range[2] <- ylim_range[2] + 0.3 * diff(ylim_range)
-
-    plot(time_grid, theta1_summary$median, type = "l", lwd = 2,
-         col = "black", xlab = "Time", ylab = "State Value",
-         main = "Joint Trajectories", ylim = ylim_range)
-    lines(time_grid, theta2_summary$median, col = "steelblue", lwd = 2)
-    lines(time_grid, theta3_summary$median, col = "firebrick", lwd = 2)
-    grid()
-    legend("topright", horiz = TRUE,
-           legend = c(expression(hat(theta)["t,1"]),
-                      expression(hat(theta)["t,2"]),
-                      expression(hat(theta)["t,3"])),
-           col = c("black", "steelblue", "firebrick"),
-           lty = 1, lwd = 2, bty = "n")
-
-    mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
-  }
-
-  # Page 3: Pairwise state relationships
-  if (3 %in% which) {
-    par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 0, 0))
-
-    # Subsample for performance
-    max_points <- 5000L
-    theta_df <- data.frame(
-      theta1 = as.vector(x$theta_1),
-      theta2 = as.vector(x$theta_2),
-      theta3 = as.vector(x$theta_3)
-    )
-    if (nrow(theta_df) > max_points) {
-      theta_df <- theta_df[sample.int(nrow(theta_df), max_points), ]
-    }
-
-    pairs(theta_df,
-          pch = 16, cex = 0.6,
-          col = grDevices::rgb(0.2, 0.5, 0.8, 0.2),
-          main = "Pairwise State Relationships",
-          labels = c(expression(theta["t,1"]),
-                     expression(theta["t,2"]),
-                     expression(theta["t,3"])))
-  }
-}
-
-
-# ============================================================================
-# ggplot2 Graphics Functions (Specific to localacceleration)
-# ============================================================================
-
-#' Complete dashboard with ggplot2 graphics
-#' @keywords internal
-#' @noRd
-plot_all_ggplot_localacceleration <- function(x, ask = TRUE, overlay_data = TRUE,
-                                              ci = TRUE, ci_level = 0.95, ...) {
-
-  if (ask) {
-    message("Press [Enter] to see next plot...")
-  }
-
-  # Pages 1-10: Individual parameter diagnostics
-  plot_mcmc_diagnostics_ggplot_localacceleration(x, which = 1:10, ...)
-  if (ask) readline()
-
-  # Page 11: Mixture parameters
-  plot_mixture_params_ggplot(x$mu_1, x$mu_2, x$prec_1, x$prec_2, ...)
-  if (ask) readline()
-
-  # Pages 12-14: Dynamic state diagnostics
-  plot_dynamic_states_ggplot_localacceleration(x, which = 1:3,
-                                               ci = ci, ci_level = ci_level, ...)
-  if (ask) readline()
-
-  # Pages 15-16: Mixture weights
-  plot_mixture_weights_ggplot(x$alpha, x$z, ci = ci, ci_level = ci_level, ...)
-}
-
-
-#' MCMC diagnostics with ggplot2
-#' @keywords internal
-#' @noRd
-plot_mcmc_diagnostics_ggplot_localacceleration <- function(x, which = NULL, ...) {
-
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required")
-  }
-
-  # Define available parameters (specific to localacceleration: 10 parameters)
-  all_params <- list(
-    mu_1 = list(samples = x$mu_1, name = "mu_1", label = "mu_1"),
-    mu_2 = list(samples = x$mu_2, name = "mu_2", label = "mu_2"),
-    phi_1 = list(samples = x$prec_1, name = "phi_1", label = "phi_1"),
-    phi_2 = list(samples = x$prec_2, name = "phi_2", label = "phi_2"),
-    theta_01 = list(samples = x$theta_01, name = "theta_01", label = "theta_01"),
-    theta_02 = list(samples = x$theta_02, name = "theta_02", label = "theta_02"),
-    theta_03 = list(samples = x$theta_03, name = "theta_03", label = "theta_03"),
-    W1_inv = list(samples = x$prec_theta1, name = "W_1^{-1}", label = "W_1^{-1}"),
-    W2_inv = list(samples = x$prec_theta2, name = "W_2^{-1}", label = "W_2^{-1}"),
-    W3_inv = list(samples = x$prec_theta3, name = "W_3^{-1}", label = "W_3^{-1}")
-  )
-
-  if (is.null(which)) {
-    which <- seq_along(all_params)
-  }
-
-  if (any(which < 1) || any(which > length(all_params))) {
-    stop(sprintf("`which` must be between 1 and %d", length(all_params)))
-  }
-
-  # Plot each selected parameter using SHARED utility function
-  for (i in which) {
-    param_info <- all_params[[i]]
-    p <- plot_param_diagnostics_ggplot(
-      param_samples = param_info$samples,
-      param_name = param_info$name,
-      param_label_text = param_info$label,
-      ...
-    )
-    if (!is.null(p)) print(p)
-  }
-
-  return(invisible(NULL))
-}
-
-
-#' Dynamic states with ggplot2 (3 pages)
-#' @keywords internal
-#' @noRd
-plot_dynamic_states_ggplot_localacceleration <- function(x, which = NULL,
-                                                         ci = TRUE, ci_level = 0.95, ...) {
-
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required")
-  }
-
-  validate_ci_level(ci_level)
-
-  if (is.null(which)) {
-    which <- 1:3
-  }
-
-  if (any(which < 1) || any(which > 3)) {
-    stop("`which` must be between 1 and 3")
-  }
-
-  n_obs <- attr(x, "n_obs")
-  time_grid <- seq_len(n_obs)
-  patchwork_available <- requireNamespace("patchwork", quietly = TRUE)
-
-  if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    ci_pct <- round(ci_level * 100)
-  }
-
-  base_theme <- ggplot2::theme_minimal(base_size = 12) +
-    ggplot2::theme(
-      panel.grid.major = ggplot2::element_line(color = "grey85"),
-      panel.grid.minor = ggplot2::element_line(color = "grey92"),
-      plot.title = ggplot2::element_text(face = "bold", size = 13)
-    )
-
-  legend_outside <- ggplot2::theme(
-    legend.position = "top",
-    legend.title = ggplot2::element_blank(),
-    legend.direction = "horizontal"
-  )
-
-  summarise_series <- function(mat) {
-    df <- data.frame(
-      time = time_grid,
-      median = apply(mat, 2, stats::median)
-    )
-    if (ci) {
-      df$lower <- apply(mat, 2, stats::quantile, probs = ci_lower_prob)
-      df$upper <- apply(mat, 2, stats::quantile, probs = ci_upper_prob)
-    }
-    df
-  }
-
-  theta1_df <- summarise_series(x$theta_1)
-  theta2_df <- summarise_series(x$theta_2)
-  theta3_df <- summarise_series(x$theta_3)
-
-  # Compute innovations (matching base graphics)
-  theta01 <- x$theta_01
-  theta02 <- x$theta_02
-  theta03 <- x$theta_03
-
-  level_innov <- x$theta_1
-  trend_innov <- x$theta_2
-  accel_innov <- x$theta_3
-
-  level_innov[, 1] <- x$theta_1[, 1] - (theta01 + theta02)
-  trend_innov[, 1] <- x$theta_2[, 1] - (theta02 + theta03)
-  accel_innov[, 1] <- x$theta_3[, 1] - theta03
-
-  if (n_obs > 1) {
-    level_innov[, 2:n_obs] <- x$theta_1[, 2:n_obs, drop = FALSE] -
-      x$theta_1[, 1:(n_obs - 1), drop = FALSE] -
-      x$theta_2[, 1:(n_obs - 1), drop = FALSE]
-    trend_innov[, 2:n_obs] <- x$theta_2[, 2:n_obs, drop = FALSE] -
-      x$theta_2[, 1:(n_obs - 1), drop = FALSE] -
-      x$theta_3[, 1:(n_obs - 1), drop = FALSE]
-    accel_innov[, 2:n_obs] <- x$theta_3[, 2:n_obs, drop = FALSE] -
-      x$theta_3[, 1:(n_obs - 1), drop = FALSE]
-  }
-
-  level_df <- summarise_series(level_innov)
-  trend_df <- summarise_series(trend_innov)
-  accel_df <- summarise_series(accel_innov)
-
-  # Page 1: State trajectories
-  if (1 %in% which) {
-    # Create individual state plots with proper legends
-    p_level <- ggplot2::ggplot(theta1_df, ggplot2::aes(x = .data$time))
-
-    if (ci) {
-      p_level <- p_level +
-        ggplot2::geom_ribbon(
-          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
-          alpha = 0.5, colour = NA
-        )
-    }
-
-    p_level <- p_level +
-      ggplot2::geom_line(
-        ggplot2::aes(y = .data$median, colour = "Median"),
-        linewidth = 1.2
-      ) +
-      ggplot2::scale_color_manual(
-        values = c("Median" = "black"),
-        breaks = "Median",
-        labels = expression(hat(theta)["t,1"])
-      )
-
-    if (ci) {
-      p_level <- p_level +
-        ggplot2::scale_fill_manual(
-          values = c("CI" = "gray70"),
-          breaks = "CI",
-          labels = paste0(ci_pct, "% CI")
-        ) +
-        ggplot2::guides(
-          colour = ggplot2::guide_legend(order = 1),
-          fill = ggplot2::guide_legend(order = 2)
-        )
-    } else {
-      p_level <- p_level +
-        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
-    }
-
-    p_level <- p_level +
-      ggplot2::labs(
-        title = "Level State",
-        x = "Time",
-        y = "State Value"
-      ) +
-      base_theme +
-      legend_outside
-
-    p_trend <- ggplot2::ggplot(theta2_df, ggplot2::aes(x = .data$time))
-
-    if (ci) {
-      p_trend <- p_trend +
-        ggplot2::geom_ribbon(
-          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
-          alpha = 0.5, colour = NA
-        )
-    }
-
-    p_trend <- p_trend +
-      ggplot2::geom_line(
-        ggplot2::aes(y = .data$median, colour = "Median"),
-        linewidth = 1.2
-      ) +
-      ggplot2::scale_color_manual(
-        values = c("Median" = "steelblue"),
-        breaks = "Median",
-        labels = expression(hat(theta)["t,2"])
-      )
-
-    if (ci) {
-      p_trend <- p_trend +
-        ggplot2::scale_fill_manual(
-          values = c("CI" = "gray70"),
-          breaks = "CI",
-          labels = paste0(ci_pct, "% CI")
-        ) +
-        ggplot2::guides(
-          colour = ggplot2::guide_legend(order = 1),
-          fill = ggplot2::guide_legend(order = 2)
-        )
-    } else {
-      p_trend <- p_trend +
-        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
-    }
-
-    p_trend <- p_trend +
-      ggplot2::labs(
-        title = "Trend State",
-        x = "Time",
-        y = "State Value"
-      ) +
-      base_theme +
-      legend_outside
-
-    p_accel <- ggplot2::ggplot(theta3_df, ggplot2::aes(x = .data$time))
-
-    if (ci) {
-      p_accel <- p_accel +
-        ggplot2::geom_ribbon(
-          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
-          alpha = 0.5, colour = NA
-        )
-    }
-
-    p_accel <- p_accel +
-      ggplot2::geom_line(
-        ggplot2::aes(y = .data$median, colour = "Median"),
-        linewidth = 1.2
-      ) +
-      ggplot2::scale_color_manual(
-        values = c("Median" = "firebrick"),
-        breaks = "Median",
-        labels = expression(hat(theta)["t,3"])
-      )
-
-    if (ci) {
-      p_accel <- p_accel +
-        ggplot2::scale_fill_manual(
-          values = c("CI" = "gray70"),
-          breaks = "CI",
-          labels = paste0(ci_pct, "% CI")
-        ) +
-        ggplot2::guides(
-          colour = ggplot2::guide_legend(order = 1),
-          fill = ggplot2::guide_legend(order = 2)
-        )
-    } else {
-      p_accel <- p_accel +
-        ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
-    }
-
-    p_accel <- p_accel +
-      ggplot2::labs(
-        title = "Acceleration State",
-        x = "Time",
-        y = "State Value"
-      ) +
-      base_theme +
-      legend_outside
-
-    plots <- list(p_level, p_trend, p_accel)
-
-    if (patchwork_available) {
-      combined <- patchwork::wrap_plots(plots, ncol = 1) +
-        patchwork::plot_annotation(
-          title = "Dynamic State Trajectories",
-          theme = ggplot2::theme(
-            plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
-          )
-        )
-      print(combined)
-    } else {
-      plots[[1]] <- plots[[1]] +
-        ggplot2::labs(subtitle = "Dynamic State Trajectories") +
-        ggplot2::theme(
-          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
-        )
-      for (p in plots) {
-        print(p)
-      }
-    }
-  }
-
-  # Page 2: Innovations and joint trajectories
-  if (2 %in% which) {
-    create_innovation_plot <- function(df, title, ylab, colour) {
-      p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$time))
-      if (ci && "lower" %in% names(df)) {
-        p <- p + ggplot2::geom_ribbon(
-          ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
-          alpha = 0.4, colour = NA
-        )
-      }
-      p <- p + ggplot2::geom_segment(
-        ggplot2::aes(xend = .data$time, y = 0, yend = .data$median, colour = "Median"),
-        linewidth = 1.05
-      ) +
-        ggplot2::geom_hline(yintercept = 0, colour = "red", linetype = "dashed",
-                            linewidth = 0.8) +
-        ggplot2::scale_color_manual(
-          values = c("Median" = colour),
-          breaks = "Median",
-          labels = "Median"
-        )
-
-      if (ci && "lower" %in% names(df)) {
-        p <- p + ggplot2::scale_fill_manual(
-          values = c("CI" = "gray70"),
-          breaks = "CI",
-          labels = paste0(ci_pct, "% CI")
-        ) +
-          ggplot2::guides(
-            colour = ggplot2::guide_legend(order = 1),
-            fill = ggplot2::guide_legend(order = 2)
-          )
-      } else {
-        p <- p + ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
-      }
-
-      p + ggplot2::labs(title = title, x = "Time", y = ylab) +
-        base_theme +
-        legend_outside
-    }
-
-    df_joint <- data.frame(
-      time = rep(time_grid, 3),
-      median = c(theta1_df$median, theta2_df$median, theta3_df$median),
-      state = factor(rep(c("level", "trend", "acceleration"), each = n_obs),
-                     levels = c("level", "trend", "acceleration"))
-    )
-
-    p_joint <- ggplot2::ggplot(df_joint, ggplot2::aes(x = .data$time,
-                                                      y = .data$median,
-                                                      colour = .data$state)) +
-      ggplot2::geom_line(linewidth = 1.1) +
-      ggplot2::scale_colour_manual(
-        values = c(level = "black", trend = "steelblue", acceleration = "firebrick"),
-        breaks = c("level", "trend", "acceleration"),
-        labels = c(
-          expression(hat(theta)["t,1"]),
-          expression(hat(theta)["t,2"]),
-          expression(hat(theta)["t,3"])
-        )
-      ) +
-      ggplot2::guides(colour = ggplot2::guide_legend(order = 1)) +
-      ggplot2::labs(
-        title = "Joint Trajectories",
-        x = "Time",
-        y = "State Value"
-      ) +
-      base_theme +
-      legend_outside
-
-    plots <- list(
-      create_innovation_plot(level_df, "Level Innovations",
-                             expression(u["t,1"]), "steelblue"),
-      create_innovation_plot(trend_df, "Trend Innovations",
-                             expression(u["t,2"]), "darkgreen"),
-      create_innovation_plot(accel_df, "Acceleration Innovations",
-                             expression(u["t,3"]), "firebrick"),
-      p_joint
-    )
-
-    if (patchwork_available) {
-      combined <- patchwork::wrap_plots(plots, ncol = 2) +
-        patchwork::plot_annotation(
-          title = "Dynamic State Diagnostics",
-          theme = ggplot2::theme(
-            plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
-          )
-        )
-      print(combined)
-    } else {
-      plots[[1]] <- plots[[1]] +
-        ggplot2::labs(subtitle = "Dynamic State Diagnostics") +
-        ggplot2::theme(
-          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
-        )
-      for (p in plots) {
-        print(p)
-      }
-    }
-  }
-
-  # Page 3: Pairwise state relationships
-  if (3 %in% which) {
-    # Subsample for performance
-    theta_df <- data.frame(
-      theta1 = as.vector(x$theta_1),
-      theta2 = as.vector(x$theta_2),
-      theta3 = as.vector(x$theta_3)
-    )
-    max_points <- 5000L
-    if (nrow(theta_df) > max_points) {
-      theta_df <- theta_df[sample.int(nrow(theta_df), max_points), ]
-    }
-
-    p12 <- ggplot2::ggplot(theta_df, ggplot2::aes(x = .data$theta1, y = .data$theta2)) +
-      ggplot2::geom_point(colour = grDevices::rgb(0.2, 0.5, 0.8, 0.2), size = 1.2) +
-      ggplot2::labs(
-        x = expression(theta["t,1"]),
-        y = expression(theta["t,2"])
-      ) +
-      base_theme +
-      ggplot2::theme(legend.position = "none")
-
-    p13 <- ggplot2::ggplot(theta_df, ggplot2::aes(x = .data$theta1, y = .data$theta3)) +
-      ggplot2::geom_point(colour = grDevices::rgb(0.8, 0.3, 0.3, 0.2), size = 1.2) +
-      ggplot2::labs(
-        x = expression(theta["t,1"]),
-        y = expression(theta["t,3"])
-      ) +
-      base_theme +
-      ggplot2::theme(legend.position = "none")
-
-    p23 <- ggplot2::ggplot(theta_df, ggplot2::aes(x = .data$theta2, y = .data$theta3)) +
-      ggplot2::geom_point(colour = grDevices::rgb(0.3, 0.8, 0.4, 0.2), size = 1.2) +
-      ggplot2::labs(
-        x = expression(theta["t,2"]),
-        y = expression(theta["t,3"])
-      ) +
-      base_theme +
-      ggplot2::theme(legend.position = "none")
-
-    plots <- list(p12, p13, p23)
-
-    if (patchwork_available) {
-      combined <- patchwork::wrap_plots(plots, ncol = 2) +
-        patchwork::plot_annotation(
-          title = "Pairwise State Relationships",
-          theme = ggplot2::theme(
-            plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
-          )
-        )
-      print(combined)
-    } else {
-      plots[[1]] <- plots[[1]] +
-        ggplot2::labs(subtitle = "Pairwise State Relationships") +
-        ggplot2::theme(
-          plot.subtitle = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)
-        )
-      for (p in plots) {
-        print(p)
-      }
-    }
-  }
-
-  invisible(NULL)
 }

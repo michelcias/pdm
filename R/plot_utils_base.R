@@ -185,7 +185,7 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
          xlab = expression(mu[1]),
          ylab = expression(mu[2]),
          main = expression(paste(mu[1], " vs ", mu[2])),
-         pch = 16, col = grDevices::rgb(0.2, 0.5, 0.8, 0.15))
+         pch = 16, col = grDevices::rgb(0.1, 0.3, 0.6, 0.3))
     grid()
   }
 
@@ -195,7 +195,7 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
          xlab = expression(mu[1]),
          ylab = expression(phi[1]),
          main = expression(paste(mu[1], " vs ", phi[1])),
-         pch = 16, col = grDevices::rgb(0.2, 0.5, 0.8, 0.15))
+         pch = 16, col = grDevices::rgb(0.1, 0.5, 0.2, 0.3))
     grid()
   }
 
@@ -205,7 +205,7 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
          xlab = expression(mu[2]),
          ylab = expression(phi[2]),
          main = expression(paste(mu[2], " vs ", phi[2])),
-         pch = 16, col = grDevices::rgb(0, 0.5, 0, 0.15))
+         pch = 16, col = grDevices::rgb(0.8, 0.4, 0.1, 0.3))
     grid()
   }
 
@@ -215,7 +215,7 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
          xlab = expression(phi[1]),
          ylab = expression(phi[2]),
          main = expression(paste(phi[1], " vs ", phi[2])),
-         pch = 16, col = grDevices::rgb(0.5, 0, 0.5, 0.15))
+         pch = 16, col = grDevices::rgb(0.5, 0.1, 0.5, 0.3))
     grid()
   }
 
@@ -372,5 +372,385 @@ validate_ci_level <- function(ci_level) {
       ci_level <= 0 || ci_level >= 1) {
     stop("`ci_level` must be a single numeric value between 0 and 1")
   }
+  invisible(NULL)
+}
+
+# =============================================================================
+# Generic Dashboard Functions (Base Graphics)
+# =============================================================================
+
+#' Generic complete dashboard for mixture models (base graphics)
+#'
+#' @description Creates a comprehensive multi-page diagnostic dashboard
+#'   for any mixture model type, automatically adapting to the model's
+#'   polynomial order.
+#'
+#' @param x An object inheriting from "pdm_mcmc".
+#' @param ask Logical; if TRUE, prompts user before each new page.
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric between 0 and 1; credible interval level.
+#' @param ... Additional arguments passed to plotting functions.
+#'
+#' @return NULL (invisibly). Function is called for side effects (plotting).
+#'
+#' @details Generates a complete dashboard with the following pages:
+#'   \itemize{
+#'     \item Pages 1-n: MCMC diagnostics for each parameter (4 panels each)
+#'     \item Page n+1: Mixture component bivariate relationships
+#'     \item Pages n+2 onwards: Dynamic state trajectories and diagnostics
+#'     \item Final pages: Mixture weight alpha_t and component indicators z_t
+#'   }
+#'
+#'   The number of pages adapts automatically based on model order:
+#'   \itemize{
+#'     \item Order 1 (locallevel): 10 total pages
+#'     \item Order 2 (localtrend): 13 total pages
+#'     \item Order 3 (localacceleration): 16 total pages
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
+                                          ci_level = 0.95, ...) {
+
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar))
+
+  if (ask) {
+    oldask <- par(ask = TRUE)
+    on.exit(par(oldask), add = TRUE)
+  }
+
+  # 1. Detect model type
+  model_info <- detect_model_type(x)
+  model_order <- model_info$model_order
+
+  # 2. Get parameter configuration
+  param_config <- get_param_config(x, model_info$model_class, model_order)
+  n_params <- length(param_config)
+
+  # 3. Pages 1-n: MCMC diagnostics for each parameter
+  plot_mcmc_diagnostics_generic(x, which = seq_len(n_params),
+                                param_config = param_config,
+                                engine = "base", ...)
+
+  # 4. Page n+1: Mixture parameters (only for mixture models)
+  if (model_info$has_mixture) {
+    plot_mixture_params_base(x$mu_1, x$mu_2, x$prec_1, x$prec_2, ...)
+  }
+
+  # 5. Pages n+2 onwards: Dynamic states
+  plot_dynamic_states_generic_base(x, model_order = model_order,
+                                   ci = ci, ci_level = ci_level, ...)
+
+  # 6. Final pages: Mixture weights (only for mixture models)
+  if (model_info$has_mixture) {
+    plot_mixture_weights_base(x$alpha, x$z, ci = ci, ci_level = ci_level, ...)
+  }
+
+  invisible(NULL)
+}
+
+
+#' Generic dynamic states plotting dispatcher (base graphics)
+#'
+#' @description Orchestrates dynamic state plotting for any model order,
+#'   creating appropriate pages for trajectories, innovations, and diagnostics.
+#'
+#' @param x An object inheriting from "pdm_mcmc".
+#' @param which Integer vector specifying which state plot pages to display.
+#'   If NULL, all pages are shown.
+#' @param model_order Integer: 1, 2, or 3. If NULL, auto-detected.
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric between 0 and 1; credible interval level.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Function is called for side effects (plotting).
+#'
+#' @details Number of pages generated:
+#'   \itemize{
+#'     \item Order 1: 2 pages (trajectory + diagnostics)
+#'     \item Order 2: 2 pages (trajectories + diagnostics with scatter plot)
+#'     \item Order 3: 3 pages (trajectories + diagnostics + state space)
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_dynamic_states_generic_base <- function(x, which = NULL,
+                                             model_order = NULL,
+                                             ci = TRUE, ci_level = 0.95, ...) {
+
+  # Auto-detect model order if needed
+  if (is.null(model_order)) {
+    model_info <- detect_model_type(x)
+    model_order <- model_info$model_order
+  }
+
+  validate_ci_level(ci_level)
+
+  # Determine number of pages (order 1 now has 2 pages)
+  n_pages <- if (model_order == 1) 2L else model_order
+
+  if (is.null(which)) {
+    which <- seq_len(n_pages)
+  }
+
+  # Validate which
+  if (any(which < 1) || any(which > n_pages)) {
+    stop("`which` must be between 1 and ", n_pages)
+  }
+
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar))
+
+  n_obs <- attr(x, "n_obs")
+  time_grid <- seq_len(n_obs)
+
+  # Prepare CI parameters
+  if (ci) {
+    ci_lower_prob <- (1 - ci_level) / 2
+    ci_upper_prob <- 1 - ci_lower_prob
+    ci_label <- paste0(round(ci_level * 100), "% CI")
+  }
+
+  # Get state summaries and labels
+  state_summaries <- summarise_all_states(x, model_order, ci, ci_level)
+  state_labels <- get_state_labels(model_order)
+
+  # =========================================================================
+  # Page 1: State Trajectories
+  # =========================================================================
+
+  if (1 %in% which) {
+    par(mfrow = c(model_order, 1), mar = c(4, 4, 3, 1),
+        oma = c(0, 0, 2, 0), mgp = c(2.5, 1, 0))
+
+    for (i in seq_len(model_order)) {
+      state_name <- state_labels$state_names[i]
+      summary_i <- state_summaries[[state_name]]
+
+      plot_state_trajectory_base(
+        time_grid = time_grid,
+        median = summary_i$median,
+        lower = summary_i$lower,
+        upper = summary_i$upper,
+        ylab = state_labels$state_labels[[i]],
+        main = state_labels$state_titles[i],
+        col = state_labels$state_colors[i],
+        ci = ci,
+        ci_label = ci_label
+      )
+    }
+
+    mtext("Dynamic State Trajectories", outer = TRUE, cex = 1.3, font = 2)
+  }
+
+  # =========================================================================
+  # Page 2: Diagnostics - Different layouts for each order
+  # =========================================================================
+
+  if (2 %in% which) {
+    # Compute innovations
+    innovations <- compute_innovations(x, model_order)
+    innov_summaries <- lapply(innovations, summarise_state, ci, ci_level)
+    innov_labels <- get_innovation_labels(model_order)
+
+    # -----------------------------------------------------------------------
+    # ORDER 1: [Trajectory, Innovation] side by side
+    # -----------------------------------------------------------------------
+    if (model_order == 1) {
+      par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0),
+          mgp = c(2.5, 1, 0))
+
+      plot_innovation_base(
+        time_grid = time_grid,
+        median = innov_summaries$innov_1$median,
+        lower = innov_summaries$innov_1$lower,
+        upper = innov_summaries$innov_1$upper,
+        ylab = innov_labels$innov_labels[[1]],
+        main = innov_labels$innov_titles[1],
+        col_bar = innov_labels$innov_colors[1],
+        ci = ci,
+        ci_label = ci_label
+      )
+
+      mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
+    }
+
+    # -----------------------------------------------------------------------
+    # ORDER 2: [Scatter, Innov1, Joint, Innov2]
+    # -----------------------------------------------------------------------
+    if (model_order == 2) {
+      par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
+
+      # Plot 2.1: State Space (theta_1 vs theta_2)
+      theta_df <- data.frame(
+        theta1 = as.vector(x$theta_1),
+        theta2 = as.vector(x$theta_2)
+      )
+
+      max_points <- 5000L
+      if (nrow(theta_df) > max_points) {
+        set.seed(123)
+        theta_df <- theta_df[sample.int(nrow(theta_df), max_points), ]
+      }
+
+      plot(theta_df$theta1, theta_df$theta2,
+           xlab = expression(theta["t,1"]),
+           ylab = expression(theta["t,2"]),
+           main = "State Space",
+           pch = 16, cex = 0.9, col = grDevices::rgb(1, 0.5, 0, 0.2))
+      grid()
+
+      # Plot 2.2: Level Innovations
+      plot_innovation_base(
+        time_grid = time_grid,
+        median = innov_summaries$innov_1$median,
+        lower = innov_summaries$innov_1$lower,
+        upper = innov_summaries$innov_1$upper,
+        ylab = innov_labels$innov_labels[[1]],
+        main = innov_labels$innov_titles[1],
+        col_bar = innov_labels$innov_colors[1],
+        ci = ci,
+        ci_label = ci_label
+      )
+
+      # Plot 2.3: Joint Trajectories
+      ylim_range <- range(c(state_summaries$theta_1$median,
+                            state_summaries$theta_2$median))
+      if (diff(ylim_range) == 0) {
+        ylim_range <- ylim_range + c(-0.75, 0.75)
+      }
+      ylim_range[2] <- ylim_range[2] + 0.3 * diff(ylim_range)
+
+      plot(time_grid, state_summaries$theta_1$median, type = "l", lwd = 2,
+           col = state_labels$state_colors[1],
+           xlab = "Time", ylab = "State Value",
+           main = "Joint Trajectories", ylim = ylim_range)
+      lines(time_grid, state_summaries$theta_2$median,
+            col = state_labels$state_colors[2], lwd = 2)
+      grid()
+      legend("topright", horiz = TRUE,
+             legend = state_labels$state_labels,
+             col = state_labels$state_colors,
+             lty = 1, lwd = 2, bty = "n")
+
+      # Plot 2.4: Trend Innovations
+      plot_innovation_base(
+        time_grid = time_grid,
+        median = innov_summaries$innov_2$median,
+        lower = innov_summaries$innov_2$lower,
+        upper = innov_summaries$innov_2$upper,
+        ylab = innov_labels$innov_labels[[2]],
+        main = innov_labels$innov_titles[2],
+        col_bar = innov_labels$innov_colors[2],
+        ci = ci,
+        ci_label = ci_label
+      )
+
+      mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
+    }
+
+    # -----------------------------------------------------------------------
+    # ORDER 3: [Joint, Innov1, Innov2, Innov3]
+    # -----------------------------------------------------------------------
+    if (model_order == 3) {
+      par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
+
+      # Plot 2.1: Joint Trajectories
+      ylim_range <- range(c(state_summaries$theta_1$median,
+                            state_summaries$theta_2$median,
+                            state_summaries$theta_3$median))
+      if (diff(ylim_range) == 0) {
+        ylim_range <- ylim_range + c(-0.75, 0.75)
+      }
+      ylim_range[2] <- ylim_range[2] + 0.3 * diff(ylim_range)
+
+      plot(time_grid, state_summaries$theta_1$median, type = "l", lwd = 2,
+           col = state_labels$state_colors[1],
+           xlab = "Time", ylab = "State Value",
+           main = "Joint Trajectories", ylim = ylim_range)
+      lines(time_grid, state_summaries$theta_2$median,
+            col = state_labels$state_colors[2], lwd = 2)
+      lines(time_grid, state_summaries$theta_3$median,
+            col = state_labels$state_colors[3], lwd = 2)
+      grid()
+      legend("topright", horiz = TRUE,
+             legend = state_labels$state_labels,
+             col = state_labels$state_colors,
+             lty = 1, lwd = 2, bty = "n")
+
+      # Plot 2.2: Level Innovations
+      plot_innovation_base(
+        time_grid = time_grid,
+        median = innov_summaries$innov_1$median,
+        lower = innov_summaries$innov_1$lower,
+        upper = innov_summaries$innov_1$upper,
+        ylab = innov_labels$innov_labels[[1]],
+        main = innov_labels$innov_titles[1],
+        col_bar = innov_labels$innov_colors[1],
+        ci = ci,
+        ci_label = ci_label
+      )
+
+      # Plot 2.3: Trend Innovations
+      plot_innovation_base(
+        time_grid = time_grid,
+        median = innov_summaries$innov_2$median,
+        lower = innov_summaries$innov_2$lower,
+        upper = innov_summaries$innov_2$upper,
+        ylab = innov_labels$innov_labels[[2]],
+        main = innov_labels$innov_titles[2],
+        col_bar = innov_labels$innov_colors[2],
+        ci = ci,
+        ci_label = ci_label
+      )
+
+      # Plot 2.4: Acceleration Innovations
+      plot_innovation_base(
+        time_grid = time_grid,
+        median = innov_summaries$innov_3$median,
+        lower = innov_summaries$innov_3$lower,
+        upper = innov_summaries$innov_3$upper,
+        ylab = innov_labels$innov_labels[[3]],
+        main = innov_labels$innov_titles[3],
+        col_bar = innov_labels$innov_colors[3],
+        ci = ci,
+        ci_label = ci_label
+      )
+
+      mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
+    }
+  }
+
+  # =========================================================================
+  # Page 3: State Space Relationships (order 3 only)
+  # =========================================================================
+
+  if (3 %in% which && model_order == 3) {
+    par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 0, 0))
+
+    # Subsample for performance
+    max_points <- 5000L
+    theta_df <- data.frame(
+      theta1 = as.vector(x$theta_1),
+      theta2 = as.vector(x$theta_2),
+      theta3 = as.vector(x$theta_3)
+    )
+
+    if (nrow(theta_df) > max_points) {
+      set.seed(123)
+      theta_df <- theta_df[sample.int(nrow(theta_df), max_points), ]
+    }
+
+    pairs(theta_df,
+          pch = 16, cex = 0.6,
+          col = grDevices::rgb(0.2, 0.5, 0.8, 0.2),
+          main = "Pairwise State Relationships",
+          labels = c(expression(theta["t,1"]),
+                     expression(theta["t,2"]),
+                     expression(theta["t,3"])))
+  }
+
   invisible(NULL)
 }

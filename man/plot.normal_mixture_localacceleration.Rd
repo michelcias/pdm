@@ -42,13 +42,7 @@ For \code{type = "mcmc"}:
   \item{9}{W_2^{-1} (trend innovation precision)}
   \item{10}{W_3^{-1} (acceleration innovation precision)}
 }
-For \code{type = "params"}: indices of subplots (1-4).
-For \code{type = "states"}:
-\describe{
-  \item{1}{State trajectories for level, trend, and acceleration}
-  \item{2}{Innovation diagnostics and joint trajectories}
-  \item{3}{Pairwise state-space relationships}
-}
+For \code{type = "params"}, \code{type = "states"}: indices of subplots.
 For \code{type = "alpha"}: not used (both alpha_t and z_t are shown).
 If \code{NULL} (default), all available plots are shown.}
 
@@ -105,9 +99,9 @@ W_1^{-1}, W_2^{-1}, W_3^{-1}
 
 \strong{Dynamic States (\code{type = "states"}):}
 \itemize{
-  \item Time-varying trajectories for level, trend, and acceleration states with credible bands
-  \item Innovation sequences for each latent state component
-  \item Pairwise state-space visualizations for (theta_1, theta_2, theta_3)
+  \item Time-varying state trajectories with credible bands
+  \item Innovation sequences
+  \item State space representations
 }
 
 \strong{Mixture Weights (\code{type = "alpha"}):}
@@ -122,7 +116,7 @@ Generates 16 pages in total:
 \itemize{
   \item Pages 1-10: Individual parameter diagnostics (4 panels each)
   \item Page 11: Mixture parameters (bivariate relationships)
-  \item Pages 12-14: Dynamic state trajectories, diagnostics, and pairwise relationships
+  \item Pages 12-14: Dynamic state trajectories and diagnostics
   \item Page 15: Mixture weight alpha_t
   \item Page 16: Component membership P(z_t = 1 | data)
 }
@@ -137,11 +131,13 @@ with a warning.
 
 The ggplot2 engine has optional dependencies for enhanced visualizations:
 \itemize{
+  \item \pkg{hexbin}: For hexagonal binning in joint posterior plots
   \item \pkg{patchwork}: For combining multiple plots into layouts
 }
 
-If this package is not installed, plots will be displayed sequentially.
-Install with: \code{install.packages("patchwork")}
+If these packages are not installed, the function will use fallback methods
+(e.g., scatterplots instead of hexbins). Install with:
+\code{install.packages(c("hexbin", "patchwork"))}
 }
 
 \examples{
@@ -152,7 +148,7 @@ n <- 400  # Number of observations to simulate
 # Use a fixed seed for data simulation
 set.seed(123)
 
-# Generate true mixture weights following a multi-frequency sinusoidal pattern
+# Generate true mixture weights following a sinusoidal pattern
 grid_vals <- seq_len(n) / n
 alpha_true <- (sin(4 * pi * grid_vals) + sin(8 * pi * grid_vals) + 2) / 4
 
@@ -214,10 +210,7 @@ plot(out_logit, type = "all", engine = "base")
 
 # Diagnostics for specific parameters
 plot(out_logit, type = "mcmc", which = 1:2)  # Only mu_1 and mu_2
-plot(out_logit, type = "mcmc", which = 5:7)  # Initial states
-
-# Dynamic states only
-plot(out_logit, type = "states")
+plot(out_logit, type = "mcmc", which = 3:4)  # Only phi_1 and phi_2
 
 # Mixture weights (2 pages: alpha_t and z_t)
 plot(out_logit, type = "alpha")
@@ -234,6 +227,5 @@ plot(out_logit, type = "mcmc", which = 1, engine = "ggplot2")
 }
 \seealso{
 \code{\link{mcmc_normal_mixture_localacceleration}},
-  \code{\link{summary.normal_mixture_localacceleration}},
-  \code{\link{print.normal_mixture_localacceleration}}
+  \code{\link{summary.normal_mixture_localacceleration}}
 }

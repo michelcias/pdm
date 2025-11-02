@@ -24,7 +24,7 @@
   \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
   \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
   \item{\code{"params"}}{Mixture component parameters (mu, phi)}
-  \item{\code{"states"}}{Dynamic state diagnostics for the local-level state}
+  \item{\code{"states"}}{Dynamic states (theta_1 trajectory)}
   \item{\code{"alpha"}}{Mixture weights over time (alpha_t and z_t)}
 }}
 
@@ -38,8 +38,7 @@ For \code{type = "mcmc"}:
   \item{5}{theta_01 (initial level)}
   \item{6}{W_1^{-1} (level innovation precision)}
 }
-For \code{type = "params"}: indices of subplots.
-For \code{type = "states"}: use \code{1} (local-level diagnostics).
+For \code{type = "params"}, \code{type = "states"}: indices of subplots.
 For \code{type = "alpha"}: not used (both alpha_t and z_t are shown).
 If \code{NULL} (default), all available plots are shown.}
 
@@ -93,10 +92,10 @@ Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, W_1^{-1}
   \item Component separation diagnostics
 }
 
-\strong{Dynamic State (\code{type = "states"}):}
+\strong{Dynamic States (\code{type = "states"}):}
 \itemize{
-  \item Time-varying local-level trajectory with credible bands
-  \item Innovation sequence diagnostics
+  \item Time-varying state trajectory with credible bands
+  \item Innovation sequence
 }
 
 \strong{Mixture Weights (\code{type = "alpha"}):}
@@ -111,9 +110,9 @@ Generates 10 pages in total:
 \itemize{
   \item Pages 1-6: Individual parameter diagnostics (4 panels each)
   \item Page 7: Mixture parameters (bivariate relationships)
-  \item Page 8: Dynamic state diagnostics
-  \item Page 9: Mixture weight alpha_t
-  \item Page 10: Component membership P(z_t = 1 | data)
+  \item Pages 8-9: Dynamic state trajectory and diagnostics
+  \item Page 10: Mixture weight alpha_t
+  \item Page 11: Component membership P(z_t = 1 | data)
 }
 
 The \code{engine} argument allows choosing between base R graphics (lightweight,

@@ -289,7 +289,7 @@ print.summary.normal_locallevel <- function(x, digits = 3, ...) {
   cat("\n")
 
   # Latent level summary
-  cat("Latent Level (theta_t) Summary:\n")
+  cat("Latent Level (theta_{t,1}) Summary:\n")
   cat(strrep("-", 75), "\n", sep = "")
 
   theta_print <- x$theta_summary

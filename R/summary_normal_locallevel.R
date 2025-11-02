@@ -135,7 +135,7 @@ summary.normal_locallevel <- function(object,
     Parameter = c("theta_01", "W_1^-1", "V^-1"),
     rbind(
       compute_stats(object$theta_01, probs),
-      compute_stats(object$prec_1, probs),
+      compute_stats(object$prec_theta1, probs),
       compute_stats(object$prec_y, probs)
     )
   )

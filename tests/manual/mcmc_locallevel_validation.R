@@ -94,12 +94,12 @@ eta_y        <- 1e-1    # prior_prec_y_rate
 #-------------------------------------------------------------------------------
 theta_1_chain  <- matrix(NA_real_, nrow = n_chain, ncol = n)
 theta_01_chain <- numeric(n_chain)
-prec_1_chain   <- numeric(n_chain)
+prec_theta1_chain   <- numeric(n_chain)
 prec_y_chain   <- numeric(n_chain)
 
 # Full history arrays (iteration-wise, including burn-in)
 theta_01_post <- numeric(n_iter)
-prec_1_post   <- numeric(n_iter)
+prec_theta1_post   <- numeric(n_iter)
 prec_y_post   <- numeric(n_iter)
 theta_1_post  <- matrix(NA_real_, nrow = n_iter, ncol = n)
 
@@ -108,9 +108,9 @@ theta_1_post  <- matrix(NA_real_, nrow = n_iter, ncol = n)
 #-------------------------------------------------------------------------------
 # set.seed(456)
 theta_01_post[1] <- rnorm(1, mean_theta01, sqrt(1.0 / prec_theta01))
-prec_1_post[1]   <- rgamma(1, nu_01, rate = eta_01)
+prec_theta1_post[1]   <- rgamma(1, nu_01, rate = eta_01)
 prec_y_post[1]   <- rgamma(1, nu_y,  rate = eta_y)
-init_sd          <- sqrt(1.0 / prec_1_post[1])
+init_sd          <- sqrt(1.0 / prec_theta1_post[1])
 
 # Initialize theta_1 as random walk from theta_01
 theta_1_post[1, 1] <- rnorm(1, theta_01_post[1], init_sd)
@@ -137,7 +137,7 @@ for (ii in 2:n_iter) {
     "_pdm_test_generate_theta_1_locallevel",
     as.numeric(y),
     as.numeric(prec_y_post[ii-1]),
-    as.numeric(prec_1_post[ii-1]),
+    as.numeric(prec_theta1_post[ii-1]),
     as.numeric(theta_01_post[ii-1])
   )
   if (length(theta_1_new) == n) {
@@ -148,8 +148,8 @@ for (ii in 2:n_iter) {
   }
 
   # 2) Innovation precision 1/W_1
-  # prec_1_post[ii] <- prec1_true
-  prec_1_post[ii] <- .Call(
+  # prec_theta1_post[ii] <- prec1_true
+  prec_theta1_post[ii] <- .Call(
     "_pdm_test_generate_precision_theta_p",
     as.numeric(theta_01_post[ii-1]),
     as.numeric(theta_1_post[ii, ]),
@@ -162,7 +162,7 @@ for (ii in 2:n_iter) {
   theta_01_post[ii] <- .Call(
     "_pdm_test_generate_theta_01_locallevel",
     as.numeric(theta_1_post[ii, ]),
-    as.numeric(prec_1_post[ii]),
+    as.numeric(prec_theta1_post[ii]),
     as.numeric(mean_theta01),
     as.numeric(prec_theta01)
   )
@@ -182,7 +182,7 @@ for (ii in 2:n_iter) {
     chain_idx <- chain_idx + 1
     theta_1_chain[chain_idx, ] <- theta_1_post[ii, ]
     theta_01_chain[chain_idx]  <- theta_01_post[ii]
-    prec_1_chain[chain_idx]    <- prec_1_post[ii]
+    prec_theta1_chain[chain_idx]    <- prec_theta1_post[ii]
     prec_y_chain[chain_idx]    <- prec_y_post[ii]
   }
 
@@ -199,12 +199,12 @@ cat("\n... MCMC loop completed.\n\n")
 #-------------------------------------------------------------------------------
 param_chains <- list(
   theta_01 = theta_01_chain,
-  prec_1   = prec_1_chain,
+  prec_theta1   = prec_theta1_chain,
   prec_y   = prec_y_chain
 )
 true_values <- c(
   theta_01 = theta0_true,
-  prec_1   = prec1_true,
+  prec_theta1   = prec1_true,
   prec_y   = prec_y_true
 )
 

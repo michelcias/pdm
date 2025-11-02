@@ -722,16 +722,16 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
       REAL(theta_01_samples)[idx]     = theta_01_current;
       REAL(theta_02_samples)[idx]     = theta_02_current;
       REAL(theta_03_samples)[idx]     = theta_03_current;
-      REAL(prec_theta1_samples)[idx]  = prec_theta1_current;
-      REAL(prec_theta2_samples)[idx]  = prec_theta2_current;
-      REAL(prec_theta3_samples)[idx]  = prec_theta3_current;
+      REAL(prec_theta1_samples)[idx] = prec_theta1_current;
+      REAL(prec_theta2_samples)[idx] = prec_theta2_current;
+      REAL(prec_theta3_samples)[idx] = prec_theta3_current;
 
       /* Store state trajectories, mixture weights, and indicators */
       for (int t = 0; t < n; t++) {
         REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
         REAL(theta_2_samples)[idx + t * n_chain] = theta_2_current[t];
         REAL(theta_3_samples)[idx + t * n_chain] = theta_3_current[t];
-        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
+        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
         REAL(z_samples)[idx + t * n_chain]       = z_current[t];
 
         /* Store logit-specific diagnostics if requested */
@@ -762,9 +762,9 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
     theta_01_previous     = theta_01_current;
     theta_02_previous     = theta_02_current;
     theta_03_previous     = theta_03_current;
-    prec_theta1_previous  = prec_theta1_current;
-    prec_theta2_previous  = prec_theta2_current;
-    prec_theta3_previous  = prec_theta3_current;
+    prec_theta1_previous = prec_theta1_current;
+    prec_theta2_previous = prec_theta2_current;
+    prec_theta3_previous = prec_theta3_current;
   }
 
   /* ========== Finalize Progress Bar ========== */

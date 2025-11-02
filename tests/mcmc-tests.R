@@ -40,7 +40,7 @@ CONFIG <- list(
     n = 500,                    # Number of time points
     n_trials = 10,             # Number of trials per time point
     theta_01_true = 0.5,        # Initial state value
-    prec_1_true = 100.0,        # State precision
+    prec_theta1_true = 100.0,        # State precision
     seed = 404                  # Reproducibility seed
   ),
 
@@ -450,7 +450,7 @@ generate_test_report <- function(test_results, config = CONFIG) {
 #' @param n_chain Number of samples to store after burn-in and thinning
 #' @param theta_1_true Optional: fixed values for latent states (testing only)
 #' @param theta_01_true Optional: fixed value for initial state (testing only)
-#' @param prec_1_true Optional: fixed value for state precision (testing only)
+#' @param prec_theta1_true Optional: fixed value for state precision (testing only)
 #' @param prior_theta01_mean Prior mean for theta_01
 #' @param prior_theta01_prec Prior precision for theta_01
 #' @param prior_prec1_shape Prior shape parameter for precision
@@ -465,7 +465,7 @@ generate_test_report <- function(test_results, config = CONFIG) {
 #' @return List with MCMC samples and diagnostics:
 #'   - theta_1: Matrix of latent state samples (n_chain x n)
 #'   - theta_01: Vector of initial state samples (n_chain)
-#'   - prec_1: Vector of precision samples (n_chain)
+#'   - prec_theta1: Vector of precision samples (n_chain)
 #'   - diagnostics: List of convergence diagnostics
 #'
 #' @examples
@@ -478,7 +478,7 @@ generate_test_report <- function(test_results, config = CONFIG) {
 #'                                thinning = 10, n_chain = 500)
 #' }
 enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
-                                  theta_1_true = NULL, theta_01_true = NULL, prec_1_true = NULL,
+                                  theta_1_true = NULL, theta_01_true = NULL, prec_theta1_true = NULL,
                                   prior_theta01_mean = 0.0, prior_theta01_prec = 1.0,
                                   prior_prec1_shape = 1.0, prior_prec1_rate = 1.0,
                                   lag_update = 50L, max_step_size = 0.1,
@@ -509,7 +509,7 @@ enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
                     as.integer(n_chain),        # 5
                     theta_1_true,               # 6
                     theta_01_true,              # 7
-                    prec_1_true,                # 8
+                    prec_theta1_true,                # 8
                     prior_theta01_mean,         # 9
                     prior_theta01_prec,         # 10
                     prior_prec1_shape,          # 11
@@ -551,17 +551,17 @@ set.seed(CONFIG$simulation$seed)
 n <- CONFIG$simulation$n
 n_trials <- CONFIG$simulation$n_trials
 theta_01_true <- CONFIG$simulation$theta_01_true
-prec_1_true <- CONFIG$simulation$prec_1_true
+prec_theta1_true <- CONFIG$simulation$prec_theta1_true
 
 cat("=== DATA SIMULATION ===\n")
 cat("Time series length (n):", n, "\n")
 cat("Binomial trials per period:", n_trials, "\n")
 cat("True initial state (theta_01):", theta_01_true, "\n")
-cat("True state precision:", prec_1_true, "\n")
+cat("True state precision:", prec_theta1_true, "\n")
 cat("Quick test mode:", ifelse(CONFIG$test$quick_test, "ENABLED", "DISABLED"), "\n\n")
 
 # Generate true latent states (random walk)
-u1 <- rnorm(n, mean = 0, sd = sqrt(1 / prec_1_true))
+u1 <- rnorm(n, mean = 0, sd = sqrt(1 / prec_theta1_true))
 theta_1_true <- cumsum(c(theta_01_true, u1))[-1]
 
 # Transform to probability scale via logit link
@@ -617,7 +617,7 @@ if (CONFIG$test$verbose) {
 # 6. TEST A: CONDITIONAL DISTRIBUTION OF THETA_01
 # =============================================================================
 
-cat("\n=== TEST A: Sampling theta_01 (fixing theta_1 and prec_1) ===\n")
+cat("\n=== TEST A: Sampling theta_01 (fixing theta_1 and prec_theta1) ===\n")
 cat("Purpose: Validate conditional posterior for initial state parameter\n")
 
 # Set seed for reproducibility
@@ -631,7 +631,7 @@ mcmc_out_A <- enhanced_test_sampler(
   thinning = CONFIG$mcmc$thinning,
   n_chain = CONFIG$mcmc$n_chain,
   theta_1_true = theta_1_true,    # Fixed at true values
-  prec_1_true = prec_1_true,      # Fixed at true values
+  prec_theta1_true = prec_theta1_true,      # Fixed at true values
   prior_theta01_mean = 0.0,       # Weakly informative prior
   prior_theta01_prec = 1.0
 )
@@ -644,7 +644,7 @@ test_results <- list()
 test_results$test_A <- list(
   samples = mcmc_out_A$theta_01,
   diagnostics = diag_A,
-  fixed_params = c("theta_1", "prec_1")
+  fixed_params = c("theta_1", "prec_theta1")
 )
 
 # Enhanced visualization
@@ -726,7 +726,7 @@ if (!is.na(diag_A$geweke_pvalue)) {
 # 7. TEST B: CONDITIONAL DISTRIBUTION OF PREC_1
 # =============================================================================
 
-cat("\n=== TEST B: Sampling prec_1 (fixing theta_1 and theta_01) ===\n")
+cat("\n=== TEST B: Sampling prec_theta1 (fixing theta_1 and theta_01) ===\n")
 cat("Purpose: Validate conditional posterior for state precision parameter\n")
 
 # Set seed for reproducibility
@@ -746,11 +746,11 @@ mcmc_out_B <- enhanced_test_sampler(
 )
 
 # Comprehensive diagnostics
-diag_B <- mcmc_diagnostics(mcmc_out_B$prec_1, prec_1_true, "prec_1")
+diag_B <- mcmc_diagnostics(mcmc_out_B$prec_theta1, prec_theta1_true, "prec_theta1")
 
 # Store results
 test_results$test_B <- list(
-  samples = mcmc_out_B$prec_1,
+  samples = mcmc_out_B$prec_theta1,
   diagnostics = diag_B,
   fixed_params = c("theta_1", "theta_01")
 )
@@ -760,31 +760,31 @@ if (CONFIG$test$verbose) {
   par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
 
   # Trace plot
-  plot.ts(mcmc_out_B$prec_1, main = "Trace Plot: prec_1",
-          ylab = "prec_1", col = rgb(0, 0.5, 0, 0.7))
-  abline(h = prec_1_true, col = "red", lwd = 2, lty = 2)
+  plot.ts(mcmc_out_B$prec_theta1, main = "Trace Plot: prec_theta1",
+          ylab = "prec_theta1", col = rgb(0, 0.5, 0, 0.7))
+  abline(h = prec_theta1_true, col = "red", lwd = 2, lty = 2)
   abline(h = diag_B$mean, col = "blue", lwd = 2, lty = 2)
   legend("topright", c("True value", "Posterior mean"),
          col = c("red", "blue"), lty = 2, lwd = 2, cex = 0.8)
   grid()
 
   # Log-scale density plot (better for precision parameters)
-  log_samples <- log(mcmc_out_B$prec_1)
-  plot(density(log_samples), main = "Posterior Density: log(prec_1)",
-       xlab = "log(prec_1)", col = "darkgreen", lwd = 2)
-  abline(v = log(prec_1_true), col = "red", lwd = 2, lty = 2)
+  log_samples <- log(mcmc_out_B$prec_theta1)
+  plot(density(log_samples), main = "Posterior Density: log(prec_theta1)",
+       xlab = "log(prec_theta1)", col = "darkgreen", lwd = 2)
+  abline(v = log(prec_theta1_true), col = "red", lwd = 2, lty = 2)
   abline(v = log(diag_B$mean), col = "blue", lwd = 2, lty = 2)
   grid()
 
   # Running average
-  running_mean_B <- cumsum(mcmc_out_B$prec_1) / seq_along(mcmc_out_B$prec_1)
-  plot(running_mean_B, type = "l", main = "Running Average: prec_1",
+  running_mean_B <- cumsum(mcmc_out_B$prec_theta1) / seq_along(mcmc_out_B$prec_theta1)
+  plot(running_mean_B, type = "l", main = "Running Average: prec_theta1",
        ylab = "Running Mean", col = "darkgreen", lwd = 2)
-  abline(h = prec_1_true, col = "red", lwd = 2, lty = 2)
+  abline(h = prec_theta1_true, col = "red", lwd = 2, lty = 2)
   grid()
 
   # Q-Q plot for normality check (on log scale)
-  qqnorm(log_samples, main = "Q-Q Plot: log(prec_1)")
+  qqnorm(log_samples, main = "Q-Q Plot: log(prec_theta1)")
   qqline(log_samples, col = "red", lwd = 2)
   grid()
 
@@ -793,7 +793,7 @@ if (CONFIG$test$verbose) {
 
 # Print detailed results
 cat("\nDETAILED RESULTS FOR TEST B:\n")
-cat("  True value:", prec_1_true, "\n")
+cat("  True value:", prec_theta1_true, "\n")
 cat("  Posterior mean:", sprintf("%.4f", diag_B$mean), "\n")
 cat("  Posterior SD:", sprintf("%.4f", diag_B$sd), "\n")
 cat("  MC standard error:", sprintf("%.4f", diag_B$mc_se), "\n")
@@ -810,7 +810,7 @@ if (!is.na(diag_B$geweke_pvalue)) {
 # 8. TEST C: CONDITIONAL DISTRIBUTION OF THETA_1
 # =============================================================================
 
-cat("\n=== TEST C: Sampling theta_1 (fixing theta_01 and prec_1) ===\n")
+cat("\n=== TEST C: Sampling theta_1 (fixing theta_01 and prec_theta1) ===\n")
 cat("Purpose: Validate conditional posterior for latent state trajectory\n")
 
 # Set seed for reproducibility
@@ -827,7 +827,7 @@ mcmc_out_C <- enhanced_test_sampler(
   thinning = CONFIG$mcmc$thinning,
   n_chain = n_chain_C,
   theta_01_true = theta_01_true,    # Fixed at true values
-  prec_1_true = prec_1_true         # Fixed at true values
+  prec_theta1_true = prec_theta1_true         # Fixed at true values
 )
 
 # Comprehensive diagnostics for trajectory
@@ -837,7 +837,7 @@ diag_C <- mcmc_diagnostics(mcmc_out_C$theta_1, theta_1_true, "theta_1")
 test_results$test_C <- list(
   samples = mcmc_out_C$theta_1,
   diagnostics = diag_C,
-  fixed_params = c("theta_01", "prec_1")
+  fixed_params = c("theta_01", "prec_theta1")
 )
 
 # Enhanced visualization for trajectory
@@ -934,8 +934,8 @@ if (length(mcmc_out_A$theta_01) >= 3) {
 }
 
 # Test B: Tests for precision parameter (log-normal expected)
-if (length(mcmc_out_B$prec_1) >= 3) {
-  log_prec <- log(mcmc_out_B$prec_1)
+if (length(mcmc_out_B$prec_theta1) >= 3) {
+  log_prec <- log(mcmc_out_B$prec_theta1)
   if (length(log_prec) <= 5000) {
     shapiro_B <- shapiro.test(log_prec)
     cat("Test B - Shapiro-Wilk test (log scale) p-value:", sprintf("%.4f", shapiro_B$p.value), "\n")

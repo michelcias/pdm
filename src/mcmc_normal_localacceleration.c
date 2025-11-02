@@ -127,9 +127,9 @@
  *         - theta_01: Numeric vector [n_chain] of initial level state theta_{0,1} samples
  *         - theta_02: Numeric vector [n_chain] of initial trend state theta_{0,2} samples
  *         - theta_03: Numeric vector [n_chain] of initial acceleration state theta_{0,3} samples
- *         - prec_1: Numeric vector [n_chain] of level innovation precision 1/W_1 samples
- *         - prec_2: Numeric vector [n_chain] of trend innovation precision 1/W_2 samples
- *         - prec_3: Numeric vector [n_chain] of acceleration innovation precision 1/W_3 samples
+ *         - prec_theta1: Numeric vector [n_chain] of level innovation precision 1/W_1 samples
+ *         - prec_theta2: Numeric vector [n_chain] of trend innovation precision 1/W_2 samples
+ *         - prec_theta3: Numeric vector [n_chain] of acceleration innovation precision 1/W_3 samples
  *         - prec_y: Numeric vector [n_chain] of observation precision 1/V samples
  *
  * @note Computational complexity: O(n_iter × n) for n_iter total iterations.
@@ -230,9 +230,9 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
   SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
   SEXP theta_02_samples = PROTECT(allocVector(REALSXP, n_chain));
   SEXP theta_03_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_1_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_2_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_3_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta2_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta3_samples   = PROTECT(allocVector(REALSXP, n_chain));
   SEXP prec_y_samples   = PROTECT(allocVector(REALSXP, n_chain));
 
   /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
@@ -249,9 +249,9 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
   double theta_01_current, theta_01_previous;
   double theta_02_current, theta_02_previous;
   double theta_03_current, theta_03_previous;
-  double prec_1_current,   prec_1_previous;
-  double prec_2_current,   prec_2_previous;
-  double prec_3_current,   prec_3_previous;
+  double prec_theta1_current,   prec_theta1_previous;
+  double prec_theta2_current,   prec_theta2_previous;
+  double prec_theta3_current,   prec_theta3_previous;
   double prec_y_current,   prec_y_previous;
 
   /* ========== Initialize RNG State ========== */
@@ -262,27 +262,27 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
   theta_03_previous = rnorm(mean_theta03, sqrt(1.0 / prec_theta03));
-  prec_1_previous   = rgamma(nu_01, 1.0 / eta_01);
-  prec_2_previous   = rgamma(nu_02, 1.0 / eta_02);
-  prec_3_previous   = rgamma(nu_03, 1.0 / eta_03);
+  prec_theta1_previous   = rgamma(nu_01, 1.0 / eta_01);
+  prec_theta2_previous   = rgamma(nu_02, 1.0 / eta_02);
+  prec_theta3_previous   = rgamma(nu_03, 1.0 / eta_03);
   prec_y_previous   = rgamma(nu_y, 1.0 / eta_y);
 
   /* Initialize theta_3 trajectory via random walk from initial acceleration */
-  double init_sd_3 = sqrt(1.0 / prec_3_previous);
+  double init_sd_3 = sqrt(1.0 / prec_theta3_previous);
   theta_3_previous[0] = rnorm(theta_03_previous, init_sd_3);
   for (int j = 1; j < n; j++) {
     theta_3_previous[j] = rnorm(theta_3_previous[j - 1], init_sd_3);
   }
 
   /* Initialize theta_2 trajectory via random walk with acceleration from initial trend */
-  double init_sd_2 = sqrt(1.0 / prec_2_previous);
+  double init_sd_2 = sqrt(1.0 / prec_theta2_previous);
   theta_2_previous[0] = rnorm(theta_02_previous + theta_03_previous, init_sd_2);
   for (int j = 1; j < n; j++) {
     theta_2_previous[j] = rnorm(theta_2_previous[j - 1] + theta_3_previous[j - 1], init_sd_2);
   }
 
   /* Initialize theta_1 trajectory via random walk with trend from initial level */
-  double init_sd_1 = sqrt(1.0 / prec_1_previous);
+  double init_sd_1 = sqrt(1.0 / prec_theta1_previous);
   theta_1_previous[0] = rnorm(theta_01_previous + theta_02_previous, init_sd_1);
   for (int j = 1; j < n; j++) {
     theta_1_previous[j] = rnorm(theta_1_previous[j - 1] + theta_2_previous[j - 1], init_sd_1);
@@ -302,8 +302,8 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
     generate_theta_p(
       theta_2_previous,   /* theta_{p-1}: trend from previous iteration [n] */
       theta_3_current,    /* output: current iteration theta_3 [n] */
-      prec_2_previous,    /* scalar: trend precision from previous iteration */
-      prec_3_previous,    /* scalar: acceleration precision from previous iteration */
+      prec_theta2_previous,    /* scalar: trend precision from previous iteration */
+      prec_theta3_previous,    /* scalar: acceleration precision from previous iteration */
       theta_03_previous,  /* scalar: initial acceleration from previous iteration */
       n                   /* sample size */
     );
@@ -311,7 +311,7 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
     /* ===== Step 2: Sample Acceleration Innovation Precision 1/W_3 ===== */
     /* Draw 1/W_3 | theta_3_current, theta_{0,3}_previous from Gamma posterior.
      * Uses current theta_3 (just sampled) and previous theta_{0,3}. */
-    prec_3_current = generate_precision_theta_p(
+    prec_theta3_current = generate_precision_theta_p(
       theta_03_previous,  /* scalar: initial acceleration from previous iteration */
       theta_3_current,    /* vector: current theta_3 [n] */
       nu_03,              /* prior shape */
@@ -321,14 +321,14 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
 
     /* ===== Step 3: Sample Initial Acceleration State theta_{0,3} ===== */
     /* Draw theta_{0,3} | theta_2_previous, theta_3_current, theta_{0,2}_previous,
-     * prec_2_previous, prec_3_current from Normal posterior.
+     * prec_theta2_previous, prec_theta3_current from Normal posterior.
      * Uses information from both trend and acceleration components. */
     theta_03_current = generate_theta_0p(
       theta_2_previous,   /* theta_{p-1}: trend from previous iteration [n] */
       theta_3_current,    /* theta_p: current acceleration [n] */
       theta_02_previous,  /* theta_{0,p-1}: initial trend from previous iteration */
-      prec_2_previous,    /* prec_{p-1}: trend precision from previous iteration */
-      prec_3_current,     /* prec_p: current acceleration precision */
+      prec_theta2_previous,    /* prec_{p-1}: trend precision from previous iteration */
+      prec_theta3_current,     /* prec_p: current acceleration precision */
       mean_theta03,       /* prior mean */
       prec_theta03,       /* prior precision */
       n                   /* sample size */
@@ -336,15 +336,15 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
 
     /* ===== Step 4: Sample Trend State Vector theta_2 ===== */
     /* Draw theta_2 | theta_1_previous, theta_3_current, theta_{0,1}_previous,
-     * theta_{0,2}_previous, theta_{0,3}_current, prec_1_previous, prec_2_previous
+     * theta_{0,2}_previous, theta_{0,3}_current, prec_theta1_previous, prec_theta2_previous
      * from multivariate Normal with tridiagonal precision.
      * Uses current theta_3 to account for acceleration contribution to trend evolution. */
     generate_theta_k(
       theta_1_previous,   /* theta_{k-1}: level from previous iteration [n] */
       theta_2_current,    /* output: current iteration theta_2 [n] */
       theta_3_current,    /* theta_{k+1}: current acceleration [n] */
-      prec_1_previous,    /* scalar: level precision from previous iteration */
-      prec_2_previous,    /* scalar: trend precision from previous iteration */
+      prec_theta1_previous,    /* scalar: level precision from previous iteration */
+      prec_theta2_previous,    /* scalar: trend precision from previous iteration */
       theta_02_previous,  /* scalar: initial trend from previous iteration */
       theta_03_current,   /* scalar: current initial acceleration */
       n                   /* sample size */
@@ -354,7 +354,7 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
     /* Draw 1/W_2 | theta_{0,2}_previous, theta_{0,3}_current, theta_2_current,
      * theta_3_current from Gamma posterior.
      * Uses both trend and acceleration information to compute innovations. */
-    prec_2_current = generate_precision_theta_k(
+    prec_theta2_current = generate_precision_theta_k(
       theta_02_previous,  /* scalar: initial trend from previous iteration */
       theta_03_current,   /* scalar: current initial acceleration */
       theta_2_current,    /* vector: current trend [n] */
@@ -366,15 +366,15 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
 
     /* ===== Step 6: Sample Initial Trend State theta_{0,2} ===== */
     /* Draw theta_{0,2} | theta_1_previous, theta_2_current, theta_{0,1}_previous,
-     * theta_{0,3}_current, prec_1_previous, prec_2_current from Normal posterior.
+     * theta_{0,3}_current, prec_theta1_previous, prec_theta2_current from Normal posterior.
      * Uses information from level, trend, and acceleration components. */
     theta_02_current = generate_theta_0k(
       theta_1_previous,   /* theta_{k-1}: level from previous iteration [n] */
       theta_2_current,    /* theta_k: current trend [n] */
       theta_01_previous,  /* theta_{0,k-1}: initial level from previous iteration */
       theta_03_current,   /* theta_{0,k+1}: current initial acceleration */
-      prec_1_previous,    /* prec_{k-1}: level precision from previous iteration */
-      prec_2_current,     /* prec_k: current trend precision */
+      prec_theta1_previous,    /* prec_{k-1}: level precision from previous iteration */
+      prec_theta2_current,     /* prec_k: current trend precision */
       mean_theta02,       /* prior mean */
       prec_theta02,       /* prior precision */
       n                   /* sample size */
@@ -382,14 +382,14 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
 
     /* ===== Step 7: Sample Level State Vector theta_1 ===== */
     /* Draw theta_1 | y, theta_2_current, theta_{0,1}_previous, theta_{0,2}_current,
-     * prec_1_previous, prec_y_previous from multivariate Normal with tridiagonal precision.
+     * prec_theta1_previous, prec_y_previous from multivariate Normal with tridiagonal precision.
      * Uses current theta_2 to account for trend contribution to level evolution. */
     generate_theta_1(
       y,                  /* data: observed series [n] */
       theta_1_current,    /* output: current iteration theta_1 [n] */
       theta_2_current,    /* theta_2: current trend [n] */
       prec_y_previous,    /* scalar: data precision from previous iteration */
-      prec_1_previous,    /* scalar: level precision from previous iteration */
+      prec_theta1_previous,    /* scalar: level precision from previous iteration */
       theta_01_previous,  /* scalar: initial level from previous iteration */
       theta_02_current,   /* scalar: current initial trend */
       n                   /* sample size */
@@ -399,7 +399,7 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
     /* Draw 1/W_1 | theta_{0,1}_previous, theta_{0,2}_current, theta_1_current,
      * theta_2_current from Gamma posterior.
      * Uses both level and trend information to compute innovations. */
-    prec_1_current = generate_precision_theta_k(
+    prec_theta1_current = generate_precision_theta_k(
       theta_01_previous,  /* scalar: initial level from previous iteration */
       theta_02_current,   /* scalar: current initial trend */
       theta_1_current,    /* vector: current level [n] */
@@ -410,13 +410,13 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
     );
 
     /* ===== Step 9: Sample Initial Level State theta_{0,1} ===== */
-    /* Draw theta_{0,1} | theta_1_current, theta_{0,2}_current, prec_1_current
+    /* Draw theta_{0,1} | theta_1_current, theta_{0,2}_current, prec_theta1_current
      * from Normal posterior.
      * Uses current level and trend information. */
     theta_01_current = generate_theta_01(
       theta_1_current,    /* vector: current level [n] */
       theta_02_current,   /* scalar: current initial trend */
-      prec_1_current,     /* scalar: current level precision */
+      prec_theta1_current,     /* scalar: current level precision */
       mean_theta01,       /* prior mean */
       prec_theta01,       /* prior precision */
       n                   /* sample size */
@@ -450,9 +450,9 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
       REAL(theta_01_samples)[idx] = theta_01_current;
       REAL(theta_02_samples)[idx] = theta_02_current;
       REAL(theta_03_samples)[idx] = theta_03_current;
-      REAL(prec_1_samples)[idx]   = prec_1_current;
-      REAL(prec_2_samples)[idx]   = prec_2_current;
-      REAL(prec_3_samples)[idx]   = prec_3_current;
+      REAL(prec_theta1_samples)[idx] = prec_theta1_current;
+      REAL(prec_theta2_samples)[idx] = prec_theta2_current;
+      REAL(prec_theta3_samples)[idx] = prec_theta3_current;
       REAL(prec_y_samples)[idx]   = prec_y_current;
     }
 
@@ -471,9 +471,9 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
     theta_01_previous = theta_01_current;
     theta_02_previous = theta_02_current;
     theta_03_previous = theta_03_current;
-    prec_1_previous   = prec_1_current;
-    prec_2_previous   = prec_2_current;
-    prec_3_previous   = prec_3_current;
+    prec_theta1_previous = prec_theta1_current;
+    prec_theta2_previous = prec_theta2_current;
+    prec_theta3_previous = prec_theta3_current;
     prec_y_previous   = prec_y_current;
   }
 
@@ -499,9 +499,9 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
   SET_VECTOR_ELT(out, 3, theta_01_samples);
   SET_VECTOR_ELT(out, 4, theta_02_samples);
   SET_VECTOR_ELT(out, 5, theta_03_samples);
-  SET_VECTOR_ELT(out, 6, prec_1_samples);
-  SET_VECTOR_ELT(out, 7, prec_2_samples);
-  SET_VECTOR_ELT(out, 8, prec_3_samples);
+  SET_VECTOR_ELT(out, 6, prec_theta1_samples);
+  SET_VECTOR_ELT(out, 7, prec_theta2_samples);
+  SET_VECTOR_ELT(out, 8, prec_theta3_samples);
   SET_VECTOR_ELT(out, 9, prec_y_samples);
 
   SEXP nms = PROTECT(allocVector(STRSXP, 10));
@@ -511,9 +511,9 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
   SET_STRING_ELT(nms, 3, mkChar("theta_01"));
   SET_STRING_ELT(nms, 4, mkChar("theta_02"));
   SET_STRING_ELT(nms, 5, mkChar("theta_03"));
-  SET_STRING_ELT(nms, 6, mkChar("prec_1"));
-  SET_STRING_ELT(nms, 7, mkChar("prec_2"));
-  SET_STRING_ELT(nms, 8, mkChar("prec_3"));
+  SET_STRING_ELT(nms, 6, mkChar("prec_theta1"));
+  SET_STRING_ELT(nms, 7, mkChar("prec_theta2"));
+  SET_STRING_ELT(nms, 8, mkChar("prec_theta3"));
   SET_STRING_ELT(nms, 9, mkChar("prec_y"));
   setAttrib(out, R_NamesSymbol, nms);
 

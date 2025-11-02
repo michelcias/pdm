@@ -109,15 +109,15 @@ theta_1_chain  <- matrix(NA_real_, nrow = n_chain, ncol = n)
 theta_2_chain  <- matrix(NA_real_, nrow = n_chain, ncol = n)
 theta_01_chain <- numeric(n_chain)
 theta_02_chain <- numeric(n_chain)
-prec_1_chain   <- numeric(n_chain)
-prec_2_chain   <- numeric(n_chain)
+prec_theta1_chain   <- numeric(n_chain)
+prec_theta2_chain   <- numeric(n_chain)
 prec_y_chain   <- numeric(n_chain)
 
 # Full history arrays
 theta_01_post <- numeric(n_iter)
 theta_02_post <- numeric(n_iter)
-prec_1_post   <- numeric(n_iter)
-prec_2_post   <- numeric(n_iter)
+prec_theta1_post   <- numeric(n_iter)
+prec_theta2_post   <- numeric(n_iter)
 prec_y_post   <- numeric(n_iter)
 theta_1_post  <- matrix(NA_real_, nrow = n_iter, ncol = n)
 theta_2_post  <- matrix(NA_real_, nrow = n_iter, ncol = n)
@@ -128,12 +128,12 @@ theta_2_post  <- matrix(NA_real_, nrow = n_iter, ncol = n)
 # set.seed(456)
 theta_01_post[1] <- rnorm(1, mean_theta01, sqrt(1.0 / prec_theta01))
 theta_02_post[1] <- rnorm(1, mean_theta02, sqrt(1.0 / prec_theta02))
-prec_1_post[1]   <- rgamma(1, nu_01, rate = eta_01)
-prec_2_post[1]   <- rgamma(1, nu_02, rate = eta_02)
+prec_theta1_post[1]   <- rgamma(1, nu_01, rate = eta_01)
+prec_theta2_post[1]   <- rgamma(1, nu_02, rate = eta_02)
 prec_y_post[1]   <- rgamma(1, nu_y,  rate = eta_y)
 
-init_sd_1 <- sqrt(1.0 / prec_1_post[1])
-init_sd_2 <- sqrt(1.0 / prec_2_post[1])
+init_sd_1 <- sqrt(1.0 / prec_theta1_post[1])
+init_sd_2 <- sqrt(1.0 / prec_theta2_post[1])
 theta_1_post[1, 1] <- rnorm(1, theta_01_post[1] + theta_02_post[1], init_sd_1)
 theta_2_post[1, 1] <- rnorm(1, theta_02_post[1], init_sd_2)
 for (j in 2:n) {
@@ -155,8 +155,8 @@ for (ii in 2:n_iter) {
   theta_2_new <- .Call(
     "_pdm_test_generate_theta_p",
     as.numeric(theta_1_post[ii-1, ]),
-    as.numeric(prec_1_post[ii-1]),
-    as.numeric(prec_2_post[ii-1]),
+    as.numeric(prec_theta1_post[ii-1]),
+    as.numeric(prec_theta2_post[ii-1]),
     as.numeric(theta_02_post[ii-1])
   )
   if (length(theta_2_new) == n) {
@@ -167,7 +167,7 @@ for (ii in 2:n_iter) {
   }
 
   # 2) precision 1/W_2
-  prec_2_post[ii] <- .Call(
+  prec_theta2_post[ii] <- .Call(
     "_pdm_test_generate_precision_theta_p",
     as.numeric(theta_02_post[ii-1]),
     as.numeric(theta_2_post[ii, ]),
@@ -181,8 +181,8 @@ for (ii in 2:n_iter) {
     as.numeric(theta_1_post[ii-1, ]),
     as.numeric(theta_2_post[ii, ]),
     as.numeric(theta_01_post[ii-1]),
-    as.numeric(prec_1_post[ii-1]),
-    as.numeric(prec_2_post[ii]),
+    as.numeric(prec_theta1_post[ii-1]),
+    as.numeric(prec_theta2_post[ii]),
     as.numeric(mean_theta02),
     as.numeric(prec_theta02)
   )
@@ -193,7 +193,7 @@ for (ii in 2:n_iter) {
     as.numeric(y),
     as.numeric(theta_2_post[ii, ]),
     as.numeric(prec_y_post[ii-1]),
-    as.numeric(prec_1_post[ii-1]),
+    as.numeric(prec_theta1_post[ii-1]),
     as.numeric(theta_01_post[ii-1]),
     as.numeric(theta_02_post[ii])
   )
@@ -205,7 +205,7 @@ for (ii in 2:n_iter) {
   }
 
   # 5) precision 1/W_1
-  prec_1_post[ii] <- .Call(
+  prec_theta1_post[ii] <- .Call(
     "_pdm_test_generate_precision_theta_k",
     as.numeric(theta_01_post[ii-1]),
     as.numeric(theta_02_post[ii]),
@@ -220,7 +220,7 @@ for (ii in 2:n_iter) {
     "_pdm_test_generate_theta_01",
     as.numeric(theta_1_post[ii, ]),
     as.numeric(theta_02_post[ii]),
-    as.numeric(prec_1_post[ii]),
+    as.numeric(prec_theta1_post[ii]),
     as.numeric(mean_theta01),
     as.numeric(prec_theta01)
   )
@@ -241,8 +241,8 @@ for (ii in 2:n_iter) {
     theta_2_chain[chain_idx, ] <- theta_2_post[ii, ]
     theta_01_chain[chain_idx]  <- theta_01_post[ii]
     theta_02_chain[chain_idx]  <- theta_02_post[ii]
-    prec_1_chain[chain_idx]    <- prec_1_post[ii]
-    prec_2_chain[chain_idx]    <- prec_2_post[ii]
+    prec_theta1_chain[chain_idx]    <- prec_theta1_post[ii]
+    prec_theta2_chain[chain_idx]    <- prec_theta2_post[ii]
     prec_y_chain[chain_idx]    <- prec_y_post[ii]
   }
 
@@ -257,15 +257,15 @@ cat("\n... MCMC loop completed.\n\n")
 param_chains <- list(
   theta_01 = theta_01_chain,
   theta_02 = theta_02_chain,
-  prec_1   = prec_1_chain,
-  prec_2   = prec_2_chain,
+  prec_theta1   = prec_theta1_chain,
+  prec_theta2   = prec_theta2_chain,
   prec_y   = prec_y_chain
 )
 true_values <- c(
   theta_01 = theta01_true,
   theta_02 = theta02_true,
-  prec_1   = prec1_true,
-  prec_2   = prec2_true,
+  prec_theta1   = prec1_true,
+  prec_theta2   = prec2_true,
   prec_y   = prec_y_true
 )
 

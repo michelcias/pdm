@@ -45,9 +45,9 @@
  *          **Conditional posterior:**
  *          theta_1 | y, precisions, theta_{0,1} ~ MVN(mu_post, Sigma_post)
  *          where Sigma_post^{-1} has tridiagonal structure:
- *          - Diagonal: prec_y + 2*prec_1 for t=1,...,n-1
- *          - Last diagonal: prec_y + prec_1
- *          - Off-diagonal: -prec_1
+ *          - Diagonal: prec_y + 2*prec_theta1 for t=1,...,n-1
+ *          - Last diagonal: prec_y + prec_theta1
+ *          - Off-diagonal: -prec_theta1
  *
  *          **Algorithm:**
  *          1. Construct mean vector from observations and initial state
@@ -70,7 +70,7 @@
  * @note Numerical stability: Uses specialized tridiagonal solver in generate_normal_vector.
  * @note Memory access: Sequential access with O(n) temporary allocation for mean vector.
  * @note Algorithm: Multivariate Normal sampling with structured precision matrix.
- * @note Boundary condition: add_a = 1 adjusts last diagonal element to prec_y + prec_1.
+ * @note Boundary condition: add_a = 1 adjusts last diagonal element to prec_y + prec_theta1.
  *
  * @warning Assumes n > 2 for proper tridiagonal structure (enforced by generate_normal_vector).
  * @warning No validation of data or precision parameter positivity.
@@ -98,7 +98,7 @@ void generate_theta_1_locallevel(const double *data,
     mean_theta_1[j] = data[j] * prec_data;
   }
 
-  /* Initial condition contribution: adds theta_{0,1} * prec_1 to first element
+  /* Initial condition contribution: adds theta_{0,1} * prec_theta1 to first element
    * This implements the boundary condition theta_{1,1} = theta_{0,1} + u_{1,1}
    * by incorporating prior information about the starting state. */
   mean_theta_1[0] += theta_01 * prec_theta_1;
@@ -197,27 +197,27 @@ void generate_theta_1(const double *data,
 
   /* ========== Construct Posterior Mean Vector ========== */
   /* First element (t=1): incorporates initial conditions and trend correction
-   * Structure: y_1 * prec_y + (theta_{0,1} + theta_{0,2} - theta_{1,2}) * prec_1
+   * Structure: y_1 * prec_y + (theta_{0,1} + theta_{0,2} - theta_{1,2}) * prec_theta1
    * The term (theta_{0,1} + theta_{0,2}) represents the expected starting level,
    * and we subtract theta_{1,2} to isolate the level component contribution. */
   mean_theta_1[0] = data[0] * prec_data +
-  (theta_01 + theta_02 - theta_2_current[0]) * prec_theta_1;
+                    (theta_01 + theta_02 - theta_2_current[0]) * prec_theta_1;
 
   /* Middle elements (t=2 to n-1): incorporate trend differences between consecutive time points
-   * Structure: y_t * prec_y + (theta_{t-1,2} - theta_{t,2}) * prec_1
+   * Structure: y_t * prec_y + (theta_{t-1,2} - theta_{t,2}) * prec_theta1
    * The trend difference (theta_{t-1,2} - theta_{t,2}) captures how the trend
    * component influences the level evolution. */
   for (int j = 1; j < n - 1; j++) {
     mean_theta_1[j] = data[j] * prec_data +
-      (theta_2_current[j - 1] - theta_2_current[j]) * prec_theta_1;
+                      (theta_2_current[j - 1] - theta_2_current[j]) * prec_theta_1;
   }
 
   /* Last element (t=n): incorporates final trend component
-   * Structure: y_n * prec_y + theta_{n-1,2} * prec_1
+   * Structure: y_n * prec_y + theta_{n-1,2} * prec_theta1
    * At the final time point, only the previous trend contributes
    * (no subsequent observation to condition on). */
   mean_theta_1[n - 1] = data[n - 1] * prec_data +
-  theta_2_current[n - 2] * prec_theta_1;
+                        theta_2_current[n - 2] * prec_theta_1;
 
   /* ========== Sample from Multivariate Normal Posterior ========== */
   /* Draw theta_1 ~ MVN(mu_post, Sigma_post)

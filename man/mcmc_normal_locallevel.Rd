@@ -54,7 +54,7 @@ An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
   \describe{
     \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
     \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
-    \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
+    \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
     \item{`prec_y`}{Numeric vector of length `n_chain` of posterior samples for the data precision \eqn{1/V}.}
   }
   Metadata about the MCMC run (burn-in, thinning, number of retained
@@ -265,12 +265,12 @@ out <- mcmc_normal_locallevel(
   # --- 3. Evolution Precision (1/W[1]) ---
 
   # Traceplot for 1/W[1]
-  range_prec_1 <- range(out$prec_1)
-  r1_prec1 <- range_prec_1[1]
-  r2_prec1 <- range_prec_1[2] + 0.25 * diff(range_prec_1)
+  range_prec_theta1 <- range(out$prec_theta1)
+  r1_prec1 <- range_prec_theta1[1]
+  r2_prec1 <- range_prec_theta1[2] + 0.25 * diff(range_prec_theta1)
 
   plot.ts(
-    out$prec_1,
+    out$prec_theta1,
     ylab = expression(1/W[1]),
     main = "Trace plot of evolution precision",
     xlab = "Iterations",
@@ -278,7 +278,7 @@ out <- mcmc_normal_locallevel(
     ylim = c(r1_prec1, r2_prec1)
   )
   abline(
-    h = c(prec1_true, median(out$prec_1)),
+    h = c(prec1_true, median(out$prec_theta1)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -294,14 +294,14 @@ out <- mcmc_normal_locallevel(
 
   # Density estimate for 1/W[1]
   plot(
-    density(out$prec_1),
+    density(out$prec_theta1),
     main = "Posterior density estimate of evolution precision",
     xlab = expression(W[1]^-1),
     ylab = "Density",
     lwd = 2
   )
   abline(
-    v = c(prec1_true, median(out$prec_1)),
+    v = c(prec1_true, median(out$prec_theta1)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2

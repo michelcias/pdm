@@ -98,7 +98,7 @@ static precision_cache_t prec_cache = {-1.0, 0.0, 0.0, -1};
  *                           Can be NULL if compute_alpha = 0.
  * @param theta_01_previous  Scalar initial level state from previous iteration.
  *                           Used in conditional mean for first element.
- * @param prec_1_previous    Scalar level precision from previous iteration.
+ * @param prec_theta1_previous    Scalar level precision from previous iteration.
  *                           Controls proposal variance and prior contribution.
  * @param theta_1_updated    Sliding window matrix [lag_update * n] of acceptance indicators.
  *                           Uses circular indexing based on iteration modulo lag_update.
@@ -130,7 +130,7 @@ static precision_cache_t prec_cache = {-1.0, 0.0, 0.0, -1};
  * @warning Each y[t] must satisfy 0 <= y[t] <= n_trials.
  * @warning iter must be >= 1 for valid theta_1_previous access.
  * @warning lag_update must be > 0 for theta_1_updated indexing.
- * @warning theta_01_previous and prec_1_previous must contain valid values from iteration iter-1.
+ * @warning theta_01_previous and prec_theta1_previous must contain valid values from iteration iter-1.
  * @warning If compute_alpha = 1, alpha_current must be a valid pointer to n doubles.
  * @warning If compute_alpha = 0, alpha_current is ignored and can be NULL.
  *
@@ -142,7 +142,7 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
                                           double       *theta_1_current,
                                           double       *alpha_current,
                                           double        theta_01_previous,
-                                          double        prec_1_previous,
+                                          double        prec_theta1_previous,
                                           double       *theta_1_updated,
                                           const double *y,
                                           const double *log_sigma,
@@ -162,7 +162,7 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
    * Standard deviations for conditional distributions depend on precision structure:
    * - sd_regular: for elements with two neighbors (interior points)
    * - sd_last: for final element with one neighbor (boundary condition) */
-  double current_prec = prec_1_previous;
+  double current_prec = prec_theta1_previous;
   double sd_last, sd_regular;
 
   if (prec_cache.cached_prec != current_prec || prec_cache.cached_iter != iter) {
@@ -369,7 +369,7 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
  *                           Must be sampled before calling this function in Gibbs sequence.
  * @param theta_01_previous  Scalar initial level state from previous iteration.
  * @param theta_02_previous  Scalar initial trend state from previous iteration.
- * @param prec_1_previous    Scalar level precision from previous iteration.
+ * @param prec_theta1_previous    Scalar level precision from previous iteration.
  * @param theta_1_updated    Sliding window matrix [lag_update * n] of acceptance indicators.
  * @param y                  Observed binomial counts vector [n] (const, read-only).
  * @param log_sigma          Log proposal standard deviations vector [n] (const, read-only).
@@ -409,7 +409,7 @@ void cwmh_alpha_logit_binomial(const double *theta_1_previous,
                                const double *theta_2_current,
                                double        theta_01_previous,
                                double        theta_02_previous,
-                               double        prec_1_previous,
+                               double        prec_theta1_previous,
                                double       *theta_1_updated,
                                const double *y,
                                const double *log_sigma,
@@ -427,7 +427,7 @@ void cwmh_alpha_logit_binomial(const double *theta_1_previous,
   /* ========== Optimized Precision Calculations with Caching ========== */
   /* Cache expensive sqrt and division operations when precision hasn't changed.
    * Standard deviations for conditional distributions depend on precision structure. */
-  double current_prec = prec_1_previous;
+  double current_prec = prec_theta1_previous;
   double sd_last, sd_regular;
 
   if (prec_cache.cached_prec != current_prec || prec_cache.cached_iter != iter) {

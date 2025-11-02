@@ -96,7 +96,7 @@
  * @return SEXP R list containing posterior samples with named components:
  *         - theta_1: Numeric matrix [n_chain × n] of complete state trajectory samples
  *         - theta_01: Numeric vector [n_chain] of initial state theta_{0,1} samples
- *         - prec_1: Numeric vector [n_chain] of innovation precision 1/W_1 samples
+ *         - prec_theta1: Numeric vector [n_chain] of innovation precision 1/W_1 samples
  *         - prec_y: Numeric vector [n_chain] of observation precision 1/V samples
  *
  * @note Computational complexity: O(n_iter × n) for n_iter total iterations.

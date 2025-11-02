@@ -98,12 +98,12 @@ eta_01       <- 1e-1     # prior_prec1_rate
 #-------------------------------------------------------------------------------
 theta_1_chain  <- matrix(NA_real_, nrow = n_chain, ncol = n)
 theta_01_chain <- numeric(n_chain)
-prec_1_chain   <- numeric(n_chain)
+prec_theta1_chain   <- numeric(n_chain)
 alpha_chain    <- matrix(NA_real_, nrow = n_chain, ncol = n)
 
 # Full history arrays (iteration-wise, including burn-in)
 theta_01_post <- numeric(n_iter)
-prec_1_post   <- numeric(n_iter)
+prec_theta1_post   <- numeric(n_iter)
 theta_1_post  <- matrix(NA_real_, nrow = n_iter, ncol = n)
 alpha_post    <- matrix(NA_real_, nrow = n_iter, ncol = n)
 
@@ -119,8 +119,8 @@ log_sigma       <- rep(log(0.1), n)  # retained for diagnostic interface compati
 # set.seed(456)
 
 theta_01_post[1] <- rnorm(1, mean_theta01, sqrt(1.0 / prec_theta01))
-prec_1_post[1]   <- rgamma(1, nu_01, rate = eta_01)  # R uses 'rate'
-init_sd          <- sqrt(1.0 / prec_1_post[1])
+prec_theta1_post[1]   <- rgamma(1, nu_01, rate = eta_01)  # R uses 'rate'
+init_sd          <- sqrt(1.0 / prec_theta1_post[1])
 
 # Initialize theta_1 as random walk from theta_01
 # theta_1_post[1, 1] <- rnorm(1, theta_01_post[1], init_sd)
@@ -144,12 +144,12 @@ chain_idx <- 0  # Counter for saved samples
 for (ii in 2:n_iter) {
 
   # 1) Gibbs state update (probit link) + alpha
-  #    _pdm_test_generate_alpha_probit_bernoulli_locallevel(theta_1_in, theta_01_in, prec_1_in, y)
+  #    _pdm_test_generate_alpha_probit_bernoulli_locallevel(theta_1_in, theta_01_in, prec_theta1_in, y)
   upd <- .Call(
     "_pdm_test_generate_alpha_probit_bernoulli_locallevel",
     as.numeric(theta_1_post[ii-1, ]),
     as.numeric(theta_01_post[ii-1]),
-    as.numeric(prec_1_post[ii-1]),
+    as.numeric(prec_theta1_post[ii-1]),
     as.numeric(y)
   )
   theta_1_post[ii, ] <- as.numeric(upd$theta_1)
@@ -157,7 +157,7 @@ for (ii in 2:n_iter) {
 
   # 2) Innovation precision 1/W_1
   #    _pdm_test_generate_precision_theta_p(theta_0p_, theta_p_, nu_0p_, eta_0p_)
-  prec_1_post[ii] <- .Call(
+  prec_theta1_post[ii] <- .Call(
     "_pdm_test_generate_precision_theta_p",
     as.numeric(theta_01_post[ii-1]),    # theta_0p (previous iteration)
     as.numeric(theta_1_post[ii, ]),     # theta_p (current)
@@ -170,7 +170,7 @@ for (ii in 2:n_iter) {
   theta_01_post[ii] <- .Call(
     "_pdm_test_generate_theta_01_locallevel",
     as.numeric(theta_1_post[ii, ]),     # current
-    as.numeric(prec_1_post[ii]),        # current
+    as.numeric(prec_theta1_post[ii]),        # current
     as.numeric(mean_theta01),
     as.numeric(prec_theta01)
   )
@@ -180,7 +180,7 @@ for (ii in 2:n_iter) {
     chain_idx <- chain_idx + 1
     theta_1_chain[chain_idx, ] <- theta_1_post[ii, ]
     theta_01_chain[chain_idx]  <- theta_01_post[ii]
-    prec_1_chain[chain_idx]    <- prec_1_post[ii]
+    prec_theta1_chain[chain_idx]    <- prec_theta1_post[ii]
     alpha_chain[chain_idx, ]   <- alpha_post[ii, ]
   }
 
@@ -200,11 +200,11 @@ cat("\n... MCMC loop completed.\n\n")
 # Prepare inputs to helper tables
 param_chains <- list(
   theta_01 = theta_01_chain,
-  prec_1   = prec_1_chain
+  prec_theta1   = prec_theta1_chain
 )
 true_values <- c(
   theta_01 = theta01_true,
-  prec_1   = prec1_true
+  prec_theta1   = prec1_true
 )
 
 print_posterior_estimates_table(param_chains, true_values, n_chain)

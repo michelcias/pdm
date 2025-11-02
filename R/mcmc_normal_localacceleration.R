@@ -97,9 +97,9 @@
 #'   \item{`theta_01`}{Numeric vector of length `n_chain` for the initial level \eqn{\theta_{0,1}}.}
 #'   \item{`theta_02`}{Numeric vector of length `n_chain` for the initial trend \eqn{\theta_{0,2}}.}
 #'   \item{`theta_03`}{Numeric vector of length `n_chain` for the initial acceleration \eqn{\theta_{0,3}}.}
-#'   \item{`prec_1`}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
-#'   \item{`prec_2`}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
-#'   \item{`prec_3`}{Numeric vector of length `n_chain` for the acceleration innovation precision \eqn{1/W_3}.}
+#'   \item{`prec_theta1`}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
+#'   \item{`prec_theta2`}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
+#'   \item{`prec_theta3`}{Numeric vector of length `n_chain` for the acceleration innovation precision \eqn{1/W_3}.}
 #'   \item{`prec_y`}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
 #' }
 #'
@@ -423,12 +423,12 @@
 #'
 #'   # --- 7. Level Precision (1/W_1) ---
 #'   # Trace plot
-#'   range_prec_1 <- range(out$prec_1, prec1_true)
-#'   r1_prec1 <- range_prec_1[1]
-#'   r2_prec1 <- range_prec_1[2] + 0.25 * diff(range_prec_1)
+#'   range_prec_theta1 <- range(out$prec_theta1, prec1_true)
+#'   r1_prec1 <- range_prec_theta1[1]
+#'   r2_prec1 <- range_prec_theta1[2] + 0.25 * diff(range_prec_theta1)
 #'
 #'   plot.ts(
-#'     out$prec_1,
+#'     out$prec_theta1,
 #'     col = "gray",
 #'     xlab = "Iterations",
 #'     ylab = expression(1/W[1]),
@@ -436,7 +436,7 @@
 #'     ylim = c(r1_prec1, r2_prec1)
 #'   )
 #'   abline(
-#'     h = c(prec1_true, median(out$prec_1)),
+#'     h = c(prec1_true, median(out$prec_theta1)),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     lwd = 2
@@ -452,12 +452,12 @@
 #'
 #'   # Density plot
 #'   plot(
-#'     density(out$prec_1),
+#'     density(out$prec_theta1),
 #'     main = "Posterior Density of Level Precision",
 #'     xlab = expression(W[1]^-1)
 #'   )
 #'   abline(
-#'     v = c(prec1_true, median(out$prec_1)),
+#'     v = c(prec1_true, median(out$prec_theta1)),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     lwd = 2
@@ -473,12 +473,12 @@
 #'
 #'   # --- 8. Trend Precision (1/W_2) ---
 #'   # Trace plot
-#'   range_prec_2 <- range(out$prec_2, prec2_true)
-#'   r1_prec2 <- range_prec_2[1]
-#'   r2_prec2 <- range_prec_2[2] + 0.25 * diff(range_prec_2)
+#'   range_prec_theta2 <- range(out$prec_theta2, prec2_true)
+#'   r1_prec2 <- range_prec_theta2[1]
+#'   r2_prec2 <- range_prec_theta2[2] + 0.25 * diff(range_prec_theta2)
 #'
 #'   plot.ts(
-#'     out$prec_2,
+#'     out$prec_theta2,
 #'     col = "gray",
 #'     xlab = "Iterations",
 #'     ylab = expression(1/W[2]),
@@ -486,7 +486,7 @@
 #'     ylim = c(r1_prec2, r2_prec2)
 #'   )
 #'   abline(
-#'     h = c(prec2_true, median(out$prec_2)),
+#'     h = c(prec2_true, median(out$prec_theta2)),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     lwd = 2
@@ -502,12 +502,12 @@
 #'
 #'   # Density plot
 #'   plot(
-#'     density(out$prec_2),
+#'     density(out$prec_theta2),
 #'     main = "Posterior Density of Trend Precision",
 #'     xlab = expression(W[2]^-1)
 #'   )
 #'   abline(
-#'     v = c(prec2_true, median(out$prec_2)),
+#'     v = c(prec2_true, median(out$prec_theta2)),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     lwd = 2
@@ -523,12 +523,12 @@
 #'
 #'   # --- 9. Acceleration Precision (1/W_3) ---
 #'   # Trace plot
-#'   range_prec_3 <- range(out$prec_3, prec3_true)
-#'   r1_prec3 <- range_prec_3[1]
-#'   r2_prec3 <- range_prec_3[2] + 0.25 * diff(range_prec_3)
+#'   range_prec_theta3 <- range(out$prec_theta3, prec3_true)
+#'   r1_prec3 <- range_prec_theta3[1]
+#'   r2_prec3 <- range_prec_theta3[2] + 0.25 * diff(range_prec_theta3)
 #'
 #'   plot.ts(
-#'     out$prec_3,
+#'     out$prec_theta3,
 #'     col = "gray",
 #'     xlab = "Iterations",
 #'     ylab = expression(1/W[3]),
@@ -536,7 +536,7 @@
 #'     ylim = c(r1_prec3, r2_prec3)
 #'   )
 #'   abline(
-#'     h = c(prec3_true, median(out$prec_3)),
+#'     h = c(prec3_true, median(out$prec_theta3)),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     lwd = 2
@@ -552,12 +552,12 @@
 #'
 #'   # Density plot
 #'   plot(
-#'     density(out$prec_3),
+#'     density(out$prec_theta3),
 #'     main = "Posterior Density of Acceleration Precision",
 #'     xlab = expression(W[3]^-1)
 #'   )
 #'   abline(
-#'     v = c(prec3_true, median(out$prec_3)),
+#'     v = c(prec3_true, median(out$prec_theta3)),
 #'     col = c("red", "black"),
 #'     lty = c(2, 1),
 #'     lwd = 2
@@ -683,21 +683,21 @@ mcmc_normal_localacceleration <- function(y,
   if (!is.numeric(prior_theta03_prec) || length(prior_theta03_prec) != 1 || prior_theta03_prec <= 0) {
     stop("`prior_theta03_prec` must be a single positive numeric value")
   }
-  # Priors for prec_1
+  # Priors for prec_theta1
   if (!is.numeric(prior_prec1_shape) || length(prior_prec1_shape) != 1 || prior_prec1_shape <= 0) {
     stop("`prior_prec1_shape` must be a single positive numeric value")
   }
   if (!is.numeric(prior_prec1_rate) || length(prior_prec1_rate) != 1 || prior_prec1_rate <= 0) {
     stop("`prior_prec1_rate` must be a single positive numeric value")
   }
-  # Priors for prec_2
+  # Priors for prec_theta2
   if (!is.numeric(prior_prec2_shape) || length(prior_prec2_shape) != 1 || prior_prec2_shape <= 0) {
     stop("`prior_prec2_shape` must be a single positive numeric value")
   }
   if (!is.numeric(prior_prec2_rate) || length(prior_prec2_rate) != 1 || prior_prec2_rate <= 0) {
     stop("`prior_prec2_rate` must be a single positive numeric value")
   }
-  # Priors for prec_3
+  # Priors for prec_theta3
   if (!is.numeric(prior_prec3_shape) || length(prior_prec3_shape) != 1 || prior_prec3_shape <= 0) {
     stop("`prior_prec3_shape` must be a single positive numeric value")
   }

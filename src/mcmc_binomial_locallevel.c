@@ -96,7 +96,7 @@
  * @return R list with components:
  *         - theta_1:     Matrix [n_chain * n] of state trajectory samples
  *         - theta_01:    Vector [n_chain] of initial state samples
- *         - prec_1:      Vector [n_chain] of innovation precision samples
+ *         - prec_theta1:      Vector [n_chain] of innovation precision samples
  *         - alpha:       Matrix [n_chain * n] of success probability samples
  *         - log_sigma:   Matrix [n_chain * n] of proposal scales (if requested)
  *         - accept_prop: Matrix [n_chain * n] of acceptance proportions (if requested)
@@ -200,13 +200,13 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_1_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples   = PROTECT(allocVector(REALSXP, n_chain));
   SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples   = R_NilValue;
   SEXP accept_prop_samples = R_NilValue;
-  int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_1, alpha */
+  int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_theta1, alpha */
   int n_protect = 4;  /* Base protection count */
 
   if (return_log_sigma) {
@@ -228,7 +228,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
 
   /* Scalar parameters for current and previous iterations */
   double theta_01_current, theta_01_previous;
-  double prec_1_current,   prec_1_previous;
+  double prec_theta1_current,   prec_theta1_previous;
 
   /* Sliding window buffer for acceptance tracking (optimized) */
   double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
@@ -251,7 +251,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_1_previous   = rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous   = rgamma(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   for (int t = 0; t < n; t++) {
@@ -277,7 +277,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
       theta_1_current,        /* theta_1_current: output for current iteration [n] */
       compute_alpha ? alpha_current : NULL,  /* alpha_current: NULL if not retained */
       theta_01_previous,      /* theta_01_previous: initial level from previous iteration */
-      prec_1_previous,        /* prec_1_previous: level precision from previous iteration */
+      prec_theta1_previous,        /* prec_theta1_previous: level precision from previous iteration */
       theta_1_updated,        /* theta_1_updated: sliding window workspace */
       y,                      /* y: observed binomial counts */
       accept_prop,            /* accept_prop: acceptance proportions workspace */
@@ -299,7 +299,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
 
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
     /* Draw 1/W_1 | theta_1, theta_01 from Gamma posterior */
-    prec_1_current = generate_precision_theta_p(
+    prec_theta1_current = generate_precision_theta_p(
       theta_01_previous,  /* theta_0p: initial level from previous iteration */
       theta_1_current,    /* theta_p_current: current level trajectory [n] */
       nu_01,              /* nu_0p: prior shape parameter */
@@ -311,7 +311,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
     /* Draw theta_{0,1} | theta_1, W_1 from Normal posterior */
     theta_01_current = generate_theta_01_locallevel(
       theta_1_current,    /* theta_1_current: current level trajectory [n] */
-      prec_1_current,     /* prec_1: current level precision */
+      prec_theta1_current,     /* prec_theta1: current level precision */
       mean_theta01,       /* mean_theta01: prior mean */
       prec_theta01,       /* prec_theta01: prior precision */
       n                   /* n: number of time points */
@@ -325,7 +325,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
         REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
+        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
 
         /* Store diagnostics if requested */
         if (return_log_sigma) {
@@ -338,7 +338,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
 
       /* Copy scalar parameters to output vectors */
       REAL(theta_01_samples)[idx] = theta_01_current;
-      REAL(prec_1_samples)[idx]   = prec_1_current;
+      REAL(prec_theta1_samples)[idx] = prec_theta1_current;
     }
 
     /* ===== Update Progress Bar ===== */
@@ -350,7 +350,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
     /* Efficient element-wise copy for theta_1 trajectory */
     memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
     theta_01_previous = theta_01_current;
-    prec_1_previous   = prec_1_current;
+    prec_theta1_previous = prec_theta1_current;
   }
 
   /* ========== Finalize Progress Bar ========== */
@@ -383,8 +383,8 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
   SET_VECTOR_ELT(out, output_idx, theta_01_samples);
   SET_STRING_ELT(nms, output_idx++, mkChar("theta_01"));
 
-  SET_VECTOR_ELT(out, output_idx, prec_1_samples);
-  SET_STRING_ELT(nms, output_idx++, mkChar("prec_1"));
+  SET_VECTOR_ELT(out, output_idx, prec_theta1_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("prec_theta1"));
 
   SET_VECTOR_ELT(out, output_idx, alpha_samples);
   SET_STRING_ELT(nms, output_idx++, mkChar("alpha"));
@@ -457,7 +457,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
  * @return R list with components:
  *         - theta_1:  Matrix [n_chain * n] of state trajectory samples
  *         - theta_01: Vector [n_chain] of initial state samples
- *         - prec_1:   Vector [n_chain] of innovation precision samples
+ *         - prec_theta1:   Vector [n_chain] of innovation precision samples
  *         - alpha:    Matrix [n_chain * n] of Bernoulli probabilities
  *
  * @note Complexity: O(n_iter * n) time, O(n) space
@@ -535,7 +535,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_1_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples   = PROTECT(allocVector(REALSXP, n_chain));
   SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
   int n_outputs = 4;
   int n_protect = 4;
@@ -548,7 +548,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
 
   /* Scalar parameters for current and previous iterations */
   double theta_01_current, theta_01_previous;
-  double prec_1_current,   prec_1_previous;
+  double prec_theta1_current,   prec_theta1_previous;
 
   /* Working array for right-hand side of linear system */
   double *rhs_vector = (double *) R_Calloc(n, double);
@@ -559,7 +559,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_1_previous   = rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous   = rgamma(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   for (int t = 0; t < n; t++) {
@@ -584,7 +584,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
       theta_1_current,        /* theta_1_current: output for current iteration [n] */
       compute_alpha ? alpha_current : NULL,  /* alpha_current: NULL if not retained */
       theta_01_previous,      /* theta_01_previous: initial level from previous iteration */
-      prec_1_previous,        /* prec_1_previous: level precision from previous iteration */
+      prec_theta1_previous,        /* prec_theta1_previous: level precision from previous iteration */
       y,                      /* y: Bernoulli observations */
       rhs_vector,             /* rhs_vector: solver right-hand side */
       n,                      /* n: number of time points */
@@ -593,7 +593,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
 
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
     /* Draw 1/W_1 | theta_1, theta_01 from Gamma posterior */
-    prec_1_current = generate_precision_theta_p(
+    prec_theta1_current = generate_precision_theta_p(
       theta_01_previous,  /* theta_0p: initial level from previous iteration */
       theta_1_current,    /* theta_p_current: current level trajectory [n] */
       nu_01,              /* nu_0p: prior shape */
@@ -605,7 +605,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
     /* Draw theta_{0,1} | theta_1, W_1 from Normal posterior */
     theta_01_current = generate_theta_01_locallevel(
       theta_1_current,    /* theta_1_current: current level trajectory [n] */
-      prec_1_current,     /* prec_1: current level precision */
+      prec_theta1_current,     /* prec_theta1: current level precision */
       mean_theta01,       /* mean_theta01: prior mean */
       prec_theta01,       /* prec_theta01: prior precision */
       n                   /* n: number of time points */
@@ -619,12 +619,12 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
         REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
+        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
       }
 
       /* Copy scalar parameters to output vectors */
       REAL(theta_01_samples)[idx] = theta_01_current;
-      REAL(prec_1_samples)[idx]   = prec_1_current;
+      REAL(prec_theta1_samples)[idx] = prec_theta1_current;
     }
 
     /* ===== Update Progress Bar ===== */
@@ -636,7 +636,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
     /* Efficient element-wise copy for theta_1 trajectory */
     memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
     theta_01_previous = theta_01_current;
-    prec_1_previous   = prec_1_current;
+    prec_theta1_previous = prec_theta1_current;
   }
 
   /* ========== Finalize Progress Bar ========== */
@@ -662,8 +662,8 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
   SET_VECTOR_ELT(out, output_idx, theta_01_samples);
   SET_STRING_ELT(nms, output_idx++, mkChar("theta_01"));
 
-  SET_VECTOR_ELT(out, output_idx, prec_1_samples);
-  SET_STRING_ELT(nms, output_idx++, mkChar("prec_1"));
+  SET_VECTOR_ELT(out, output_idx, prec_theta1_samples);
+  SET_STRING_ELT(nms, output_idx++, mkChar("prec_theta1"));
 
   SET_VECTOR_ELT(out, output_idx, alpha_samples);
   SET_STRING_ELT(nms, output_idx++, mkChar("alpha"));

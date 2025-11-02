@@ -67,8 +67,8 @@ A list with components:
   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
   \item{`theta_01`}{Numeric vector of length `n_chain` for the initial level \eqn{\theta_{0,1}}.}
   \item{`theta_02`}{Numeric vector of length `n_chain` for the initial trend \eqn{\theta_{0,2}}.}
-  \item{`prec_1`}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
-  \item{`prec_2`}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
+  \item{`prec_theta1`}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
+  \item{`prec_theta2`}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
   \item{`prec_y`}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
 }
 }
@@ -368,12 +368,12 @@ out <- mcmc_normal_localtrend(
 
   # --- 5. Level Precision (1/W_1) ---
   # Trace plot
-  range_prec_1 <- range(out$prec_1, prec1_true)
-  r1_prec1 <- range_prec_1[1]
-  r2_prec1 <- range_prec_1[2] + 0.25 * diff(range_prec_1)
+  range_prec_theta1 <- range(out$prec_theta1, prec1_true)
+  r1_prec1 <- range_prec_theta1[1]
+  r2_prec1 <- range_prec_theta1[2] + 0.25 * diff(range_prec_theta1)
 
   plot.ts(
-    out$prec_1,
+    out$prec_theta1,
     col = "gray",
     xlab = "Iterations",
     ylab = expression(1/W[1]),
@@ -381,7 +381,7 @@ out <- mcmc_normal_localtrend(
     ylim = c(r1_prec1, r2_prec1)
   )
   abline(
-    h = c(prec1_true, median(out$prec_1)),
+    h = c(prec1_true, median(out$prec_theta1)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -397,12 +397,12 @@ out <- mcmc_normal_localtrend(
 
   # Density plot
   plot(
-    density(out$prec_1),
+    density(out$prec_theta1),
     main = "Posterior Density of Level Precision",
     xlab = expression(W[1]^-1)
   )
   abline(
-    v = c(prec1_true, median(out$prec_1)),
+    v = c(prec1_true, median(out$prec_theta1)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -418,12 +418,12 @@ out <- mcmc_normal_localtrend(
 
   # --- 6. Trend Precision (1/W_2) ---
   # Trace plot
-  range_prec_2 <- range(out$prec_2, prec2_true)
-  r1_prec2 <- range_prec_2[1]
-  r2_prec2 <- range_prec_2[2] + 0.25 * diff(range_prec_2)
+  range_prec_theta2 <- range(out$prec_theta2, prec2_true)
+  r1_prec2 <- range_prec_theta2[1]
+  r2_prec2 <- range_prec_theta2[2] + 0.25 * diff(range_prec_theta2)
 
   plot.ts(
-    out$prec_2,
+    out$prec_theta2,
     col = "gray",
     xlab = "Iterations",
     ylab = expression(1/W[2]),
@@ -431,7 +431,7 @@ out <- mcmc_normal_localtrend(
     ylim = c(r1_prec2, r2_prec2)
   )
   abline(
-    h = c(prec2_true, median(out$prec_2)),
+    h = c(prec2_true, median(out$prec_theta2)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -447,12 +447,12 @@ out <- mcmc_normal_localtrend(
 
   # Density plot
   plot(
-    density(out$prec_2),
+    density(out$prec_theta2),
     main = "Posterior Density of Trend Precision",
     xlab = expression(W[2]^-1)
   )
   abline(
-    v = c(prec2_true, median(out$prec_2)),
+    v = c(prec2_true, median(out$prec_theta2)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2

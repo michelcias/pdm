@@ -106,9 +106,9 @@ A list with components:
   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,1}}.}
   \item{`theta_02`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,2}}.}
   \item{`theta_03`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,3}}.}
-  \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_1}.}
-  \item{`prec_2`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_2}.}
-  \item{`prec_3`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_3}.}
+  \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_1}.}
+  \item{`prec_theta2`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_2}.}
+  \item{`prec_theta3`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_3}.}
   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
   \item{`log_sigma`}{Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics (if requested).}
   \item{`accept_prop`}{Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion diagnostics (if requested).}
@@ -765,12 +765,12 @@ out <- mcmc_binomial_localacceleration(
 
   # --- 12. Level Innovation Precision (1/W[1]) Diagnostics ---
   # Trace plot for 1/W[1] to assess parameter convergence
-  range_prec_1 <- range(out$prec_1)
-  r1_prec1 <- range_prec_1[1] - 0.1 * diff(range_prec_1)
-  r2_prec1 <- range_prec_1[2] + 0.25 * diff(range_prec_1)
+  range_prec_theta1 <- range(out$prec_theta1)
+  r1_prec1 <- range_prec_theta1[1] - 0.1 * diff(range_prec_theta1)
+  r2_prec1 <- range_prec_theta1[2] + 0.25 * diff(range_prec_theta1)
 
   plot.ts(
-    out$prec_1,
+    out$prec_theta1,
     ylab = expression(1/W[1]),
     main = "Trace plot of level innovation precision",
     xlab = "Iterations",
@@ -778,7 +778,7 @@ out <- mcmc_binomial_localacceleration(
     ylim = c(r1_prec1, r2_prec1)
   )
   abline(
-    h = c(prec1_true, median(out$prec_1)),
+    h = c(prec1_true, median(out$prec_theta1)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -793,12 +793,12 @@ out <- mcmc_binomial_localacceleration(
   )
 
   # Posterior density estimate for 1/W[1]
-  range_dens_prec1 <- range(out$prec_1)
+  range_dens_prec1 <- range(out$prec_theta1)
   r1_dens_prec1 <- range_dens_prec1[1] - 0.1 * diff(range_dens_prec1)
   r2_dens_prec1 <- range_dens_prec1[2] + 0.25 * diff(range_dens_prec1)
 
   plot(
-    density(out$prec_1),
+    density(out$prec_theta1),
     main = "Posterior density estimate of level innovation precision",
     xlab = expression(W[1]^-1),
     ylab = "Density",
@@ -806,7 +806,7 @@ out <- mcmc_binomial_localacceleration(
     xlim = c(r1_dens_prec1, r2_dens_prec1)
   )
   abline(
-    v = c(prec1_true, median(out$prec_1)),
+    v = c(prec1_true, median(out$prec_theta1)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -822,12 +822,12 @@ out <- mcmc_binomial_localacceleration(
 
   # --- 13. Trend Innovation Precision (1/W[2]) Diagnostics ---
   # Trace plot for 1/W[2] to assess parameter convergence
-  range_prec_2 <- range(out$prec_2)
-  r1_prec2 <- range_prec_2[1] - 0.1 * diff(range_prec_2)
-  r2_prec2 <- range_prec_2[2] + 0.25 * diff(range_prec_2)
+  range_prec_theta2 <- range(out$prec_theta2)
+  r1_prec2 <- range_prec_theta2[1] - 0.1 * diff(range_prec_theta2)
+  r2_prec2 <- range_prec_theta2[2] + 0.25 * diff(range_prec_theta2)
 
   plot.ts(
-    out$prec_2,
+    out$prec_theta2,
     ylab = expression(1/W[2]),
     main = "Trace plot of trend innovation precision",
     xlab = "Iterations",
@@ -835,7 +835,7 @@ out <- mcmc_binomial_localacceleration(
     ylim = c(r1_prec2, r2_prec2)
   )
   abline(
-    h = c(prec2_true, median(out$prec_2)),
+    h = c(prec2_true, median(out$prec_theta2)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -850,12 +850,12 @@ out <- mcmc_binomial_localacceleration(
   )
 
   # Posterior density estimate for 1/W[2]
-  range_dens_prec2 <- range(out$prec_2)
+  range_dens_prec2 <- range(out$prec_theta2)
   r1_dens_prec2 <- range_dens_prec2[1] - 0.1 * diff(range_dens_prec2)
   r2_dens_prec2 <- range_dens_prec2[2] + 0.25 * diff(range_dens_prec2)
 
   plot(
-    density(out$prec_2),
+    density(out$prec_theta2),
     main = "Posterior density estimate of trend innovation precision",
     xlab = expression(W[2]^-1),
     ylab = "Density",
@@ -863,7 +863,7 @@ out <- mcmc_binomial_localacceleration(
     xlim = c(r1_dens_prec2, r2_dens_prec2)
   )
   abline(
-    v = c(prec2_true, median(out$prec_2)),
+    v = c(prec2_true, median(out$prec_theta2)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -879,12 +879,12 @@ out <- mcmc_binomial_localacceleration(
 
   # --- 14. Acceleration Innovation Precision (1/W[3]) Diagnostics ---
   # Trace plot for 1/W[3] to assess parameter convergence
-  range_prec_3 <- range(out$prec_3)
-  r1_prec3 <- range_prec_3[1] - 0.1 * diff(range_prec_3)
-  r2_prec3 <- range_prec_3[2] + 0.25 * diff(range_prec_3)
+  range_prec_theta3 <- range(out$prec_theta3)
+  r1_prec3 <- range_prec_theta3[1] - 0.1 * diff(range_prec_theta3)
+  r2_prec3 <- range_prec_theta3[2] + 0.25 * diff(range_prec_theta3)
 
   plot.ts(
-    out$prec_3,
+    out$prec_theta3,
     ylab = expression(1/W[3]),
     main = "Trace plot of acceleration innovation precision",
     xlab = "Iterations",
@@ -892,7 +892,7 @@ out <- mcmc_binomial_localacceleration(
     ylim = c(r1_prec3, r2_prec3)
   )
   abline(
-    h = c(prec3_true, median(out$prec_3)),
+    h = c(prec3_true, median(out$prec_theta3)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2
@@ -907,12 +907,12 @@ out <- mcmc_binomial_localacceleration(
   )
 
   # Posterior density estimate for 1/W[3]
-  range_dens_prec3 <- range(out$prec_3)
+  range_dens_prec3 <- range(out$prec_theta3)
   r1_dens_prec3 <- range_dens_prec3[1] - 0.1 * diff(range_dens_prec3)
   r2_dens_prec3 <- range_dens_prec3[2] + 0.25 * diff(range_dens_prec3)
 
   plot(
-    density(out$prec_3),
+    density(out$prec_theta3),
     main = "Posterior density estimate of acceleration innovation precision",
     xlab = expression(W[3]^-1),
     ylab = "Density",
@@ -920,7 +920,7 @@ out <- mcmc_binomial_localacceleration(
     xlim = c(r1_dens_prec3, r2_dens_prec3)
   )
   abline(
-    v = c(prec3_true, median(out$prec_3)),
+    v = c(prec3_true, median(out$prec_theta3)),
     col = c("red", "black"),
     lty = c(2, 1),
     lwd = 2

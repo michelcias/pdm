@@ -63,9 +63,9 @@
  *          **Conditional posterior:**
  *          theta_1 | y, precisions, theta_{0,1} ~ MVN(mu_post, Sigma_post)
  *          where Sigma_post^{-1} has tridiagonal structure:
- *          - Diagonal: prec_y + 2*prec_1 for t=1,...,n-1
- *          - Last diagonal: prec_y + prec_1
- *          - Off-diagonal: -prec_1
+ *          - Diagonal: prec_y + 2*prec_theta1 for t=1,...,n-1
+ *          - Last diagonal: prec_y + prec_theta1
+ *          - Off-diagonal: -prec_theta1
  *
  *          **Algorithm:**
  *          1. Construct mean vector from observations and initial state
@@ -88,7 +88,7 @@
  * @note Numerical stability: Uses specialized tridiagonal solver in generate_normal_vector.
  * @note Memory access: Sequential access with O(n) temporary allocation for mean vector.
  * @note Algorithm: Multivariate Normal sampling with structured precision matrix.
- * @note Boundary condition: add_a = 1 adjusts last diagonal element to prec_y + prec_1.
+ * @note Boundary condition: add_a = 1 adjusts last diagonal element to prec_y + prec_theta1.
  *
  * @warning Assumes n > 2 for proper tridiagonal structure (enforced by generate_normal_vector).
  * @warning No validation of data or precision parameter positivity.

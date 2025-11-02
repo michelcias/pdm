@@ -90,7 +90,7 @@
  * @return SEXP R list containing posterior samples with named components:
  *         - theta_1: Numeric matrix [n_chain × n] of complete state trajectory samples
  *         - theta_01: Numeric vector [n_chain] of initial state theta_{0,1} samples
- *         - prec_1: Numeric vector [n_chain] of innovation precision 1/W_1 samples
+ *         - prec_theta1: Numeric vector [n_chain] of innovation precision 1/W_1 samples
  *         - prec_y: Numeric vector [n_chain] of observation precision 1/V samples
  *
  * @note Computational complexity: O(n_iter × n) for n_iter total iterations.
@@ -166,7 +166,7 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
   SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
   SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_1_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples   = PROTECT(allocVector(REALSXP, n_chain));
   SEXP prec_y_samples   = PROTECT(allocVector(REALSXP, n_chain));
 
   /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
@@ -178,7 +178,7 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
 
   /* Scalar parameters for current and previous iterations */
   double theta_01_current, theta_01_previous;
-  double prec_1_current,   prec_1_previous;
+  double prec_theta1_current,   prec_theta1_previous;
   double prec_y_current,   prec_y_previous;
 
   /* ========== Initialize RNG State ========== */
@@ -187,11 +187,11 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_1_previous   = rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous   = rgamma(nu_01, 1.0 / eta_01);
   prec_y_previous   = rgamma(nu_y, 1.0 / eta_y);
 
   /* Initialize theta_1 trajectory via random walk from initial state */
-  double init_sd = sqrt(1.0 / prec_1_previous);
+  double init_sd = sqrt(1.0 / prec_theta1_previous);
   theta_1_previous[0] = rnorm(theta_01_previous, init_sd);
   for (int j = 1; j < n; j++) {
     theta_1_previous[j] = rnorm(theta_1_previous[j - 1], init_sd);
@@ -211,7 +211,7 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
       y,                  /* data: observed series [n] */
       theta_1_current,    /* output: current iteration theta_1 [n] */
       prec_y_previous,    /* scalar: data precision from previous iteration */
-      prec_1_previous,    /* scalar: innovation precision from previous iteration */
+      prec_theta1_previous,    /* scalar: innovation precision from previous iteration */
       theta_01_previous,  /* scalar: initial state from previous iteration */
       n                   /* sample size */
     );
@@ -219,7 +219,7 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
     /* Draw 1/W_1 | theta_1_current, theta_{0,1}_previous from Gamma posterior.
      * Uses current theta_1 (just sampled) and previous theta_{0,1}. */
-    prec_1_current = generate_precision_theta_p(
+    prec_theta1_current = generate_precision_theta_p(
       theta_01_previous,  /* scalar: initial state from previous iteration */
       theta_1_current,    /* vector: current theta_1 [n] */
       nu_01,              /* prior shape */
@@ -228,11 +228,11 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
     );
 
     /* ===== Step 3: Sample Initial State theta_{0,1} ===== */
-    /* Draw theta_{0,1} | theta_1_current, prec_1_current from Normal posterior.
-     * Uses current theta_1 and current prec_1 (both just sampled). */
+    /* Draw theta_{0,1} | theta_1_current, prec_theta1_current from Normal posterior.
+     * Uses current theta_1 and current prec_theta1 (both just sampled). */
     theta_01_current = generate_theta_01_locallevel(
       theta_1_current,    /* vector: current theta_1 [n] */
-      prec_1_current,     /* scalar: current innovation precision */
+      prec_theta1_current,     /* scalar: current innovation precision */
       mean_theta01,       /* prior mean */
       prec_theta01,       /* prior precision */
       n                   /* sample size */
@@ -262,7 +262,7 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
 
       /* Copy scalar parameters to output vectors */
       REAL(theta_01_samples)[idx] = theta_01_current;
-      REAL(prec_1_samples)[idx]   = prec_1_current;
+      REAL(prec_theta1_samples)[idx] = prec_theta1_current;
       REAL(prec_y_samples)[idx]   = prec_y_current;
     }
 
@@ -277,7 +277,7 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
       theta_1_previous[j] = theta_1_current[j];
     }
     theta_01_previous = theta_01_current;
-    prec_1_previous   = prec_1_current;
+    prec_theta1_previous = prec_theta1_current;
     prec_y_previous   = prec_y_current;
   }
 
@@ -295,13 +295,13 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   SEXP out = PROTECT(allocVector(VECSXP, 4));
   SET_VECTOR_ELT(out, 0, theta_1_samples);
   SET_VECTOR_ELT(out, 1, theta_01_samples);
-  SET_VECTOR_ELT(out, 2, prec_1_samples);
+  SET_VECTOR_ELT(out, 2, prec_theta1_samples);
   SET_VECTOR_ELT(out, 3, prec_y_samples);
 
   SEXP nms = PROTECT(allocVector(STRSXP, 4));
   SET_STRING_ELT(nms, 0, mkChar("theta_1"));
   SET_STRING_ELT(nms, 1, mkChar("theta_01"));
-  SET_STRING_ELT(nms, 2, mkChar("prec_1"));
+  SET_STRING_ELT(nms, 2, mkChar("prec_theta1"));
   SET_STRING_ELT(nms, 3, mkChar("prec_y"));
   setAttrib(out, R_NamesSymbol, nms);
 

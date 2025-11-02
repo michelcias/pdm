@@ -856,7 +856,7 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_,
  *
  * @param theta_1_in_     Numeric vector with the previous state draws.
  * @param theta_01_in_    Scalar prior mean for the initial state.
- * @param prec_1_in_      Scalar prior precision for the state.
+ * @param prec_theta1_in_      Scalar prior precision for the state.
  * @param y_              Observed binomial counts.
  * @param n_trials_       Scalar number of trials for the binomial likelihood.
  * @param log_sigma_in_   Numeric vector of proposal log standard deviations.
@@ -865,7 +865,7 @@ SEXP test_generate_theta_0p(SEXP theta_pm1_,
  */
 SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
                                                SEXP theta_01_in_,
-                                               SEXP prec_1_in_,
+                                               SEXP prec_theta1_in_,
                                                SEXP y_,
                                                SEXP n_trials_,
                                                SEXP log_sigma_in_) {
@@ -877,7 +877,7 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
   SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
   protect_count++;
   double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
-  double prec_1_prev = require_real_scalar(prec_1_in_, "prec_1_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   protect_count++;
   ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
@@ -901,7 +901,7 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
     theta_1_current,     /* theta_1_current: output theta_1 values */
     alpha_current,       /* alpha_current: output probabilities */
     theta_01_prev,       /* theta_01_previous: prior mean */
-    prec_1_prev,         /* prec_1_previous: prior precision */
+    prec_theta1_prev,         /* prec_theta1_previous: prior precision */
     theta_1_updated,     /* theta_1_updated: sliding window states */
     REAL(y),             /* y: observed counts */
     REAL(log_sigma),     /* log_sigma: proposal log standard deviations */
@@ -948,7 +948,7 @@ SEXP test_cwmh_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
  * @param theta_2_in_   Numeric vector with the companion state draws.
  * @param theta_01_in_  Scalar prior mean for the first state.
  * @param theta_02_in_  Scalar prior mean for the second state.
- * @param prec_1_in_    Scalar prior precision for the first state.
+ * @param prec_theta1_in_    Scalar prior precision for the first state.
  * @param y_            Observed binomial counts.
  * @param n_trials_     Scalar number of trials for the binomial likelihood.
  *
@@ -958,7 +958,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
                                     SEXP theta_2_in_,
                                     SEXP theta_01_in_,
                                     SEXP theta_02_in_,
-                                    SEXP prec_1_in_,
+                                    SEXP prec_theta1_in_,
                                     SEXP y_,
                                     SEXP n_trials_) {
   const int LAG_UPDATE = 10;
@@ -974,7 +974,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
   ensure_length(theta_2_curr, LENGTH(theta_1_prev), "theta_2_in", "theta_1_in");
   double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
   double theta_02_prev = require_real_scalar(theta_02_in_, "theta_02_in");
-  double prec_1_prev = require_real_scalar(prec_1_in_, "prec_1_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   protect_count++;
   ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
@@ -1001,7 +1001,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
     alpha_current,       /* alpha_current: output probabilities */
     theta_01_prev,       /* theta_01_previous: prior mean for theta_1 */
     theta_02_prev,       /* theta_02_previous: prior mean for theta_2 */
-    prec_1_prev,         /* prec_1_previous: prior precision */
+    prec_theta1_prev,         /* prec_theta1_previous: prior precision */
     theta_1_updated,     /* theta_1_updated: sliding window states */
     REAL(y),             /* y: observed counts */
     log_sigma,           /* log_sigma: proposal log standard deviations */
@@ -1049,7 +1049,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
  *
  * @param theta_1_in_  Numeric vector with the previous state draws.
  * @param theta_01_in_ Scalar prior mean for the initial state.
- * @param prec_1_in_   Scalar prior precision for the state.
+ * @param prec_theta1_in_   Scalar prior precision for the state.
  * @param y_           Observed binomial counts.
  * @param n_trials_    Scalar number of trials for the binomial likelihood.
  *
@@ -1057,7 +1057,7 @@ SEXP test_cwmh_alpha_logit_binomial(SEXP theta_1_in_,
  */
 SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
                                                    SEXP theta_01_in_,
-                                                   SEXP prec_1_in_,
+                                                   SEXP prec_theta1_in_,
                                                    SEXP y_,
                                                    SEXP n_trials_) {
   const int LAG_UPDATE = 50;
@@ -1073,7 +1073,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
   SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
   protect_count++;
   double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
-  double prec_1_prev = require_real_scalar(prec_1_in_, "prec_1_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   protect_count++;
   ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
@@ -1099,7 +1099,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
     theta_1_current,                 /* theta_1_current: output level states for current iteration */
     alpha_current,                   /* alpha_current: output probabilities */
     theta_01_prev,                   /* theta_01_previous: initial level state from previous */
-    prec_1_prev,                     /* prec_1_previous: level precision from previous */
+    prec_theta1_prev,                     /* prec_theta1_previous: level precision from previous */
     theta_1_updated,                 /* theta_1_updated: sliding window acceptance indicators */
     REAL(y),                         /* y: observed counts */
     accept_prop,                     /* accept_prop: acceptance proportions */
@@ -1151,7 +1151,7 @@ SEXP test_generate_alpha_logit_binomial_locallevel(SEXP theta_1_in_,
  * @param theta_2_in_  Numeric vector with the companion state draws.
  * @param theta_01_in_ Scalar prior mean for the first state.
  * @param theta_02_in_ Scalar prior mean for the second state.
- * @param prec_1_in_   Scalar prior precision for the first state.
+ * @param prec_theta1_in_   Scalar prior precision for the first state.
  * @param y_           Observed binomial counts.
  * @param n_trials_    Scalar number of trials for the binomial likelihood.
  *
@@ -1161,7 +1161,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_,
                                         SEXP theta_2_in_,
                                         SEXP theta_01_in_,
                                         SEXP theta_02_in_,
-                                        SEXP prec_1_in_,
+                                        SEXP prec_theta1_in_,
                                         SEXP y_,
                                         SEXP n_trials_) {
   const int LAG_UPDATE = 50;
@@ -1181,7 +1181,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_,
   ensure_length(theta_2_curr, LENGTH(theta_1_prev), "theta_2_in", "theta_1_in");
   double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
   double theta_02_prev = require_real_scalar(theta_02_in_, "theta_02_in");
-  double prec_1_prev = require_real_scalar(prec_1_in_, "prec_1_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   protect_count++;
   ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
@@ -1209,7 +1209,7 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_,
     alpha_current,                   /* alpha_current: output probabilities */
     theta_01_prev,                   /* theta_01_previous: initial level state from previous */
     theta_02_prev,                   /* theta_02_previous: second-state prior mean */
-    prec_1_prev,                     /* prec_1_previous: level precision from previous */
+    prec_theta1_prev,                     /* prec_theta1_previous: level precision from previous */
     theta_1_updated,                 /* theta_1_updated: sliding window acceptance indicators */
     REAL(y),                         /* y: observed counts */
     accept_prop,                     /* accept_prop: acceptance proportions */
@@ -1263,20 +1263,20 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_,
  *
  * @param theta_1_in_  Numeric vector with previous state draws.
  * @param theta_01_in_ Scalar prior mean for the initial state.
- * @param prec_1_in_   Scalar prior precision for the state.
+ * @param prec_theta1_in_   Scalar prior precision for the state.
  * @param y_           Observed Bernoulli outcomes.
  *
  * @return A list containing updated state draws and probit-scale alphas.
  */
 SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_,
                                                      SEXP theta_01_in_,
-                                                     SEXP prec_1_in_,
+                                                     SEXP prec_theta1_in_,
                                                      SEXP y_) {
   int protect_count = 0;
   SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
   protect_count++;
   double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
-  double prec_1_prev = require_real_scalar(prec_1_in_, "prec_1_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   protect_count++;
   ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
@@ -1292,7 +1292,7 @@ SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_,
     theta_1_current,     /* theta_1_current: output theta_1 values */
     alpha_current,       /* alpha_current: output probabilities */
     theta_01_prev,       /* theta_01_previous: prior mean */
-    prec_1_prev,         /* prec_1_previous: prior precision */
+    prec_theta1_prev,         /* prec_theta1_previous: prior precision */
     REAL(y),             /* y: observed Bernoulli outcomes */
     rhs_vector,          /* rhs_vector: working buffer */
     n,                   /* n: number of observations */
@@ -1331,7 +1331,7 @@ SEXP test_generate_alpha_probit_bernoulli_locallevel(SEXP theta_1_in_,
  * @param theta_2_in_  Numeric vector with companion state draws.
  * @param theta_01_in_ Scalar prior mean for the first state.
  * @param theta_02_in_ Scalar prior mean for the second state.
- * @param prec_1_in_   Scalar prior precision for the first state.
+ * @param prec_theta1_in_   Scalar prior precision for the first state.
  * @param y_           Observed Bernoulli outcomes.
  *
  * @return A list containing updated state draws and probit-scale alphas.
@@ -1340,7 +1340,7 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
                                           SEXP theta_2_in_,
                                           SEXP theta_01_in_,
                                           SEXP theta_02_in_,
-                                          SEXP prec_1_in_,
+                                          SEXP prec_theta1_in_,
                                           SEXP y_) {
   int protect_count = 0;
   SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
@@ -1350,7 +1350,7 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
   ensure_length(theta_2_curr, LENGTH(theta_1_prev), "theta_2_in", "theta_1_in");
   double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
   double theta_02_prev = require_real_scalar(theta_02_in_, "theta_02_in");
-  double prec_1_prev = require_real_scalar(prec_1_in_, "prec_1_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
   SEXP y = PROTECT(coerceVector(y_, REALSXP));
   protect_count++;
   ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
@@ -1368,7 +1368,7 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
     REAL(theta_2_curr),  /* theta_2_current: companion state draws */
     theta_01_prev,       /* theta_01_previous: prior mean for theta_1 */
     theta_02_prev,       /* theta_02_previous: prior mean for theta_2 */
-    prec_1_prev,         /* prec_1_previous: prior precision */
+    prec_theta1_prev,         /* prec_theta1_previous: prior precision */
     REAL(y),             /* y: observed Bernoulli outcomes */
     rhs_vector,          /* rhs_vector: working buffer */
     n,                   /* n: number of observations */
@@ -1411,13 +1411,13 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
  *          **Conditional sampling behavior:**
  *          - If theta_1_true is provided (not NULL): theta_1 is fixed to true values (not sampled)
  *          - If theta_01_true is provided (not NULL): theta_01 is fixed to true value (not sampled)
- *          - If prec_1_true is provided (not NULL): prec_1 is fixed to true value (not sampled)
+ *          - If prec_theta1_true is provided (not NULL): prec_theta1 is fixed to true value (not sampled)
  *          - Otherwise: parameter is sampled normally from its conditional posterior
  *
  *          **Sampling sequence per iteration (when not fixed):**
- *          1. theta_1, alpha | y, theta_01, prec_1 -> CWMH with adaptive tuning
- *          2. prec_1 | theta_1, theta_01 -> Gamma posterior
- *          3. theta_01 | theta_1, prec_1 -> Normal posterior
+ *          1. theta_1, alpha | y, theta_01, prec_theta1 -> CWMH with adaptive tuning
+ *          2. prec_theta1 | theta_1, theta_01 -> Gamma posterior
+ *          3. theta_01 | theta_1, prec_theta1 -> Normal posterior
  *
  * @param y_                       Observed binomial counts [n].
  * @param n_trials_                Number of trials for each observation.
@@ -1426,7 +1426,7 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
  * @param n_chain_                 Number of chains to simulate.
  * @param theta_1_true_            Optional: true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_           Optional: true theta_01 value to fix (NULL = sample normally).
- * @param prec_1_true_             Optional: true prec_1 value to fix (NULL = sample normally).
+ * @param prec_theta1_true_             Optional: true prec_theta1 value to fix (NULL = sample normally).
  * @param prior_theta01_mean_      Prior mean hyperparameter for theta_{0,1}.
  * @param prior_theta01_prec_      Prior precision hyperparameter for theta_{0,1}.
  * @param prior_prec1_shape_       Gamma shape hyperparameter for 1/W_1.
@@ -1455,7 +1455,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
                                                 SEXP n_chain_,
                                                 SEXP theta_1_true_,
                                                 SEXP theta_01_true_,
-                                                SEXP prec_1_true_,
+                                                SEXP prec_theta1_true_,
                                                 SEXP prior_theta01_mean_,
                                                 SEXP prior_theta01_prec_,
                                                 SEXP prior_prec1_shape_,
@@ -1534,18 +1534,18 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   double min_deviation_threshold = 1.0 / (double)lag_update;
 
   /* ========== Parse Diagnostic Output Options ========== */
-  int return_log_sigma   = LOGICAL(return_log_sigma_)[0];
-  int return_accept_prop = LOGICAL(return_accept_prop_)[0];
+  int return_log_sigma    = LOGICAL(return_log_sigma_)[0];
+  int return_accept_prop  = LOGICAL(return_accept_prop_)[0];
 
   /* ========== Check Which Parameters Should Be Fixed ========== */
-  int fix_theta_1  = (theta_1_true_ != R_NilValue && !Rf_isNull(theta_1_true_));
-  int fix_theta_01 = (theta_01_true_ != R_NilValue && !Rf_isNull(theta_01_true_));
-  int fix_prec_1   = (prec_1_true_ != R_NilValue && !Rf_isNull(prec_1_true_));
+  int fix_theta_1      = (theta_1_true_ != R_NilValue && !Rf_isNull(theta_1_true_));
+  int fix_theta_01     = (theta_01_true_ != R_NilValue && !Rf_isNull(theta_01_true_));
+  int fix_prec_theta1  = (prec_theta1_true_ != R_NilValue && !Rf_isNull(prec_theta1_true_));
 
   /* Extract true values if provided */
-  double *theta_1_true = NULL;
-  double  theta_01_true = 0.0;
-  double  prec_1_true = 0.0;
+  double *theta_1_true   = NULL;
+  double  theta_01_true  = 0.0;
+  double  prec_theta1_true = 0.0;
 
   int protect_count = 0;
 
@@ -1564,29 +1564,29 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
     theta_01_true = require_real_scalar(theta_01_true_, "theta_01_true");
   }
 
-  if (fix_prec_1) {
-    prec_1_true = require_real_scalar(prec_1_true_, "prec_1_true");
-    if (prec_1_true <= 0) {
+  if (fix_prec_theta1) {
+    prec_theta1_true = require_real_scalar(prec_theta1_true_, "prec_theta1_true");
+    if (prec_theta1_true <= 0) {
       UNPROTECT(protect_count);
-      error("test_mcmc_binomial_locallevel_fixed_params: prec_1_true must be positive, got %f",
-            prec_1_true);
+      error("test_mcmc_binomial_locallevel_fixed_params: prec_theta1_true must be positive, got %f",
+            prec_theta1_true);
     }
   }
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_chain, n));
   protect_count++;
-  SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_chain));
   protect_count++;
-  SEXP prec_1_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_chain));
   protect_count++;
-  SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_chain, n));
   protect_count++;
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples   = R_NilValue;
   SEXP accept_prop_samples = R_NilValue;
-  int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_1, alpha */
+  int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_theta1, alpha */
 
   if (return_log_sigma) {
     log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
@@ -1600,13 +1600,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   }
 
   /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
-  double *theta_1_current  = (double *) R_Calloc(n, double);
-  double *theta_1_previous = (double *) R_Calloc(n, double);
-  double *alpha_current    = (double *) R_Calloc(n, double);
+  double *theta_1_current   = (double *) R_Calloc(n, double);
+  double *theta_1_previous  = (double *) R_Calloc(n, double);
+  double *alpha_current     = (double *) R_Calloc(n, double);
 
   /* Scalar parameters for current and previous iterations */
   double theta_01_current, theta_01_previous;
-  double prec_1_current,   prec_1_previous;
+  double prec_theta1_current, prec_theta1_previous;
 
   /* Sliding window buffer for acceptance tracking */
   double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
@@ -1630,7 +1630,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_1_previous   = fix_prec_1 ? prec_1_true : rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous = fix_prec_theta1 ? prec_theta1_true : rgamma(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   if (fix_theta_1) {
@@ -1663,13 +1663,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
         }
       }
     } else {
-      /* Sample theta_1 | y, theta_01, prec_1 using component-wise Metropolis-Hastings */
+      /* Sample theta_1 | y, theta_01, prec_theta1 using component-wise Metropolis-Hastings */
       generate_alpha_logit_binomial_locallevel(
         theta_1_previous,              /* theta_1_previous: level states from previous iteration */
         theta_1_current,               /* theta_1_current: output level states for current iteration */
         compute_alpha ? alpha_current : NULL,  /* alpha_current: output probabilities */
         theta_01_previous,             /* theta_01_previous: initial level state from previous */
-        prec_1_previous,               /* prec_1_previous: level precision from previous */
+        prec_theta1_previous,               /* prec_theta1_previous: level precision from previous */
         theta_1_updated,               /* theta_1_updated: sliding window acceptance indicators */
         y_ptr,                         /* y: observed counts */
         accept_prop,                   /* accept_prop: acceptance proportions */
@@ -1691,12 +1691,12 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
     }
 
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
-    if (fix_prec_1) {
+    if (fix_prec_theta1) {
       /* Use fixed true value instead of sampling */
-      prec_1_current = prec_1_true;
+      prec_theta1_current = prec_theta1_true;
     } else {
       /* Sample 1/W_1 | theta_1, theta_01 from Gamma posterior */
-      prec_1_current = generate_precision_theta_p(
+      prec_theta1_current = generate_precision_theta_p(
         theta_01_previous,         /* theta_0p: initial level from previous iteration */
         theta_1_current,           /* theta_p_current: current level trajectory [n] */
         nu_01,                     /* nu_0p: prior shape parameter */
@@ -1710,10 +1710,10 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
       /* Use fixed true value instead of sampling */
       theta_01_current = theta_01_true;
     } else {
-      /* Sample theta_{0,1} | theta_1, prec_1 from Normal posterior */
+      /* Sample theta_{0,1} | theta_1, prec_theta1 from Normal posterior */
       theta_01_current = generate_theta_01_locallevel(
         theta_1_current,           /* theta_1_current: current level trajectory [n] */
-        prec_1_current,            /* prec_1: current level precision */
+        prec_theta1_current,            /* prec_theta1: current level precision */
         mean_theta01,              /* mean_theta01: prior mean */
         prec_theta01,              /* prec_theta01: prior precision */
         n                          /* n: number of time points */
@@ -1727,7 +1727,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
         REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
+        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
 
         /* Store diagnostics if requested */
         if (return_log_sigma) {
@@ -1740,13 +1740,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
 
       /* Copy scalar parameters to output vectors */
       REAL(theta_01_samples)[idx] = theta_01_current;
-      REAL(prec_1_samples)[idx]   = prec_1_current;
+      REAL(prec_theta1_samples)[idx] = prec_theta1_current;
     }
 
     /* ===== Update Previous Values for Next Iteration ===== */
     memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
     theta_01_previous = theta_01_current;
-    prec_1_previous   = prec_1_current;
+    prec_theta1_previous = prec_theta1_current;
   }
 
   /* ========== Restore RNG State ========== */
@@ -1776,8 +1776,8 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   SET_VECTOR_ELT(out, out_idx, theta_01_samples);
   SET_STRING_ELT(names, out_idx++, mkChar("theta_01"));
 
-  SET_VECTOR_ELT(out, out_idx, prec_1_samples);
-  SET_STRING_ELT(names, out_idx++, mkChar("prec_1"));
+  SET_VECTOR_ELT(out, out_idx, prec_theta1_samples);
+  SET_STRING_ELT(names, out_idx++, mkChar("prec_theta1"));
 
   SET_VECTOR_ELT(out, out_idx, alpha_samples);
   SET_STRING_ELT(names, out_idx++, mkChar("alpha"));
@@ -1808,13 +1808,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
  *          **Conditional sampling behavior:**
  *          - If theta_1_true is provided (not NULL): theta_1 is fixed to true values (not sampled)
  *          - If theta_01_true is provided (not NULL): theta_01 is fixed to true value (not sampled)
- *          - If prec_1_true is provided (not NULL): prec_1 is fixed to true value (not sampled)
+ *          - If prec_theta1_true is provided (not NULL): prec_theta1 is fixed to true value (not sampled)
  *          - Otherwise: parameter is sampled normally from its conditional posterior
  *
  *          **Sampling sequence per iteration (when not fixed):**
- *          1. theta_1, alpha | y, theta_01, prec_1 -> Gibbs sampling via Albert-Chib augmentation
- *          2. prec_1 | theta_1, theta_01 -> Gamma posterior
- *          3. theta_01 | theta_1, prec_1 -> Normal posterior
+ *          1. theta_1, alpha | y, theta_01, prec_theta1 -> Gibbs sampling via Albert-Chib augmentation
+ *          2. prec_theta1 | theta_1, theta_01 -> Gamma posterior
+ *          3. theta_01 | theta_1, prec_theta1 -> Normal posterior
  *
  * @param y_                  Observed Bernoulli outcomes [n] (0 or 1).
  * @param burnin_             Number of burn-in iterations (discarded).
@@ -1822,7 +1822,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
  * @param n_chain_            Number of chains to simulate.
  * @param theta_1_true_       Optional: true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_      Optional: true theta_01 value to fix (NULL = sample normally).
- * @param prec_1_true_        Optional: true prec_1 value to fix (NULL = sample normally).
+ * @param prec_theta1_true_        Optional: true prec_theta1 value to fix (NULL = sample normally).
  * @param prior_theta01_mean_ Prior mean hyperparameter for theta_{0,1}.
  * @param prior_theta01_prec_ Prior precision hyperparameter for theta_{0,1}.
  * @param prior_prec1_shape_  Gamma shape hyperparameter for 1/W_1.
@@ -1843,7 +1843,7 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
                                                         SEXP n_chain_,
                                                         SEXP theta_1_true_,
                                                         SEXP theta_01_true_,
-                                                        SEXP prec_1_true_,
+                                                        SEXP prec_theta1_true_,
                                                         SEXP prior_theta01_mean_,
                                                         SEXP prior_theta01_prec_,
                                                         SEXP prior_prec1_shape_,
@@ -1901,12 +1901,12 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
   /* ========== Check Which Parameters Should Be Fixed ========== */
   int fix_theta_1  = (theta_1_true_ != R_NilValue && !Rf_isNull(theta_1_true_));
   int fix_theta_01 = (theta_01_true_ != R_NilValue && !Rf_isNull(theta_01_true_));
-  int fix_prec_1   = (prec_1_true_ != R_NilValue && !Rf_isNull(prec_1_true_));
+  int fix_prec_theta1   = (prec_theta1_true_ != R_NilValue && !Rf_isNull(prec_theta1_true_));
 
   /* Extract true values if provided */
   double *theta_1_true = NULL;
   double  theta_01_true = 0.0;
-  double  prec_1_true = 0.0;
+  double  prec_theta1_true = 0.0;
 
   int protect_count = 0;
 
@@ -1925,35 +1925,35 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
     theta_01_true = require_real_scalar(theta_01_true_, "theta_01_true");
   }
 
-  if (fix_prec_1) {
-    prec_1_true = require_real_scalar(prec_1_true_, "prec_1_true");
-    if (prec_1_true <= 0) {
+  if (fix_prec_theta1) {
+    prec_theta1_true = require_real_scalar(prec_theta1_true_, "prec_theta1_true");
+    if (prec_theta1_true <= 0) {
       UNPROTECT(protect_count);
-      error("test_mcmc_probit_bernoulli_locallevel_fixed_params: prec_1_true must be positive, got %f",
-            prec_1_true);
+      error("test_mcmc_probit_bernoulli_locallevel_fixed_params: prec_theta1_true must be positive, got %f",
+            prec_theta1_true);
     }
   }
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_chain, n));
   protect_count++;
-  SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_chain));
   protect_count++;
-  SEXP prec_1_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_chain));
   protect_count++;
-  SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_chain, n));
   protect_count++;
 
-  int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_1, alpha */
+  int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_theta1, alpha */
 
   /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
-  double *theta_1_current  = (double *) R_Calloc(n, double);
-  double *theta_1_previous = (double *) R_Calloc(n, double);
-  double *alpha_current    = (double *) R_Calloc(n, double);
+  double *theta_1_current   = (double *) R_Calloc(n, double);
+  double *theta_1_previous  = (double *) R_Calloc(n, double);
+  double *alpha_current     = (double *) R_Calloc(n, double);
 
   /* Scalar parameters for current and previous iterations */
   double theta_01_current, theta_01_previous;
-  double prec_1_current,   prec_1_previous;
+  double prec_theta1_current, prec_theta1_previous;
 
   /* Working array for probit algorithm */
   double *rhs_vector = (double *) R_Calloc(n, double);
@@ -1964,7 +1964,7 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_1_previous   = fix_prec_1 ? prec_1_true : rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous = fix_prec_theta1 ? prec_theta1_true : rgamma(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   if (fix_theta_1) {
@@ -2003,7 +2003,7 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
         theta_1_current,               /* theta_1_current: output for current iteration [n] */
         compute_alpha ? alpha_current : NULL,  /* alpha_current: NULL if not retained */
         theta_01_previous,             /* theta_01_previous: initial level from previous iteration */
-        prec_1_previous,               /* prec_1_previous: level precision from previous iteration */
+        prec_theta1_previous,               /* prec_theta1_previous: level precision from previous iteration */
         y_ptr,                         /* y: Bernoulli observations */
         rhs_vector,                    /* rhs_vector: solver right-hand side */
         n,                             /* n: number of time points */
@@ -2012,12 +2012,12 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
     }
 
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
-    if (fix_prec_1) {
+    if (fix_prec_theta1) {
       /* Use fixed true value instead of sampling */
-      prec_1_current = prec_1_true;
+      prec_theta1_current = prec_theta1_true;
     } else {
       /* Sample 1/W_1 | theta_1, theta_01 from Gamma posterior */
-      prec_1_current = generate_precision_theta_p(
+      prec_theta1_current = generate_precision_theta_p(
         theta_01_previous,         /* theta_0p: initial level from previous iteration */
         theta_1_current,           /* theta_p_current: current level trajectory [n] */
         nu_01,                     /* nu_0p: prior shape */
@@ -2031,10 +2031,10 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
       /* Use fixed true value instead of sampling */
       theta_01_current = theta_01_true;
     } else {
-      /* Sample theta_{0,1} | theta_1, prec_1 from Normal posterior */
+      /* Sample theta_{0,1} | theta_1, prec_theta1 from Normal posterior */
       theta_01_current = generate_theta_01_locallevel(
         theta_1_current,           /* theta_1_current: current level trajectory [n] */
-        prec_1_current,            /* prec_1: current level precision */
+        prec_theta1_current,            /* prec_theta1: current level precision */
         mean_theta01,              /* mean_theta01: prior mean */
         prec_theta01,              /* prec_theta01: prior precision */
         n                          /* n: number of time points */
@@ -2048,18 +2048,18 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
         REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain]   = alpha_current[t];
+        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
       }
 
       /* Copy scalar parameters to output vectors */
       REAL(theta_01_samples)[idx] = theta_01_current;
-      REAL(prec_1_samples)[idx]   = prec_1_current;
+      REAL(prec_theta1_samples)[idx] = prec_theta1_current;
     }
 
     /* ===== Update Previous Values for Next Iteration ===== */
     memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
     theta_01_previous = theta_01_current;
-    prec_1_previous   = prec_1_current;
+    prec_theta1_previous = prec_theta1_current;
   }
 
   /* ========== Restore RNG State ========== */
@@ -2084,8 +2084,8 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
   SET_VECTOR_ELT(out, out_idx, theta_01_samples);
   SET_STRING_ELT(names, out_idx++, mkChar("theta_01"));
 
-  SET_VECTOR_ELT(out, out_idx, prec_1_samples);
-  SET_STRING_ELT(names, out_idx++, mkChar("prec_1"));
+  SET_VECTOR_ELT(out, out_idx, prec_theta1_samples);
+  SET_STRING_ELT(names, out_idx++, mkChar("prec_theta1"));
 
   SET_VECTOR_ELT(out, out_idx, alpha_samples);
   SET_STRING_ELT(names, out_idx++, mkChar("alpha"));

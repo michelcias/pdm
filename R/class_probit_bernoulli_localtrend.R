@@ -1,9 +1,9 @@
-#' Constructor for normal_locallevel class
+#' Constructor for probit_bernoulli_localtrend class
 #'
 #' @description Internal constructor function for creating objects of class
-#'   \code{normal_locallevel}. This function is called by
-#'   \code{\link{mcmc_normal_locallevel}} and should not be called directly by
-#'   users.
+#'   \code{probit_bernoulli_localtrend}. This function is called by
+#'   \code{\link{mcmc_probit_bernoulli_localtrend}} and should not be called
+#'   directly by users.
 #'
 #' @param result List containing MCMC results returned by the C function.
 #' @param n_obs Integer, number of observations in the original data.
@@ -12,18 +12,19 @@
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
 #'
-#' @return An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("probit_bernoulli_localtrend", "pdm_mcmc", "list")}
 #'   with the following structure:
 #'   \describe{
-#'     \item{Data components}{All elements from \code{result} (theta_1, theta_01,
-#'       prec_theta1, prec_y)}
+#'     \item{Data components}{All elements from \code{result} (theta_1, theta_2,
+#'       theta_01, theta_02, prec_theta1, prec_theta2, alpha)}
 #'     \item{Attributes}{
 #'       \itemize{
 #'         \item \code{n_obs}: Number of observations
 #'         \item \code{n_chain}: Number of MCMC samples
 #'         \item \code{burnin}: Burn-in iterations
 #'         \item \code{thinning}: Thinning interval
-#'         \item \code{model_type}: \code{"locallevel"} (polynomial order 1)
+#'         \item \code{model_type}: \code{"localtrend"} (polynomial order 2)
+#'         \item \code{link}: \code{"probit"} (link function)
 #'         \item \code{y}: Original observed data
 #'       }
 #'     }
@@ -35,19 +36,19 @@
 #'
 #'   The class hierarchy is:
 #'   \itemize{
-#'     \item \code{normal_locallevel}: Specific model class
+#'     \item \code{probit_bernoulli_localtrend}: Specific model class
 #'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
 #'     \item \code{list}: Base R list class
 #'   }
 #'
 #' @keywords internal
 #' @noRd
-new_normal_locallevel <- function(result,
-                                  n_obs,
-                                  n_chain,
-                                  burnin,
-                                  thinning,
-                                  y) {
+new_probit_bernoulli_localtrend <- function(result,
+                                            n_obs,
+                                            n_chain,
+                                            burnin,
+                                            thinning,
+                                            y) {
 
   # Validate that result is a non-empty list
   if (!is.list(result) || length(result) == 0) {
@@ -72,40 +73,44 @@ new_normal_locallevel <- function(result,
   }
 
   # Add class hierarchy
-  class(result) <- c("normal_locallevel", "pdm_mcmc", "list")
+  class(result) <- c("probit_bernoulli_localtrend", "pdm_mcmc", "list")
 
   # Add metadata as attributes
   attr(result, "n_obs") <- as.integer(n_obs)
   attr(result, "n_chain") <- as.integer(n_chain)
   attr(result, "burnin") <- as.integer(burnin)
   attr(result, "thinning") <- as.integer(thinning)
-  attr(result, "model_type") <- "locallevel"  # Polynomial order 1
+  attr(result, "model_type") <- "localtrend"  # Polynomial order 2
+  attr(result, "link") <- "probit"  # Bernoulli model uses probit link
   attr(result, "y") <- y  # Store original data for plotting
 
   return(result)
 }
 
 
-#' Validator for normal_locallevel class
+#' Validator for probit_bernoulli_localtrend class
 #'
 #' @description Internal function to validate objects of class
-#'   \code{normal_locallevel}. Checks that all required components are present
-#'   and have correct dimensions.
+#'   \code{probit_bernoulli_localtrend}. Checks that all required components
+#'   are present and have correct dimensions.
 #'
 #' @param x An object to validate.
 #'
 #' @return The input object \code{x} if validation succeeds.
 #' @keywords internal
 #' @noRd
-validate_normal_locallevel <- function(x) {
+validate_probit_bernoulli_localtrend <- function(x) {
 
   # 1. Check class
-  if (!inherits(x, "normal_locallevel")) {
-    stop("Object must inherit from class 'normal_locallevel'")
+  if (!inherits(x, "probit_bernoulli_localtrend")) {
+    stop("Object must inherit from class 'probit_bernoulli_localtrend'")
   }
 
   # 2. Check required components exist
-  required_components <- c("theta_1", "theta_01", "prec_theta1", "prec_y")
+  required_components <- c("theta_1", "theta_2",
+                           "theta_01", "theta_02",
+                           "prec_theta1", "prec_theta2",
+                           "alpha")
   missing <- setdiff(required_components, names(x))
   if (length(missing) > 0) {
     stop("Missing required components: ", paste(missing, collapse = ", "))
@@ -133,8 +138,9 @@ validate_normal_locallevel <- function(x) {
   }
 
   # 4. Validate scalar parameters (type, length, finiteness, positivity)
-  scalar_params <- c("theta_01", "prec_theta1", "prec_y")
-  precision_params <- c("prec_theta1", "prec_y")
+  scalar_params <- c("theta_01", "theta_02",
+                     "prec_theta1", "prec_theta2")
+  precision_params <- c("prec_theta1", "prec_theta2")
 
   for (param in scalar_params) {
     # Check type
@@ -171,34 +177,47 @@ validate_normal_locallevel <- function(x) {
     }
   }
 
-  # 5. Validate theta_1 matrix
-  if (!is.matrix(x$theta_1)) {
-    stop("Component 'theta_1' must be a matrix")
+  # 5. Validate theta_1, theta_2, and alpha matrices
+  matrix_params <- c("theta_1", "theta_2", "alpha")
+
+  for (param in matrix_params) {
+    if (!is.matrix(x[[param]])) {
+      stop(sprintf("Component '%s' must be a matrix", param))
+    }
+
+    if (!is.numeric(x[[param]])) {
+      stop(sprintf("Component '%s' must be numeric", param))
+    }
+
+    dims <- dim(x[[param]])
+
+    if (dims[1] != n_chain || dims[2] != n_obs) {
+      stop(sprintf(
+        "Component '%s' has incorrect dimensions [%d x %d], expected [%d x %d].\n  Each row should be one MCMC sample, each column one time point.",
+        param, dims[1], dims[2], n_chain, n_obs
+      ))
+    }
+
+    # Check finiteness
+    if (any(!is.finite(x[[param]]))) {
+      n_bad <- sum(!is.finite(x[[param]]))
+      stop(sprintf(
+        "Component '%s' contains %d non-finite values (NA, NaN, or Inf)",
+        param, n_bad
+      ))
+    }
   }
 
-  if (!is.numeric(x$theta_1)) {
-    stop("Component 'theta_1' must be numeric")
-  }
-
-  dims <- dim(x$theta_1)
-
-  if (dims[1] != n_chain || dims[2] != n_obs) {
+  # 6. Validate alpha values are probabilities
+  if (any(x$alpha < 0 | x$alpha > 1)) {
+    n_bad <- sum(x$alpha < 0 | x$alpha > 1)
     stop(sprintf(
-      "Component 'theta_1' has incorrect dimensions [%d x %d], expected [%d x %d].\n  Each row should be one MCMC sample, each column one time point.",
-      dims[1], dims[2], n_chain, n_obs
-    ))
-  }
-
-  # Check finiteness
-  if (any(!is.finite(x$theta_1))) {
-    n_bad <- sum(!is.finite(x$theta_1))
-    stop(sprintf(
-      "Component 'theta_1' contains %d non-finite values (NA, NaN, or Inf)",
+      "Component 'alpha' contains %d values outside [0,1] (not valid probabilities)",
       n_bad
     ))
   }
 
-  # 6. Validate stored data attribute (if present)
+  # 7. Validate stored data attribute (if present)
   y <- attr(x, "y")
   if (!is.null(y)) {
     if (!is.numeric(y)) {
@@ -213,21 +232,37 @@ validate_normal_locallevel <- function(x) {
     if (any(!is.finite(y))) {
       stop("Attribute 'y' contains non-finite values")
     }
+    # Validate Bernoulli support
+    if (!all(y %in% c(0, 1))) {
+      stop("Attribute 'y' must contain only binary values (0 or 1)")
+    }
   }
 
-  # 7. Validate model type
+  # 8. Validate model type
   model_type <- attr(x, "model_type")
   if (is.null(model_type)) {
     stop("Missing required attribute 'model_type'")
   }
-  if (!identical(model_type, "locallevel")) {
+  if (!identical(model_type, "localtrend")) {
     stop(sprintf(
-      "Attribute 'model_type' must be 'locallevel', got '%s'",
+      "Attribute 'model_type' must be 'localtrend', got '%s'",
       as.character(model_type)
     ))
   }
 
-  # 8. Validate optional metadata (if you use them elsewhere)
+  # 9. Validate link function
+  link <- attr(x, "link")
+  if (is.null(link)) {
+    stop("Missing required attribute 'link'")
+  }
+  if (!identical(link, "probit")) {
+    stop(sprintf(
+      "Attribute 'link' must be 'probit', got '%s'",
+      as.character(link)
+    ))
+  }
+
+  # 10. Validate optional metadata
   burnin <- attr(x, "burnin")
   if (!is.null(burnin)) {
     if (!is.numeric(burnin) || length(burnin) != 1 || burnin < 0) {
@@ -246,63 +281,57 @@ validate_normal_locallevel <- function(x) {
 }
 
 
-#' Check if object is of class normal_locallevel
+#' Check if object is of class probit_bernoulli_localtrend
 #'
-#' @description Test whether an object is of class \code{normal_locallevel}.
+#' @description Test whether an object is of class \code{probit_bernoulli_localtrend}.
 #'
 #' @param x An object to test.
 #'
 #' @return Logical value: \code{TRUE} if \code{x} inherits from
-#'   \code{normal_locallevel}, \code{FALSE} otherwise.
+#'   \code{probit_bernoulli_localtrend}, \code{FALSE} otherwise.
 #'
 #' @examples
 #' \dontrun{
-#' ## Simulate data (same setup as ?mcmc_normal_locallevel)
-#' n <- 1000
-#'
-#' # True parameters for simulation
-#' theta0_true <- 10
-#' prec1_true <- 1
-#' prec_y_true <- 5
+#' ## Simulate data (same setup as ?mcmc_probit_bernoulli_localtrend)
+#' n <- 500
 #'
 #' set.seed(123)
-#' u1 <- rnorm(n, sd = sqrt(1 / prec1_true))
-#' e  <- rnorm(n, sd = sqrt(1 / prec_y_true))
-#' theta1_true <- cumsum(c(theta0_true, u1))[-1]
-#' y <- theta1_true + e
+#' grid_vals <- seq_len(n) / n
+#' alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
+#' y <- rbinom(n, size = 1, prob = alpha_true)
 #'
-#' out <- mcmc_normal_locallevel(
+#' out <- mcmc_probit_bernoulli_localtrend(
 #'   y,
-#'   burnin   = 1000,
-#'   thinning = 10,
-#'   n_chain  = 1000,
-#'   prior_theta01_mean = y[1],
-#'   prior_theta01_prec = 1 / var(y),
-#'   prior_prec1_shape  = 1e-2,
-#'   prior_prec1_rate   = 1e-2,
-#'   prior_prec_y_shape = 1e-2,
-#'   prior_prec_y_rate  = 1e-2,
-#'   verbose            = TRUE,
-#'   bar_width          = 60,
+#'   burnin = 1000,
+#'   thinning = 50,
+#'   n_chain = 1000,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_theta02_mean = 0,
+#'   prior_theta02_prec = 1,
+#'   prior_prec1_shape = 100,
+#'   prior_prec1_rate = 1,
+#'   prior_prec2_shape = 400,
+#'   prior_prec2_rate = 1,
 #'   seed = 456
 #' )
 #'
-#' is.normal_locallevel(out)  # TRUE
-#' is.normal_locallevel(list())  # FALSE
+#' is.probit_bernoulli_localtrend(out)  # TRUE
+#' is.probit_bernoulli_localtrend(list())  # FALSE
 #' }
 #'
 #' @export
-is.normal_locallevel <- function(x) {
-  inherits(x, "normal_locallevel")
+is.probit_bernoulli_localtrend <- function(x) {
+  inherits(x, "probit_bernoulli_localtrend")
 }
 
 
-#' Print method for normal_locallevel objects
+#' Print method for probit_bernoulli_localtrend objects
 #'
 #' @description Prints a concise summary showing posterior medians.
 #'   Use \code{summary()} for comprehensive statistics when available.
 #'
-#' @param x An object of class \code{normal_locallevel}.
+#' @param x An object of class \code{probit_bernoulli_localtrend}.
 #' @param digits Integer, number of decimal places to display. Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
@@ -313,45 +342,40 @@ is.normal_locallevel <- function(x) {
 #'
 #' @examples
 #' \dontrun{
-#' ## Simulate data (same setup as ?mcmc_normal_locallevel)
-#' n <- 1000
-#'
-#' theta0_true <- 10
-#' prec1_true <- 1
-#' prec_y_true <- 5
+#' ## Simulate data (same setup as ?mcmc_probit_bernoulli_localtrend)
+#' n <- 500
 #'
 #' set.seed(123)
-#' u1 <- rnorm(n, sd = sqrt(1 / prec1_true))
-#' e  <- rnorm(n, sd = sqrt(1 / prec_y_true))
-#' theta1_true <- cumsum(c(theta0_true, u1))[-1]
-#' y <- theta1_true + e
+#' grid_vals <- seq_len(n) / n
+#' alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
+#' y <- rbinom(n, size = 1, prob = alpha_true)
 #'
-#' out <- mcmc_normal_locallevel(
+#' out <- mcmc_probit_bernoulli_localtrend(
 #'   y,
-#'   burnin   = 1000,
-#'   thinning = 10,
-#'   n_chain  = 1000,
-#'   prior_theta01_mean = y[1],
-#'   prior_theta01_prec = 1 / var(y),
-#'   prior_prec1_shape  = 1e-2,
-#'   prior_prec1_rate   = 1e-2,
-#'   prior_prec_y_shape = 1e-2,
-#'   prior_prec_y_rate  = 1e-2,
-#'   verbose            = TRUE,
-#'   bar_width          = 60,
+#'   burnin = 1000,
+#'   thinning = 50,
+#'   n_chain = 1000,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_theta02_mean = 0,
+#'   prior_theta02_prec = 1,
+#'   prior_prec1_shape = 100,
+#'   prior_prec1_rate = 1,
+#'   prior_prec2_shape = 400,
+#'   prior_prec2_rate = 1,
 #'   seed = 456
 #' )
 #'
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_locallevel}}
+#' @seealso \code{\link{mcmc_probit_bernoulli_localtrend}}
 #' @export
-print.normal_locallevel <- function(x, digits = 3, ...) {
+print.probit_bernoulli_localtrend <- function(x, digits = 3, ...) {
 
   # Validate input
-  if (!inherits(x, "normal_locallevel")) {
-    stop("Object must be of class 'normal_locallevel'")
+  if (!inherits(x, "probit_bernoulli_localtrend")) {
+    stop("Object must be of class 'probit_bernoulli_localtrend'")
   }
 
   # Validate and coerce digits parameter
@@ -362,13 +386,14 @@ print.normal_locallevel <- function(x, digits = 3, ...) {
   digits <- as.integer(digits)
 
   cat("\n")
-  cat("Gaussian Local-Level Model\n")
+  cat("Bernoulli Local-Trend Model (Probit Link)\n")
   cat(strrep("=", 70), "\n\n", sep = "")
 
   # Model metadata
   cat("Model:\n")
   cat("  Type:              ", attr(x, "model_type"),
-      " (1st order polynomial)\n", sep = "")
+      " (2nd order polynomial)\n", sep = "")
+  cat("  Link function:     ", attr(x, "link"), "\n", sep = "")
   cat("\n")
 
   # MCMC metadata
@@ -381,32 +406,35 @@ print.normal_locallevel <- function(x, digits = 3, ...) {
   # Calculate medians with error handling
   tryCatch({
     med_theta01 <- median(x$theta_01, na.rm = FALSE)
+    med_theta02 <- median(x$theta_02, na.rm = FALSE)
     med_prec1 <- median(x$prec_theta1, na.rm = FALSE)
-    med_precy <- median(x$prec_y, na.rm = FALSE)
+    med_prec2 <- median(x$prec_theta2, na.rm = FALSE)
   }, error = function(e) {
     stop("Error calculating posterior medians: ", e$message, call. = FALSE)
   })
 
-  # Determine field width for alignment (width = digits + 4 for sign, decimal, padding)
+  # Determine field width for alignment
   field_width <- digits + 4
 
   # Posterior medians for scalar parameters
   cat("Posterior Medians (Scalars):\n")
   cat("  theta_01:  ", sprintf(paste0("%", field_width, ".", digits, "f"), med_theta01),
       "  (initial level)\n", sep = "")
+  cat("  theta_02:  ", sprintf(paste0("%", field_width, ".", digits, "f"), med_theta02),
+      "  (initial trend)\n", sep = "")
   cat("  W_1^-1:    ", sprintf(paste0("%", field_width, ".", digits, "f"), med_prec1),
       "  (level innovation precision)\n", sep = "")
-  cat("  V^-1:      ", sprintf(paste0("%", field_width, ".", digits, "f"), med_precy),
-      "  (observation precision)\n\n", sep = "")
+  cat("  W_2^-1:    ", sprintf(paste0("%", field_width, ".", digits, "f"), med_prec2),
+      "  (trend innovation precision)\n\n", sep = "")
 
-  # Median trajectory summary for theta_1 with error handling
+  # Median trajectory summary for theta_1
   tryCatch({
     theta_1_median <- apply(x$theta_1, 2, median, na.rm = FALSE)
     theta_1_min <- min(theta_1_median)
     theta_1_max <- max(theta_1_median)
     theta_1_final <- theta_1_median[length(theta_1_median)]
 
-    cat("Latent Level (theta_{t,1}) Median Summary:\n")
+    cat("Latent Level (theta_{t,1}) Median Summary (probit scale):\n")
     cat("  Range:  [",
         sprintf(paste0("%", field_width, ".", digits, "f"), theta_1_min),
         ", ",
@@ -420,11 +448,53 @@ print.normal_locallevel <- function(x, digits = 3, ...) {
     cat("  [Error computing trajectory summary: ", e$message, "]\n\n", sep = "")
   })
 
+  # Median trajectory summary for theta_2
+  tryCatch({
+    theta_2_median <- apply(x$theta_2, 2, median, na.rm = FALSE)
+    theta_2_min <- min(theta_2_median)
+    theta_2_max <- max(theta_2_median)
+    theta_2_final <- theta_2_median[length(theta_2_median)]
+
+    cat("Latent Trend (theta_{t,2}) Median Summary (probit scale):\n")
+    cat("  Range:  [",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_2_min),
+        ", ",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_2_max),
+        "]\n", sep = "")
+    cat("  Final:  ",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_2_final),
+        "  (median trend at last time point)\n\n", sep = "")
+  }, error = function(e) {
+    cat("Latent Trend (theta_{t,2}) Median Summary:\n")
+    cat("  [Error computing trajectory summary: ", e$message, "]\n\n", sep = "")
+  })
+
+  # Summary of Bernoulli probabilities
+  tryCatch({
+    alpha_median_time <- apply(x$alpha, 2, median, na.rm = FALSE)
+    alpha_min <- min(alpha_median_time)
+    alpha_max <- max(alpha_median_time)
+    alpha_med <- median(alpha_median_time)
+
+    cat("Bernoulli Probabilities (alpha_t):\n")
+    cat("  Range:  [",
+        sprintf(paste0("%", field_width, ".", digits, "f"), alpha_min),
+        ", ",
+        sprintf(paste0("%", field_width, ".", digits, "f"), alpha_max),
+        "]\n", sep = "")
+    cat("  Median: ",
+        sprintf(paste0("%", field_width, ".", digits, "f"), alpha_med), "\n\n", sep = "")
+  }, error = function(e) {
+    cat("Bernoulli Probabilities (alpha_t):\n")
+    cat("  [Error computing summary: ", e$message, "]\n\n", sep = "")
+  })
+
   # User guidance
   cat(strrep("-", 70), "\n", sep = "")
   cat("Note: Showing posterior medians (robust central tendency).\n")
   cat("      For additional summaries: summary(x) when available.\n")
   cat("      For visual diagnostics: plot(x) if implemented.\n")
+  cat("      Pure Gibbs sampler: acceptance rate = 1.0 (no MH steps)\n")
   cat(strrep("-", 70), "\n\n", sep = "")
 
   invisible(x)

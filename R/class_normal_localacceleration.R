@@ -1,8 +1,8 @@
-#' Constructor for normal_locallevel class
+#' Constructor for normal_localacceleration class
 #'
 #' @description Internal constructor function for creating objects of class
-#'   \code{normal_locallevel}. This function is called by
-#'   \code{\link{mcmc_normal_locallevel}} and should not be called directly by
+#'   \code{normal_localacceleration}. This function is called by
+#'   \code{\link{mcmc_normal_localacceleration}} and should not be called directly by
 #'   users.
 #'
 #' @param result List containing MCMC results returned by the C function.
@@ -12,18 +12,19 @@
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
 #'
-#' @return An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("normal_localacceleration", "pdm_mcmc", "list")}
 #'   with the following structure:
 #'   \describe{
-#'     \item{Data components}{All elements from \code{result} (theta_1, theta_01,
-#'       prec_theta1, prec_y)}
+#'     \item{Data components}{All elements from \code{result} (theta_1, theta_2,
+#'       theta_3, theta_01, theta_02, theta_03, prec_theta1, prec_theta2,
+#'       prec_theta3, prec_y)}
 #'     \item{Attributes}{
 #'       \itemize{
 #'         \item \code{n_obs}: Number of observations
 #'         \item \code{n_chain}: Number of MCMC samples
 #'         \item \code{burnin}: Burn-in iterations
 #'         \item \code{thinning}: Thinning interval
-#'         \item \code{model_type}: \code{"locallevel"} (polynomial order 1)
+#'         \item \code{model_type}: \code{"localacceleration"} (polynomial order 3)
 #'         \item \code{y}: Original observed data
 #'       }
 #'     }
@@ -35,19 +36,19 @@
 #'
 #'   The class hierarchy is:
 #'   \itemize{
-#'     \item \code{normal_locallevel}: Specific model class
+#'     \item \code{normal_localacceleration}: Specific model class
 #'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
 #'     \item \code{list}: Base R list class
 #'   }
 #'
 #' @keywords internal
 #' @noRd
-new_normal_locallevel <- function(result,
-                                  n_obs,
-                                  n_chain,
-                                  burnin,
-                                  thinning,
-                                  y) {
+new_normal_localacceleration <- function(result,
+                                         n_obs,
+                                         n_chain,
+                                         burnin,
+                                         thinning,
+                                         y) {
 
   # Validate that result is a non-empty list
   if (!is.list(result) || length(result) == 0) {
@@ -72,24 +73,24 @@ new_normal_locallevel <- function(result,
   }
 
   # Add class hierarchy
-  class(result) <- c("normal_locallevel", "pdm_mcmc", "list")
+  class(result) <- c("normal_localacceleration", "pdm_mcmc", "list")
 
   # Add metadata as attributes
   attr(result, "n_obs") <- as.integer(n_obs)
   attr(result, "n_chain") <- as.integer(n_chain)
   attr(result, "burnin") <- as.integer(burnin)
   attr(result, "thinning") <- as.integer(thinning)
-  attr(result, "model_type") <- "locallevel"  # Polynomial order 1
+  attr(result, "model_type") <- "localacceleration"  # Polynomial order 3
   attr(result, "y") <- y  # Store original data for plotting
 
   return(result)
 }
 
 
-#' Validator for normal_locallevel class
+#' Validator for normal_localacceleration class
 #'
 #' @description Internal function to validate objects of class
-#'   \code{normal_locallevel}. Checks that all required components are present
+#'   \code{normal_localacceleration}. Checks that all required components are present
 #'   and have correct dimensions.
 #'
 #' @param x An object to validate.
@@ -97,15 +98,17 @@ new_normal_locallevel <- function(result,
 #' @return The input object \code{x} if validation succeeds.
 #' @keywords internal
 #' @noRd
-validate_normal_locallevel <- function(x) {
+validate_normal_localacceleration <- function(x) {
 
   # 1. Check class
-  if (!inherits(x, "normal_locallevel")) {
-    stop("Object must inherit from class 'normal_locallevel'")
+  if (!inherits(x, "normal_localacceleration")) {
+    stop("Object must inherit from class 'normal_localacceleration'")
   }
 
   # 2. Check required components exist
-  required_components <- c("theta_1", "theta_01", "prec_theta1", "prec_y")
+  required_components <- c("theta_1", "theta_2", "theta_3",
+                           "theta_01", "theta_02", "theta_03",
+                           "prec_theta1", "prec_theta2", "prec_theta3", "prec_y")
   missing <- setdiff(required_components, names(x))
   if (length(missing) > 0) {
     stop("Missing required components: ", paste(missing, collapse = ", "))
@@ -133,8 +136,9 @@ validate_normal_locallevel <- function(x) {
   }
 
   # 4. Validate scalar parameters (type, length, finiteness, positivity)
-  scalar_params <- c("theta_01", "prec_theta1", "prec_y")
-  precision_params <- c("prec_theta1", "prec_y")
+  scalar_params <- c("theta_01", "theta_02", "theta_03",
+                     "prec_theta1", "prec_theta2", "prec_theta3", "prec_y")
+  precision_params <- c("prec_theta1", "prec_theta2", "prec_theta3", "prec_y")
 
   for (param in scalar_params) {
     # Check type
@@ -171,31 +175,35 @@ validate_normal_locallevel <- function(x) {
     }
   }
 
-  # 5. Validate theta_1 matrix
-  if (!is.matrix(x$theta_1)) {
-    stop("Component 'theta_1' must be a matrix")
-  }
+  # 5. Validate theta_1, theta_2, and theta_3 matrices
+  matrix_params <- c("theta_1", "theta_2", "theta_3")
 
-  if (!is.numeric(x$theta_1)) {
-    stop("Component 'theta_1' must be numeric")
-  }
+  for (param in matrix_params) {
+    if (!is.matrix(x[[param]])) {
+      stop(sprintf("Component '%s' must be a matrix", param))
+    }
 
-  dims <- dim(x$theta_1)
+    if (!is.numeric(x[[param]])) {
+      stop(sprintf("Component '%s' must be numeric", param))
+    }
 
-  if (dims[1] != n_chain || dims[2] != n_obs) {
-    stop(sprintf(
-      "Component 'theta_1' has incorrect dimensions [%d x %d], expected [%d x %d].\n  Each row should be one MCMC sample, each column one time point.",
-      dims[1], dims[2], n_chain, n_obs
-    ))
-  }
+    dims <- dim(x[[param]])
 
-  # Check finiteness
-  if (any(!is.finite(x$theta_1))) {
-    n_bad <- sum(!is.finite(x$theta_1))
-    stop(sprintf(
-      "Component 'theta_1' contains %d non-finite values (NA, NaN, or Inf)",
-      n_bad
-    ))
+    if (dims[1] != n_chain || dims[2] != n_obs) {
+      stop(sprintf(
+        "Component '%s' has incorrect dimensions [%d x %d], expected [%d x %d].\n  Each row should be one MCMC sample, each column one time point.",
+        param, dims[1], dims[2], n_chain, n_obs
+      ))
+    }
+
+    # Check finiteness
+    if (any(!is.finite(x[[param]]))) {
+      n_bad <- sum(!is.finite(x[[param]]))
+      stop(sprintf(
+        "Component '%s' contains %d non-finite values (NA, NaN, or Inf)",
+        param, n_bad
+      ))
+    }
   }
 
   # 6. Validate stored data attribute (if present)
@@ -220,14 +228,14 @@ validate_normal_locallevel <- function(x) {
   if (is.null(model_type)) {
     stop("Missing required attribute 'model_type'")
   }
-  if (!identical(model_type, "locallevel")) {
+  if (!identical(model_type, "localacceleration")) {
     stop(sprintf(
-      "Attribute 'model_type' must be 'locallevel', got '%s'",
+      "Attribute 'model_type' must be 'localacceleration', got '%s'",
       as.character(model_type)
     ))
   }
 
-  # 8. Validate optional metadata (if you use them elsewhere)
+  # 8. Validate optional metadata
   burnin <- attr(x, "burnin")
   if (!is.null(burnin)) {
     if (!is.numeric(burnin) || length(burnin) != 1 || burnin < 0) {
@@ -246,63 +254,86 @@ validate_normal_locallevel <- function(x) {
 }
 
 
-#' Check if object is of class normal_locallevel
+#' Check if object is of class normal_localacceleration
 #'
-#' @description Test whether an object is of class \code{normal_locallevel}.
+#' @description Test whether an object is of class \code{normal_localacceleration}.
 #'
 #' @param x An object to test.
 #'
 #' @return Logical value: \code{TRUE} if \code{x} inherits from
-#'   \code{normal_locallevel}, \code{FALSE} otherwise.
+#'   \code{normal_localacceleration}, \code{FALSE} otherwise.
 #'
 #' @examples
 #' \dontrun{
-#' ## Simulate data (same setup as ?mcmc_normal_locallevel)
+#' ## Simulate data (same setup as ?mcmc_normal_localacceleration)
 #' n <- 1000
 #'
 #' # True parameters for simulation
-#' theta0_true <- 10
-#' prec1_true <- 1
-#' prec_y_true <- 5
+#' theta01_true <- 10
+#' theta02_true <- 0.5
+#' theta03_true <- 0.01
+#' prec1_true   <- 1 / 0.100
+#' prec2_true   <- 1 / 0.010
+#' prec3_true   <- 1 / 0.001
+#' prec_y_true  <- 1 / 1.000
 #'
 #' set.seed(123)
-#' u1 <- rnorm(n, sd = sqrt(1 / prec1_true))
-#' e  <- rnorm(n, sd = sqrt(1 / prec_y_true))
-#' theta1_true <- cumsum(c(theta0_true, u1))[-1]
-#' y <- theta1_true + e
+#' u1      <- rnorm(n, sd = sqrt(1 / prec1_true))
+#' u2      <- rnorm(n, sd = sqrt(1 / prec2_true))
+#' u3      <- rnorm(n, sd = sqrt(1 / prec3_true))
+#' epsilon <- rnorm(n, sd = sqrt(1 / prec_y_true))
 #'
-#' out <- mcmc_normal_locallevel(
+#' theta1_true    <- numeric(n)
+#' theta2_true    <- numeric(n)
+#' theta3_true    <- numeric(n)
+#' theta3_true[1] <- theta03_true + u3[1]
+#' theta2_true[1] <- theta02_true + theta03_true + u2[1]
+#' theta1_true[1] <- theta01_true + theta02_true + u1[1]
+#' for (t in 2:n) {
+#'   theta3_true[t] <- theta3_true[t-1] + u3[t]
+#'   theta2_true[t] <- theta2_true[t-1] + theta3_true[t-1] + u2[t]
+#'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
+#' }
+#' y <- theta1_true + epsilon
+#'
+#' out <- mcmc_normal_localacceleration(
 #'   y,
-#'   burnin   = 1000,
-#'   thinning = 10,
+#'   burnin   = 2000,
+#'   thinning = 100,
 #'   n_chain  = 1000,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
-#'   prior_prec1_shape  = 1e-2,
-#'   prior_prec1_rate   = 1e-2,
-#'   prior_prec_y_shape = 1e-2,
-#'   prior_prec_y_rate  = 1e-2,
-#'   verbose            = TRUE,
-#'   bar_width          = 60,
+#'   prior_theta02_mean = y[1] / 2,
+#'   prior_theta02_prec = 1 / var(y),
+#'   prior_theta03_mean = 0,
+#'   prior_theta03_prec = 1e-3,
+#'   prior_prec1_shape  = 1e-1,
+#'   prior_prec1_rate   = 1e-1,
+#'   prior_prec2_shape  = 1e-2,
+#'   prior_prec2_rate   = 1e-2,
+#'   prior_prec3_shape  = 1e-1,
+#'   prior_prec3_rate   = 1e-2,
+#'   prior_prec_y_shape = 1e-1,
+#'   prior_prec_y_rate  = 1e-1,
 #'   seed = 456
 #' )
 #'
-#' is.normal_locallevel(out)  # TRUE
-#' is.normal_locallevel(list())  # FALSE
+#' is.normal_localacceleration(out)  # TRUE
+#' is.normal_localacceleration(list())  # FALSE
 #' }
 #'
 #' @export
-is.normal_locallevel <- function(x) {
-  inherits(x, "normal_locallevel")
+is.normal_localacceleration <- function(x) {
+  inherits(x, "normal_localacceleration")
 }
 
 
-#' Print method for normal_locallevel objects
+#' Print method for normal_localacceleration objects
 #'
 #' @description Prints a concise summary showing posterior medians.
 #'   Use \code{summary()} for comprehensive statistics when available.
 #'
-#' @param x An object of class \code{normal_locallevel}.
+#' @param x An object of class \code{normal_localacceleration}.
 #' @param digits Integer, number of decimal places to display. Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
@@ -313,45 +344,68 @@ is.normal_locallevel <- function(x) {
 #'
 #' @examples
 #' \dontrun{
-#' ## Simulate data (same setup as ?mcmc_normal_locallevel)
+#' ## Simulate data (same setup as ?mcmc_normal_localacceleration)
 #' n <- 1000
 #'
-#' theta0_true <- 10
-#' prec1_true <- 1
-#' prec_y_true <- 5
+#' theta01_true <- 10
+#' theta02_true <- 0.5
+#' theta03_true <- 0.01
+#' prec1_true   <- 1 / 0.100
+#' prec2_true   <- 1 / 0.010
+#' prec3_true   <- 1 / 0.001
+#' prec_y_true  <- 1 / 1.000
 #'
 #' set.seed(123)
-#' u1 <- rnorm(n, sd = sqrt(1 / prec1_true))
-#' e  <- rnorm(n, sd = sqrt(1 / prec_y_true))
-#' theta1_true <- cumsum(c(theta0_true, u1))[-1]
-#' y <- theta1_true + e
+#' u1      <- rnorm(n, sd = sqrt(1 / prec1_true))
+#' u2      <- rnorm(n, sd = sqrt(1 / prec2_true))
+#' u3      <- rnorm(n, sd = sqrt(1 / prec3_true))
+#' epsilon <- rnorm(n, sd = sqrt(1 / prec_y_true))
 #'
-#' out <- mcmc_normal_locallevel(
+#' theta1_true    <- numeric(n)
+#' theta2_true    <- numeric(n)
+#' theta3_true    <- numeric(n)
+#' theta3_true[1] <- theta03_true + u3[1]
+#' theta2_true[1] <- theta02_true + theta03_true + u2[1]
+#' theta1_true[1] <- theta01_true + theta02_true + u1[1]
+#' for (t in 2:n) {
+#'   theta3_true[t] <- theta3_true[t-1] + u3[t]
+#'   theta2_true[t] <- theta2_true[t-1] + theta3_true[t-1] + u2[t]
+#'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
+#' }
+#' y <- theta1_true + epsilon
+#'
+#' out <- mcmc_normal_localacceleration(
 #'   y,
-#'   burnin   = 1000,
-#'   thinning = 10,
+#'   burnin   = 2000,
+#'   thinning = 100,
 #'   n_chain  = 1000,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
-#'   prior_prec1_shape  = 1e-2,
-#'   prior_prec1_rate   = 1e-2,
-#'   prior_prec_y_shape = 1e-2,
-#'   prior_prec_y_rate  = 1e-2,
-#'   verbose            = TRUE,
-#'   bar_width          = 60,
+#'   prior_theta02_mean = y[1] / 2,
+#'   prior_theta02_prec = 1 / var(y),
+#'   prior_theta03_mean = 0,
+#'   prior_theta03_prec = 1e-3,
+#'   prior_prec1_shape  = 1e-1,
+#'   prior_prec1_rate   = 1e-1,
+#'   prior_prec2_shape  = 1e-2,
+#'   prior_prec2_rate   = 1e-2,
+#'   prior_prec3_shape  = 1e-1,
+#'   prior_prec3_rate   = 1e-2,
+#'   prior_prec_y_shape = 1e-1,
+#'   prior_prec_y_rate  = 1e-1,
 #'   seed = 456
 #' )
 #'
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_locallevel}}
+#' @seealso \code{\link{mcmc_normal_localacceleration}}
 #' @export
-print.normal_locallevel <- function(x, digits = 3, ...) {
+print.normal_localacceleration <- function(x, digits = 3, ...) {
 
   # Validate input
-  if (!inherits(x, "normal_locallevel")) {
-    stop("Object must be of class 'normal_locallevel'")
+  if (!inherits(x, "normal_localacceleration")) {
+    stop("Object must be of class 'normal_localacceleration'")
   }
 
   # Validate and coerce digits parameter
@@ -362,13 +416,13 @@ print.normal_locallevel <- function(x, digits = 3, ...) {
   digits <- as.integer(digits)
 
   cat("\n")
-  cat("Gaussian Local-Level Model\n")
+  cat("Gaussian Local-Acceleration Model\n")
   cat(strrep("=", 70), "\n\n", sep = "")
 
   # Model metadata
   cat("Model:\n")
   cat("  Type:              ", attr(x, "model_type"),
-      " (1st order polynomial)\n", sep = "")
+      " (3rd order polynomial)\n", sep = "")
   cat("\n")
 
   # MCMC metadata
@@ -381,25 +435,37 @@ print.normal_locallevel <- function(x, digits = 3, ...) {
   # Calculate medians with error handling
   tryCatch({
     med_theta01 <- median(x$theta_01, na.rm = FALSE)
+    med_theta02 <- median(x$theta_02, na.rm = FALSE)
+    med_theta03 <- median(x$theta_03, na.rm = FALSE)
     med_prec1 <- median(x$prec_theta1, na.rm = FALSE)
+    med_prec2 <- median(x$prec_theta2, na.rm = FALSE)
+    med_prec3 <- median(x$prec_theta3, na.rm = FALSE)
     med_precy <- median(x$prec_y, na.rm = FALSE)
   }, error = function(e) {
     stop("Error calculating posterior medians: ", e$message, call. = FALSE)
   })
 
-  # Determine field width for alignment (width = digits + 4 for sign, decimal, padding)
+  # Determine field width for alignment
   field_width <- digits + 4
 
   # Posterior medians for scalar parameters
   cat("Posterior Medians (Scalars):\n")
   cat("  theta_01:  ", sprintf(paste0("%", field_width, ".", digits, "f"), med_theta01),
       "  (initial level)\n", sep = "")
+  cat("  theta_02:  ", sprintf(paste0("%", field_width, ".", digits, "f"), med_theta02),
+      "  (initial trend)\n", sep = "")
+  cat("  theta_03:  ", sprintf(paste0("%", field_width, ".", digits, "f"), med_theta03),
+      "  (initial acceleration)\n", sep = "")
   cat("  W_1^-1:    ", sprintf(paste0("%", field_width, ".", digits, "f"), med_prec1),
       "  (level innovation precision)\n", sep = "")
+  cat("  W_2^-1:    ", sprintf(paste0("%", field_width, ".", digits, "f"), med_prec2),
+      "  (trend innovation precision)\n", sep = "")
+  cat("  W_3^-1:    ", sprintf(paste0("%", field_width, ".", digits, "f"), med_prec3),
+      "  (acceleration innovation precision)\n", sep = "")
   cat("  V^-1:      ", sprintf(paste0("%", field_width, ".", digits, "f"), med_precy),
       "  (observation precision)\n\n", sep = "")
 
-  # Median trajectory summary for theta_1 with error handling
+  # Median trajectory summary for theta_1
   tryCatch({
     theta_1_median <- apply(x$theta_1, 2, median, na.rm = FALSE)
     theta_1_min <- min(theta_1_median)
@@ -417,6 +483,48 @@ print.normal_locallevel <- function(x, digits = 3, ...) {
         "  (median level at last time point)\n\n", sep = "")
   }, error = function(e) {
     cat("Latent Level (theta_{t,1}) Median Summary:\n")
+    cat("  [Error computing trajectory summary: ", e$message, "]\n\n", sep = "")
+  })
+
+  # Median trajectory summary for theta_2
+  tryCatch({
+    theta_2_median <- apply(x$theta_2, 2, median, na.rm = FALSE)
+    theta_2_min <- min(theta_2_median)
+    theta_2_max <- max(theta_2_median)
+    theta_2_final <- theta_2_median[length(theta_2_median)]
+
+    cat("Latent Trend (theta_{t,2}) Median Summary:\n")
+    cat("  Range:  [",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_2_min),
+        ", ",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_2_max),
+        "]\n", sep = "")
+    cat("  Final:  ",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_2_final),
+        "  (median trend at last time point)\n\n", sep = "")
+  }, error = function(e) {
+    cat("Latent Trend (theta_{t,2}) Median Summary:\n")
+    cat("  [Error computing trajectory summary: ", e$message, "]\n\n", sep = "")
+  })
+
+  # Median trajectory summary for theta_3
+  tryCatch({
+    theta_3_median <- apply(x$theta_3, 2, median, na.rm = FALSE)
+    theta_3_min <- min(theta_3_median)
+    theta_3_max <- max(theta_3_median)
+    theta_3_final <- theta_3_median[length(theta_3_median)]
+
+    cat("Latent Acceleration (theta_{t,3}) Median Summary:\n")
+    cat("  Range:  [",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_3_min),
+        ", ",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_3_max),
+        "]\n", sep = "")
+    cat("  Final:  ",
+        sprintf(paste0("%", field_width, ".", digits, "f"), theta_3_final),
+        "  (median acceleration at last time point)\n\n", sep = "")
+  }, error = function(e) {
+    cat("Latent Acceleration (theta_{t,3}) Median Summary:\n")
     cat("  [Error computing trajectory summary: ", e$message, "]\n\n", sep = "")
   })
 

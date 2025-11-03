@@ -865,7 +865,7 @@ mcmc_probit_bernoulli_localacceleration <- function(y,
   # --- End Input Validation ---
 
   # Call the C function
-  .Call(
+  result <- .Call(
     "_pdm_C_MCMC_probit_bernoulli_localacceleration",
     as.numeric(y),
     as.integer(burnin),
@@ -886,4 +886,17 @@ mcmc_probit_bernoulli_localacceleration <- function(y,
     as.logical(verbose),
     as.integer(bar_width)
   )
+
+  result <- new_probit_bernoulli_localacceleration(
+    result = result,
+    n_obs = length(y),
+    n_chain = n_chain,
+    burnin = burnin,
+    thinning = thinning,
+    y = y
+  )
+
+  result <- validate_probit_bernoulli_localacceleration(result)
+
+  return(result)
 }

@@ -563,7 +563,7 @@ mcmc_normal_localtrend <- function(y,
   # --- End Input Validation ---
 
   # Call the C function
-  .Call(
+  result <- .Call(
     "_pdm_C_MCMC_normal_localtrend",
     as.numeric(y),
     as.integer(burnin),
@@ -582,4 +582,17 @@ mcmc_normal_localtrend <- function(y,
     as.logical(verbose),
     as.integer(bar_width)
   )
+
+  result <- new_normal_localtrend(
+    result = result,
+    n_obs = length(y),
+    n_chain = n_chain,
+    burnin = burnin,
+    thinning = thinning,
+    y = y
+  )
+
+  result <- validate_normal_localtrend(result)
+
+  return(result)
 }

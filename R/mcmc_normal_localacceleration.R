@@ -730,7 +730,7 @@ mcmc_normal_localacceleration <- function(y,
   # --- End Input Validation ---
 
   # Call the C function
-  .Call(
+  result <- .Call(
     "_pdm_C_MCMC_normal_localacceleration",
     as.numeric(y),
     as.integer(burnin),
@@ -753,4 +753,17 @@ mcmc_normal_localacceleration <- function(y,
     as.logical(verbose),
     as.integer(bar_width)
   )
+
+  result <- new_normal_localacceleration(
+    result = result,
+    n_obs = length(y),
+    n_chain = n_chain,
+    burnin = burnin,
+    thinning = thinning,
+    y = y
+  )
+
+  result <- validate_normal_localacceleration(result)
+
+  return(result)
 }

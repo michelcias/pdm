@@ -1007,7 +1007,7 @@ mcmc_binomial_localacceleration <- function(y,
   # --- End Input Validation ---
 
   # Call the C function with new parameter
-  .Call(
+  result <- .Call(
     "_pdm_C_MCMC_logit_binomial_localacceleration",
     as.numeric(y),
     as.numeric(n_trials),
@@ -1037,4 +1037,18 @@ mcmc_binomial_localacceleration <- function(y,
     as.logical(verbose),
     as.integer(bar_width)
   )
+
+  result <- new_binomial_localacceleration(
+    result = result,
+    n_obs = length(y),
+    n_chain = n_chain,
+    burnin = burnin,
+    thinning = thinning,
+    y = y,
+    n_trials = n_trials
+  )
+
+  result <- validate_binomial_localacceleration(result)
+
+  return(result)
 }

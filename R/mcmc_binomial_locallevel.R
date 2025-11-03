@@ -162,6 +162,8 @@
 #'   min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
 #'   return_log_sigma        = FALSE,
 #'   return_accept_prop      = TRUE,
+#'   verbose                 = TRUE,  # Enable progress bar
+#'   bar_width               = 60,    # Progress bar width
 #'   seed                    = 456
 #' )
 #'
@@ -587,7 +589,7 @@ mcmc_binomial_locallevel <- function(y,
   # --- End Input Validation ---
 
   # Call the C function with new parameter
-  .Call(
+  result <- .Call(
     "_pdm_C_MCMC_logit_binomial_locallevel",
     as.numeric(y),
     as.numeric(n_trials),
@@ -609,4 +611,18 @@ mcmc_binomial_locallevel <- function(y,
     as.logical(verbose),
     as.integer(bar_width)
   )
+
+  result <- new_binomial_locallevel(
+    result = result,
+    n_obs = length(y),
+    n_chain = n_chain,
+    burnin = burnin,
+    thinning = thinning,
+    y = y,
+    n_trials = n_trials
+  )
+
+  result <- validate_binomial_locallevel(result)
+
+  return(result)
 }

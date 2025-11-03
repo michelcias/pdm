@@ -130,9 +130,9 @@
 #' # Run the Gibbs sampler with specified priors and a seed
 #' out <- mcmc_normal_localtrend(
 #'   y,
-#'   burnin   = 2000,
-#'   thinning = 100,
-#'   n_chain  = 1000,
+#'   burnin             = 2000,
+#'   thinning           = 100,
+#'   n_chain            = 1000,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -143,7 +143,9 @@
 #'   prior_prec2_rate   = 1e-2,
 #'   prior_prec_y_shape = 1e-1,
 #'   prior_prec_y_rate  = 1e-1,
-#'   seed = 456
+#'   verbose            = TRUE,
+#'   bar_width          = 60,
+#'   seed               = 456
 #' )
 #'
 #' ## Posterior analysis and visualization

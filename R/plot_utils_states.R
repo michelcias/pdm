@@ -480,21 +480,21 @@ get_state_labels <- function(model_order) {
 
   labels <- list(
     state_names = character(0),
-    state_labels = list(),
+    state_labels = expression(),
     state_titles = character(0),
     state_colors = character(0)
   )
 
   # Order 1
   labels$state_names <- c("theta_1")
-  labels$state_labels <- list(expression(theta["t,1"]))
+  labels$state_labels <- c(labels$state_labels, expression(theta["t,1"]))
   labels$state_titles <- c("Level State")
   labels$state_colors <- c("black")
 
   # Order 2
   if (model_order >= 2L) {
     labels$state_names <- c(labels$state_names, "theta_2")
-    labels$state_labels <- c(labels$state_labels, list(expression(theta["t,2"])))
+    labels$state_labels <- c(labels$state_labels, expression(theta["t,2"]))
     labels$state_titles <- c(labels$state_titles, "Trend State")
     labels$state_colors <- c(labels$state_colors, "steelblue")
   }
@@ -502,7 +502,7 @@ get_state_labels <- function(model_order) {
   # Order 3
   if (model_order >= 3L) {
     labels$state_names <- c(labels$state_names, "theta_3")
-    labels$state_labels <- c(labels$state_labels, list(expression(theta["t,3"])))
+    labels$state_labels <- c(labels$state_labels, expression(theta["t,3"]))
     labels$state_titles <- c(labels$state_titles, "Acceleration State")
     labels$state_colors <- c(labels$state_colors, "firebrick")
   }

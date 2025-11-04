@@ -118,64 +118,17 @@ summary.normal_mixture_locallevel <- function(object,
                                               probs = c(0.025, 0.975),
                                               ...) {
 
-  if (!inherits(object, "normal_mixture_locallevel")) {
-    stop("Object must be of class 'normal_mixture_locallevel'")
-  }
-
-  if (!is.numeric(probs) || any(probs < 0) || any(probs > 1)) {
-    stop("`probs` must be numeric values between 0 and 1")
-  }
-
-  if (length(probs) != 2) {
-    stop("`probs` must have exactly 2 elements for lower and upper bounds")
-  }
-
-  if (probs[1] >= probs[2]) {
-    stop("`probs[1]` must be less than `probs[2]`")
-  }
-
-  # Helper function to compute summary statistics
-  compute_stats <- function(x, probs) {
-    data.frame(
-      Mean = mean(x),
-      SD = sd(x),
-      Median = median(x),
-      CI_Lower = quantile(x, probs[1]),
-      CI_Upper = quantile(x, probs[2]),
-      row.names = NULL
-    )
-  }
+  # Validate input
+  validate_summary_input(object, probs, "normal_mixture_locallevel")
 
   # Mixture component parameters
-  mixture_params <- data.frame(
-    Parameter = c("mu_1", "mu_2", "phi_1", "phi_2"),
-    rbind(
-      compute_stats(object$mu_1, probs),
-      compute_stats(object$mu_2, probs),
-      compute_stats(object$prec_1, probs),
-      compute_stats(object$prec_2, probs)
-    )
-  )
+  mixture_params <- format_mixture_params(object, probs)
 
   # Dynamic state parameters (local level only)
-  state_params <- data.frame(
-    Parameter = c("theta_01", "W_1^-1"),
-    rbind(
-      compute_stats(object$theta_01, probs),
-      compute_stats(object$prec_theta1, probs)
-    )
-  )
+  state_params <- format_state_params(object, probs, order = "level")
 
   # Alpha summary (across time)
-  alpha_median_time <- apply(object$alpha, 2, median)
-  alpha_summary <- data.frame(
-    Statistic = c("Min across time", "Median across time", "Max across time"),
-    Value = c(
-      min(alpha_median_time),
-      median(alpha_median_time),
-      max(alpha_median_time)
-    )
-  )
+  alpha_summary <- format_timevarying_summary(object$alpha, probs, "simple")
 
   # Create summary object
   result <- list(
@@ -236,33 +189,33 @@ summary.normal_mixture_locallevel <- function(object,
 #' ## Running the Gibbs sampler with logit link
 #' out_logit <- mcmc_normal_mixture_locallevel(
 #'   y,
-#'   link               = "logit",
-#'   burnin             = 2000,
-#'   thinning           = 10,
-#'   n_chain            = 1000,
-#'   prior_mu01_mean    = NULL,
-#'   prior_mu01_prec    = 0.01,
-#'   prior_prec01_shape = 0.01,
-#'   prior_prec01_rate  = 0.01,
-#'   prior_mu02_mean    = NULL,
-#'   prior_mu02_prec    = 0.01,
-#'   prior_prec02_shape = 0.01,
-#'   prior_prec02_rate  = 0.01,
-#'   prior_theta01_mean = 0,
-#'   prior_theta01_prec = 1,
-#'   prior_prec1_shape  = 100,
-#'   prior_prec1_rate   = 1,
-#'   lag_update         = 50,
-#'   max_step_size      = 1.0,
-#'   base_adaptation_rate = 0.01,
-#'   decay_exponent     = 0.6,
-#'   target_acceptance  = 0.44,
+#'   link                    = "logit",
+#'   burnin                  = 2000,
+#'   thinning                = 10,
+#'   n_chain                 = 1000,
+#'   prior_mu01_mean         = NULL,
+#'   prior_mu01_prec         = 0.01,
+#'   prior_prec01_shape      = 0.01,
+#'   prior_prec01_rate       = 0.01,
+#'   prior_mu02_mean         = NULL,
+#'   prior_mu02_prec         = 0.01,
+#'   prior_prec02_shape      = 0.01,
+#'   prior_prec02_rate       = 0.01,
+#'   prior_theta01_mean      = 0,
+#'   prior_theta01_prec      = 1,
+#'   prior_prec1_shape       = 100,
+#'   prior_prec1_rate        = 1,
+#'   lag_update              = 50,
+#'   max_step_size           = 1.0,
+#'   base_adaptation_rate    = 0.01,
+#'   decay_exponent          = 0.6,
+#'   target_acceptance       = 0.44,
 #'   min_deviation_threshold = NULL,
-#'   return_log_sigma   = FALSE,
-#'   return_accept_prop = FALSE,
-#'   verbose            = TRUE,
-#'   bar_width          = 60,
-#'   seed               = 456
+#'   return_log_sigma        = FALSE,
+#'   return_accept_prop      = FALSE,
+#'   verbose                 = TRUE,
+#'   bar_width               = 60,
+#'   seed                    = 456
 #' )
 #'
 #' s <- summary(out_logit)
@@ -274,69 +227,20 @@ summary.normal_mixture_locallevel <- function(object,
 #' @export
 print.summary.normal_mixture_locallevel <- function(x, digits = 3, ...) {
 
-  cat("\n")
-  cat("Summary: Gaussian Mixture Model with Dynamic Mixture Weights\n")
-  cat(strrep("=", 75), "\n\n", sep = "")
-
-  # Model information
-  cat("Model Information:\n")
-  cat("  Type:              ", x$model_type, "\n", sep = "")
-  cat("  Link function:     ", x$link, "\n", sep = "")
-  cat("  Observations:      ", x$n_obs, "\n", sep = "")
-  cat("  MCMC samples:      ", x$n_chain, "\n", sep = "")
-  cat("  Burn-in:           ", x$burnin, "\n", sep = "")
-  cat("  Thinning:          ", x$thinning, "\n\n", sep = "")
-
-  # Credible interval level
-  ci_level <- (x$probs[2] - x$probs[1]) * 100
-  cat("Credible Intervals: ", sprintf("%.1f", ci_level), "%\n\n", sep = "")
-
-  # Explanation of statistics
-  cat("Statistics Legend:\n")
-  cat("  Mean   = Posterior mean (minimizes squared error)\n")
-  cat("  Median = Posterior median (minimizes absolute error, shown in print())\n")
-  cat("  SD     = Posterior standard deviation\n")
-  cat("  CI     = Credible interval at specified level\n\n")
+  # Print header
+  print_summary_header(x)
 
   # Mixture component parameters
-  cat("Mixture Component Parameters:\n")
-  cat(strrep("-", 75), "\n", sep = "")
-
-  mixture_print <- x$mixture_params
-  mixture_print[, -1] <- lapply(mixture_print[, -1], function(col) {
-    sprintf(paste0("%.", digits, "f"), col)
-  })
-
-  print(mixture_print, row.names = FALSE, right = TRUE)
-  cat("\n")
+  print_formatted_table(x$mixture_params, digits, "Mixture Component Parameters:")
 
   # Dynamic state parameters
-  cat("Dynamic State Parameters:\n")
-  cat(strrep("-", 75), "\n", sep = "")
-
-  state_print <- x$state_params
-  state_print[, -1] <- lapply(state_print[, -1], function(col) {
-    sprintf(paste0("%.", digits, "f"), col)
-  })
-
-  print(state_print, row.names = FALSE, right = TRUE)
-  cat("\n")
+  print_formatted_table(x$state_params, digits, "Dynamic State Parameters:")
 
   # Alpha summary
-  cat("Mixture Weights (alpha_t) Summary:\n")
-  cat(strrep("-", 75), "\n", sep = "")
+  print_formatted_table(x$alpha_summary, digits, "Mixture Weights (alpha_t) Summary:")
 
-  alpha_print <- x$alpha_summary
-  alpha_print$Value <- sprintf(paste0("%.", digits, "f"), alpha_print$Value)
-
-  print(alpha_print, row.names = FALSE, right = TRUE)
-
-  cat("\n")
-  cat(strrep("-", 75), "\n", sep = "")
-  cat("Note: For time-varying parameters, use plot() to visualize trajectories.\n")
-  cat("      For quick overview with medians only, use print().\n")
-  cat(strrep("-", 75), "\n\n", sep = "")
+  # Print footer
+  print_summary_footer()
 
   invisible(x)
 }
-

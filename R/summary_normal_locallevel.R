@@ -80,6 +80,8 @@
 #'   prior_prec1_rate   = 1e-2,
 #'   prior_prec_y_shape = 1e-2,
 #'   prior_prec_y_rate  = 1e-2,
+#'   verbose            = TRUE,
+#'   bar_width          = 60,
 #'   seed = 456
 #' )
 #'
@@ -102,89 +104,14 @@ summary.normal_locallevel <- function(object,
                                       probs = c(0.025, 0.975),
                                       ...) {
 
-  if (!inherits(object, "normal_locallevel")) {
-    stop("Object must be of class 'normal_locallevel'")
-  }
-
-  if (!is.numeric(probs) || any(probs < 0) || any(probs > 1)) {
-    stop("`probs` must be numeric values between 0 and 1")
-  }
-
-  if (length(probs) != 2) {
-    stop("`probs` must have exactly 2 elements for lower and upper bounds")
-  }
-
-  if (probs[1] >= probs[2]) {
-    stop("`probs[1]` must be less than `probs[2]`")
-  }
-
-  # Helper function to compute summary statistics
-  compute_stats <- function(x, probs) {
-    data.frame(
-      Mean = mean(x),
-      SD = sd(x),
-      Median = median(x),
-      CI_Lower = quantile(x, probs[1]),
-      CI_Upper = quantile(x, probs[2]),
-      row.names = NULL
-    )
-  }
+  # Validate input
+  validate_summary_input(object, probs, "normal_locallevel")
 
   # Scalar parameters (initial state and precisions)
-  scalar_params <- data.frame(
-    Parameter = c("theta_01", "W_1^-1", "V^-1"),
-    rbind(
-      compute_stats(object$theta_01, probs),
-      compute_stats(object$prec_theta1, probs),
-      compute_stats(object$prec_y, probs)
-    )
-  )
+  scalar_params <- format_scalar_params_locallevel(object, probs)
 
-  # Latent level summary aggregated across time
-  theta_mean_time <- apply(object$theta_1, 2, mean)
-  theta_sd_time <- apply(object$theta_1, 2, sd)
-  theta_median_time <- apply(object$theta_1, 2, median)
-  theta_ci_lower_time <- apply(object$theta_1, 2, quantile, probs = probs[1])
-  theta_ci_upper_time <- apply(object$theta_1, 2, quantile, probs = probs[2])
-
-  theta_summary <- data.frame(
-    Statistic = c(
-      "Min across time",
-      "Median across time",
-      "Max across time",
-      "Final time point"
-    ),
-    Mean = c(
-      min(theta_mean_time),
-      median(theta_mean_time),
-      max(theta_mean_time),
-      tail(theta_mean_time, 1L)
-    ),
-    SD = c(
-      min(theta_sd_time),
-      median(theta_sd_time),
-      max(theta_sd_time),
-      tail(theta_sd_time, 1L)
-    ),
-    Median = c(
-      min(theta_median_time),
-      median(theta_median_time),
-      max(theta_median_time),
-      tail(theta_median_time, 1L)
-    ),
-    CI_Lower = c(
-      min(theta_ci_lower_time),
-      median(theta_ci_lower_time),
-      max(theta_ci_lower_time),
-      tail(theta_ci_lower_time, 1L)
-    ),
-    CI_Upper = c(
-      min(theta_ci_upper_time),
-      median(theta_ci_upper_time),
-      max(theta_ci_upper_time),
-      tail(theta_ci_upper_time, 1L)
-    )
-  )
+  # Latent level summary aggregated across time (detailed version)
+  theta_summary <- format_timevarying_summary(object$theta_1, probs, "detailed")
 
   # Create summary object
   result <- list(
@@ -229,16 +156,18 @@ summary.normal_locallevel <- function(object,
 #'
 #' out <- mcmc_normal_locallevel(
 #'   y,
-#'   burnin   = 1000,
-#'   thinning = 10,
-#'   n_chain  = 1000,
+#'   burnin             = 1000,
+#'   thinning           = 10,
+#'   n_chain            = 1000,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_prec1_shape  = 1e-2,
 #'   prior_prec1_rate   = 1e-2,
 #'   prior_prec_y_shape = 1e-2,
 #'   prior_prec_y_rate  = 1e-2,
-#'   seed = 456
+#'   verbose            = TRUE,
+#'   bar_width          = 60,
+#'   seed               = 456
 #' )
 #'
 #' s <- summary(out)
@@ -253,58 +182,17 @@ summary.normal_locallevel <- function(object,
 #' @export
 print.summary.normal_locallevel <- function(x, digits = 3, ...) {
 
-  cat("\n")
-  cat("Summary: Gaussian Local-Level Model\n")
-  cat(strrep("=", 75), "\n\n", sep = "")
-
-  # Model information
-  cat("Model Information:\n")
-  cat("  Type:              ", x$model_type, "\n", sep = "")
-  cat("  Observations:      ", x$n_obs, "\n", sep = "")
-  cat("  MCMC samples:      ", x$n_chain, "\n", sep = "")
-  cat("  Burn-in:           ", x$burnin, "\n", sep = "")
-  cat("  Thinning:          ", x$thinning, "\n\n", sep = "")
-
-  # Credible interval level
-  ci_level <- (x$probs[2] - x$probs[1]) * 100
-  cat("Credible Intervals: ", sprintf("%.1f", ci_level), "%\n\n", sep = "")
-
-  # Explanation of statistics
-  cat("Statistics Legend:\n")
-  cat("  Mean   = Posterior mean (minimizes squared error)\n")
-  cat("  Median = Posterior median (minimizes absolute error, shown in print())\n")
-  cat("  SD     = Posterior standard deviation\n")
-  cat("  CI     = Credible interval at specified level\n\n")
+  # Print header
+  print_summary_header(x)
 
   # Scalar parameters
-  cat("Scalar Parameters:\n")
-  cat(strrep("-", 75), "\n", sep = "")
-
-  scalar_print <- x$scalar_params
-  scalar_print[, -1] <- lapply(scalar_print[, -1], function(col) {
-    sprintf(paste0("%.", digits, "f"), col)
-  })
-
-  print(scalar_print, row.names = FALSE, right = TRUE)
-  cat("\n")
+  print_formatted_table(x$scalar_params, digits, "Scalar Parameters:")
 
   # Latent level summary
-  cat("Latent Level (theta_{t,1}) Summary:\n")
-  cat(strrep("-", 75), "\n", sep = "")
+  print_formatted_table(x$theta_summary, digits, "Latent Level (theta_{t,1}) Summary:")
 
-  theta_print <- x$theta_summary
-  theta_print[, -1] <- lapply(theta_print[, -1], function(col) {
-    sprintf(paste0("%.", digits, "f"), col)
-  })
-
-  print(theta_print, row.names = FALSE, right = TRUE)
-
-  cat("\n")
-  cat(strrep("-", 75), "\n", sep = "")
-  cat("Note: For time-varying parameters, use plot() to visualize trajectories.\n")
-  cat("      For quick overview with medians only, use print().\n")
-  cat(strrep("-", 75), "\n\n", sep = "")
+  # Print footer
+  print_summary_footer()
 
   invisible(x)
 }
-

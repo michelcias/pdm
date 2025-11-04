@@ -28,18 +28,20 @@ y <- rbinom(n, size = 1, prob = alpha_true)
 
 out <- mcmc_probit_bernoulli_localtrend(
   y,
-  burnin = 1000,
-  thinning = 50,
-  n_chain = 1000,
+  burnin             = 1000,
+  thinning           = 50,
+  n_chain            = 1000,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_theta02_mean = 0,
   prior_theta02_prec = 1,
-  prior_prec1_shape = 100,
-  prior_prec1_rate = 1,
-  prior_prec2_shape = 400,
-  prior_prec2_rate = 1,
-  seed = 456
+  prior_prec1_shape  = 100,
+  prior_prec1_rate   = 1,
+  prior_prec2_shape  = 400,
+  prior_prec2_rate   = 1,
+  verbose            = TRUE,  # Enable progress bar
+  bar_width          = 60,    # Progress bar width
+  seed               = 456
 )
 
 is.probit_bernoulli_localtrend(out)  # TRUE

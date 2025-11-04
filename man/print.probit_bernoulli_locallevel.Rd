@@ -35,14 +35,16 @@ y <- rbinom(n, size = 1, prob = alpha_true)
 
 out <- mcmc_probit_bernoulli_locallevel(
   y,
-  burnin = 1000,
-  thinning = 50,
-  n_chain = 1000,
+  burnin             = 1000,
+  thinning           = 50,
+  n_chain            = 1000,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
-  prior_prec1_shape = 100,
-  prior_prec1_rate = 1,
-  seed = 456
+  prior_prec1_shape  = 100,
+  prior_prec1_rate   = 1,
+  verbose            = TRUE,
+  bar_width          = 60,
+  seed               = 456
 )
 
 print(out)

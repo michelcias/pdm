@@ -212,6 +212,8 @@ out <- mcmc_binomial_locallevel(
   min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
   return_log_sigma        = FALSE,
   return_accept_prop      = TRUE,
+  verbose                 = TRUE,  # Enable progress bar
+  bar_width               = 60,    # Progress bar width
   seed                    = 456
 )
 

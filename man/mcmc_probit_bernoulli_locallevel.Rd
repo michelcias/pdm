@@ -161,7 +161,7 @@ out <- mcmc_probit_bernoulli_locallevel(
   prior_theta01_prec = 1,
   prior_prec1_shape  = 100,
   prior_prec1_rate   = 1,
-  verbose            = FALSE,
+  verbose            = TRUE,
   bar_width          = 60,
   seed               = 456
 )

@@ -33,15 +33,25 @@ y <- rbinom(n, size = n_trials, prob = alpha_true)
 
 out <- mcmc_binomial_locallevel(
   y,
-  n_trials = n_trials,
-  burnin = 1000,
-  thinning = 50,
-  n_chain = 1000,
-  prior_theta01_mean = 0,
-  prior_theta01_prec = 1,
-  prior_prec1_shape = 100,
-  prior_prec1_rate = 1,
-  seed = 456
+  n_trials                = n_trials,
+  burnin                  = 1000,
+  thinning                = 50,
+  n_chain                 = 1000,
+  prior_theta01_mean      = 0,
+  prior_theta01_prec      = 1,
+  prior_prec1_shape       = 100,
+  prior_prec1_rate        = 1,
+  lag_update              = 50,
+  max_step_size           = 0.1,
+  base_adaptation_rate    = 1,
+  decay_exponent          = 0.6,
+  target_acceptance       = 0.44,
+  min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
+  return_log_sigma        = FALSE,
+  return_accept_prop      = TRUE,
+  verbose                 = TRUE,  # Enable progress bar
+  bar_width               = 60,    # Progress bar width
+  seed                    = 456
 )
 
 is.binomial_locallevel(out)  # TRUE

@@ -222,8 +222,8 @@ get_param_config <- function(x,
       samples = x$prec_y,
       name = quote(V^{-1}),
       label = expression(V^{-1}),
-      name_str = "V_inv",
-      label_str = "V^-1"
+      name_str = "V^{-1}",
+      label_str = "V^{-1}"
     )
   }
 

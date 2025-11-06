@@ -480,14 +480,14 @@ get_state_labels <- function(model_order) {
 
   labels <- list(
     state_names = character(0),
-    state_labels = expression(),
+    state_labels = expression(theta["t,1"]),
     state_titles = character(0),
     state_colors = character(0)
   )
 
   # Order 1
   labels$state_names <- c("theta_1")
-  labels$state_labels <- c(labels$state_labels, expression(theta["t,1"]))
+  # labels$state_labels <- list(labels$state_labels, expression(theta["t,1"]))
   labels$state_titles <- c("Level State")
   labels$state_colors <- c("black")
 

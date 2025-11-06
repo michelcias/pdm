@@ -142,6 +142,7 @@ plot_param_diagnostics_ggplot <- function(param_samples,
                        "mu_2" = expression(mu[2]),
                        "phi_1" = expression(phi[1]),
                        "phi_2" = expression(phi[2]),
+                       "V^{-1}" = expression(V^{-1}),
                        "theta_01" = expression(theta["0,1"]),
                        "theta_02" = expression(theta["0,2"]),
                        "theta_03" = expression(theta["0,3"]),
@@ -157,6 +158,7 @@ plot_param_diagnostics_ggplot <- function(param_samples,
                        "mu_2" = expression(paste("MCMC Diagnostics: ", mu[2])),
                        "phi_1" = expression(paste("MCMC Diagnostics: ", phi[1])),
                        "phi_2" = expression(paste("MCMC Diagnostics: ", phi[2])),
+                       "V^{-1}" = expression(paste("MCMC Diagnostics: ", V^{-1})),
                        "theta_01" = expression(paste("MCMC Diagnostics: ", theta["0,1"])),
                        "theta_02" = expression(paste("MCMC Diagnostics: ", theta["0,2"])),
                        "theta_03" = expression(paste("MCMC Diagnostics: ", theta["0,3"])),
@@ -672,7 +674,7 @@ plot_dynamic_states_generic_ggplot <- function(x, which = NULL,
         ggplot2::scale_color_manual(
           values = c("Median" = state_labels$state_colors[i]),
           breaks = "Median",
-          labels = state_labels$state_labels[[i]]
+          labels = state_labels$state_titles[[i]]
         )
 
       if (ci) {

@@ -36,6 +36,12 @@
 #'   support them. Default is \code{TRUE}.
 #' @param ci_level Numeric; Bayesian confidence level for credible intervals
 #'   (between 0 and 1). Default is \code{0.95}.
+#' @param show_obs Logical; whether to display observed proportions on the
+#'   success probabilities plot (\code{type = "alpha"}). When \code{TRUE}
+#'   (default), observed proportions \eqn{y_t / n_{trials}} are overlaid as
+#'   red points on the alpha_t trajectory. Set to \code{FALSE} to show only
+#'   the estimated trajectory without observations. This parameter only
+#'   affects \code{type = "alpha"} and \code{type = "all"}.
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return Invisibly returns the input object \code{x}.
@@ -65,7 +71,7 @@
 #' \strong{Success Probabilities (\code{type = "alpha"}):}
 #' \itemize{
 #'   \item alpha_t trajectory with credible bands
-#'   \item Observed proportions overlay (if available)
+#'   \item Optional observed proportions overlay (controlled by \code{show_obs})
 #' }
 #'
 #' \strong{Complete Dashboard (\code{type = "all"}):}
@@ -82,6 +88,20 @@
 #' no dependencies) and ggplot2 (modern, publication-ready). If ggplot2 is not
 #' installed and \code{engine = "ggplot2"}, the function falls back to base graphics
 #' with a warning.
+#'
+#' @section Controlling Observed Data Display:
+#'
+#' The \code{show_obs} parameter provides control over the display of observed
+#' proportions in the success probabilities plot:
+#'
+#' \itemize{
+#'   \item When \code{show_obs = TRUE} (default): Observed proportions are shown
+#'     as red points overlaid on the estimated alpha_t trajectory. This is useful
+#'     for model validation and assessing goodness-of-fit.
+#'   \item When \code{show_obs = FALSE}: Only the estimated trajectory is shown,
+#'     which can be clearer for presentations or when focusing on the temporal
+#'     pattern of the success probabilities.
+#' }
 #'
 #' @section Dependencies:
 #'
@@ -158,8 +178,11 @@
 #' plot(out, type = "mcmc", which = 1:3)  # Initial states
 #' plot(out, type = "mcmc", which = 4:6)  # Innovation precisions
 #'
-#' # Success probabilities only
+#' # Success probabilities with observed proportions (default)
 #' plot(out, type = "alpha")
+#'
+#' # Success probabilities WITHOUT observed proportions
+#' plot(out, type = "alpha", show_obs = FALSE)
 #'
 #' # Dynamic states only
 #' plot(out, type = "states")
@@ -171,6 +194,10 @@
 #'
 #' # Use ggplot2 engine
 #' plot(out, type = "mcmc", which = 1, engine = "ggplot2")
+#'
+#' # Compare with and without observations using ggplot2
+#' plot(out, type = "alpha", engine = "ggplot2", show_obs = TRUE)
+#' plot(out, type = "alpha", engine = "ggplot2", show_obs = FALSE)
 #' }
 #'
 #' @seealso \code{\link{mcmc_binomial_localacceleration}},
@@ -184,6 +211,7 @@ plot.binomial_localacceleration <- function(x,
                                             ask = NULL,
                                             ci = TRUE,
                                             ci_level = 0.95,
+                                            show_obs = TRUE,
                                             ...) {
 
   type <- match.arg(type)
@@ -210,7 +238,8 @@ plot.binomial_localacceleration <- function(x,
              plot_mcmc_diagnostics_generic(x, which = NULL, engine = "base", ...)
              plot_dynamic_states_generic_base(x, which = NULL, ci = ci,
                                               ci_level = ci_level, ...)
-             plot_binomial_alpha_base(x, ci = ci, ci_level = ci_level, ...)
+             plot_binomial_alpha_base(x, ci = ci, ci_level = ci_level,
+                                      show_obs = show_obs, ...)
              # Plot acceptance rates if available
              if (!is.null(x$accept_prop)) {
                plot_acceptance_rates_base(x$accept_prop, ...)
@@ -220,7 +249,8 @@ plot.binomial_localacceleration <- function(x,
                                                 engine = "base", ...),
            states = plot_dynamic_states_generic_base(x, which = which,
                                                      ci = ci, ci_level = ci_level, ...),
-           alpha = plot_binomial_alpha_base(x, ci = ci, ci_level = ci_level, ...)
+           alpha = plot_binomial_alpha_base(x, ci = ci, ci_level = ci_level,
+                                            show_obs = show_obs, ...)
     )
   } else {
     switch(type,
@@ -233,7 +263,8 @@ plot.binomial_localacceleration <- function(x,
              plot_dynamic_states_generic_ggplot(x, which = NULL, ci = ci,
                                                 ci_level = ci_level, ...)
              if (ask) readline()
-             plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level, ...)
+             plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level,
+                                        show_obs = show_obs, ...)
              # Plot acceptance rates if available
              if (!is.null(x$accept_prop)) {
                if (ask) readline()
@@ -244,231 +275,12 @@ plot.binomial_localacceleration <- function(x,
                                                 engine = "ggplot2", ...),
            states = plot_dynamic_states_generic_ggplot(x, which = which,
                                                        ci = ci, ci_level = ci_level, ...),
-           alpha = plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level, ...)
+           alpha = plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level,
+                                              show_obs = show_obs, ...)
     )
   }
 
   invisible(x)
-}
-
-
-#' Plot binomial success probabilities (base graphics)
-#'
-#' @keywords internal
-#' @noRd
-plot_binomial_alpha_base <- function(x, ci = TRUE, ci_level = 0.95, ...) {
-
-  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
-             ci_level <= 0 || ci_level >= 1)) {
-    stop("`ci_level` must be a single numeric value between 0 and 1")
-  }
-
-  n_obs <- attr(x, "n_obs")
-  time_grid <- seq_len(n_obs)
-
-  # Compute summary statistics for alpha
-  alpha_median <- apply(x$alpha, 2, stats::median)
-  if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    alpha_lower <- apply(x$alpha, 2, stats::quantile, probs = ci_lower_prob)
-    alpha_upper <- apply(x$alpha, 2, stats::quantile, probs = ci_upper_prob)
-    ci_label <- paste0(round(ci_level * 100), "% CI")
-  }
-
-  # Compute observed proportions if n_trials is available
-  y <- attr(x, "y")
-  n_trials <- attr(x, "n_trials")
-  if (!is.null(y) && !is.null(n_trials)) {
-    obs_prop <- y / n_trials
-  } else {
-    obs_prop <- NULL
-  }
-
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar), add = TRUE)
-
-  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
-      mgp = c(2.5, 1, 0))
-
-  # Determine y-axis range
-  if (ci) {
-    range_vals <- range(alpha_lower, alpha_upper, obs_prop, na.rm = TRUE)
-  } else {
-    range_vals <- range(alpha_median, obs_prop, na.rm = TRUE)
-  }
-  range_vals[1] <- max(0, range_vals[1] - 0.05)
-  range_vals[2] <- min(1, range_vals[2] + 0.25 * diff(range_vals))
-
-  # Base plot
-  plot(time_grid, alpha_median, type = "l", lwd = 2.5, col = "blue",
-       xlab = "Time", ylab = expression(alpha[t]),
-       ylim = range_vals, axes = FALSE, main = "")
-
-  axis(side = 1)
-  axis(side = 2, at = seq(0, 1, by = 0.2))
-
-  # Add credible band
-  if (ci) {
-    polygon(c(time_grid, rev(time_grid)),
-            c(alpha_lower, rev(alpha_upper)),
-            col = grDevices::rgb(0.2, 0.5, 0.8, 0.3), border = NA)
-    lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
-  }
-
-  # Add observed proportions
-  if (!is.null(obs_prop)) {
-    points(time_grid, obs_prop, pch = 16, cex = 0.6, col = "red")
-  }
-
-  grid()
-
-  # Legend
-  legend_items <- c(expression(hat(alpha)[t]))
-  legend_cols <- c("blue")
-  legend_lty <- c(1)
-  legend_lwd <- c(2.5)
-  legend_pch <- c(NA)
-
-  if (ci) {
-    legend_items <- c(legend_items, ci_label)
-    legend_cols <- c(legend_cols, grDevices::rgb(0.2, 0.5, 0.8, 0.3))
-    legend_lty <- c(legend_lty, 1)
-    legend_lwd <- c(legend_lwd, 10)
-    legend_pch <- c(legend_pch, NA)
-  }
-
-  if (!is.null(obs_prop)) {
-    legend_items <- c(legend_items, "Observed proportions")
-    legend_cols <- c(legend_cols, "red")
-    legend_lty <- c(legend_lty, NA)
-    legend_lwd <- c(legend_lwd, NA)
-    legend_pch <- c(legend_pch, 16)
-  }
-
-  legend("topright",
-         legend = legend_items,
-         col = legend_cols,
-         lty = legend_lty,
-         lwd = legend_lwd,
-         pch = legend_pch,
-         horiz = FALSE,
-         bty = "n")
-
-  mtext("Binomial Success Probabilities", outer = TRUE, cex = 1.3, font = 2)
-
-  invisible(NULL)
-}
-
-
-#' Plot binomial success probabilities (ggplot2)
-#'
-#' @keywords internal
-#' @noRd
-plot_binomial_alpha_ggplot <- function(x, ci = TRUE, ci_level = 0.95, ...) {
-
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required for ggplot2 engine")
-  }
-
-  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
-             ci_level <= 0 || ci_level >= 1)) {
-    stop("`ci_level` must be a single numeric value between 0 and 1")
-  }
-
-  n_obs <- attr(x, "n_obs")
-  time_grid <- seq_len(n_obs)
-
-  # Calculate quantile probabilities
-  ci_lower_prob <- (1 - ci_level) / 2
-  ci_upper_prob <- 1 - ci_lower_prob
-  ci_pct <- round(ci_level * 100)
-
-  # Prepare data frame
-  df_alpha <- data.frame(
-    time = time_grid,
-    median = apply(x$alpha, 2, stats::median)
-  )
-
-  if (ci) {
-    df_alpha$lower <- apply(x$alpha, 2, stats::quantile, probs = ci_lower_prob)
-    df_alpha$upper <- apply(x$alpha, 2, stats::quantile, probs = ci_upper_prob)
-  }
-
-  # Add observed proportions if available
-  y <- attr(x, "y")
-  n_trials <- attr(x, "n_trials")
-  if (!is.null(y) && !is.null(n_trials)) {
-    df_alpha$obs_prop <- y / n_trials
-  }
-
-  # Create plot
-  p <- ggplot2::ggplot(df_alpha, ggplot2::aes(x = .data$time))
-
-  if (ci) {
-    p <- p +
-      ggplot2::geom_ribbon(
-        ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
-        alpha = 0.3
-      ) +
-      ggplot2::scale_fill_manual(
-        values = c("CI" = "steelblue"),
-        breaks = "CI",
-        labels = paste0(ci_pct, "% CI")
-      )
-  }
-
-  p <- p +
-    ggplot2::geom_line(
-      ggplot2::aes(y = .data$median, colour = "Median"),
-      linewidth = 1.2
-    ) +
-    ggplot2::scale_color_manual(
-      values = c("Median" = "blue", "Observed" = "red"),
-      breaks = c("Median", "Observed"),
-      labels = c(expression(hat(alpha)[t]), "Observed proportions")
-    )
-
-  # Add observed proportions if available
-  if (!is.null(y) && !is.null(n_trials)) {
-    p <- p +
-      ggplot2::geom_point(
-        ggplot2::aes(y = .data$obs_prop, colour = "Observed"),
-        size = 1.5
-      )
-  }
-
-  p <- p +
-    ggplot2::scale_y_continuous(
-      limits = c(0, 1.0),
-      breaks = seq(0, 1, by = 0.2)
-    ) +
-    ggplot2::labs(
-      title = "Binomial Success Probabilities",
-      x = "Time",
-      y = expression(alpha[t])
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      panel.grid.major = ggplot2::element_line(color = "grey85"),
-      panel.grid.minor = ggplot2::element_line(color = "grey92"),
-      plot.title = ggplot2::element_text(face = "bold", size = 13),
-      legend.position = "top",
-      legend.title = ggplot2::element_blank(),
-      legend.direction = "horizontal"
-    )
-
-  if (ci) {
-    p <- p +
-      ggplot2::guides(
-        colour = ggplot2::guide_legend(order = 1),
-        fill = ggplot2::guide_legend(order = 2)
-      )
-  }
-
-  print(p)
-
-  invisible(NULL)
 }
 
 
@@ -484,7 +296,7 @@ plot_acceptance_rates_base <- function(accept_prop, ...) {
 
   range_acc <- range(min_acc, max_acc)
   r1_acc <- range_acc[1] - 0.05
-  r2_acc <- range_acc[2] + 0.15 * diff(range_acc)
+  r2_acc <- range_acc[2] + 0.25 * diff(range_acc)
 
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
@@ -517,6 +329,7 @@ plot_acceptance_rates_base <- function(accept_prop, ...) {
     col = c("black", "gray", "red"),
     lty = c(1, 1, 2),
     lwd = c(2, 8, 2),
+    horiz = TRUE,
     bty = "n"
   )
 

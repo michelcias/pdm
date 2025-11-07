@@ -26,22 +26,36 @@ NULL
 
 #' Detect model type from MCMC object
 #'
-#' @description Extracts model characteristics (class and polynomial order)
-#'   from a pdm_mcmc object by examining its class names and attributes.
+#' @description Extracts model characteristics (observation family and
+#'   polynomial order) from a pdm_mcmc object by examining its class names
+#'   and attributes.
 #'
 #' @param x An object inheriting from "pdm_mcmc".
 #'
 #' @return A list with three components:
 #'   \describe{
-#'     \item{model_class}{Character: "mixture" or "standard"}
+#'     \item{model_class}{Character: "mixture", "binomial", or "normal"}
 #'     \item{model_order}{Integer: 1, 2, or 3 (polynomial order)}
 #'     \item{has_mixture}{Logical: TRUE if model has mixture components}
 #'   }
 #'
-#' @details The function determines model_class by checking if any class name
-#'   contains "mixture". The model_order is extracted from the "model_type"
-#'   attribute, which must be one of: "locallevel" (1), "localtrend" (2),
-#'   or "localacceleration" (3).
+#' @details The function determines model_class by examining the class hierarchy:
+#'   \itemize{
+#'     \item \code{"mixture"}: Classes containing "mixture" (Gaussian mixture models)
+#'     \item \code{"binomial"}: Classes containing "binomial" or "bernoulli"
+#'       (binomial/Bernoulli models with logit or probit link)
+#'     \item \code{"normal"}: Classes containing "normal" (Gaussian observation models)
+#'   }
+#'
+#'   The model_order is extracted from the "model_type" attribute, which must
+#'   be one of: "locallevel" (1), "localtrend" (2), or "localacceleration" (3).
+#'
+#'   Key differences between model classes:
+#'   \itemize{
+#'     \item Normal models have observation precision parameter (\code{prec_y})
+#'     \item Binomial models do NOT have \code{prec_y} (use link functions)
+#'     \item Mixture models have 4 mixture parameters instead of \code{prec_y}
+#'   }
 #'
 #' @keywords internal
 #' @noRd
@@ -52,10 +66,23 @@ detect_model_type <- function(x) {
     stop("Input must inherit from 'pdm_mcmc' class")
   }
 
-  # 2. Detect if mixture model
+  # 2. Detect model class from class names
   classes <- class(x)
-  has_mixture <- any(grepl("mixture", classes, fixed = TRUE))
-  model_class <- if (has_mixture) "mixture" else "standard"
+
+  if (any(grepl("mixture", classes, fixed = TRUE))) {
+    model_class <- "mixture"
+    has_mixture <- TRUE
+  } else if (any(grepl("binomial", classes, fixed = TRUE)) ||
+             any(grepl("bernoulli", classes, fixed = TRUE))) {
+    model_class <- "binomial"
+    has_mixture <- FALSE
+  } else if (any(grepl("normal", classes, fixed = TRUE))) {
+    model_class <- "normal"
+    has_mixture <- FALSE
+  } else {
+    stop("Unknown model class in object. Expected 'mixture', 'binomial', ",
+         "'bernoulli', or 'normal' in class hierarchy.")
+  }
 
   # 3. Extract polynomial order from model_type attribute
   model_type <- attr(x, "model_type")
@@ -83,32 +110,37 @@ detect_model_type <- function(x) {
 #' Get expected number of parameters for model type
 #'
 #' @description Calculates the total number of scalar parameters for a given
-#'   model configuration based on whether it has mixture components and its
-#'   polynomial order.
+#'   model configuration based on its observation family and polynomial order.
 #'
-#' @param model_class Character: "mixture" or "standard".
+#' @param model_class Character: "mixture", "binomial", or "normal".
 #' @param model_order Integer: 1, 2, or 3.
 #'
 #' @return Integer count of expected parameters.
 #'
-#' @details Parameter counts:
+#' @details Parameter counts by model class:
 #'   \itemize{
-#'     \item Mixture models: 4 mixture params + model_order initial states +
-#'       model_order innovation precisions
-#'     \item Standard models: 1 observation precision + model_order initial
-#'       states + model_order innovation precisions
+#'     \item \strong{Mixture models}: 4 mixture params (mu_1, mu_2, phi_1, phi_2) +
+#'       model_order initial states + model_order innovation precisions
+#'     \item \strong{Normal models}: 1 observation precision (V^{-1}) +
+#'       model_order initial states + model_order innovation precisions
+#'     \item \strong{Binomial models}: 0 observation precision (uses link function) +
+#'       model_order initial states + model_order innovation precisions
 #'   }
 #'
-#'   Examples: mixture order 1 = 4 + 1 + 1 = 6,
-#'   standard order 2 = 1 + 2 + 2 = 5.
+#'   Examples:
+#'   \itemize{
+#'     \item mixture order 1 = 4 + 1 + 1 = 6
+#'     \item normal order 2 = 1 + 2 + 2 = 5
+#'     \item binomial order 3 = 0 + 3 + 3 = 6
+#'   }
 #'
 #' @keywords internal
 #' @noRd
 get_n_params <- function(model_class, model_order) {
 
   # Validate inputs
-  if (!model_class %in% c("mixture", "standard")) {
-    stop("`model_class` must be 'mixture' or 'standard'")
+  if (!model_class %in% c("mixture", "binomial", "normal")) {
+    stop("`model_class` must be 'mixture', 'binomial', or 'normal'")
   }
   if (!model_order %in% c(1L, 2L, 3L)) {
     stop("`model_order` must be 1, 2, or 3")
@@ -118,9 +150,12 @@ get_n_params <- function(model_class, model_order) {
   if (model_class == "mixture") {
     # 4 mixture components + initial states + innovation precisions
     4L + model_order + model_order
-  } else {
+  } else if (model_class == "normal") {
     # 1 observation precision + initial states + innovation precisions
     1L + model_order + model_order
+  } else {  # binomial
+    # No observation precision + initial states + innovation precisions
+    0L + model_order + model_order
   }
 }
 
@@ -136,8 +171,8 @@ get_n_params <- function(model_class, model_order) {
 #'   specifications for both base and ggplot2 graphics engines.
 #'
 #' @param x An object inheriting from "pdm_mcmc".
-#' @param model_class Character: "mixture" or "standard". If NULL, will be
-#'   auto-detected from x.
+#' @param model_class Character: "mixture", "binomial", or "normal". If NULL,
+#'   will be auto-detected from x.
 #' @param model_order Integer: 1, 2, or 3. If NULL, will be auto-detected
 #'   from x.
 #'
@@ -150,12 +185,21 @@ get_n_params <- function(model_class, model_order) {
 #'     \item{label_str}{Character string for ggplot2 label mapping}
 #'   }
 #'
-#' @details Parameters are ordered as: mixture components (if present),
-#'   initial states (theta_0*), innovation precisions (W*_inv or prec_y).
+#' @details Parameters are ordered as:
+#'   \enumerate{
+#'     \item Mixture components (if \code{model_class = "mixture"}): mu_1, mu_2, phi_1, phi_2
+#'     \item Observation precision (if \code{model_class = "normal"}): V^{-1}
+#'     \item Initial states (all models): theta_01, theta_02, theta_03
+#'     \item Innovation precisions (all models): W_1^{-1}, W_2^{-1}, W_3^{-1}
+#'   }
+#'
 #'   This ordering matches the convention in existing plot files.
 #'
 #'   The W*_inv naming convention maps to prec_theta* in the object:
 #'   W1_inv corresponds to x$prec_theta1, etc.
+#'
+#'   Note: Binomial models (binomial/Bernoulli with logit/probit link) do NOT
+#'   have observation precision parameter.
 #'
 #' @keywords internal
 #' @noRd
@@ -171,8 +215,8 @@ get_param_config <- function(x,
   }
 
   # 2. Validate inputs
-  if (!model_class %in% c("mixture", "standard")) {
-    stop("`model_class` must be 'mixture' or 'standard'")
+  if (!model_class %in% c("mixture", "binomial", "normal")) {
+    stop("`model_class` must be 'mixture', 'binomial', or 'normal'")
   }
   if (!model_order %in% c(1L, 2L, 3L)) {
     stop("`model_order` must be 1, 2, or 3")
@@ -216,8 +260,8 @@ get_param_config <- function(x,
     )
   }
 
-  # 5. Add observation precision (standard models only)
-  if (model_class == "standard") {
+  # 5. Add observation precision (normal models only)
+  if (model_class == "normal") {
     config$V_inv <- list(
       samples = x$prec_y,
       name = quote(V^{-1}),

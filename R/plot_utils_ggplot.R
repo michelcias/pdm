@@ -323,23 +323,58 @@ plot_mixture_params_ggplot <- function(mu_1, mu_2, prec_1, prec_2,
   invisible(NULL)
 }
 
+# =============================================================================
+# Generic Alpha Plotting Functions (ggplot2)
+# =============================================================================
 
-#' Plot mixture weight trajectory with credible intervals (ggplot2)
+#' Plot alpha trajectory with credible intervals (ggplot2)
 #'
-#' @description Creates a two-page visualization of mixture weights using ggplot2.
+#' @description Generic function to plot time-varying alpha_t trajectory
+#'   with optional credible bands using ggplot2. Can overlay observed data
+#'   and true values for simulation studies.
 #'
-#' @param alpha Matrix of MCMC samples for mixture weights (n_chain x n_obs).
-#' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
+#' @param alpha Matrix of MCMC samples for alpha (n_chain x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
+#' @param title Character or expression; main title for the plot.
+#' @param obs_data Numeric vector of observed data (proportions or binary).
+#'   If NULL, no observations are plotted.
+#' @param obs_label Character; legend label for observed data.
+#' @param show_obs Logical; whether to display observed data points.
+#'   Default is TRUE. Ignored if obs_data is NULL.
+#' @param obs_color Character; color for observed data points.
+#' @param obs_shape Integer; point shape for observed data.
+#' @param obs_size Numeric; point size for observed data.
+#' @param true_alpha Numeric vector; true alpha values for simulation studies.
+#'   If provided, overlays the true trajectory.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return NULL (invisibly). Prints plots as side effects.
+#' @return NULL (invisibly). Prints plot as side effect.
+#'
+#' @details This is a generic plotting function used by both mixture models
+#'   (for mixture weights) and binomial/Bernoulli models (for success
+#'   probabilities). The function creates a single-page ggplot with:
+#'   \itemize{
+#'     \item Median trajectory of alpha_t (blue line)
+#'     \item Optional credible interval band (gray ribbon)
+#'     \item Optional observed data overlay (points)
+#'     \item Optional true values (for simulation validation)
+#'   }
 #'
 #' @keywords internal
 #' @noRd
-plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
-                                        ci_level = 0.95, ...) {
+plot_alpha_trajectory_ggplot <- function(alpha,
+                                         ci = TRUE,
+                                         ci_level = 0.95,
+                                         title = NULL,
+                                         obs_data = NULL,
+                                         obs_label = "Observed",
+                                         show_obs = TRUE,
+                                         obs_color = "red",
+                                         obs_shape = 16,
+                                         obs_size = 1.5,
+                                         true_alpha = NULL,
+                                         ...) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required for ggplot2 engine")
@@ -351,6 +386,11 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
     stop("`ci_level` must be a single numeric value between 0 and 1")
   }
 
+  # Validate show_obs
+  if (!is.logical(show_obs) || length(show_obs) != 1) {
+    stop("`show_obs` must be a single logical value")
+  }
+
   n_obs <- ncol(alpha)
   time_grid <- seq_len(n_obs)
 
@@ -359,7 +399,7 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
   ci_upper_prob <- 1 - ci_lower_prob
   ci_pct <- round(ci_level * 100)
 
-  # Page 1: alpha_t
+  # Prepare data frame for alpha
   df_alpha <- data.frame(
     time = time_grid,
     median = apply(alpha, 2, stats::median)
@@ -370,10 +410,12 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
     df_alpha$upper <- apply(alpha, 2, stats::quantile, probs = ci_upper_prob)
   }
 
-  p1 <- ggplot2::ggplot(df_alpha, ggplot2::aes(x = .data$time))
+  # Create base plot
+  p <- ggplot2::ggplot(df_alpha, ggplot2::aes(x = .data$time))
 
+  # Add credible interval ribbon
   if (ci) {
-    p1 <- p1 +
+    p <- p +
       ggplot2::geom_ribbon(
         ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
         alpha = 0.3
@@ -385,22 +427,66 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
       )
   }
 
-  p1 <- p1 +
+  # Add median line
+  p <- p +
     ggplot2::geom_line(
       ggplot2::aes(y = .data$median, colour = "Median"),
       linewidth = 1.2
-    ) +
+    )
+
+  # Initialize color scale values and breaks
+  color_values <- c("Median" = "blue")
+  color_breaks <- c("Median")
+  color_labels <- c(expression(hat(alpha)[t]))
+
+  # Add true alpha if provided
+  if (!is.null(true_alpha)) {
+    df_alpha$true_alpha <- true_alpha
+    p <- p +
+      ggplot2::geom_line(
+        ggplot2::aes(y = .data$true_alpha, colour = "True"),
+        linewidth = 1,
+        linetype = "dashed"
+      )
+    color_values <- c(color_values, "True" = "darkgreen")
+    color_breaks <- c(color_breaks, "True")
+    color_labels <- c(color_labels, expression(alpha[t]))
+  }
+
+  # Add observed data if provided and show_obs = TRUE
+  if (!is.null(obs_data) && show_obs) {
+    df_obs <- data.frame(
+      time = time_grid,
+      obs = obs_data
+    )
+    p <- p +
+      ggplot2::geom_point(
+        data = df_obs,
+        ggplot2::aes(x = .data$time, y = .data$obs, colour = "Observed"),
+        shape = obs_shape,
+        size = obs_size
+      )
+    color_values <- c(color_values, "Observed" = obs_color)
+    color_breaks <- c(color_breaks, "Observed")
+    color_labels <- c(color_labels, obs_label)
+  }
+
+  # Apply color scale
+  p <- p +
     ggplot2::scale_color_manual(
-      values = c("Median" = "blue"),
-      breaks = "Median",
-      labels = expression(hat(alpha)[t])
-    ) +
+      values = color_values,
+      breaks = color_breaks,
+      labels = color_labels
+    )
+
+  # Add labels and theme
+  p <- p +
     ggplot2::scale_y_continuous(
       limits = c(0, 1.0),
       breaks = seq(0, 1, by = 0.2)
     ) +
     ggplot2::labs(
-      title = expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
+      title = title,
       x = "Time",
       y = expression(alpha[t])
     ) +
@@ -414,38 +500,84 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
       legend.direction = "horizontal"
     )
 
+  # Configure legend guides
   if (ci) {
-    p1 <- p1 +
+    p <- p +
       ggplot2::guides(
         colour = ggplot2::guide_legend(order = 1),
         fill = ggplot2::guide_legend(order = 2)
       )
   } else {
-    p1 <- p1 +
+    p <- p +
       ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
   }
 
-  print(p1)
+  print(p)
 
-  # Page 2: z_t
+  invisible(NULL)
+}
+
+
+#' Plot component indicator probabilities (ggplot2)
+#'
+#' @description Plots posterior probabilities P(z_t = 1 | data) for mixture
+#'   models using ggplot2, showing which component is more likely at each
+#'   time point.
+#'
+#' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
+#' @param threshold Numeric; decision threshold for coloring (default 0.5).
+#' @param color_above Character; color when P(z_t = 1) > threshold.
+#' @param color_below Character; color when P(z_t = 1) <= threshold.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Prints plot as side effect.
+#'
+#' @details Creates a bar plot showing the posterior probability that each
+#'   observation belongs to component 1. Bars are colored based on whether
+#'   the probability exceeds the threshold (default 0.5), making it easy to
+#'   identify the most likely component assignment at each time point.
+#'
+#' @keywords internal
+#' @noRd
+plot_component_probabilities_ggplot <- function(z,
+                                                threshold = 0.5,
+                                                color_above = "purple",
+                                                color_below = "blue",
+                                                ...) {
+
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for ggplot2 engine")
+  }
+
+  n_obs <- ncol(z)
+  time_grid <- seq_len(n_obs)
+
+  # Compute posterior probabilities
   z_prob <- apply(z, 2, mean)
-  df_z <- data.frame(time = time_grid, prob = z_prob)
 
-  p2 <- ggplot2::ggplot(df_z, ggplot2::aes(x = .data$time, y = .data$prob)) +
+  # Prepare data frame
+  df_z <- data.frame(
+    time = time_grid,
+    prob = z_prob,
+    above_threshold = z_prob > threshold
+  )
+
+  # Create plot
+  p <- ggplot2::ggplot(df_z, ggplot2::aes(x = .data$time, y = .data$prob)) +
     ggplot2::geom_segment(
-      ggplot2::aes(xend = .data$time, yend = 0, colour = .data$prob > 0.5),
+      ggplot2::aes(xend = .data$time, yend = 0, colour = .data$above_threshold),
       linewidth = 1.5
     ) +
     ggplot2::scale_colour_manual(
-      values = c("TRUE" = "purple", "FALSE" = "blue"),
+      values = c("TRUE" = color_above, "FALSE" = color_below),
       breaks = c("FALSE", "TRUE"),
       labels = c(
-        expression(paste("P(", z[t], " = 1 | data) ≤ 0.5")),
-        expression(paste("P(", z[t], " = 1 | data) > 0.5"))
+        paste0("P(z_t = 1) ≤ ", threshold),
+        paste0("P(z_t = 1) > ", threshold)
       )
     ) +
     ggplot2::geom_hline(
-      ggplot2::aes(yintercept = 0.5, linetype = "Threshold"),
+      ggplot2::aes(yintercept = threshold, linetype = "Threshold"),
       color = "red",
       linewidth = 1
     ) +
@@ -454,7 +586,7 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
     ) +
     ggplot2::scale_y_continuous(
       limits = c(0, 1.0),
-      breaks = c(0, 0.5, 1)
+      breaks = c(0, threshold, 1)
     ) +
     ggplot2::labs(
       title = expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
@@ -477,9 +609,290 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
       linetype = ggplot2::guide_legend(order = 2)
     )
 
-  print(p2)
+  print(p)
 
-  return(invisible(NULL))
+  invisible(NULL)
+}
+
+
+# =============================================================================
+# Model Family-Specific Wrappers (ggplot2)
+# =============================================================================
+
+#' Plot binomial success probabilities (ggplot2)
+#'
+#' @description Wrapper function for plotting binomial model success
+#'   probabilities (alpha_t) using ggplot2. Used by all binomial model types
+#'   (locallevel, localtrend, localacceleration).
+#'
+#' @param x An object inheriting from a binomial model class.
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric; credible interval level.
+#' @param show_obs Logical; whether to display observed proportions.
+#'   Default is TRUE.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Prints plot as side effect.
+#'
+#' @details This function extracts alpha samples and observed data from
+#'   binomial model objects and delegates to the generic
+#'   \code{plot_alpha_trajectory_ggplot()} function. It automatically computes
+#'   observed proportions from y/n_trials.
+#'
+#'   Used by:
+#'   \itemize{
+#'     \item \code{plot.binomial_locallevel}
+#'     \item \code{plot.binomial_localtrend}
+#'     \item \code{plot.binomial_localacceleration}
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_binomial_alpha_ggplot <- function(x, ci = TRUE, ci_level = 0.95,
+                                       show_obs = TRUE, ...) {
+
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for ggplot2 engine")
+  }
+
+  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
+             ci_level <= 0 || ci_level >= 1)) {
+    stop("`ci_level` must be a single numeric value between 0 and 1")
+  }
+
+  if (!is.logical(show_obs) || length(show_obs) != 1) {
+    stop("`show_obs` must be a single logical value")
+  }
+
+  # Extract observed proportions (if available and show_obs = TRUE)
+  y <- attr(x, "y")
+  n_trials <- attr(x, "n_trials")
+
+  obs_data <- NULL
+  if (show_obs && !is.null(y) && !is.null(n_trials)) {
+    obs_data <- y / n_trials
+  }
+
+  # Delegate to generic alpha trajectory plotting function
+  plot_alpha_trajectory_ggplot(
+    alpha = x$alpha,
+    ci = ci,
+    ci_level = ci_level,
+    title = "Binomial Success Probabilities",
+    obs_data = obs_data,
+    obs_label = "Observed proportions",
+    show_obs = show_obs,
+    obs_color = "red",
+    obs_shape = 16,
+    obs_size = 1.5,
+    ...
+  )
+
+  invisible(NULL)
+}
+
+
+#' Plot Bernoulli probabilities (ggplot2)
+#'
+#' @description Wrapper function for plotting Bernoulli model probabilities
+#'   (alpha_t) using ggplot2. Used by all probit Bernoulli model types.
+#'
+#' @param x An object inheriting from a probit_bernoulli model class.
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric; credible interval level.
+#' @param show_obs Logical; whether to display observed binary outcomes.
+#'   Default is TRUE.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Prints plot as side effect.
+#'
+#' @details This function creates a specialized plot for Bernoulli models where
+#'   observed outcomes are binary (0/1). Unlike binomial models that show
+#'   proportions, this plots y=1 at height 1.0 and y=0 at height 0.0.
+#'
+#'   Used by:
+#'   \itemize{
+#'     \item \code{plot.probit_bernoulli_locallevel}
+#'     \item \code{plot.probit_bernoulli_localtrend}
+#'     \item \code{plot.probit_bernoulli_localacceleration}
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_bernoulli_alpha_ggplot <- function(x, ci = TRUE, ci_level = 0.95,
+                                        show_obs = TRUE, ...) {
+
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for ggplot2 engine")
+  }
+
+  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
+             ci_level <= 0 || ci_level >= 1)) {
+    stop("`ci_level` must be a single numeric value between 0 and 1")
+  }
+
+  if (!is.logical(show_obs) || length(show_obs) != 1) {
+    stop("`show_obs` must be a single logical value")
+  }
+
+  n_obs <- attr(x, "n_obs")
+  time_grid <- seq_len(n_obs)
+
+  # Calculate quantile probabilities
+  ci_lower_prob <- (1 - ci_level) / 2
+  ci_upper_prob <- 1 - ci_lower_prob
+  ci_pct <- round(ci_level * 100)
+
+  # Prepare data frame for alpha
+  df_alpha <- data.frame(
+    time = time_grid,
+    median = apply(x$alpha, 2, stats::median)
+  )
+
+  if (ci) {
+    df_alpha$lower <- apply(x$alpha, 2, stats::quantile, probs = ci_lower_prob)
+    df_alpha$upper <- apply(x$alpha, 2, stats::quantile, probs = ci_upper_prob)
+  }
+
+  # Create base plot
+  p <- ggplot2::ggplot(df_alpha, ggplot2::aes(x = .data$time))
+
+  if (ci) {
+    p <- p +
+      ggplot2::geom_ribbon(
+        ggplot2::aes(ymin = .data$lower, ymax = .data$upper, fill = "CI"),
+        alpha = 0.3
+      ) +
+      ggplot2::scale_fill_manual(
+        values = c("CI" = "steelblue"),
+        breaks = "CI",
+        labels = paste0(ci_pct, "% CI")
+      )
+  }
+
+  p <- p +
+    ggplot2::geom_line(
+      ggplot2::aes(y = .data$median, colour = "Median"),
+      linewidth = 1.2
+    )
+
+  # Initialize color scale
+  color_values <- c("Median" = "blue")
+  color_breaks <- c("Median")
+  color_labels <- c(expression(hat(alpha)[t]))
+
+  # Get observed binary outcomes
+  y <- attr(x, "y")
+
+  # Add observed binary outcomes if available and show_obs = TRUE
+  if (show_obs && !is.null(y)) {
+    df_obs <- data.frame(
+      time = time_grid,
+      y = y,
+      y_pos = ifelse(y == 1, 1.0, 0.0),
+      y_label = factor(ifelse(y == 1, "y=1", "y=0"),
+                       levels = c("y=1", "y=0"))
+    )
+
+    p <- p +
+      ggplot2::geom_point(
+        data = df_obs,
+        ggplot2::aes(y = .data$y_pos, colour = .data$y_label),
+        size = 1.5
+      )
+
+    color_values <- c(color_values, "y=1" = "darkgreen", "y=0" = "red")
+    color_breaks <- c(color_breaks, "y=1", "y=0")
+    color_labels <- c(color_labels, "y = 1", "y = 0")
+  }
+
+  # Apply color scale
+  p <- p +
+    ggplot2::scale_color_manual(
+      values = color_values,
+      breaks = color_breaks,
+      labels = color_labels
+    )
+
+  # Add labels and theme
+  p <- p +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1.0),
+      breaks = seq(0, 1, by = 0.2)
+    ) +
+    ggplot2::labs(
+      title = "Bernoulli Probabilities",
+      x = "Time",
+      y = expression(alpha[t])
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(color = "grey85"),
+      panel.grid.minor = ggplot2::element_line(color = "grey92"),
+      plot.title = ggplot2::element_text(face = "bold", size = 13),
+      legend.position = "top",
+      legend.title = ggplot2::element_blank(),
+      legend.direction = "horizontal"
+    )
+
+  if (ci) {
+    p <- p +
+      ggplot2::guides(
+        colour = ggplot2::guide_legend(order = 1),
+        fill = ggplot2::guide_legend(order = 2)
+      )
+  } else {
+    p <- p +
+      ggplot2::guides(colour = ggplot2::guide_legend(order = 1))
+  }
+
+  print(p)
+
+  invisible(NULL)
+}
+
+
+#' Plot mixture weight trajectory with credible intervals (ggplot2)
+#'
+#' @description Creates a two-page visualization of mixture weights using ggplot2:
+#'   Page 1 shows alpha_t trajectory with credible bands,
+#'   Page 2 shows posterior probabilities P(z_t = 1 | data).
+#'
+#' @param alpha Matrix of MCMC samples for mixture weights (n_chain x n_obs).
+#' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric between 0 and 1; credible interval level.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Prints plots as side effects.
+#'
+#' @details
+#'   This function now delegates to two specialized functions:
+#'   \itemize{
+#'     \item \code{plot_alpha_trajectory_ggplot()}: Page 1 (alpha_t trajectory)
+#'     \item \code{plot_component_probabilities_ggplot()}: Page 2 (z_t probabilities)
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
+                                        ci_level = 0.95, ...) {
+
+  # Page 1: Alpha trajectory (generic function)
+  plot_alpha_trajectory_ggplot(
+    alpha = alpha,
+    ci = ci,
+    ci_level = ci_level,
+    title = expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
+    obs_data = NULL,  # No observed data for mixture models
+    show_obs = FALSE,
+    ...
+  )
+
+  # Page 2: Component probabilities (mixture-specific function)
+  plot_component_probabilities_ggplot(z, ...)
+
+  invisible(NULL)
 }
 
 

@@ -226,6 +226,458 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
 }
 
 
+# =============================================================================
+# Generic Alpha Plotting Functions
+# =============================================================================
+
+#' Plot alpha trajectory with credible intervals (base graphics)
+#'
+#' @description Generic function to plot time-varying alpha_t trajectory
+#'   with optional credible bands. Can overlay observed data and true values
+#'   for simulation studies.
+#'
+#' @param alpha Matrix of MCMC samples for alpha (n_chain x n_obs).
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric between 0 and 1; credible interval level.
+#' @param title Character or expression; main title for the plot.
+#' @param obs_data Numeric vector of observed data (proportions or binary).
+#'   If NULL, no observations are plotted.
+#' @param obs_label Character; legend label for observed data.
+#' @param show_obs Logical; whether to display observed data points.
+#'   Default is TRUE. Ignored if obs_data is NULL.
+#' @param obs_color Character; color for observed data points.
+#' @param obs_pch Integer; point character for observed data.
+#' @param obs_cex Numeric; point size for observed data.
+#' @param true_alpha Numeric vector; true alpha values for simulation studies.
+#'   If provided, overlays the true trajectory.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Function is called for its side effects (plotting).
+#'
+#' @details This is a generic plotting function used by both mixture models
+#'   (for mixture weights) and binomial/Bernoulli models (for success
+#'   probabilities). The function creates a single-page plot with:
+#'   \itemize{
+#'     \item Median trajectory of alpha_t (blue line)
+#'     \item Optional credible interval band (gray)
+#'     \item Optional observed data overlay (points)
+#'     \item Optional true values (for simulation validation)
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_alpha_trajectory_base <- function(alpha,
+                                       ci = TRUE,
+                                       ci_level = 0.95,
+                                       title = NULL,
+                                       obs_data = NULL,
+                                       obs_label = "Observed",
+                                       show_obs = TRUE,
+                                       obs_color = "red",
+                                       obs_pch = 16,
+                                       obs_cex = 0.6,
+                                       true_alpha = NULL,
+                                       ...) {
+
+  # Validate ci_level
+  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
+             ci_level <= 0 || ci_level >= 1)) {
+    stop("`ci_level` must be a single numeric value between 0 and 1")
+  }
+
+  # Validate show_obs
+  if (!is.logical(show_obs) || length(show_obs) != 1) {
+    stop("`show_obs` must be a single logical value")
+  }
+
+  n_obs <- ncol(alpha)
+  time_grid <- seq_len(n_obs)
+
+  # Compute summary statistics
+  alpha_median <- apply(alpha, 2, stats::median)
+  if (ci) {
+    ci_lower_prob <- (1 - ci_level) / 2
+    ci_upper_prob <- 1 - ci_lower_prob
+    alpha_lower <- apply(alpha, 2, stats::quantile, probs = ci_lower_prob)
+    alpha_upper <- apply(alpha, 2, stats::quantile, probs = ci_upper_prob)
+    ci_label <- paste0(round(ci_level * 100), "% CI")
+  }
+
+  # Determine y-axis range
+  if (ci) {
+    range_vals <- range(alpha_lower, alpha_upper, obs_data, true_alpha, na.rm = TRUE)
+  } else {
+    range_vals <- range(alpha_median, obs_data, true_alpha, na.rm = TRUE)
+  }
+  range_vals[1] <- max(0, range_vals[1] - 0.05)
+  range_vals[2] <- min(1, range_vals[2] + 0.25 * diff(range_vals))
+
+  # Setup plotting area
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar), add = TRUE)
+
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
+      mgp = c(2.5, 1, 0))
+
+  # Base plot
+  plot(time_grid, alpha_median, type = "l", lwd = 2.5, col = "blue",
+       xlab = "Time", ylab = expression(alpha[t]),
+       ylim = c(0, 1.1), axes = FALSE, main = "")
+
+  axis(side = 1)
+  axis(side = 2, at = seq(0, 1, by = 0.2))
+
+  # Add credible band
+  if (ci) {
+    polygon(c(time_grid, rev(time_grid)),
+            c(alpha_lower, rev(alpha_upper)),
+            col = grDevices::rgb(0.2, 0.5, 0.8, 0.3), border = NA)
+    lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
+  }
+
+  # Add true alpha (if provided - for simulations)
+  if (!is.null(true_alpha)) {
+    lines(time_grid, true_alpha, lwd = 2, col = "darkgreen", lty = 2)
+  }
+
+  # Add observed data (if provided and show_obs = TRUE)
+  if (!is.null(obs_data) && show_obs) {
+    points(time_grid, obs_data, pch = obs_pch, cex = obs_cex, col = obs_color)
+  }
+
+  grid()
+
+  # Build legend
+  legend_items <- c(expression(hat(alpha)[t]))
+  legend_cols <- c("blue")
+  legend_lty <- c(1)
+  legend_lwd <- c(2.5)
+  legend_pch <- c(NA)
+
+  if (ci) {
+    legend_items <- c(legend_items, ci_label)
+    legend_cols <- c(legend_cols, grDevices::rgb(0.2, 0.5, 0.8, 0.3))
+    legend_lty <- c(legend_lty, 1)
+    legend_lwd <- c(legend_lwd, 10)
+    legend_pch <- c(legend_pch, NA)
+  }
+
+  if (!is.null(true_alpha)) {
+    legend_items <- c(legend_items, expression(alpha[t]))
+    legend_cols <- c(legend_cols, "darkgreen")
+    legend_lty <- c(legend_lty, 2)
+    legend_lwd <- c(legend_lwd, 2)
+    legend_pch <- c(legend_pch, NA)
+  }
+
+  if (!is.null(obs_data) && show_obs) {
+    legend_items <- c(legend_items, obs_label)
+    legend_cols <- c(legend_cols, obs_color)
+    legend_lty <- c(legend_lty, NA)
+    legend_lwd <- c(legend_lwd, NA)
+    legend_pch <- c(legend_pch, obs_pch)
+  }
+
+  legend("topright",
+         legend = legend_items,
+         col = legend_cols,
+         lty = legend_lty,
+         lwd = legend_lwd,
+         pch = legend_pch,
+         horiz = TRUE,
+         bty = "n")
+
+  # Add title
+  if (!is.null(title)) {
+    mtext(title, outer = TRUE, cex = 1.3, font = 2)
+  }
+
+  invisible(NULL)
+}
+
+
+#' Plot component indicator probabilities (base graphics)
+#'
+#' @description Plots posterior probabilities P(z_t = 1 | data) for mixture
+#'   models, showing which component is more likely at each time point.
+#'
+#' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
+#' @param threshold Numeric; decision threshold for coloring (default 0.5).
+#' @param color_above Character; color when P(z_t = 1) > threshold.
+#' @param color_below Character; color when P(z_t = 1) <= threshold.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Function is called for its side effects (plotting).
+#'
+#' @details Creates a bar plot showing the posterior probability that each
+#'   observation belongs to component 1. Bars are colored based on whether
+#'   the probability exceeds the threshold (default 0.5), making it easy to
+#'   identify the most likely component assignment at each time point.
+#'
+#' @keywords internal
+#' @noRd
+plot_component_probabilities_base <- function(z,
+                                              threshold = 0.5,
+                                              color_above = "purple",
+                                              color_below = "blue",
+                                              ...) {
+
+  n_obs <- ncol(z)
+  time_grid <- seq_len(n_obs)
+
+  # Compute posterior probabilities
+  z_prob <- apply(z, 2, mean)
+
+  # Setup plotting area
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar), add = TRUE)
+
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
+
+  # Create plot
+  plot(z_prob,
+       type = "h",
+       lwd = 2,
+       col = ifelse(z_prob > threshold, color_above, color_below),
+       xlab = "Time",
+       ylab = expression(paste("P(", z[t], " = 1 | data)")),
+       ylim = c(0, 1.1),
+       axes = FALSE)
+
+  axis(side = 1)
+  axis(side = 2, at = c(0, 0.5, 1))
+
+  # Add threshold line
+  segments(x0 = 1, y0 = threshold, x1 = n_obs, y1 = threshold,
+           col = "red", lwd = 2, lty = 2)
+
+  legend("topright",
+         horiz = TRUE,
+         legend = c(paste0("P(z_t = 1) > ", threshold),
+                    paste0("P(z_t = 1) ≤ ", threshold),
+                    "Threshold"),
+         col = c(color_above, color_below, "red"),
+         lty = c(1, 1, 2),
+         lwd = 2,
+         bty = "n")
+
+  grid(nx = NA, ny = NULL)
+
+  mtext(expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
+        outer = TRUE, cex = 1.3, font = 2)
+
+  invisible(NULL)
+}
+
+
+# =============================================================================
+# Model Family-Specific Wrappers
+# =============================================================================
+
+#' Plot binomial success probabilities (base graphics)
+#'
+#' @description Wrapper function for plotting binomial model success
+#'   probabilities (alpha_t). Used by all binomial model types
+#'   (locallevel, localtrend, localacceleration).
+#'
+#' @param x An object inheriting from a binomial model class.
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric; credible interval level.
+#' @param show_obs Logical; whether to display observed proportions.
+#'   Default is TRUE.
+#' @param ... Additional arguments passed to plot_alpha_trajectory_base.
+#'
+#' @return NULL (invisibly). Function is called for side effects (plotting).
+#'
+#' @details This function extracts alpha samples and observed data from
+#'   binomial model objects and delegates to the generic
+#'   \code{plot_alpha_trajectory_base()} function. It automatically computes
+#'   observed proportions from y/n_trials.
+#'
+#'   Used by:
+#'   \itemize{
+#'     \item \code{plot.binomial_locallevel}
+#'     \item \code{plot.binomial_localtrend}
+#'     \item \code{plot.binomial_localacceleration}
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_binomial_alpha_base <- function(x, ci = TRUE, ci_level = 0.95,
+                                     show_obs = TRUE, ...) {
+
+  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
+             ci_level <= 0 || ci_level >= 1)) {
+    stop("`ci_level` must be a single numeric value between 0 and 1")
+  }
+
+  if (!is.logical(show_obs) || length(show_obs) != 1) {
+    stop("`show_obs` must be a single logical value")
+  }
+
+  # Extract observed proportions (if available and show_obs = TRUE)
+  y <- attr(x, "y")
+  n_trials <- attr(x, "n_trials")
+
+  obs_data <- NULL
+  if (show_obs && !is.null(y) && !is.null(n_trials)) {
+    obs_data <- y / n_trials
+  }
+
+  # Delegate to generic alpha trajectory plotting function
+  plot_alpha_trajectory_base(
+    alpha = x$alpha,
+    ci = ci,
+    ci_level = ci_level,
+    title = "Binomial Success Probabilities",
+    obs_data = obs_data,
+    obs_label = "Observed proportions",
+    show_obs = show_obs,
+    obs_color = "red",
+    obs_pch = 16,
+    obs_cex = 0.6,
+    ...
+  )
+
+  invisible(NULL)
+}
+
+
+#' Plot Bernoulli probabilities (base graphics)
+#'
+#' @description Wrapper function for plotting Bernoulli model probabilities
+#'   (alpha_t). Used by all probit Bernoulli model types.
+#'
+#' @param x An object inheriting from a probit_bernoulli model class.
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric; credible interval level.
+#' @param show_obs Logical; whether to display observed binary outcomes.
+#'   Default is TRUE.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Function is called for side effects (plotting).
+#'
+#' @details This function creates a specialized plot for Bernoulli models where
+#'   observed outcomes are binary (0/1). Unlike binomial models that show
+#'   proportions, this plots y=1 at height 1.0 and y=0 at height 0.0.
+#'
+#'   Used by:
+#'   \itemize{
+#'     \item \code{plot.probit_bernoulli_locallevel}
+#'     \item \code{plot.probit_bernoulli_localtrend}
+#'     \item \code{plot.probit_bernoulli_localacceleration}
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_bernoulli_alpha_base <- function(x, ci = TRUE, ci_level = 0.95,
+                                      show_obs = TRUE, ...) {
+
+  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
+             ci_level <= 0 || ci_level >= 1)) {
+    stop("`ci_level` must be a single numeric value between 0 and 1")
+  }
+
+  if (!is.logical(show_obs) || length(show_obs) != 1) {
+    stop("`show_obs` must be a single logical value")
+  }
+
+  n_obs <- attr(x, "n_obs")
+  time_grid <- seq_len(n_obs)
+
+  # Compute summary statistics for alpha
+  alpha_median <- apply(x$alpha, 2, stats::median)
+  if (ci) {
+    ci_lower_prob <- (1 - ci_level) / 2
+    ci_upper_prob <- 1 - ci_lower_prob
+    alpha_lower <- apply(x$alpha, 2, stats::quantile, probs = ci_lower_prob)
+    alpha_upper <- apply(x$alpha, 2, stats::quantile, probs = ci_upper_prob)
+    ci_label <- paste0(round(ci_level * 100), "% CI")
+  }
+
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar), add = TRUE)
+
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
+      mgp = c(2.5, 1, 0))
+
+  # Determine y-axis range
+  if (ci) {
+    range_vals <- range(alpha_lower, alpha_upper, na.rm = TRUE)
+  } else {
+    range_vals <- range(alpha_median, na.rm = TRUE)
+  }
+  range_vals[1] <- max(0, range_vals[1] - 0.05)
+  range_vals[2] <- min(1, range_vals[2] + 0.25 * diff(range_vals))
+
+  # Base plot
+  plot(time_grid, alpha_median, type = "l", lwd = 2.5, col = "blue",
+       xlab = "Time", ylab = expression(alpha[t]),
+       ylim = range_vals, axes = FALSE, main = "")
+
+  axis(side = 1)
+  axis(side = 2, at = seq(0, 1, by = 0.2))
+
+  # Add credible band
+  if (ci) {
+    polygon(c(time_grid, rev(time_grid)),
+            c(alpha_lower, rev(alpha_upper)),
+            col = grDevices::rgb(0.2, 0.5, 0.8, 0.3), border = NA)
+    lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
+  }
+
+  # Get observed binary outcomes
+  y <- attr(x, "y")
+
+  # Add observed binary outcomes (if show_obs = TRUE)
+  if (show_obs && !is.null(y)) {
+    # Plot y=1 and y=0 with different colors
+    points(time_grid[y == 1], rep(1.0, sum(y == 1)),
+           pch = 16, cex = 0.6, col = "darkgreen")
+    points(time_grid[y == 0], rep(0.0, sum(y == 0)),
+           pch = 16, cex = 0.6, col = "red")
+  }
+
+  grid()
+
+  # Legend
+  legend_items <- c(expression(hat(alpha)[t]))
+  legend_cols <- c("blue")
+  legend_lty <- c(1)
+  legend_lwd <- c(2.5)
+  legend_pch <- c(NA)
+
+  if (ci) {
+    legend_items <- c(legend_items, ci_label)
+    legend_cols <- c(legend_cols, grDevices::rgb(0.2, 0.5, 0.8, 0.3))
+    legend_lty <- c(legend_lty, 1)
+    legend_lwd <- c(legend_lwd, 10)
+    legend_pch <- c(legend_pch, NA)
+  }
+
+  if (show_obs && !is.null(y)) {
+    legend_items <- c(legend_items, "y = 1", "y = 0")
+    legend_cols <- c(legend_cols, "darkgreen", "red")
+    legend_lty <- c(legend_lty, NA, NA)
+    legend_lwd <- c(legend_lwd, NA, NA)
+    legend_pch <- c(legend_pch, 16, 16)
+  }
+
+  legend("topright",
+         legend = legend_items,
+         col = legend_cols,
+         lty = legend_lty,
+         lwd = legend_lwd,
+         pch = legend_pch,
+         horiz = FALSE,
+         bty = "n")
+
+  mtext("Bernoulli Probabilities", outer = TRUE, cex = 1.3, font = 2)
+
+  invisible(NULL)
+}
+
+
 #' Plot mixture weight trajectory with credible intervals (base graphics)
 #'
 #' @description Creates a two-page visualization of mixture weights:
@@ -241,117 +693,30 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
 #' @return NULL (invisibly). Function is called for its side effects (plotting).
 #'
 #' @details
-#'   Page 1 displays the median trajectory of alpha_t with optional credible
-#'   bands. Page 2 shows the posterior mean of z_t, colored by the decision
-#'   threshold at 0.5.
+#'   This function now delegates to two specialized functions:
+#'   \itemize{
+#'     \item \code{plot_alpha_trajectory_base()}: Page 1 (alpha_t trajectory)
+#'     \item \code{plot_component_probabilities_base()}: Page 2 (z_t probabilities)
+#'   }
 #'
 #' @keywords internal
 #' @noRd
 plot_mixture_weights_base <- function(alpha, z, ci = TRUE,
                                       ci_level = 0.95, ...) {
 
-  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
-             ci_level <= 0 || ci_level >= 1)) {
-    stop("`ci_level` must be a single numeric value between 0 and 1")
-  }
+  # Page 1: Alpha trajectory (generic function)
+  plot_alpha_trajectory_base(
+    alpha = alpha,
+    ci = ci,
+    ci_level = ci_level,
+    title = expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
+    obs_data = NULL,  # No observed data for mixture models
+    show_obs = FALSE,
+    ...
+  )
 
-  n_obs <- ncol(alpha)
-  time_grid <- seq_len(n_obs)
-
-  # Compute credible bands for alpha
-  alpha_median <- apply(alpha, 2, stats::median)
-  if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    alpha_lower <- apply(alpha, 2, stats::quantile, probs = ci_lower_prob)
-    alpha_upper <- apply(alpha, 2, stats::quantile, probs = ci_upper_prob)
-    ci_label <- paste0(round(ci_level * 100), "% CI")
-  }
-
-  # =========================================================================
-  # Page 1: alpha_t trajectory
-  # =========================================================================
-
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar), add = TRUE)
-
-  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
-      mgp = c(2.5, 1, 0))
-
-  plot(time_grid, alpha_median, type = "l", lwd = 2.5, col = "blue",
-       xlab = "Time", ylab = expression(alpha[t]),
-       ylim = c(0, 1.1), axes = FALSE)
-
-  axis(side = 1)
-  axis(side = 2, at = seq(0, 1, by = 0.2))
-
-  # Credible band
-  if (ci) {
-    polygon(c(time_grid, rev(time_grid)),
-            c(alpha_lower, rev(alpha_upper)),
-            col = grDevices::rgb(0.2, 0.5, 0.8, 0.3), border = NA)
-  }
-
-  # Re-draw median on top
-  lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
-
-  grid()
-
-  # Legend
-  if (ci) {
-    legend("topright", horiz = TRUE,
-           legend = c(expression(hat(alpha)[t]), ci_label),
-           col = c("blue", grDevices::rgb(0.2, 0.5, 0.8, 0.3)),
-           lty = c(1, 1), lwd = c(2.5, 10),
-           bty = "n")
-  } else {
-    legend("topright", horiz = TRUE,
-           legend = expression(hat(alpha)[t]),
-           col = "blue",
-           lty = 1, lwd = 2.5,
-           bty = "n")
-  }
-
-  mtext(expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
-        outer = TRUE, cex = 1.3, font = 2)
-
-  # =========================================================================
-  # Page 2: z_t posterior probabilities
-  # =========================================================================
-
-  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
-
-  z_prob <- apply(z, 2, mean)
-
-  plot(z_prob,
-       type = "h",
-       lwd = 2,
-       col = ifelse(z_prob > 0.5, "purple", "blue"),
-       xlab = "Time",
-       ylab = expression(paste("P(", z[t], " = 1 | data)")),
-       ylim = c(0, 1.1),
-       axes = FALSE)
-
-  axis(side = 1)
-  axis(side = 2, at = c(0, 0.5, 1))
-
-  # Add threshold line
-  segments(x0 = 1, y0 = 0.5, x1 = n_obs, y1 = 0.5,
-           col = "red", lwd = 2, lty = 2)
-
-  legend("topright",
-         horiz = TRUE,
-         legend = c(expression(paste("P(", z[t], " = 1 | data)") > 0.5),
-                    expression(paste("P(", z[t], " = 1 | data)") <= 0.5),
-                    "Threshold"),
-         col = c("purple", "blue", "red"),
-         lty = c(1, 1, 2), lwd = 2,
-         bty = "n")
-
-  grid(nx = NA, ny = NULL)
-
-  mtext(expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
-        outer = TRUE, cex = 1.3, font = 2)
+  # Page 2: Component probabilities (mixture-specific function)
+  plot_component_probabilities_base(z, ...)
 
   invisible(NULL)
 }

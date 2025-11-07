@@ -423,6 +423,7 @@ plot_mcmc_diagnostics_generic <- function(x,
                                           which = NULL,
                                           param_config = NULL,
                                           engine = c("base", "ggplot2"),
+                                          true_values = NULL,
                                           ...) {
 
   # 1. Validate and match engine argument
@@ -459,15 +460,26 @@ plot_mcmc_diagnostics_generic <- function(x,
   for (i in which) {
     param_info <- param_config[[i]]
 
+    true_value <- NULL
+
+    if (!is.null(true_values) && engine == "base") {
+      param_name <- param_info$name
+      if (param_name == "theta_01") true_value <- true_values$theta01
+      if (param_name == "theta_02") true_value <- true_values$theta02
+      if (param_name == "theta_03") true_value <- true_values$theta03
+      if (param_name == "prec_1") true_value <- true_values$prec1
+      if (param_name == "prec_2") true_value <- true_values$prec2
+      if (param_name == "prec_3") true_value <- true_values$prec3
+    }
+
     if (engine == "base") {
-      # Delegate to base graphics function
       plot_param_diagnostics_base(
         param_samples = param_info$samples,
         param_name = param_info$name,
         param_label = param_info$label,
+        true_value = true_value,
         ...
       )
-
     } else {
       # Delegate to ggplot2 function
       p <- plot_param_diagnostics_ggplot(

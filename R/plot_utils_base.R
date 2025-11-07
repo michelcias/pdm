@@ -273,7 +273,7 @@ plot_alpha_trajectory_base <- function(alpha,
                                        obs_data = NULL,
                                        obs_label = "Observed",
                                        show_obs = TRUE,
-                                       obs_color = "red",
+                                       obs_color = "lightgreen",
                                        obs_pch = 16,
                                        obs_cex = 0.6,
                                        true_alpha = NULL,
@@ -331,13 +331,13 @@ plot_alpha_trajectory_base <- function(alpha,
   if (ci) {
     polygon(c(time_grid, rev(time_grid)),
             c(alpha_lower, rev(alpha_upper)),
-            col = grDevices::rgb(0.2, 0.5, 0.8, 0.3), border = NA)
+            col = grDevices::rgb(0.2, 0.5, 0.8, 0.2), border = NA)
     lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
   }
 
   # Add true alpha (if provided - for simulations)
   if (!is.null(true_alpha)) {
-    lines(time_grid, true_alpha, lwd = 2, col = "darkgreen", lty = 2)
+    lines(time_grid, true_alpha, lwd = 2.5, col = "brown", lty = 2)
   }
 
   # Add observed data (if provided and show_obs = TRUE)
@@ -363,11 +363,11 @@ plot_alpha_trajectory_base <- function(alpha,
   }
 
   if (!is.null(true_alpha)) {
-    legend_items <- c(legend_items, expression(alpha[t]))
-    legend_cols <- c(legend_cols, "darkgreen")
-    legend_lty <- c(legend_lty, 2)
-    legend_lwd <- c(legend_lwd, 2)
-    legend_pch <- c(legend_pch, NA)
+    legend_items <- c(expression(alpha[t]), legend_items)
+    legend_cols  <- c("brown", legend_cols)
+    legend_lty   <- c(2, legend_lty)
+    legend_lwd   <- c(2, legend_lwd)
+    legend_pch   <- c(NA, legend_pch)
   }
 
   if (!is.null(obs_data) && show_obs) {
@@ -503,8 +503,12 @@ plot_component_probabilities_base <- function(z,
 #'
 #' @keywords internal
 #' @noRd
-plot_binomial_alpha_base <- function(x, ci = TRUE, ci_level = 0.95,
-                                     show_obs = TRUE, ...) {
+plot_binomial_alpha_base <- function(x,
+                                     ci = TRUE,
+                                     ci_level = 0.95,
+                                     show_obs = TRUE,
+                                     true_alpha = NULL,
+                                     ...) {
 
   if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
              ci_level <= 0 || ci_level >= 1)) {
@@ -533,9 +537,10 @@ plot_binomial_alpha_base <- function(x, ci = TRUE, ci_level = 0.95,
     obs_data = obs_data,
     obs_label = "Observed proportions",
     show_obs = show_obs,
-    obs_color = "red",
+    obs_color = grDevices::rgb(0.0, 0.95, 0.0, 0.3),
     obs_pch = 16,
     obs_cex = 0.6,
+    true_alpha = true_alpha,
     ...
   )
 

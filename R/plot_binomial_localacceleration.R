@@ -10,6 +10,7 @@
 #'     \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
 #'     \item{\code{"states"}}{Dynamic states (theta_1, theta_2, theta_3 trajectories)}
 #'     \item{\code{"alpha"}}{Success probabilities over time (alpha_t)}
+#'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance rates (if available)}
 #'   }
 #' @param which Integer vector specifying which diagnostic plots to display.
 #'   For \code{type = "mcmc"}:
@@ -22,7 +23,7 @@
 #'     \item{6}{W_3^{-1} (acceleration innovation precision)}
 #'   }
 #'   For \code{type = "states"}: indices of subplots.
-#'   For \code{type = "alpha"}: not used (alpha_t is shown).
+#'   For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
 #'   If \code{NULL} (default), all available plots are shown.
 #' @param engine Character string specifying the graphics engine. One of:
 #'   \describe{
@@ -42,6 +43,21 @@
 #'   red points on the alpha_t trajectory. Set to \code{FALSE} to show only
 #'   the estimated trajectory without observations. This parameter only
 #'   affects \code{type = "alpha"} and \code{type = "all"}.
+#' @param true_values Named list containing true parameter values for comparison.
+#'   Expected elements:
+#'   \describe{
+#'     \item{\code{theta01}}{True initial level}
+#'     \item{\code{theta02}}{True initial trend}
+#'     \item{\code{theta03}}{True initial acceleration}
+#'     \item{\code{prec1}}{True level innovation precision (W_1^{-1})}
+#'     \item{\code{prec2}}{True trend innovation precision (W_2^{-1})}
+#'     \item{\code{prec3}}{True acceleration innovation precision (W_3^{-1})}
+#'     \item{\code{theta1}}{Numeric vector of true theta_1 states over time}
+#'     \item{\code{theta2}}{Numeric vector of true theta_2 states over time}
+#'     \item{\code{theta3}}{Numeric vector of true theta_3 states over time}
+#'     \item{\code{alpha}}{Numeric vector of true alpha_t probabilities over time}
+#'   }
+#'   If \code{NULL} (default), no true values are displayed.
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return Invisibly returns the input object \code{x}.
@@ -74,20 +90,37 @@
 #'   \item Optional observed proportions overlay (controlled by \code{show_obs})
 #' }
 #'
+#' \strong{Acceptance Rates (\code{type = "acceptance"}):}
+#' \itemize{
+#'   \item Metropolis-Hastings acceptance proportions over time
+#'   \item Min-Max range across MCMC iterations
+#'   \item Target acceptance rate reference line (uses the \code{target_acceptance}
+#'     value specified in \code{mcmc_binomial_localacceleration})
+#'   \item Only available if the model was run with \code{return_accept_prop = TRUE}
+#' }
+#'
 #' \strong{Complete Dashboard (\code{type = "all"}):}
 #'
-#' Generates 11 pages in total:
+#' Generates up to 11 pages in total:
 #' \itemize{
 #'   \item Pages 1-6: Individual parameter diagnostics (4 panels each)
 #'   \item Pages 7-9: Dynamic state trajectories and diagnostics
 #'   \item Page 10: Success probabilities alpha_t
-#'   \item Page 11: Acceptance rates (if available)
+#'   \item Page 11: Acceptance rates (only if available)
 #' }
 #'
 #' The \code{engine} argument allows choosing between base R graphics (lightweight,
 #' no dependencies) and ggplot2 (modern, publication-ready). If ggplot2 is not
 #' installed and \code{engine = "ggplot2"}, the function falls back to base graphics
 #' with a warning.
+#'
+#' @section Target Acceptance Rate:
+#'
+#' The acceptance rate plot displays a reference line showing the target acceptance
+#' proportion that was specified when running \code{mcmc_binomial_localacceleration}.
+#' This allows visual assessment of whether the adaptive Metropolis-Hastings algorithm
+#' successfully achieved the desired acceptance rate. The target value is automatically
+#' extracted from the model object and displayed in the plot legend.
 #'
 #' @section Controlling Observed Data Display:
 #'
@@ -148,7 +181,7 @@
 #' alpha_true <- plogis(theta1_true)
 #' y <- rbinom(n, size = n_trials, prob = alpha_true)
 #'
-#' ## Running the Gibbs sampler
+#' ## Running the Gibbs sampler with acceptance proportion tracking
 #' out <- mcmc_binomial_localacceleration(
 #'   y,
 #'   n_trials = n_trials,
@@ -167,12 +200,18 @@
 #'   prior_prec2_rate = 1,
 #'   prior_prec3_shape = 1600,
 #'   prior_prec3_rate = 1,
+#'   target_acceptance = 0.44,      # Specify target acceptance rate
+#'   return_accept_prop = TRUE,     # Enable acceptance proportion tracking
 #'   verbose = TRUE,
 #'   seed = 456
 #' )
 #'
-#' # Complete dashboard (11 pages)
+#' # Complete dashboard (11 pages, includes acceptance rates if available)
 #' plot(out, type = "all", engine = "base")
+#'
+#' # Only acceptance rates (will show target line at 0.44)
+#' plot(out, type = "acceptance")
+#' plot(out, type = "acceptance", engine = "ggplot2")
 #'
 #' # Diagnostics for specific parameters
 #' plot(out, type = "mcmc", which = 1:3)  # Initial states
@@ -186,6 +225,34 @@
 #'
 #' # Dynamic states only
 #' plot(out, type = "states")
+#'
+#' # Example with different target acceptance rate
+#' out2 <- mcmc_binomial_localacceleration(
+#'   y,
+#'   n_trials = n_trials,
+#'   burnin = 1000,
+#'   thinning = 50,
+#'   n_chain = 1000,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_theta02_mean = 0,
+#'   prior_theta02_prec = 1,
+#'   prior_theta03_mean = 0,
+#'   prior_theta03_prec = 1,
+#'   prior_prec1_shape = 100,
+#'   prior_prec1_rate = 1,
+#'   prior_prec2_shape = 400,
+#'   prior_prec2_rate = 1,
+#'   prior_prec3_shape = 1600,
+#'   prior_prec3_rate = 1,
+#'   target_acceptance = 0.30,      # Different target
+#'   return_accept_prop = TRUE,
+#'   verbose = TRUE,
+#'   seed = 789
+#' )
+#'
+#' # Acceptance plot will now show target line at 0.30
+#' plot(out2, type = "acceptance")
 #'
 #' # Save to multi-page PDF
 #' pdf("diagnostics.pdf", width = 10, height = 8)
@@ -205,13 +272,14 @@
 #'
 #' @export
 plot.binomial_localacceleration <- function(x,
-                                            type = c("all", "mcmc", "states", "alpha"),
+                                            type = c("all", "mcmc", "states", "alpha", "acceptance"),
                                             which = NULL,
                                             engine = c("base", "ggplot2"),
                                             ask = NULL,
                                             ci = TRUE,
                                             ci_level = 0.95,
                                             show_obs = TRUE,
+                                            true_values = NULL,
                                             ...) {
 
   type <- match.arg(type)
@@ -222,8 +290,20 @@ plot.binomial_localacceleration <- function(x,
     engine <- "base"
   }
 
+  # Check if acceptance proportions are available only when specifically requested
+  if (type == "acceptance" && is.null(x$accept_prop)) {
+    stop("Acceptance proportions are not available. ",
+         "Re-run mcmc_binomial_localacceleration() with return_accept_prop = TRUE.")
+  }
+
   if (is.null(ask)) {
     ask <- interactive() && type == "all"
+  }
+
+  # Extract target_acceptance with fallback for backward compatibility
+  target_acc <- attr(x, "target_acceptance")
+  if (is.null(target_acc)) {
+    target_acc <- 0.44  # Default fallback for objects created before this feature
   }
 
   if (engine == "base") {
@@ -235,22 +315,53 @@ plot.binomial_localacceleration <- function(x,
                oldask <- par(ask = TRUE)
                on.exit(par(oldask), add = TRUE)
              }
-             plot_mcmc_diagnostics_generic(x, which = NULL, engine = "base", ...)
-             plot_dynamic_states_generic_base(x, which = NULL, ci = ci,
-                                              ci_level = ci_level, ...)
-             plot_binomial_alpha_base(x, ci = ci, ci_level = ci_level,
-                                      show_obs = show_obs, ...)
-             # Plot acceptance rates if available
+             plot_mcmc_diagnostics_generic(x,
+                                           which = NULL,
+                                           engine = "base",
+                                           true_values = true_values,
+                                           ...)
+             plot_dynamic_states_generic_base(x,
+                                              which = NULL,
+                                              ci = ci,
+                                              ci_level = ci_level,
+                                              true_values = true_values,
+                                              ...)
+             plot_binomial_alpha_base(x,
+                                      ci = ci,
+                                      ci_level = ci_level,
+                                      show_obs = show_obs,
+                                      true_alpha = true_values$alpha,
+                                      ...)
+             # Plot acceptance rates only if available
              if (!is.null(x$accept_prop)) {
-               plot_acceptance_rates_base(x$accept_prop, ...)
+               plot_acceptance_rates_base(x$accept_prop,
+                                          target_acceptance = target_acc,
+                                          ...)
              }
            },
            mcmc = plot_mcmc_diagnostics_generic(x, which = which,
-                                                engine = "base", ...),
-           states = plot_dynamic_states_generic_base(x, which = which,
-                                                     ci = ci, ci_level = ci_level, ...),
-           alpha = plot_binomial_alpha_base(x, ci = ci, ci_level = ci_level,
-                                            show_obs = show_obs, ...)
+                                                engine = "base",
+                                                true_values = true_values,
+                                                ...),
+           states = plot_dynamic_states_generic_base(x,
+                                                     which = which,
+                                                     ci = ci,
+                                                     ci_level = ci_level,
+                                                     true_values = true_values,
+                                                     ...),
+           alpha = plot_binomial_alpha_base(x,
+                                            ci = ci,
+                                            ci_level = ci_level,
+                                            show_obs = show_obs,
+                                            true_alpha = true_values$alpha,
+                                            ...),
+           acceptance = {
+             if (!is.null(x$accept_prop)) {
+               plot_acceptance_rates_base(x$accept_prop,
+                                          target_acceptance = target_acc,
+                                          ...)
+             }
+           }
     )
   } else {
     switch(type,
@@ -265,10 +376,11 @@ plot.binomial_localacceleration <- function(x,
              if (ask) readline()
              plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level,
                                         show_obs = show_obs, ...)
-             # Plot acceptance rates if available
+             # Plot acceptance rates only if available
              if (!is.null(x$accept_prop)) {
                if (ask) readline()
-               plot_acceptance_rates_ggplot(x$accept_prop, ...)
+               plot_acceptance_rates_ggplot(x$accept_prop,
+                                            target_acceptance = target_acc, ...)
              }
            },
            mcmc = plot_mcmc_diagnostics_generic(x, which = which,
@@ -276,7 +388,13 @@ plot.binomial_localacceleration <- function(x,
            states = plot_dynamic_states_generic_ggplot(x, which = which,
                                                        ci = ci, ci_level = ci_level, ...),
            alpha = plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level,
-                                              show_obs = show_obs, ...)
+                                              show_obs = show_obs, ...),
+           acceptance = {
+             if (!is.null(x$accept_prop)) {
+               plot_acceptance_rates_ggplot(x$accept_prop,
+                                            target_acceptance = target_acc, ...)
+             }
+           }
     )
   }
 
@@ -286,9 +404,13 @@ plot.binomial_localacceleration <- function(x,
 
 #' Plot acceptance rates (base graphics)
 #'
+#' @param accept_prop Matrix of acceptance proportions
+#' @param target_acceptance Numeric, target acceptance rate for reference line
+#' @param ... Additional arguments (currently unused)
+#'
 #' @keywords internal
 #' @noRd
-plot_acceptance_rates_base <- function(accept_prop, ...) {
+plot_acceptance_rates_base <- function(accept_prop, target_acceptance = 0.44, ...) {
 
   min_acc <- apply(accept_prop, 2, min)
   max_acc <- apply(accept_prop, 2, max)
@@ -321,11 +443,12 @@ plot_acceptance_rates_base <- function(accept_prop, ...) {
     border = NA
   )
 
-  abline(h = 0.44, col = "red", lty = 2, lwd = 2)
+  abline(h = target_acceptance, col = "red", lty = 2, lwd = 2)
 
   legend(
     "topright",
-    legend = c("Median acceptance", "Min-Max range", "Target (0.44)"),
+    legend = c("Median acceptance", "Min-Max range",
+               sprintf("Target (%.2f)", target_acceptance)),
     col = c("black", "gray", "red"),
     lty = c(1, 1, 2),
     lwd = c(2, 8, 2),
@@ -343,9 +466,13 @@ plot_acceptance_rates_base <- function(accept_prop, ...) {
 
 #' Plot acceptance rates (ggplot2)
 #'
+#' @param accept_prop Matrix of acceptance proportions
+#' @param target_acceptance Numeric, target acceptance rate for reference line
+#' @param ... Additional arguments (currently unused)
+#'
 #' @keywords internal
 #' @noRd
-plot_acceptance_rates_ggplot <- function(accept_prop, ...) {
+plot_acceptance_rates_ggplot <- function(accept_prop, target_acceptance = 0.44, ...) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required for ggplot2 engine")
@@ -368,7 +495,7 @@ plot_acceptance_rates_ggplot <- function(accept_prop, ...) {
       linewidth = 1.2
     ) +
     ggplot2::geom_hline(
-      ggplot2::aes(yintercept = 0.44, linetype = "Target"),
+      ggplot2::aes(yintercept = target_acceptance, linetype = "Target"),
       color = "red",
       linewidth = 1
     ) +
@@ -383,7 +510,7 @@ plot_acceptance_rates_ggplot <- function(accept_prop, ...) {
     ) +
     ggplot2::scale_linetype_manual(
       values = c("Target" = "dashed"),
-      labels = "Target (0.44)"
+      labels = sprintf("Target (%.2f)", target_acceptance)
     ) +
     ggplot2::labs(
       title = "Metropolis-Hastings Acceptance Rates",

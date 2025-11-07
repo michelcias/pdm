@@ -57,18 +57,93 @@
 #'   \eqn{\eta_3} \tab `prior_prec3_rate`
 #' }
 #'
+#' \strong{Adaptive Metropolis-Hastings Algorithm:}
+#'
 #' Due to the non-linear observation model with logit link, the algorithm
 #' employs component-wise Metropolis-Hastings for sampling the latent states
 #' \eqn{\theta_{t,1}}, with adaptive proposal tuning based on acceptance proportions.
 #' Innovation precisions are sampled from conjugate Gamma posteriors.
 #'
-#' **Version 1.2 Enhancement:**
-#' This version introduces a configurable adaptation threshold parameter
-#' `min_deviation_threshold` that controls the sensitivity of proposal variance
-#' adjustments. The default value of `NULL` computes a practical threshold of
-#' `1.0/lag_update`, which triggers adaptation when the observed acceptance
-#' proportion deviates from the target by at least the amount corresponding
-#' to one additional acceptance/rejection in the sliding window.
+#' The adaptive algorithm uses a diminishing adaptation schedule that ensures
+#' theoretical convergence guarantees (Roberts and Rosenthal, 2007). Adaptation
+#' occurs every `lag_update` iterations (e.g., at MCMC iterations 50, 100, 150, ...
+#' if `lag_update = 50`), and only after sufficient history has been accumulated
+#' (iteration >= `lag_update`).
+#'
+#' At each adaptation point (MCMC iteration \eqn{m}), for each time point \eqn{t},
+#' the proposal log-scale standard deviation is updated according to:
+#'
+#' \deqn{\log(\sigma_t) \leftarrow \log(\sigma_t) + \text{sign}(\hat{p}_t - p^*) \cdot \gamma_m \cdot \mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}}}
+#'
+#' where:
+#' \itemize{
+#'   \item \eqn{\gamma_m} is the diminishing step size at MCMC iteration \eqn{m}, computed as
+#'     \deqn{\gamma_m = \min\left(\text{max\_step\_size}, \frac{\text{base\_adaptation\_rate}}{m^\xi}\right)}
+#'   \item \eqn{\xi} is the decay exponent (`decay_exponent`) applied to the MCMC iteration number
+#'   \item \eqn{\hat{p}_t} is the empirical acceptance proportion at time point \eqn{t}
+#'     over the last `lag_update` MCMC iterations
+#'   \item \eqn{p^*} is the target acceptance rate (`target_acceptance`)
+#'   \item \eqn{\tau} is the minimum deviation threshold (`min_deviation_threshold`)
+#'   \item \eqn{\mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}}} is an indicator function that equals 1 when
+#'     the condition is true, 0 otherwise
+#' }
+#'
+#' The update only occurs if the absolute deviation exceeds the threshold:
+#' \deqn{|\hat{p}_t - p^*| > \tau}
+#'
+#' This threshold-based approach prevents spurious updates due to random fluctuations.
+#'
+#' \strong{Parameter Interactions:}
+#'
+#' The adaptive tuning parameters interact as follows:
+#' \itemize{
+#'   \item \strong{lag_update}: Controls both the sliding window size for computing acceptance
+#'     proportions AND the frequency of adaptation. Adaptation occurs at MCMC iterations
+#'     \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Larger values
+#'     provide more stable estimates but slower adaptation. Common choices: 50-200 iterations.
+#'   \item \strong{target_acceptance}: Optimal acceptance rate for the Metropolis-Hastings
+#'     algorithm. The value 0.44 is theoretically optimal for univariate random-walk proposals
+#'     (Roberts and Rosenthal, 2001). Each time point \eqn{t} has its own acceptance rate
+#'     \eqn{\hat{p}_t}.
+#'   \item \strong{min_deviation_threshold}: Minimum deviation \eqn{|\hat{p}_t - p^*|}
+#'     required to trigger adaptation for time point \eqn{t}. The default `NULL` uses the
+#'     practical threshold \eqn{1/\text{lag\_update}}, corresponding to one additional
+#'     acceptance/rejection in the sliding window.
+#'   \item \strong{max_step_size}: Maximum allowed change in log-scale proposal variance
+#'     per adaptation step. Prevents extreme adjustments. Common choices: 0.01-0.1.
+#'   \item \strong{base_adaptation_rate}: Controls the overall speed of adaptation before
+#'     decay is applied. Higher values lead to faster but potentially less stable adaptation.
+#'     Common choices: 0.1-10.0.
+#'   \item \strong{decay_exponent}: Controls how quickly the adaptation step size diminishes
+#'     over MCMC iterations. As the algorithm runs, \eqn{\gamma_m} decreases according to
+#'     \eqn{m^{-\xi}}. Must be in (0.5, 1] for theoretical convergence guarantees.
+#'     Common choices: 0.5-0.8.
+#' }
+#'
+#' \strong{Example of Adaptation Schedule:}
+#'
+#' With `lag_update = 50`, `base_adaptation_rate = 1.0`, `decay_exponent = 0.6`,
+#' and `max_step_size = 0.1`:
+#' \itemize{
+#'   \item At MCMC iteration 50: \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}
+#'   \item At MCMC iteration 100: \eqn{\gamma_{100} = \min(0.1, 1.0/100^{0.6}) \approx 0.0631}
+#'   \item At MCMC iteration 1000: \eqn{\gamma_{1000} = \min(0.1, 1.0/1000^{0.6}) \approx 0.0158}
+#' }
+#'
+#' This ensures that adaptation becomes increasingly conservative as the chain progresses,
+#' satisfying theoretical requirements for ergodicity.
+#'
+#' \strong{Recommended Settings:}
+#'
+#' For most applications:
+#' \itemize{
+#'   \item `lag_update = 50`: Provides good balance between stability and responsiveness
+#'   \item `max_step_size = 0.1`: Conservative adjustment rate
+#'   \item `base_adaptation_rate = 1.0`: Moderate adaptation speed
+#'   \item `decay_exponent = 0.6`: Standard diminishing adaptation
+#'   \item `target_acceptance = 0.44`: Theoretically optimal for univariate proposals
+#'   \item `min_deviation_threshold = NULL`: Uses practical default of 1/lag_update
+#' }
 #'
 #' Burn‐in and thinning are applied so that exactly `n_chain` posterior samples
 #' are returned.
@@ -91,23 +166,32 @@
 #' @param prior_prec2_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_2}.
 #' @param prior_prec3_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_3}.
 #' @param prior_prec3_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_3}.
-#' @param lag_update Integer \eqn{\geq 1}, adaptation frequency for Metropolis-Hastings proposals (iterations).
-#' @param max_step_size Numeric > 0, maximum proposal step size for adaptive algorithm.
-#' @param base_adaptation_rate Numeric > 0, base adaptation rate for proposal scaling.
-#' @param decay_exponent Numeric > 0, adaptation decay exponent for diminishing adaptation.
-#' @param target_acceptance Numeric in (0,1), target acceptance proportion for Metropolis-Hastings.
-#' @param min_deviation_threshold Numeric \eqn{\geq 0}, minimum absolute deviation
-#'   from `target_acceptance` required to trigger log_sigma updates. If `NULL`
-#'   (default), computes practical threshold as `1.0/lag_update`. Set to `0.0`
-#'   for maximum sensitivity (update for any deviation). Larger values make
-#'   adaptation more conservative.
-#' @param return_log_sigma Logical, whether to return proposal scale diagnostics. Default is `FALSE`.
-#' @param return_accept_prop Logical, whether to return acceptance proportion diagnostics. Default is `FALSE`.
-#' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
-#' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.
-#' @param seed Optional integer used to set the random number generator seed. Default is `NULL`.
+#' @param lag_update Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
+#'   computing acceptance proportions. Default is 50.
+#' @param max_step_size Numeric > 0, maximum allowed change in log-scale proposal variance
+#'   per adaptation step. Default is 0.1.
+#' @param base_adaptation_rate Numeric > 0, base rate controlling adaptation speed.
+#'   Default is 1.0.
+#' @param decay_exponent Numeric in (0.5, 1], exponent controlling diminishing adaptation
+#'   rate. Default is 0.6.
+#' @param target_acceptance Numeric in (0,1), target acceptance proportion for
+#'   Metropolis-Hastings proposals. Default is 0.44 (theoretically optimal).
+#' @param min_deviation_threshold Numeric \eqn{\geq 0} or `NULL`, minimum absolute deviation
+#'   from `target_acceptance` required to trigger adaptation. If `NULL` (default),
+#'   uses practical threshold of `1.0/lag_update`. Set to `0.0` for maximum sensitivity
+#'   (adapt for any deviation). Larger values make adaptation more conservative.
+#' @param return_log_sigma Logical, whether to return proposal scale diagnostics
+#'   (log-scale proposal standard deviations). Default is `FALSE`.
+#' @param return_accept_prop Logical, whether to return acceptance proportion diagnostics
+#'   over iterations. Default is `FALSE`.
+#' @param verbose Logical, whether to display a progress bar during sampling. Default is `TRUE`.
+#' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`.
+#'   Default is `60`.
+#' @param seed Optional integer used to set the random number generator seed for
+#'   reproducibility. Default is `NULL` (no seed set).
 #'
-#' @return A list with components:
+#' @return An object of class \code{c("binomial_localacceleration", "pdm_mcmc", "list")}
+#'   with components:
 #' \describe{
 #'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
 #'   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,2}}.}
@@ -119,9 +203,21 @@
 #'   \item{`prec_theta2`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_2}.}
 #'   \item{`prec_theta3`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_3}.}
 #'   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
-#'   \item{`log_sigma`}{Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics (if requested).}
-#'   \item{`accept_prop`}{Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion diagnostics (if requested).}
+#'   \item{`log_sigma`}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics
+#'     (if `return_log_sigma = TRUE`).}
+#'   \item{`accept_prop`}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion
+#'     diagnostics (if `return_accept_prop = TRUE`).}
 #' }
+#'
+#' @references
+#' Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
+#' Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
+#'
+#' Roberts, G. O., & Rosenthal, J. S. (2007). Coupling and ergodicity of adaptive MCMC.
+#' \emph{Journal of Applied Probability}, 44(2), 458-475.
+#'
+#' Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
+#' \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
 #'
 #' @examples
 #' ## Description
@@ -200,678 +296,40 @@
 #' )
 #'
 #' ## Posterior analysis and visualization
-#' # The following plots show how to analyze the posterior distributions.
-#' # Point estimates are based on the median of posterior samples.
+#' # Use the plot method for comprehensive diagnostics
 #' \dontrun{
-#'   # --- 0. Plot the simulated data ---
-#'   plot(
-#'     y,
-#'     main = "Simulated binomial counts",
-#'     ylab = expression(y[t]),
-#'     xlab = "t",
-#'     type = "o",
-#'     pch = 16,
-#'     cex = 0.7
-#'   )
+#'   # Complete dashboard with all diagnostics
+#'   plot(out, type = "all")
 #'
-#'   # --- 1. Metropolis-Hastings Acceptance Proportion Diagnostics ---
-#'   # Extract acceptance proportion statistics for adaptive MCMC performance evaluation
-#'   acc <- out$accept_prop
-#'   min_acc <- apply(X = acc, MARGIN = 2, FUN = min)
-#'   max_acc <- apply(X = acc, MARGIN = 2, FUN = max)
-#'   med_acc <- apply(X = acc, MARGIN = 2, FUN = median)
+#'   # Individual diagnostic types
+#'   plot(out, type = "mcmc", which = 1:3)    # Parameter diagnostics
+#'   plot(out, type = "states")                # Dynamic states
+#'   plot(out, type = "alpha")                 # Success probabilities
+#'   plot(out, type = "acceptance")            # Acceptance rates
 #'
-#'   # Calculate y-axis range for optimal legend positioning
-#'   range_acc <- range(min_acc, max_acc)
-#'   r1_acc <- range_acc[1] - 0.05
-#'   r2_acc <- range_acc[2] + 0.15 * diff(range_acc)
+#' # Plot with true values for comparison
+#' true_params <- list(
+#'   theta01 = theta01_true,
+#'   theta02 = theta02_true,
+#'   theta03 = theta03_true,
+#'   prec1 = prec1_true,
+#'   prec2 = prec2_true,
+#'   prec3 = prec3_true,
+#'   theta1 = theta1_true,
+#'   theta2 = theta2_true,
+#'   theta3 = theta3_true,
+#'   alpha = alpha_true
+#' )
 #'
-#'   # Plot acceptance proportions with target reference line and confidence bands
-#'   plot(
-#'     med_acc,
-#'     type = "l",
-#'     col = "black",
-#'     lwd = 2,
-#'     xlab = "Time (t)",
-#'     ylab = "Acceptance Rate",
-#'     main = "Metropolis-Hastings Acceptance Rates",
-#'     ylim = c(r1_acc, r2_acc)
-#'   )
-#'
-#'   # Add confidence bands showing min-max range across MCMC iterations
-#'   polygon(
-#'     c(1:length(med_acc), rev(1:length(med_acc))),
-#'     c(min_acc, rev(max_acc)),
-#'     col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
-#'     border = NA
-#'   )
-#'
-#'   # Overlay target acceptance proportion
-#'   abline(h = 0.44, col = "red", lty = 2, lwd = 2)
-#'
-#'   # Add informative legend positioned in the expanded y-range
-#'   legend(
-#'     "topright",
-#'     legend = c("Median acceptance proportion", "Min-Max range", "Target proportion (0.44)"),
-#'     col = c("black", "gray", "red"),
-#'     lty = c(1, 1, 2),
-#'     lwd = c(2, 8, 2),
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 2. Latent Level Trajectories (theta[t,1]) on logit scale ---
-#'   # Visualize uncertainty by plotting multiple posterior trajectory samples
-#'   num_traj_to_plot <- 20
-#'
-#'   # Calculate y-axis range for optimal legend positioning
-#'   range_traj <- range(out$theta_1[1:num_traj_to_plot, ], theta1_true)
-#'   r1_traj <- range_traj[1] - 0.1 * diff(range_traj)
-#'   r2_traj <- range_traj[2] + 0.1 * diff(range_traj)
-#'
-#'   matplot(
-#'     t(out$theta_1[1:num_traj_to_plot, ]),
-#'     type = "l",
-#'     lty = 1,
-#'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.3),
-#'     xlab = "t",
-#'     ylab = expression(theta["t,1"]),
-#'     main = "Posterior trajectory samples for latent level (logit scale)",
-#'     ylim = c(r1_traj, r2_traj)
-#'   )
-#'   # Overlay the true trajectory
-#'   lines(theta1_true, col = "black", lwd = 3, lty = 2)
-#'   legend(
-#'     "topright",
-#'     legend = expression(theta["t,1"]),
-#'     col = "black",
-#'     lty = 2,
-#'     lwd = 3,
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 3. Latent Trend Trajectories (theta[t,2]) on logit scale ---
-#'   # Visualize uncertainty by plotting multiple posterior trajectory samples
-#'   range_traj2 <- range(out$theta_2[1:num_traj_to_plot, ], theta2_true)
-#'   r1_traj2 <- range_traj2[1] - 0.1 * diff(range_traj2)
-#'   r2_traj2 <- range_traj2[2] + 0.1 * diff(range_traj2)
-#'
-#'   matplot(
-#'     t(out$theta_2[1:num_traj_to_plot, ]),
-#'     type = "l",
-#'     lty = 1,
-#'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.3),
-#'     xlab = "t",
-#'     ylab = expression(theta["t,2"]),
-#'     main = "Posterior trajectory samples for latent trend (logit scale)",
-#'     ylim = c(r1_traj2, r2_traj2)
-#'   )
-#'   # Overlay the true trajectory
-#'   lines(theta2_true, col = "black", lwd = 3, lty = 2)
-#'   legend(
-#'     "topright",
-#'     legend = expression(theta["t,2"]),
-#'     col = "black",
-#'     lty = 2,
-#'     lwd = 3,
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 4. Latent Acceleration Trajectories (theta[t,3]) on logit scale ---
-#'   # Visualize uncertainty by plotting multiple posterior trajectory samples
-#'   range_traj3 <- range(out$theta_3[1:num_traj_to_plot, ], theta3_true)
-#'   r1_traj3 <- range_traj3[1] - 0.1 * diff(range_traj3)
-#'   r2_traj3 <- range_traj3[2] + 0.1 * diff(range_traj3)
-#'
-#'   matplot(
-#'     t(out$theta_3[1:num_traj_to_plot, ]),
-#'     type = "l",
-#'     lty = 1,
-#'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.3),
-#'     xlab = "t",
-#'     ylab = expression(theta["t,3"]),
-#'     main = "Posterior trajectory samples for latent acceleration (logit scale)",
-#'     ylim = c(r1_traj3, r2_traj3)
-#'   )
-#'   # Overlay the true trajectory
-#'   lines(theta3_true, col = "black", lwd = 3, lty = 2)
-#'   legend(
-#'     "topright",
-#'     legend = expression(theta["t,3"]),
-#'     col = "black",
-#'     lty = 2,
-#'     lwd = 3,
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 5. Latent Level Point Estimates (theta[t,1]) ---
-#'   # Plot true and estimated (median) latent level with credible intervals
-#'   theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
-#'   theta_1_q025 <- apply(X = out$theta_1, MARGIN = 2, FUN = quantile, probs = 0.025)
-#'   theta_1_q975 <- apply(X = out$theta_1, MARGIN = 2, FUN = quantile, probs = 0.975)
-#'
-#'   range_theta_1 <- range(theta_1_estimate, theta1_true, theta_1_q025, theta_1_q975)
-#'   r1_theta1 <- range_theta_1[1] - 0.1 * diff(range_theta_1)
-#'   r2_theta1 <- range_theta_1[2] + 0.3 * diff(range_theta_1)
-#'
-#'   plot(
-#'     theta1_true,
-#'     col = "red",
-#'     type = "l",
-#'     lwd = 3,
-#'     xlab = "t",
-#'     ylim = c(r1_theta1, r2_theta1),
-#'     lty = 2,
-#'     ylab = expression(theta["t,1"]),
-#'     main = "Latent level estimation (logit scale)"
-#'   )
-#'
-#'   # Add 95% credible intervals
-#'   polygon(
-#'     c(1:length(theta_1_estimate), rev(1:length(theta_1_estimate))),
-#'     c(theta_1_q025, rev(theta_1_q975)),
-#'     col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
-#'     border = NA
-#'   )
-#'
-#'   # Add point estimate
-#'   lines(theta_1_estimate, col = "black", lwd = 2)
-#'
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(theta["t,1"]),
-#'       expression(hat(theta)["t,1"]),
-#'       "95% Credible Interval"
-#'     ),
-#'     col = c("red", "black", "gray"),
-#'     lty = c(2, 1, 1),
-#'     lwd = c(3, 2, 8),
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 6. Latent Trend Point Estimates (theta[t,2]) ---
-#'   # Plot true and estimated (median) latent trend with credible intervals
-#'   theta_2_estimate <- apply(X = out$theta_2, MARGIN = 2, FUN = median)
-#'   theta_2_q025 <- apply(X = out$theta_2, MARGIN = 2, FUN = quantile, probs = 0.025)
-#'   theta_2_q975 <- apply(X = out$theta_2, MARGIN = 2, FUN = quantile, probs = 0.975)
-#'
-#'   range_theta_2 <- range(theta_2_estimate, theta2_true, theta_2_q025, theta_2_q975)
-#'   r1_theta2 <- range_theta_2[1] - 0.1 * diff(range_theta_2)
-#'   r2_theta2 <- range_theta_2[2] + 0.3 * diff(range_theta_2)
-#'
-#'   plot(
-#'     theta2_true,
-#'     col = "red",
-#'     type = "l",
-#'     lwd = 3,
-#'     xlab = "t",
-#'     ylim = c(r1_theta2, r2_theta2),
-#'     lty = 2,
-#'     ylab = expression(theta["t,2"]),
-#'     main = "Latent trend estimation (logit scale)"
-#'   )
-#'
-#'   # Add 95% credible intervals
-#'   polygon(
-#'     c(1:length(theta_2_estimate), rev(1:length(theta_2_estimate))),
-#'     c(theta_2_q025, rev(theta_2_q975)),
-#'     col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
-#'     border = NA
-#'   )
-#'
-#'   # Add point estimate
-#'   lines(theta_2_estimate, col = "black", lwd = 2)
-#'
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(theta["t,2"]),
-#'       expression(hat(theta)["t,2"]),
-#'       "95% Credible Interval"
-#'     ),
-#'     col = c("red", "black", "gray"),
-#'     lty = c(2, 1, 1),
-#'     lwd = c(3, 2, 8),
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 7. Latent Acceleration Point Estimates (theta[t,3]) ---
-#'   # Plot true and estimated (median) latent acceleration with credible intervals
-#'   theta_3_estimate <- apply(X = out$theta_3, MARGIN = 2, FUN = median)
-#'   theta_3_q025 <- apply(X = out$theta_3, MARGIN = 2, FUN = quantile, probs = 0.025)
-#'   theta_3_q975 <- apply(X = out$theta_3, MARGIN = 2, FUN = quantile, probs = 0.975)
-#'
-#'   range_theta_3 <- range(theta_3_estimate, theta3_true, theta_3_q025, theta_3_q975)
-#'   r1_theta3 <- range_theta_3[1] - 0.1 * diff(range_theta_3)
-#'   r2_theta3 <- range_theta_3[2] + 0.3 * diff(range_theta_3)
-#'
-#'   plot(
-#'     theta3_true,
-#'     col = "red",
-#'     type = "l",
-#'     lwd = 3,
-#'     xlab = "t",
-#'     ylim = c(r1_theta3, r2_theta3),
-#'     lty = 2,
-#'     ylab = expression(theta["t,3"]),
-#'     main = "Latent acceleration estimation (logit scale)"
-#'   )
-#'
-#'   # Add 95% credible intervals
-#'   polygon(
-#'     c(1:length(theta_3_estimate), rev(1:length(theta_3_estimate))),
-#'     c(theta_3_q025, rev(theta_3_q975)),
-#'     col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
-#'     border = NA
-#'   )
-#'
-#'   # Add point estimate
-#'   lines(theta_3_estimate, col = "black", lwd = 2)
-#'
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(theta["t,3"]),
-#'       expression(hat(theta)["t,3"]),
-#'       "95% Credible Interval"
-#'     ),
-#'     col = c("red", "black", "gray"),
-#'     lty = c(2, 1, 1),
-#'     lwd = c(3, 2, 8),
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 8. Success Probabilities (alpha[t]) ---
-#'   # Plot true and estimated (median) success probabilities with uncertainty
-#'   alpha_estimate <- apply(X = out$alpha, MARGIN = 2, FUN = median)
-#'   alpha_q025 <- apply(X = out$alpha, MARGIN = 2, FUN = quantile, probs = 0.025)
-#'   alpha_q975 <- apply(X = out$alpha, MARGIN = 2, FUN = quantile, probs = 0.975)
-#'
-#'   # Calculate y-axis range for optimal legend positioning
-#'   range_alpha <- range(alpha_true, alpha_estimate, alpha_q025, alpha_q975)
-#'   r1_alpha <- max(0, range_alpha[1] - 0.05)  # Ensure lower bound is at least 0
-#'   r2_alpha <- min(1, range_alpha[2] + 0.3 * diff(range_alpha))  # Ensure upper bound is at most 1
-#'
-#'   plot(
-#'     alpha_true,
-#'     col = "red",
-#'     type = "l",
-#'     lwd = 3,
-#'     xlab = "t",
-#'     ylim = c(r1_alpha, r2_alpha),
-#'     lty = 2,
-#'     ylab = expression(alpha[t]),
-#'     main = "Success probabilities"
-#'   )
-#'
-#'   # Add 95% credible intervals
-#'   polygon(
-#'     c(1:length(alpha_estimate), rev(1:length(alpha_estimate))),
-#'     c(alpha_q025, rev(alpha_q975)),
-#'     col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
-#'     border = NA
-#'   )
-#'
-#'   # Add point estimate
-#'   lines(alpha_estimate, col = "black", lwd = 2)
-#'
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(alpha[t]),
-#'       expression(hat(alpha)[t]),
-#'       "95% Credible Interval"
-#'     ),
-#'     col = c("red", "black", "gray"),
-#'     lty = c(2, 1, 1),
-#'     lwd = c(3, 2, 8),
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 9. Initial Level State (theta[0,1]) Diagnostics ---
-#'   # Trace plot for theta[0,1] to assess MCMC convergence
-#'   range_theta_01 <- range(out$theta_01)
-#'   r1_theta01 <- range_theta_01[1] - 0.1 * diff(range_theta_01)
-#'   r2_theta01 <- range_theta_01[2] + 0.3 * diff(range_theta_01)
-#'
-#'   plot.ts(
-#'     out$theta_01,
-#'     ylab = expression(theta["0,1"]),
-#'     main = "Trace plot of initial level state",
-#'     xlab = "Iterations",
-#'     col = "gray",
-#'     ylim = c(r1_theta01, r2_theta01)
-#'   )
-#'   abline(
-#'     h = c(theta01_true, median(out$theta_01)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # Posterior density estimate for theta[0,1]
-#'   range_dens_theta01 <- range(out$theta_01)
-#'   r1_dens_theta01 <- range_dens_theta01[1] - 0.1 * diff(range_dens_theta01)
-#'   r2_dens_theta01 <- range_dens_theta01[2] + 0.25 * diff(range_dens_theta01)
-#'
-#'   plot(
-#'     density(out$theta_01),
-#'     main = "Posterior density estimate of initial level state",
-#'     xlab = expression(theta["0,1"]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     xlim = c(r1_dens_theta01, r2_dens_theta01)
-#'   )
-#'   abline(
-#'     v = c(theta01_true, median(out$theta_01)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 10. Initial Trend State (theta[0,2]) Diagnostics ---
-#'   # Trace plot for theta[0,2] to assess MCMC convergence
-#'   range_theta_02 <- range(out$theta_02)
-#'   r1_theta02 <- range_theta_02[1] - 0.1 * diff(range_theta_02)
-#'   r2_theta02 <- range_theta_02[2] + 0.3 * diff(range_theta_02)
-#'
-#'   plot.ts(
-#'     out$theta_02,
-#'     ylab = expression(theta["0,2"]),
-#'     main = "Trace plot of initial trend state",
-#'     xlab = "Iterations",
-#'     col = "gray",
-#'     ylim = c(r1_theta02, r2_theta02)
-#'   )
-#'   abline(
-#'     h = c(theta02_true, median(out$theta_02)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["0,2"]), expression(hat(theta)["0,2"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # Posterior density estimate for theta[0,2]
-#'   range_dens_theta02 <- range(out$theta_02)
-#'   r1_dens_theta02 <- range_dens_theta02[1] - 0.1 * diff(range_dens_theta02)
-#'   r2_dens_theta02 <- range_dens_theta02[2] + 0.25 * diff(range_dens_theta02)
-#'
-#'   plot(
-#'     density(out$theta_02),
-#'     main = "Posterior density estimate of initial trend state",
-#'     xlab = expression(theta["0,2"]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     xlim = c(r1_dens_theta02, r2_dens_theta02)
-#'   )
-#'   abline(
-#'     v = c(theta02_true, median(out$theta_02)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["0,2"]), expression(hat(theta)["0,2"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 11. Initial Acceleration State (theta[0,3]) Diagnostics ---
-#'   # Trace plot for theta[0,3] to assess MCMC convergence
-#'   range_theta_03 <- range(out$theta_03)
-#'   r1_theta03 <- range_theta_03[1] - 0.1 * diff(range_theta_03)
-#'   r2_theta03 <- range_theta_03[2] + 0.3 * diff(range_theta_03)
-#'
-#'   plot.ts(
-#'     out$theta_03,
-#'     ylab = expression(theta["0,3"]),
-#'     main = "Trace plot of initial acceleration state",
-#'     xlab = "Iterations",
-#'     col = "gray",
-#'     ylim = c(r1_theta03, r2_theta03)
-#'   )
-#'   abline(
-#'     h = c(theta03_true, median(out$theta_03)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["0,3"]), expression(hat(theta)["0,3"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # Posterior density estimate for theta[0,3]
-#'   range_dens_theta03 <- range(out$theta_03)
-#'   r1_dens_theta03 <- range_dens_theta03[1] - 0.1 * diff(range_dens_theta03)
-#'   r2_dens_theta03 <- range_dens_theta03[2] + 0.25 * diff(range_dens_theta03)
-#'
-#'   plot(
-#'     density(out$theta_03),
-#'     main = "Posterior density estimate of initial acceleration state",
-#'     xlab = expression(theta["0,3"]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     xlim = c(r1_dens_theta03, r2_dens_theta03)
-#'   )
-#'   abline(
-#'     v = c(theta03_true, median(out$theta_03)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["0,3"]), expression(hat(theta)["0,3"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 12. Level Innovation Precision (1/W[1]) Diagnostics ---
-#'   # Trace plot for 1/W[1] to assess parameter convergence
-#'   range_prec_theta1 <- range(out$prec_theta1)
-#'   r1_prec1 <- range_prec_theta1[1] - 0.1 * diff(range_prec_theta1)
-#'   r2_prec1 <- range_prec_theta1[2] + 0.25 * diff(range_prec_theta1)
-#'
-#'   plot.ts(
-#'     out$prec_theta1,
-#'     ylab = expression(1/W[1]),
-#'     main = "Trace plot of level innovation precision",
-#'     xlab = "Iterations",
-#'     col = "gray",
-#'     ylim = c(r1_prec1, r2_prec1)
-#'   )
-#'   abline(
-#'     h = c(prec1_true, median(out$prec_theta1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # Posterior density estimate for 1/W[1]
-#'   range_dens_prec1 <- range(out$prec_theta1)
-#'   r1_dens_prec1 <- range_dens_prec1[1] - 0.1 * diff(range_dens_prec1)
-#'   r2_dens_prec1 <- range_dens_prec1[2] + 0.25 * diff(range_dens_prec1)
-#'
-#'   plot(
-#'     density(out$prec_theta1),
-#'     main = "Posterior density estimate of level innovation precision",
-#'     xlab = expression(W[1]^-1),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     xlim = c(r1_dens_prec1, r2_dens_prec1)
-#'   )
-#'   abline(
-#'     v = c(prec1_true, median(out$prec_theta1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 13. Trend Innovation Precision (1/W[2]) Diagnostics ---
-#'   # Trace plot for 1/W[2] to assess parameter convergence
-#'   range_prec_theta2 <- range(out$prec_theta2)
-#'   r1_prec2 <- range_prec_theta2[1] - 0.1 * diff(range_prec_theta2)
-#'   r2_prec2 <- range_prec_theta2[2] + 0.25 * diff(range_prec_theta2)
-#'
-#'   plot.ts(
-#'     out$prec_theta2,
-#'     ylab = expression(1/W[2]),
-#'     main = "Trace plot of trend innovation precision",
-#'     xlab = "Iterations",
-#'     col = "gray",
-#'     ylim = c(r1_prec2, r2_prec2)
-#'   )
-#'   abline(
-#'     h = c(prec2_true, median(out$prec_theta2)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(W[2]^-1), expression(hat(W)[2]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # Posterior density estimate for 1/W[2]
-#'   range_dens_prec2 <- range(out$prec_theta2)
-#'   r1_dens_prec2 <- range_dens_prec2[1] - 0.1 * diff(range_dens_prec2)
-#'   r2_dens_prec2 <- range_dens_prec2[2] + 0.25 * diff(range_dens_prec2)
-#'
-#'   plot(
-#'     density(out$prec_theta2),
-#'     main = "Posterior density estimate of trend innovation precision",
-#'     xlab = expression(W[2]^-1),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     xlim = c(r1_dens_prec2, r2_dens_prec2)
-#'   )
-#'   abline(
-#'     v = c(prec2_true, median(out$prec_theta2)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(W[2]^-1), expression(hat(W)[2]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 14. Acceleration Innovation Precision (1/W[3]) Diagnostics ---
-#'   # Trace plot for 1/W[3] to assess parameter convergence
-#'   range_prec_theta3 <- range(out$prec_theta3)
-#'   r1_prec3 <- range_prec_theta3[1] - 0.1 * diff(range_prec_theta3)
-#'   r2_prec3 <- range_prec_theta3[2] + 0.25 * diff(range_prec_theta3)
-#'
-#'   plot.ts(
-#'     out$prec_theta3,
-#'     ylab = expression(1/W[3]),
-#'     main = "Trace plot of acceleration innovation precision",
-#'     xlab = "Iterations",
-#'     col = "gray",
-#'     ylim = c(r1_prec3, r2_prec3)
-#'   )
-#'   abline(
-#'     h = c(prec3_true, median(out$prec_theta3)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(W[3]^-1), expression(hat(W)[3]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
-#'
-#'   # Posterior density estimate for 1/W[3]
-#'   range_dens_prec3 <- range(out$prec_theta3)
-#'   r1_dens_prec3 <- range_dens_prec3[1] - 0.1 * diff(range_dens_prec3)
-#'   r2_dens_prec3 <- range_dens_prec3[2] + 0.25 * diff(range_dens_prec3)
-#'
-#'   plot(
-#'     density(out$prec_theta3),
-#'     main = "Posterior density estimate of acceleration innovation precision",
-#'     xlab = expression(W[3]^-1),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     xlim = c(r1_dens_prec3, r2_dens_prec3)
-#'   )
-#'   abline(
-#'     v = c(prec3_true, median(out$prec_theta3)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(W[3]^-1), expression(hat(W)[3]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n",
-#'     lwd = 2
-#'   )
+#' plot(out, type = "all", engine = "base", true_values = true_params)
+#' plot(out, type = "mcmc", which = 1:3, true_values = true_params)
+#' plot(out, type = "states", true_values = true_params)
+#' plot(out, type = "alpha", true_values = true_params)
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_normal_localacceleration}
+#' @seealso \code{\link{plot.binomial_localacceleration}},
+#'   \code{\link{print.binomial_localacceleration}},
+#'   \link[pdm]{mcmc_normal_localacceleration}
 #' @export
 mcmc_binomial_localacceleration <- function(y,
                                             n_trials,
@@ -891,16 +349,16 @@ mcmc_binomial_localacceleration <- function(y,
                                             prior_prec3_shape,
                                             prior_prec3_rate,
                                             lag_update = 50,
-                                            max_step_size = 2.0,
-                                            base_adaptation_rate = 0.01,
+                                            max_step_size = 0.1,
+                                            base_adaptation_rate = 1,
                                             decay_exponent = 0.6,
-                                     target_acceptance = 0.44,
-                                     min_deviation_threshold = NULL,
-                                     return_log_sigma = FALSE,
-                                     return_accept_prop = FALSE,
-                                     verbose = FALSE,
-                                     bar_width = 60,
-                                     seed = NULL) {
+                                            target_acceptance = 0.44,
+                                            min_deviation_threshold = NULL,
+                                            return_log_sigma = FALSE,
+                                            return_accept_prop = FALSE,
+                                            verbose = TRUE,
+                                            bar_width = 60,
+                                            seed = NULL) {
 
   # --- Input Validation ---
   if (!is.numeric(y)) stop("`y` must be a numeric vector")
@@ -1047,7 +505,8 @@ mcmc_binomial_localacceleration <- function(y,
     burnin = burnin,
     thinning = thinning,
     y = y,
-    n_trials = n_trials
+    n_trials = n_trials,
+    target_acceptance = target_acceptance
   )
 
   result <- validate_binomial_localacceleration(result)

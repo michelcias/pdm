@@ -12,6 +12,7 @@
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
 #' @param n_trials Numeric scalar, number of trials for each binomial observation.
+#' @param target_acceptance Numeric, target acceptance proportion for Metropolis-Hastings.
 #'
 #' @return An object of class \code{c("binomial_localacceleration", "pdm_mcmc", "list")}
 #'   with the following structure:
@@ -29,6 +30,7 @@
 #'         \item \code{link}: \code{"logit"} (link function)
 #'         \item \code{y}: Original observed data
 #'         \item \code{n_trials}: Number of trials
+#'         \item \code{target_acceptance}: Target acceptance proportion
 #'       }
 #'     }
 #'   }
@@ -52,7 +54,8 @@ new_binomial_localacceleration <- function(result,
                                            burnin,
                                            thinning,
                                            y,
-                                           n_trials) {
+                                           n_trials,
+                                           target_acceptance) {
 
   # Validate that result is a non-empty list
   if (!is.list(result) || length(result) == 0) {
@@ -78,6 +81,10 @@ new_binomial_localacceleration <- function(result,
   if (!is.numeric(n_trials) || length(n_trials) != 1 || n_trials <= 0) {
     stop("Internal error: n_trials must be a positive scalar")
   }
+  if (!is.numeric(target_acceptance) || length(target_acceptance) != 1 ||
+      target_acceptance <= 0 || target_acceptance >= 1) {
+    stop("Internal error: target_acceptance must be a scalar in (0,1)")
+  }
 
   # Add class hierarchy
   class(result) <- c("binomial_localacceleration", "pdm_mcmc", "list")
@@ -91,6 +98,7 @@ new_binomial_localacceleration <- function(result,
   attr(result, "link") <- "logit"  # Binomial model uses logit link
   attr(result, "y") <- y  # Store original data for plotting
   attr(result, "n_trials") <- as.numeric(n_trials)  # Store number of trials
+  attr(result, "target_acceptance") <- as.numeric(target_acceptance)  # Store target acceptance
 
   return(result)
 }
@@ -347,6 +355,15 @@ validate_binomial_localacceleration <- function(x) {
   if (!is.null(thinning)) {
     if (!is.numeric(thinning) || length(thinning) != 1 || thinning < 1) {
       stop("Attribute 'thinning' must be a positive scalar >= 1")
+    }
+  }
+
+  # 13. Validate target_acceptance attribute
+  target_acceptance <- attr(x, "target_acceptance")
+  if (!is.null(target_acceptance)) {
+    if (!is.numeric(target_acceptance) || length(target_acceptance) != 1 ||
+        target_acceptance <= 0 || target_acceptance >= 1) {
+      stop("Attribute 'target_acceptance' must be a scalar in (0,1)")
     }
   }
 

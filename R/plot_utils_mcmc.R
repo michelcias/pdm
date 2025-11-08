@@ -463,13 +463,13 @@ plot_mcmc_diagnostics_generic <- function(x,
     true_value <- NULL
 
     if (!is.null(true_values) && engine == "base") {
-      param_name <- param_info$name
-      if (param_name == "theta_01") true_value <- true_values$theta01
-      if (param_name == "theta_02") true_value <- true_values$theta02
-      if (param_name == "theta_03") true_value <- true_values$theta03
-      if (param_name == "prec_1") true_value <- true_values$prec1
-      if (param_name == "prec_2") true_value <- true_values$prec2
-      if (param_name == "prec_3") true_value <- true_values$prec3
+      param_name <- param_info$name_str
+      if (param_name == "theta_01") true_value <- true_values$theta_01
+      if (param_name == "theta_02") true_value <- true_values$theta_02
+      if (param_name == "theta_03") true_value <- true_values$theta_03
+      if (param_name == "W_1^{-1}") true_value <- true_values$prec_theta1
+      if (param_name == "W_2^{-1}") true_value <- true_values$prec_theta2
+      if (param_name == "W_3^{-1}") true_value <- true_values$prec_theta3
     }
 
     if (engine == "base") {

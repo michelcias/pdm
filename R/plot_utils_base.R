@@ -83,8 +83,12 @@ plot_param_diagnostics_base <- function(param_samples,
   grid()
 
   # 2. Autocorrelation Function
-  acf(param_samples, main = "Autocorrelation",
-      col = "steelblue", lwd = 2)
+  acf(param_samples,
+      main = "",
+      col = "steelblue",
+      lwd = 2)
+  title(main = "Autocorrelation")
+  grid()
 
   # 3. Posterior Density
   dens <- density(param_samples)
@@ -94,13 +98,31 @@ plot_param_diagnostics_base <- function(param_samples,
   segments(x0 = median(param_samples), y0 = 0,
            x1 = median(param_samples), y1 = max(dens$y),
            col = "red", lwd = 2, lty = 2)
-  segments(x0 = mean(param_samples), y0 = 0,
-           x1 = mean(param_samples), y1 = max(dens$y),
-           col = "blue", lwd = 2, lty = 3)
-  legend("topright",
-         legend = c("Median", "Mean"),
-         col = c("red", "blue"),
-         lty = c(2, 3), lwd = 2, bty = "n", cex = 0.8)
+  if (!is.null(true_value)) {
+    segments(x0 = true_value, y0 = 0,
+             x1 = true_value, y1 = max(dens$y),
+             col = "blue", lwd = 2, lty = 3)
+    legend("topright",
+           legend = c("Median", "True Value"),
+           col = c("red", "blue"),
+           lwd = c(2, 2),
+           horiz = TRUE,
+           lty = c(2, 3),
+           bty = "n", cex = 0.8)
+  } else {
+    legend("topright",
+           legend = "Median",
+           col = "red",
+           lwd = 2,
+           horiz = TRUE,
+           lty = 2,
+           bty = "n", cex = 0.8)
+  }
+  grid()
+  # legend("topright",
+  #        legend = c("Median", "Mean"),
+  #        col = c("red", "blue"),
+  #        lty = c(2, 3), lwd = 2, bty = "n", cex = 0.8)
 
   # 4. Running Mean (Convergence Check)
   running_mean <- cumsum(param_samples) / seq_along(param_samples)
@@ -337,7 +359,7 @@ plot_alpha_trajectory_base <- function(alpha,
 
   # Add true alpha (if provided - for simulations)
   if (!is.null(true_alpha)) {
-    lines(time_grid, true_alpha, lwd = 2.5, col = "brown", lty = 2)
+    lines(time_grid, true_alpha, lwd = 2.5, col = "red", lty = 2)
   }
 
   # Add observed data (if provided and show_obs = TRUE)
@@ -364,7 +386,7 @@ plot_alpha_trajectory_base <- function(alpha,
 
   if (!is.null(true_alpha)) {
     legend_items <- c(expression(alpha[t]), legend_items)
-    legend_cols  <- c("brown", legend_cols)
+    legend_cols  <- c("red", legend_cols)
     legend_lty   <- c(2, legend_lty)
     legend_lwd   <- c(2, legend_lwd)
     legend_pch   <- c(NA, legend_pch)
@@ -537,12 +559,74 @@ plot_binomial_alpha_base <- function(x,
     obs_data = obs_data,
     obs_label = "Observed proportions",
     show_obs = show_obs,
-    obs_color = grDevices::rgb(0.0, 0.95, 0.0, 0.3),
+    obs_color = grDevices::rgb(0.95, 0.5, 0.0, 0.5),
     obs_pch = 16,
     obs_cex = 0.6,
     true_alpha = true_alpha,
     ...
   )
+
+  invisible(NULL)
+}
+
+
+#' Plot acceptance rates
+#'
+#' @param accept_prop Matrix of acceptance proportions
+#' @param target_acceptance Numeric, target acceptance rate for reference line
+#' @param ... Additional arguments (currently unused)
+#'
+#' @keywords internal
+#' @noRd
+plot_acceptance_rates_base <- function(accept_prop, target_acceptance = 0.44, ...) {
+
+  min_acc <- apply(accept_prop, 2, min)
+  max_acc <- apply(accept_prop, 2, max)
+  med_acc <- apply(accept_prop, 2, median)
+
+  range_acc <- range(min_acc, max_acc)
+  r1_acc <- range_acc[1] - 0.05
+  r2_acc <- range_acc[2] + 0.25 * diff(range_acc)
+
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar))
+
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
+
+  plot(
+    med_acc,
+    type = "l",
+    col = "black",
+    lwd = 2,
+    xlab = "Time (t)",
+    ylab = "Acceptance Rate",
+    ylim = c(r1_acc, r2_acc),
+    main = ""
+  )
+
+  polygon(
+    c(1:length(med_acc), rev(1:length(med_acc))),
+    c(min_acc, rev(max_acc)),
+    col = grDevices::rgb(0.7, 0.7, 0.7, alpha = 0.3),
+    border = NA
+  )
+
+  abline(h = target_acceptance, col = "red", lty = 2, lwd = 2)
+
+  legend(
+    "topright",
+    legend = c("Median acceptance", "Min-Max range",
+               sprintf("Target (%.2f)", target_acceptance)),
+    col = c("black", "gray", "red"),
+    lty = c(1, 1, 2),
+    lwd = c(2, 8, 2),
+    horiz = TRUE,
+    bty = "n"
+  )
+
+  grid()
+
+  mtext("Metropolis-Hastings Acceptance Rates", outer = TRUE, cex = 1.3, font = 2)
 
   invisible(NULL)
 }
@@ -746,7 +830,7 @@ validate_ci_level <- function(ci_level) {
 }
 
 # =============================================================================
-# Generic Dashboard Functions (Base Graphics)
+# Generic Dashboard Functions
 # =============================================================================
 
 #' Generic complete dashboard for mixture models (base graphics)

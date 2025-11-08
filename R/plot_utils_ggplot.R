@@ -692,7 +692,83 @@ plot_binomial_alpha_ggplot <- function(x, ci = TRUE, ci_level = 0.95,
 }
 
 
-#' Plot Bernoulli probabilities (ggplot2)
+#' Plot acceptance proportions
+#'
+#' @param accept_prop Matrix of acceptance proportions
+#' @param target_acceptance Numeric, target acceptance rate for reference line
+#' @param ... Additional arguments (currently unused)
+#'
+#' @keywords internal
+#' @noRd
+plot_acceptance_rates_ggplot <- function(accept_prop, target_acceptance = 0.44, ...) {
+
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for ggplot2 engine")
+  }
+
+  df_acc <- data.frame(
+    time = seq_len(ncol(accept_prop)),
+    median = apply(accept_prop, 2, median),
+    min = apply(accept_prop, 2, min),
+    max = apply(accept_prop, 2, max)
+  )
+
+  p <- ggplot2::ggplot(df_acc, ggplot2::aes(x = .data$time)) +
+    ggplot2::geom_ribbon(
+      ggplot2::aes(ymin = .data$min, ymax = .data$max, fill = "Range"),
+      alpha = 0.3
+    ) +
+    ggplot2::geom_line(
+      ggplot2::aes(y = .data$median, colour = "Median"),
+      linewidth = 1.2
+    ) +
+    ggplot2::geom_hline(
+      ggplot2::aes(yintercept = target_acceptance, linetype = "Target"),
+      color = "red",
+      linewidth = 1
+    ) +
+    ggplot2::scale_colour_manual(
+      values = c("Median" = "black"),
+      breaks = "Median"
+    ) +
+    ggplot2::scale_fill_manual(
+      values = c("Range" = "gray"),
+      breaks = "Range",
+      labels = "Min-Max range"
+    ) +
+    ggplot2::scale_linetype_manual(
+      values = c("Target" = "dashed"),
+      labels = sprintf("Target (%.2f)", target_acceptance)
+    ) +
+    ggplot2::labs(
+      title = "Metropolis-Hastings Acceptance Rates",
+      x = "Time (t)",
+      y = "Acceptance Rate",
+      colour = NULL,
+      fill = NULL,
+      linetype = NULL
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(color = "grey85"),
+      panel.grid.minor = ggplot2::element_line(color = "grey92"),
+      plot.title = ggplot2::element_text(face = "bold", size = 13),
+      legend.position = "top",
+      legend.direction = "horizontal"
+    ) +
+    ggplot2::guides(
+      colour = ggplot2::guide_legend(order = 1),
+      fill = ggplot2::guide_legend(order = 2),
+      linetype = ggplot2::guide_legend(order = 3)
+    )
+
+  print(p)
+
+  invisible(NULL)
+}
+
+
+#' Plot Bernoulli probabilities
 #'
 #' @description Wrapper function for plotting Bernoulli model probabilities
 #'   (alpha_t) using ggplot2. Used by all probit Bernoulli model types.
@@ -852,7 +928,7 @@ plot_bernoulli_alpha_ggplot <- function(x, ci = TRUE, ci_level = 0.95,
 }
 
 
-#' Plot mixture weight trajectory with credible intervals (ggplot2)
+#' Plot mixture weight trajectory with credible intervals
 #'
 #' @description Creates a two-page visualization of mixture weights using ggplot2:
 #'   Page 1 shows alpha_t trajectory with credible bands,
@@ -897,10 +973,10 @@ plot_mixture_weights_ggplot <- function(alpha, z, ci = TRUE,
 
 
 # =============================================================================
-# Generic Dashboard Functions (ggplot2 Graphics)
+# Generic Dashboard Functions
 # =============================================================================
 
-#' Generic complete dashboard for mixture models (ggplot2)
+#' Generic complete dashboard for mixture models
 #'
 #' @description Creates a comprehensive multi-page diagnostic dashboard
 #'   for any mixture model type using ggplot2, automatically adapting to
@@ -966,7 +1042,7 @@ plot_all_mixture_generic_ggplot <- function(x, ask = TRUE, ci = TRUE,
 }
 
 
-#' Generic dynamic states plotting dispatcher (ggplot2)
+#' Generic dynamic states plotting dispatcher
 #'
 #' @description Orchestrates dynamic state plotting for any model order
 #'   using ggplot2, creating appropriate pages for trajectories, innovations,

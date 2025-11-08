@@ -19,16 +19,14 @@ Test whether an object is of class \code{binomial_locallevel}.
 \examples{
 \dontrun{
 ## Simulate data (same setup as ?mcmc_binomial_locallevel)
+set.seed(123)
 n <- 500
 n_trials <- 20
 
-theta0_true <- 0.5
-prec1_true <- 100
+# Generate true probabilities
+alpha_true <-  (sin(2 * pi * seq_len(n) / n) + 2) / 4
 
-set.seed(123)
-u1 <- rnorm(n, sd = sqrt(1/prec1_true))
-theta1_true <- cumsum(c(theta0_true, u1))[-1]
-alpha_true <- plogis(theta1_true)
+# Generate binomial observations
 y <- rbinom(n, size = n_trials, prob = alpha_true)
 
 out <- mcmc_binomial_locallevel(
@@ -46,11 +44,11 @@ out <- mcmc_binomial_locallevel(
   base_adaptation_rate    = 1,
   decay_exponent          = 0.6,
   target_acceptance       = 0.44,
-  min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
+  min_deviation_threshold = NULL,
   return_log_sigma        = FALSE,
   return_accept_prop      = TRUE,
-  verbose                 = TRUE,  # Enable progress bar
-  bar_width               = 60,    # Progress bar width
+  verbose                 = TRUE,
+  bar_width               = 60,
   seed                    = 456
 )
 

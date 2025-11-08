@@ -200,23 +200,23 @@ if `lag_update = 50`), and only after sufficient history has been accumulated
 At each adaptation point (MCMC iteration \eqn{m}), for each time point \eqn{t},
 the proposal log-scale standard deviation is updated according to:
 
-\deqn{\log(\sigma_t) \leftarrow \log(\sigma_t) + \text{sign}(\hat{p}_t - p^*) \cdot \gamma_m \cdot \mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}}}
+\deqn{\log(\sigma_t) \leftarrow \log(\sigma_t) + \text{sign}(\hat{p}_t - p^*) \cdot \gamma_m \cdot \mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}},}
 
 where:
 \itemize{
   \item \eqn{\gamma_m} is the diminishing step size at MCMC iteration \eqn{m}, computed as
-    \deqn{\gamma_m = \min\left(\text{max\_step\_size}, \frac{\text{base\_adaptation\_rate}}{m^\xi}\right)}
-  \item \eqn{\xi} is the decay exponent (`decay_exponent`) applied to the MCMC iteration number
+    \deqn{\gamma_m = \min\left(\text{max\_step\_size}, \frac{\text{base\_adaptation\_rate}}{m^\xi}\right);}
+  \item \eqn{\xi} is the decay exponent (`decay_exponent`) applied to the MCMC iteration number;
   \item \eqn{\hat{p}_t} is the empirical acceptance proportion at time point \eqn{t}
-    over the last `lag_update` MCMC iterations
-  \item \eqn{p^*} is the target acceptance rate (`target_acceptance`)
-  \item \eqn{\tau} is the minimum deviation threshold (`min_deviation_threshold`)
+    over the last `lag_update` MCMC iterations;
+  \item \eqn{p^*} is the target acceptance rate (`target_acceptance`);
+  \item \eqn{\tau} is the minimum deviation threshold (`min_deviation_threshold`);
   \item \eqn{\mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}}} is an indicator function that equals 1 when
-    the condition is true, 0 otherwise
+    the condition is true, 0 otherwise.
 }
 
 The update only occurs if the absolute deviation exceeds the threshold:
-\deqn{|\hat{p}_t - p^*| > \tau}
+\deqn{|\hat{p}_t - p^*| > \tau.}
 
 This threshold-based approach prevents spurious updates due to random fluctuations.
 
@@ -252,9 +252,9 @@ The adaptive tuning parameters interact as follows:
 With `lag_update = 50`, `base_adaptation_rate = 1.0`, `decay_exponent = 0.6`,
 and `max_step_size = 0.1`:
 \itemize{
-  \item At MCMC iteration 50: \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}
-  \item At MCMC iteration 100: \eqn{\gamma_{100} = \min(0.1, 1.0/100^{0.6}) \approx 0.0631}
-  \item At MCMC iteration 1000: \eqn{\gamma_{1000} = \min(0.1, 1.0/1000^{0.6}) \approx 0.0158}
+  \item At MCMC iteration 50: \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}.
+  \item At MCMC iteration 100: \eqn{\gamma_{100} = \min(0.1, 1.0/100^{0.6}) \approx 0.0631}.
+  \item At MCMC iteration 1000: \eqn{\gamma_{1000} = \min(0.1, 1.0/1000^{0.6}) \approx 0.0158}.
 }
 
 This ensures that adaptation becomes increasingly conservative as the chain progresses,
@@ -264,12 +264,12 @@ satisfying theoretical requirements for ergodicity.
 
 For most applications:
 \itemize{
-  \item `lag_update = 50`: Provides good balance between stability and responsiveness
-  \item `max_step_size = 0.1`: Conservative adjustment rate
-  \item `base_adaptation_rate = 1.0`: Moderate adaptation speed
-  \item `decay_exponent = 0.6`: Standard diminishing adaptation
-  \item `target_acceptance = 0.44`: Theoretically optimal for univariate proposals
-  \item `min_deviation_threshold = NULL`: Uses practical default of 1/lag_update
+  \item `lag_update = 50`: Provides good balance between stability and responsiveness;
+  \item `max_step_size = 0.1`: Conservative adjustment rate;
+  \item `base_adaptation_rate = 1.0`: Moderate adaptation speed;
+  \item `decay_exponent = 0.6`: Standard diminishing adaptation;
+  \item `target_acceptance = 0.44`: Theoretically optimal for univariate proposals;
+  \item `min_deviation_threshold = NULL`: Uses practical default of 1/lag_update.
 }
 
 Burn‐in and thinning are applied so that exactly `n_chain` posterior samples
@@ -284,39 +284,16 @@ are returned.
 # 4. Set a seed for reproducibility
 
 ## Simulation of data
+set.seed(123)
 n <- 500        # Number of observations to simulate
 n_trials <- 20  # Number of binomial trials
 
-# True parameters for simulation:
-theta01_true <- 0.5     # Initial level state (theta[0,1]) on logit scale
-theta02_true <- 0.01    # Initial trend state (theta[0,2]) on logit scale
-theta03_true <- 0.001   # Initial acceleration state (theta[0,3]) on logit scale
-prec1_true <- 100       # Level innovation precision (1/W[1])
-prec2_true <- 400       # Trend innovation precision (1/W[2])
-prec3_true <- 1600      # Acceleration innovation precision (1/W[3])
+# Generate true probabilities
+grid_vals <- seq_len(n) / n
+alpha_true <- (sin(4 * pi * grid_vals) + sin(8 * pi * grid_vals) + 2) / 4
 
-# Use a fixed seed for data simulation
-set.seed(123)
-
-# Generate noise terms:
-u1 <- rnorm(n, sd = sqrt(1/prec1_true))  # Level evolution noise (u1[t])
-u2 <- rnorm(n, sd = sqrt(1/prec2_true))  # Trend evolution noise (u2[t])
-u3 <- rnorm(n, sd = sqrt(1/prec3_true))  # Acceleration evolution noise (u3[t])
-
-# Simulate latent states and observations:
-theta1_true <- numeric(n)
-theta2_true <- numeric(n)
-theta3_true <- numeric(n)
-theta3_true[1] <- theta03_true + u3[1]
-theta2_true[1] <- theta02_true + theta03_true + u2[1]
-theta1_true[1] <- theta01_true + theta02_true + u1[1]
-for (t in 2:n) {
-  theta3_true[t] <- theta3_true[t-1] + u3[t]
-  theta2_true[t] <- theta2_true[t-1] + theta3_true[t-1] + u2[t]
-  theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
-}
-alpha_true <- plogis(theta1_true)  # Success probabilities
-y <- rbinom(n, size = n_trials, prob = alpha_true)  # Observed binomial counts
+# Generate binomial observations
+y <- rbinom(n, size = n_trials, prob = alpha_true)
 
 ## Running the Gibbs sampler
 # Run the Gibbs sampler with specified priors and a seed
@@ -359,28 +336,12 @@ out <- mcmc_binomial_localacceleration(
 
   # Individual diagnostic types
   plot(out, type = "mcmc", which = 1:3)    # Parameter diagnostics
-  plot(out, type = "states")                # Dynamic states
-  plot(out, type = "alpha")                 # Success probabilities
-  plot(out, type = "acceptance")            # Acceptance rates
+  plot(out, type = "states")               # Dynamic states
+  plot(out, type = "alpha")                # Success probabilities
+  plot(out, type = "acceptance")           # Acceptance rates
 
-# Plot with true values for comparison
-true_params <- list(
-  theta01 = theta01_true,
-  theta02 = theta02_true,
-  theta03 = theta03_true,
-  prec1 = prec1_true,
-  prec2 = prec2_true,
-  prec3 = prec3_true,
-  theta1 = theta1_true,
-  theta2 = theta2_true,
-  theta3 = theta3_true,
-  alpha = alpha_true
-)
-
-plot(out, type = "all", engine = "base", true_values = true_params)
-plot(out, type = "mcmc", which = 1:3, true_values = true_params)
-plot(out, type = "states", true_values = true_params)
-plot(out, type = "alpha", true_values = true_params)
+# Plot with true alpha for comparison
+plot(out, type = "alpha", true_values = list(alpha = alpha_true))
 }
 
 }

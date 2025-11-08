@@ -27,27 +27,15 @@ This method provides a quick overview using posterior medians,
 \examples{
 \dontrun{
 ## Simulate data (same setup as ?mcmc_binomial_localtrend)
+set.seed(123)
 n <- 500
 n_trials <- 20
 
-theta01_true <- 0.5
-theta02_true <- 0.01
-prec1_true <- 100
-prec2_true <- 400
+# Generate true probabilities
+grid_vals <- seq_len(n) / n
+alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
 
-set.seed(123)
-u1 <- rnorm(n, sd = sqrt(1/prec1_true))
-u2 <- rnorm(n, sd = sqrt(1/prec2_true))
-
-theta1_true <- numeric(n)
-theta2_true <- numeric(n)
-theta2_true[1] <- theta02_true + u2[1]
-theta1_true[1] <- theta01_true + theta02_true + u1[1]
-for (t in 2:n) {
-  theta2_true[t] <- theta2_true[t-1] + u2[t]
-  theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
-}
-alpha_true <- plogis(theta1_true)
+# Generate binomial observations
 y <- rbinom(n, size = n_trials, prob = alpha_true)
 
 out <- mcmc_binomial_localtrend(
@@ -69,11 +57,11 @@ out <- mcmc_binomial_localtrend(
   base_adaptation_rate    = 1,
   decay_exponent          = 0.6,
   target_acceptance       = 0.44,
-  min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
+  min_deviation_threshold = NULL,
   return_log_sigma        = FALSE,
   return_accept_prop      = TRUE,
-  verbose                 = TRUE,  # Enable progress bar
-  bar_width               = 60,    # Progress bar width
+  verbose                 = TRUE,
+  bar_width               = 60,
   seed                    = 456
 )
 

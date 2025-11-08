@@ -12,6 +12,7 @@
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
 #' @param n_trials Numeric scalar, number of trials for each binomial observation.
+#' @param target_acceptance Numeric, target acceptance proportion for Metropolis-Hastings.
 #'
 #' @return An object of class \code{c("binomial_locallevel", "pdm_mcmc", "list")}
 #'   with the following structure:
@@ -28,6 +29,7 @@
 #'         \item \code{link}: \code{"logit"} (link function)
 #'         \item \code{y}: Original observed data
 #'         \item \code{n_trials}: Number of trials
+#'         \item \code{target_acceptance}: Target acceptance proportion
 #'       }
 #'     }
 #'   }
@@ -51,7 +53,8 @@ new_binomial_locallevel <- function(result,
                                     burnin,
                                     thinning,
                                     y,
-                                    n_trials) {
+                                    n_trials,
+                                    target_acceptance) {
 
   # Validate that result is a non-empty list
   if (!is.list(result) || length(result) == 0) {
@@ -77,6 +80,10 @@ new_binomial_locallevel <- function(result,
   if (!is.numeric(n_trials) || length(n_trials) != 1 || n_trials <= 0) {
     stop("Internal error: n_trials must be a positive scalar")
   }
+  if (!is.numeric(target_acceptance) || length(target_acceptance) != 1 ||
+      target_acceptance <= 0 || target_acceptance >= 1) {
+    stop("Internal error: target_acceptance must be a scalar in (0,1)")
+  }
 
   # Add class hierarchy
   class(result) <- c("binomial_locallevel", "pdm_mcmc", "list")
@@ -90,6 +97,7 @@ new_binomial_locallevel <- function(result,
   attr(result, "link") <- "logit"  # Binomial model uses logit link
   attr(result, "y") <- y  # Store original data for plotting
   attr(result, "n_trials") <- as.numeric(n_trials)  # Store number of trials
+  attr(result, "target_acceptance") <- as.numeric(target_acceptance)  # Store target acceptance
 
   return(result)
 }
@@ -345,6 +353,15 @@ validate_binomial_locallevel <- function(x) {
     }
   }
 
+  # 13. Validate target_acceptance attribute
+  target_acceptance <- attr(x, "target_acceptance")
+  if (!is.null(target_acceptance)) {
+    if (!is.numeric(target_acceptance) || length(target_acceptance) != 1 ||
+        target_acceptance <= 0 || target_acceptance >= 1) {
+      stop("Attribute 'target_acceptance' must be a scalar in (0,1)")
+    }
+  }
+
   return(x)
 }
 
@@ -361,16 +378,14 @@ validate_binomial_locallevel <- function(x) {
 #' @examples
 #' \dontrun{
 #' ## Simulate data (same setup as ?mcmc_binomial_locallevel)
+#' set.seed(123)
 #' n <- 500
 #' n_trials <- 20
 #'
-#' theta0_true <- 0.5
-#' prec1_true <- 100
+#' # Generate true probabilities
+#' alpha_true <-  (sin(2 * pi * seq_len(n) / n) + 2) / 4
 #'
-#' set.seed(123)
-#' u1 <- rnorm(n, sd = sqrt(1/prec1_true))
-#' theta1_true <- cumsum(c(theta0_true, u1))[-1]
-#' alpha_true <- plogis(theta1_true)
+#' # Generate binomial observations
 #' y <- rbinom(n, size = n_trials, prob = alpha_true)
 #'
 #' out <- mcmc_binomial_locallevel(
@@ -388,11 +403,11 @@ validate_binomial_locallevel <- function(x) {
 #'   base_adaptation_rate    = 1,
 #'   decay_exponent          = 0.6,
 #'   target_acceptance       = 0.44,
-#'   min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
+#'   min_deviation_threshold = NULL,
 #'   return_log_sigma        = FALSE,
 #'   return_accept_prop      = TRUE,
-#'   verbose                 = TRUE,  # Enable progress bar
-#'   bar_width               = 60,    # Progress bar width
+#'   verbose                 = TRUE,
+#'   bar_width               = 60,
 #'   seed                    = 456
 #' )
 #'
@@ -423,16 +438,14 @@ is.binomial_locallevel <- function(x) {
 #' @examples
 #' \dontrun{
 #' ## Simulate data (same setup as ?mcmc_binomial_locallevel)
+#' set.seed(123)
 #' n <- 500
 #' n_trials <- 20
 #'
-#' theta0_true <- 0.5
-#' prec1_true <- 100
+#' # Generate true probabilities
+#' alpha_true <-  (sin(2 * pi * seq_len(n) / n) + 2) / 4
 #'
-#' set.seed(123)
-#' u1 <- rnorm(n, sd = sqrt(1/prec1_true))
-#' theta1_true <- cumsum(c(theta0_true, u1))[-1]
-#' alpha_true <- plogis(theta1_true)
+#' # Generate binomial observations
 #' y <- rbinom(n, size = n_trials, prob = alpha_true)
 #'
 #' out <- mcmc_binomial_locallevel(
@@ -450,11 +463,11 @@ is.binomial_locallevel <- function(x) {
 #'   base_adaptation_rate    = 1,
 #'   decay_exponent          = 0.6,
 #'   target_acceptance       = 0.44,
-#'   min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
+#'   min_deviation_threshold = NULL,
 #'   return_log_sigma        = FALSE,
 #'   return_accept_prop      = TRUE,
-#'   verbose                 = TRUE,  # Enable progress bar
-#'   bar_width               = 60,    # Progress bar width
+#'   verbose                 = TRUE,
+#'   bar_width               = 60,
 #'   seed                    = 456
 #' )
 #'
@@ -523,12 +536,12 @@ print.binomial_locallevel <- function(x, digits = 3, ...) {
 
     cat("Latent Level (theta_{t,1}) Median Summary (logit scale):\n")
     cat("  Range:  [",
-        sprintf(paste0("%", field_width, ".", digits, "f"), theta_1_min),
+        sprintf(paste0("%", field_width-2, ".", digits, "f"), theta_1_min),
         ", ",
-        sprintf(paste0("%", field_width, ".", digits, "f"), theta_1_max),
+        sprintf(paste0("%", field_width-2, ".", digits, "f"), theta_1_max),
         "]\n", sep = "")
     cat("  Final:  ",
-        sprintf(paste0("%", field_width, ".", digits, "f"), theta_1_final),
+        sprintf(paste0("%", field_width-2, ".", digits, "f"), theta_1_final),
         "  (median level at last time point)\n\n", sep = "")
   }, error = function(e) {
     cat("Latent Level (theta_{t,1}) Median Summary:\n")
@@ -544,12 +557,12 @@ print.binomial_locallevel <- function(x, digits = 3, ...) {
 
     cat("Success Probabilities (alpha_t):\n")
     cat("  Range:  [",
-        sprintf(paste0("%", field_width, ".", digits, "f"), alpha_min),
+        sprintf(paste0("%", field_width-2, ".", digits, "f"), alpha_min),
         ", ",
-        sprintf(paste0("%", field_width, ".", digits, "f"), alpha_max),
+        sprintf(paste0("%", field_width-2, ".", digits, "f"), alpha_max),
         "]\n", sep = "")
     cat("  Median: ",
-        sprintf(paste0("%", field_width, ".", digits, "f"), alpha_med), "\n\n", sep = "")
+        sprintf(paste0("%", field_width-2, ".", digits, "f"), alpha_med), "\n\n", sep = "")
   }, error = function(e) {
     cat("Success Probabilities (alpha_t):\n")
     cat("  [Error computing summary: ", e$message, "]\n\n", sep = "")

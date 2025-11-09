@@ -36,6 +36,21 @@
 #'   support them. Default is \code{TRUE}.
 #' @param ci_level Numeric; Bayesian confidence level for credible intervals
 #'   (between 0 and 1). Default is \code{0.95}.
+#' @param true_values Named list containing true parameter values for comparison.
+#'   Expected elements:
+#'   \describe{
+#'     \item{\code{theta_01}}{True initial level}
+#'     \item{\code{theta_02}}{True initial trend}
+#'     \item{\code{theta_03}}{True initial acceleration}
+#'     \item{\code{prec_theta1}}{True level innovation precision (W_1^{-1})}
+#'     \item{\code{prec_theta2}}{True trend innovation precision (W_2^{-1})}
+#'     \item{\code{prec_theta3}}{True acceleration innovation precision (W_3^{-1})}
+#'     \item{\code{theta_1}}{Numeric vector of true theta_1 states over time}
+#'     \item{\code{theta_2}}{Numeric vector of true theta_2 states over time}
+#'     \item{\code{theta_3}}{Numeric vector of true theta_3 states over time}
+#'     \item{\code{alpha}}{Numeric vector of true alpha_t probabilities over time}
+#'   }
+#'   If \code{NULL} (default), no true values are displayed.
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return Invisibly returns the input object \code{x}.
@@ -160,6 +175,7 @@ plot.probit_bernoulli_localacceleration <- function(x,
                                                     ask = NULL,
                                                     ci = TRUE,
                                                     ci_level = 0.95,
+                                                    true_values = NULL,
                                                     ...) {
 
   type <- match.arg(type)
@@ -183,16 +199,39 @@ plot.probit_bernoulli_localacceleration <- function(x,
                oldask <- par(ask = TRUE)
                on.exit(par(oldask), add = TRUE)
              }
-             plot_mcmc_diagnostics_generic(x, which = NULL, engine = "base", ...)
-             plot_dynamic_states_generic_base(x, which = NULL, ci = ci,
-                                              ci_level = ci_level, ...)
-             plot_bernoulli_alpha_base(x, ci = ci, ci_level = ci_level, ...)
+             plot_mcmc_diagnostics_generic(x,
+                                           which = NULL,
+                                           engine = "base",
+                                           true_values = true_values,
+                                           ...)
+             plot_dynamic_states_generic_base(x,
+                                              which = NULL,
+                                              ci = ci,
+                                              ci_level = ci_level,
+                                              true_values = true_values,
+                                              ...)
+             plot_bernoulli_alpha_base(x,
+                                       ci = ci,
+                                       ci_level = ci_level,
+                                       true_values = true_values$alpha,
+                                       ...)
            },
-           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
-                                                engine = "base", ...),
-           states = plot_dynamic_states_generic_base(x, which = which,
-                                                     ci = ci, ci_level = ci_level, ...),
-           alpha = plot_bernoulli_alpha_base(x, ci = ci, ci_level = ci_level, ...)
+           mcmc = plot_mcmc_diagnostics_generic(x,
+                                                which = which,
+                                                engine = "base",
+                                                true_values = true_values,
+                                                ...),
+           states = plot_dynamic_states_generic_base(x,
+                                                     which = which,
+                                                     ci = ci,
+                                                     ci_level = ci_level,
+                                                     true_values = true_values,
+                                                     ...),
+           alpha = plot_bernoulli_alpha_base(x,
+                                             ci = ci,
+                                             ci_level = ci_level,
+                                             true_alpha = true_values$alpha,
+                                             ...)
     )
   } else {
     switch(type,

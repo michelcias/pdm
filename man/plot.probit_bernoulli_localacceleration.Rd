@@ -12,6 +12,7 @@
   ask = NULL,
   ci = TRUE,
   ci_level = 0.95,
+  true_values = NULL,
   ...
 )
 }
@@ -55,6 +56,22 @@ support them. Default is \code{TRUE}.}
 
 \item{ci_level}{Numeric; Bayesian confidence level for credible intervals
 (between 0 and 1). Default is \code{0.95}.}
+
+\item{true_values}{Named list containing true parameter values for comparison.
+Expected elements:
+\describe{
+  \item{\code{theta_01}}{True initial level}
+  \item{\code{theta_02}}{True initial trend}
+  \item{\code{theta_03}}{True initial acceleration}
+  \item{\code{prec_theta1}}{True level innovation precision (W_1^{-1})}
+  \item{\code{prec_theta2}}{True trend innovation precision (W_2^{-1})}
+  \item{\code{prec_theta3}}{True acceleration innovation precision (W_3^{-1})}
+  \item{\code{theta_1}}{Numeric vector of true theta_1 states over time}
+  \item{\code{theta_2}}{Numeric vector of true theta_2 states over time}
+  \item{\code{theta_3}}{Numeric vector of true theta_3 states over time}
+  \item{\code{alpha}}{Numeric vector of true alpha_t probabilities over time}
+}
+If \code{NULL} (default), no true values are displayed.}
 
 \item{...}{Additional arguments passed to plotting functions.}
 }

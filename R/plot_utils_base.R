@@ -325,15 +325,6 @@ plot_alpha_trajectory_base <- function(alpha,
     ci_label <- paste0(round(ci_level * 100), "% CI")
   }
 
-  # Determine y-axis range
-  if (ci) {
-    range_vals <- range(alpha_lower, alpha_upper, obs_data, true_alpha, na.rm = TRUE)
-  } else {
-    range_vals <- range(alpha_median, obs_data, true_alpha, na.rm = TRUE)
-  }
-  range_vals[1] <- max(0, range_vals[1] - 0.05)
-  range_vals[2] <- min(1, range_vals[2] + 0.25 * diff(range_vals))
-
   # Setup plotting area
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
@@ -375,6 +366,7 @@ plot_alpha_trajectory_base <- function(alpha,
   legend_lty <- c(1)
   legend_lwd <- c(2.5)
   legend_pch <- c(NA)
+  legend_tw <- c(50)
 
   if (ci) {
     legend_items <- c(legend_items, ci_label)
@@ -382,6 +374,7 @@ plot_alpha_trajectory_base <- function(alpha,
     legend_lty <- c(legend_lty, 1)
     legend_lwd <- c(legend_lwd, 10)
     legend_pch <- c(legend_pch, NA)
+    legend_tw <- c(legend_tw, 50)
   }
 
   if (!is.null(true_alpha)) {
@@ -390,6 +383,7 @@ plot_alpha_trajectory_base <- function(alpha,
     legend_lty   <- c(2, legend_lty)
     legend_lwd   <- c(2, legend_lwd)
     legend_pch   <- c(NA, legend_pch)
+    legend_tw <- c(legend_tw, 50)
   }
 
   if (!is.null(obs_data) && show_obs) {
@@ -398,6 +392,7 @@ plot_alpha_trajectory_base <- function(alpha,
     legend_lty <- c(legend_lty, NA)
     legend_lwd <- c(legend_lwd, NA)
     legend_pch <- c(legend_pch, obs_pch)
+    legend_tw <- c(legend_tw, strwidth(obs_label))
   }
 
   legend("topright",
@@ -406,7 +401,7 @@ plot_alpha_trajectory_base <- function(alpha,
          lty = legend_lty,
          lwd = legend_lwd,
          pch = legend_pch,
-         horiz = TRUE,
+         horiz = TRUE, text.width = legend_tw,
          bty = "n")
 
   # Add title
@@ -559,9 +554,9 @@ plot_binomial_alpha_base <- function(x,
     obs_data = obs_data,
     obs_label = "Observed proportions",
     show_obs = show_obs,
-    obs_color = grDevices::rgb(0.95, 0.5, 0.0, 0.5),
+    obs_color = grDevices::rgb(0.75, 0.3, 0.0, 0.5),
     obs_pch = 16,
-    obs_cex = 0.6,
+    obs_cex = 0.8,
     true_alpha = true_alpha,
     ...
   )
@@ -659,8 +654,12 @@ plot_acceptance_rates_base <- function(accept_prop, target_acceptance = 0.44, ..
 #'
 #' @keywords internal
 #' @noRd
-plot_bernoulli_alpha_base <- function(x, ci = TRUE, ci_level = 0.95,
-                                      show_obs = TRUE, ...) {
+plot_bernoulli_alpha_base <- function(x,
+                                      ci = TRUE,
+                                      ci_level = 0.95,
+                                      show_obs = TRUE,
+                                      true_alpha = NULL,
+                                      ...) {
 
   if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
              ci_level <= 0 || ci_level >= 1)) {
@@ -671,97 +670,31 @@ plot_bernoulli_alpha_base <- function(x, ci = TRUE, ci_level = 0.95,
     stop("`show_obs` must be a single logical value")
   }
 
-  n_obs <- attr(x, "n_obs")
-  time_grid <- seq_len(n_obs)
-
-  # Compute summary statistics for alpha
-  alpha_median <- apply(x$alpha, 2, stats::median)
-  if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    alpha_lower <- apply(x$alpha, 2, stats::quantile, probs = ci_lower_prob)
-    alpha_upper <- apply(x$alpha, 2, stats::quantile, probs = ci_upper_prob)
-    ci_label <- paste0(round(ci_level * 100), "% CI")
-  }
-
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar), add = TRUE)
-
-  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
-      mgp = c(2.5, 1, 0))
-
-  # Determine y-axis range
-  if (ci) {
-    range_vals <- range(alpha_lower, alpha_upper, na.rm = TRUE)
-  } else {
-    range_vals <- range(alpha_median, na.rm = TRUE)
-  }
-  range_vals[1] <- max(0, range_vals[1] - 0.05)
-  range_vals[2] <- min(1, range_vals[2] + 0.25 * diff(range_vals))
-
-  # Base plot
-  plot(time_grid, alpha_median, type = "l", lwd = 2.5, col = "blue",
-       xlab = "Time", ylab = expression(alpha[t]),
-       ylim = range_vals, axes = FALSE, main = "")
-
-  axis(side = 1)
-  axis(side = 2, at = seq(0, 1, by = 0.2))
-
-  # Add credible band
-  if (ci) {
-    polygon(c(time_grid, rev(time_grid)),
-            c(alpha_lower, rev(alpha_upper)),
-            col = grDevices::rgb(0.2, 0.5, 0.8, 0.3), border = NA)
-    lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
-  }
-
-  # Get observed binary outcomes
+  # Extract observed binary outcomes
   y <- attr(x, "y")
 
-  # Add observed binary outcomes (if show_obs = TRUE)
-  if (show_obs && !is.null(y)) {
-    # Plot y=1 and y=0 with different colors
-    points(time_grid[y == 1], rep(1.0, sum(y == 1)),
-           pch = 16, cex = 0.6, col = "darkgreen")
-    points(time_grid[y == 0], rep(0.0, sum(y == 0)),
-           pch = 16, cex = 0.6, col = "red")
+  # Prepare observed data for plotting: map binary values directly
+  obs_data <- if (show_obs && !is.null(y)) {
+    as.numeric(y)  # Convert binary to numeric (0.0 and 1.0)
+  } else {
+    NULL
   }
 
-  grid()
-
-  # Legend
-  legend_items <- c(expression(hat(alpha)[t]))
-  legend_cols <- c("blue")
-  legend_lty <- c(1)
-  legend_lwd <- c(2.5)
-  legend_pch <- c(NA)
-
-  if (ci) {
-    legend_items <- c(legend_items, ci_label)
-    legend_cols <- c(legend_cols, grDevices::rgb(0.2, 0.5, 0.8, 0.3))
-    legend_lty <- c(legend_lty, 1)
-    legend_lwd <- c(legend_lwd, 10)
-    legend_pch <- c(legend_pch, NA)
-  }
-
-  if (show_obs && !is.null(y)) {
-    legend_items <- c(legend_items, "y = 1", "y = 0")
-    legend_cols <- c(legend_cols, "darkgreen", "red")
-    legend_lty <- c(legend_lty, NA, NA)
-    legend_lwd <- c(legend_lwd, NA, NA)
-    legend_pch <- c(legend_pch, 16, 16)
-  }
-
-  legend("topright",
-         legend = legend_items,
-         col = legend_cols,
-         lty = legend_lty,
-         lwd = legend_lwd,
-         pch = legend_pch,
-         horiz = FALSE,
-         bty = "n")
-
-  mtext("Bernoulli Probabilities", outer = TRUE, cex = 1.3, font = 2)
+  # Delegate to generic alpha trajectory plotting function
+  plot_alpha_trajectory_base(
+    alpha = x$alpha,
+    ci = ci,
+    ci_level = ci_level,
+    title = "Bernoulli Probabilities",
+    obs_data = obs_data,
+    obs_label = "Observed outcomes",
+    show_obs = show_obs,
+    obs_color = grDevices::rgb(0.75, 0.3, 0.0, 0.5),
+    obs_pch = 16,
+    obs_cex = 0.8,
+    true_alpha = true_alpha,
+    ...
+  )
 
   invisible(NULL)
 }

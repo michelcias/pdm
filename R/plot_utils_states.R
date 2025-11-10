@@ -308,7 +308,7 @@ compute_innovations <- function(x, model_order = NULL) {
 #' Plot single state trajectory with base graphics
 #'
 #' @description Creates a trajectory plot for a single dynamic state with
-#'   optional credible bands.
+#'   optional credible bands and true values.
 #'
 #' @param time_grid Numeric vector of time indices.
 #' @param median Numeric vector of median values.
@@ -319,6 +319,8 @@ compute_innovations <- function(x, model_order = NULL) {
 #' @param col Color for median line.
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_label Character string for CI legend label.
+#' @param true_state Numeric vector of true state values (or NULL).
+#'   If provided, overlays the true trajectory for simulation validation.
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
 #'
@@ -326,13 +328,19 @@ compute_innovations <- function(x, model_order = NULL) {
 #' @noRd
 plot_state_trajectory_base <- function(time_grid, median, lower = NULL,
                                        upper = NULL, ylab, main, col,
-                                       ci = TRUE, ci_label = NULL) {
+                                       ci = TRUE, ci_label = NULL,
+                                       true_state = NULL) {
 
-  # Determine y-axis range
+  # Determine y-axis range (include true_state if provided)
   if (ci && !is.null(lower)) {
     range_vals <- range(c(lower, upper))
   } else {
     range_vals <- range(median)
+  }
+
+  # Include true_state in range calculation
+  if (!is.null(true_state)) {
+    range_vals <- range(c(range_vals, true_state))
   }
 
   if (diff(range_vals) == 0) {
@@ -348,30 +356,44 @@ plot_state_trajectory_base <- function(time_grid, median, lower = NULL,
   if (ci && !is.null(lower)) {
     polygon(c(time_grid, rev(time_grid)),
             c(lower, rev(upper)),
-            col = grDevices::rgb(0.7, 0.7, 0.7, 0.5), border = NA)
+            col = grDevices::adjustcolor(col, alpha.f = 0.2), border = NA)
     lines(time_grid, median, lwd = 2, col = col)
+  }
+
+  # Add true state trajectory (if provided)
+  if (!is.null(true_state)) {
+    lines(time_grid, true_state, lwd = 2, col = "black", lty = 2)
   }
 
   grid()
 
   # Legend
+  legend_items <- c("Median")
+  legend_cols <- c(col)
+  legend_lty <- c(1)
+  legend_lwd <- c(2)
+
   if (ci && !is.null(ci_label)) {
-    legend("topright",
-           legend = c(main, ci_label),
-           col = c(col, grDevices::rgb(0.7, 0.7, 0.7, 0.5)),
-           horiz = TRUE,
-           lty = c(1, 1),
-           lwd = c(2, 8),
-           bty = "n")
-  } else {
-    legend("topright",
-           legend = main,
-           col = col,
-           horiz = TRUE,
-           lty = 1,
-           lwd = 2,
-           bty = "n")
+    legend_items <- c(legend_items, ci_label)
+    legend_cols <- c(legend_cols, grDevices::adjustcolor(col, alpha.f = 0.2))
+    legend_lty <- c(legend_lty, 1)
+    legend_lwd <- c(legend_lwd, 8)
   }
+
+  if (!is.null(true_state)) {
+    legend_items <- c(legend_items, "True State")
+    legend_cols <- c(legend_cols, "black")
+    legend_lty <- c(legend_lty, 2)
+    legend_lwd <- c(legend_lwd, 2)
+  }
+
+  legend("topright",
+         legend = legend_items,
+         col = legend_cols,
+         lty = legend_lty,
+         lwd = legend_lwd,
+         horiz = TRUE,
+         bty = "n")
 
   invisible(NULL)
 }
@@ -420,11 +442,11 @@ plot_innovation_base <- function(time_grid, median, lower = NULL, upper = NULL,
   if (ci && !is.null(lower)) {
     polygon(c(time_grid, rev(time_grid)),
             c(lower, rev(upper)),
-            col = grDevices::rgb(0.7, 0.7, 0.7, 0.4), border = NA)
+            col = grDevices::adjustcolor(col_bar, alpha.f = 0.2), border = NA)
   }
 
   # Reference line at zero
-  abline(h = 0, col = "red", lty = 2, lwd = 2)
+  abline(h = 0, col = "black", lty = 2, lwd = 2)
 
   grid()
 
@@ -432,7 +454,7 @@ plot_innovation_base <- function(time_grid, median, lower = NULL, upper = NULL,
   if (ci && !is.null(ci_label)) {
     legend("topright",
            legend = c("Median", ci_label),
-           col = c(col_bar, grDevices::rgb(0.7, 0.7, 0.7, 0.4)),
+           col = c(col_bar, grDevices::adjustcolor(col_bar, alpha.f = 0.2)),
            horiz = TRUE,
            lty = c(1, 1),
            lwd = c(2, 8),
@@ -489,14 +511,14 @@ get_state_labels <- function(model_order) {
   labels$state_names <- c("theta_1")
   # labels$state_labels <- list(labels$state_labels, expression(theta["t,1"]))
   labels$state_titles <- c("Level State")
-  labels$state_colors <- c("black")
+  labels$state_colors <- c("steelblue")
 
   # Order 2
   if (model_order >= 2L) {
     labels$state_names <- c(labels$state_names, "theta_2")
     labels$state_labels <- c(labels$state_labels, expression(theta["t,2"]))
     labels$state_titles <- c(labels$state_titles, "Trend State")
-    labels$state_colors <- c(labels$state_colors, "steelblue")
+    labels$state_colors <- c(labels$state_colors, "firebrick")
   }
 
   # Order 3
@@ -504,7 +526,7 @@ get_state_labels <- function(model_order) {
     labels$state_names <- c(labels$state_names, "theta_3")
     labels$state_labels <- c(labels$state_labels, expression(theta["t,3"]))
     labels$state_titles <- c(labels$state_titles, "Acceleration State")
-    labels$state_colors <- c(labels$state_colors, "firebrick")
+    labels$state_colors <- c(labels$state_colors, "darkgreen")
   }
 
   return(labels)
@@ -542,13 +564,13 @@ get_innovation_labels <- function(model_order) {
   if (model_order >= 2L) {
     labels$innov_labels <- c(labels$innov_labels, list(expression(u["t,2"])))
     labels$innov_titles <- c(labels$innov_titles, "Trend Innovations")
-    labels$innov_colors <- c(labels$innov_colors, "darkgreen")
+    labels$innov_colors <- c(labels$innov_colors, "firebrick")
   }
 
   if (model_order >= 3L) {
     labels$innov_labels <- c(labels$innov_labels, list(expression(u["t,3"])))
     labels$innov_titles <- c(labels$innov_titles, "Acceleration Innovations")
-    labels$innov_colors <- c(labels$innov_colors, "firebrick")
+    labels$innov_colors <- c(labels$innov_colors, "darkgreen")
   }
 
   return(labels)

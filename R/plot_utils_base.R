@@ -26,17 +26,28 @@ NULL
 #' @param param_label Expression for axis labels, e.g., \code{expression(mu[1])}.
 #' @param true_value Numeric or NULL. If provided, adds a reference line at
 #'   the true parameter value (useful for simulation studies).
+#' @param color Character; color for the main diagnostic lines. Default is
+#'   "steelblue". This should match the parameter type:
+#'   \itemize{
+#'     \item "steelblue" for level-related parameters (theta_1, theta_01, W_1^{-1})
+#'     \item "firebrick" for trend-related parameters (theta_2, theta_02, W_2^{-1})
+#'     \item "darkgreen" for acceleration-related parameters (theta_3, theta_03, W_3^{-1})
+#'     \item "gray30" or other neutral colors for observation/mixture parameters
+#'   }
 #' @param ... Additional arguments (currently unused, for future extensibility).
 #'
 #' @return NULL (invisibly). Function is called for its side effects (plotting).
 #'
 #' @details The four diagnostic panels are:
 #'   \enumerate{
-#'     \item Trace plot with median reference line
-#'     \item Autocorrelation function (ACF)
-#'     \item Posterior density with mean and median lines
-#'     \item Running mean to assess convergence
+#'     \item Trace plot with median reference line (solid, parameter color)
+#'     \item Autocorrelation function (ACF) using parameter color
+#'     \item Posterior density with median line (solid, parameter color)
+#'     \item Running mean to assess convergence (solid, parameter color)
 #'   }
+#'
+#'   Estimated values use solid lines in the parameter's color.
+#'   True values (when provided) use dashed lines in black or dark gray.
 #'
 #' @keywords internal
 #' @noRd
@@ -44,6 +55,7 @@ plot_param_diagnostics_base <- function(param_samples,
                                         param_name,
                                         param_label,
                                         true_value = NULL,
+                                        color = "steelblue",
                                         ...) {
 
   oldpar <- par(no.readonly = TRUE)
@@ -61,31 +73,31 @@ plot_param_diagnostics_base <- function(param_samples,
        main = "Trace Plot")
   segments(x0 = 1, y0 = median(param_samples),
            x1 = length(param_samples), y1 = median(param_samples),
-           col = "red", lwd = 2, lty = 2)
+           col = color, lwd = 2, lty = 1)
   if (!is.null(true_value)) {
     segments(x0 = 1, y0 = true_value,
              x1 = length(param_samples), y1 = true_value,
-             col = "blue", lwd = 2, lty = 3)
+             col = "black", lwd = 2, lty = 2)
     legend("topright",
            legend = c("Trace", "Median", "True Value"),
-           col = c("gray40", "red", "blue"),
+           col = c("gray40", color, "black"),
            lwd = c(0.8, 2, 2),
            horiz = TRUE,
-           lty = c(1, 2, 3),
+           lty = c(1, 1, 2),
            bty = "n", cex = 0.8)
   } else {
     legend("topright",
            legend = c("Trace", "Median"),
-           col = c("gray40", "red"),
+           col = c("gray40", color),
            lwd = c(0.8, 2), horiz = TRUE,
-           lty = c(1, 2), bty = "n", cex = 0.8)
+           lty = c(1, 1), bty = "n", cex = 0.8)
   }
   grid()
 
   # 2. Autocorrelation Function
   acf(param_samples,
       main = "",
-      col = "steelblue",
+      col = color,
       lwd = 2)
   title(main = "Autocorrelation")
   grid()
@@ -93,66 +105,63 @@ plot_param_diagnostics_base <- function(param_samples,
   # 3. Posterior Density
   dens <- density(param_samples)
   plot(dens, main = "Posterior Density",
-       xlab = param_label, lwd = 2, col = "darkgreen")
-  polygon(dens, col = grDevices::rgb(0, 0.5, 0, 0.2), border = NA)
+       xlab = param_label, lwd = 2, col = color, ylim = c(0, max(dens$y) * 1.25))
+  polygon(dens, col = grDevices::adjustcolor(color, alpha.f = 0.2), border = NA)
   segments(x0 = median(param_samples), y0 = 0,
            x1 = median(param_samples), y1 = max(dens$y),
-           col = "red", lwd = 2, lty = 2)
+           col = color, lwd = 2, lty = 1)
   if (!is.null(true_value)) {
     segments(x0 = true_value, y0 = 0,
              x1 = true_value, y1 = max(dens$y),
-             col = "blue", lwd = 2, lty = 3)
+             col = "black", lwd = 2, lty = 2)
     legend("topright",
            legend = c("Median", "True Value"),
-           col = c("red", "blue"),
+           col = c(color, "black"),
            lwd = c(2, 2),
            horiz = TRUE,
-           lty = c(2, 3),
+           lty = c(1, 2),
            bty = "n", cex = 0.8)
   } else {
     legend("topright",
            legend = "Median",
-           col = "red",
+           col = color,
            lwd = 2,
            horiz = TRUE,
-           lty = 2,
+           lty = 1,
            bty = "n", cex = 0.8)
   }
   grid()
-  # legend("topright",
-  #        legend = c("Median", "Mean"),
-  #        col = c("red", "blue"),
-  #        lty = c(2, 3), lwd = 2, bty = "n", cex = 0.8)
 
   # 4. Running Mean (Convergence Check)
   running_mean <- cumsum(param_samples) / seq_along(param_samples)
-  range_runnint <- range(running_mean, median(param_samples))
+  range_runnint <- range(running_mean, mean(param_samples))
   range_runnint[2] <- range_runnint[2] + 0.25 * diff(range_runnint)
 
-  plot(running_mean, type = "l", col = "steelblue", lwd = 2,
+  plot(running_mean, type = "l", col = grDevices::adjustcolor(color, alpha.f = 0.4),
+       lwd = 2, lty = 1,
        xlab = "Iteration", ylab = param_label, ylim = range_runnint,
        main = "Running Mean")
-  segments(x0 = 1, y0 = median(param_samples),
-           x1 = length(param_samples), y1 = median(param_samples),
-           col = "red", lwd = 2, lty = 2)
+  segments(x0 = 1, y0 = mean(param_samples),
+           x1 = length(param_samples), y1 = mean(param_samples),
+           col = color, lwd = 2, lty = 3)
   if (!is.null(true_value)) {
     segments(x0 = 1, y0 = true_value,
              x1 = length(param_samples), y1 = true_value,
-             col = "blue", lwd = 2, lty = 3)
+             col = "black", lwd = 2, lty = 2)
     legend("topright",
-           legend = c("Running Mean", "Median", "True Value"),
-           col = c("steelblue", "red", "blue"),
+           legend = c("Running Mean", "Mean", "True Value"),
+           col = c(color, color, "black"),
            lwd = c(2, 2, 2),
            horiz = TRUE,
-           lty = c(1, 2, 3),
+           lty = c(1, 3, 2),
            bty = "n", cex = 0.8)
   } else {
     legend("topright",
-           legend = c("Running Mean", "Median"),
-           col = c("steelblue", "red"),
+           legend = c("Running Mean", "Mean"),
+           col = c(color, color),
            lwd = c(2, 2),
            horiz = TRUE,
-           lty = c(1, 2),
+           lty = c(1, 3),
            bty = "n", cex = 0.8)
   }
   grid()
@@ -182,11 +191,15 @@ plot_param_diagnostics_base <- function(param_samples,
 #'
 #' @details The four panels show:
 #'   \enumerate{
-#'     \item mu_1 vs mu_2 (component separation)
-#'     \item mu_1 vs phi_1 (mean-precision relationship for component 1)
-#'     \item mu_2 vs phi_2 (mean-precision relationship for component 2)
-#'     \item phi_1 vs phi_2 (precision comparison)
+#'     \item mu_1 vs mu_2 (component separation) - uses neutral gray color
+#'     \item mu_1 vs phi_1 (mean-precision relationship for component 1) - uses neutral gray color
+#'     \item mu_2 vs phi_2 (mean-precision relationship for component 2) - uses neutral gray color
+#'     \item phi_1 vs phi_2 (precision comparison) - uses neutral gray color
 #'   }
+#'
+#'   Note: Mixture parameters do not correspond to dynamic states (level, trend,
+#'   acceleration), so they use neutral gray colors to avoid confusion with the
+#'   state-specific color scheme (blue for level, red for trend, green for acceleration).
 #'
 #' @keywords internal
 #' @noRd
@@ -207,7 +220,7 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
          xlab = expression(mu[1]),
          ylab = expression(mu[2]),
          main = expression(paste(mu[1], " vs ", mu[2])),
-         pch = 16, col = grDevices::rgb(0.1, 0.3, 0.6, 0.3))
+         pch = 16, col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
     grid()
   }
 
@@ -217,7 +230,7 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
          xlab = expression(mu[1]),
          ylab = expression(phi[1]),
          main = expression(paste(mu[1], " vs ", phi[1])),
-         pch = 16, col = grDevices::rgb(0.1, 0.5, 0.2, 0.3))
+         pch = 16, col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
     grid()
   }
 
@@ -227,7 +240,7 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
          xlab = expression(mu[2]),
          ylab = expression(phi[2]),
          main = expression(paste(mu[2], " vs ", phi[2])),
-         pch = 16, col = grDevices::rgb(0.8, 0.4, 0.1, 0.3))
+         pch = 16, col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
     grid()
   }
 
@@ -237,7 +250,7 @@ plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
          xlab = expression(phi[1]),
          ylab = expression(phi[2]),
          main = expression(paste(phi[1], " vs ", phi[2])),
-         pch = 16, col = grDevices::rgb(0.5, 0.1, 0.5, 0.3))
+         pch = 16, col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
     grid()
   }
 
@@ -333,36 +346,54 @@ plot_alpha_trajectory_base <- function(alpha,
       mgp = c(2.5, 1, 0))
 
   # Base plot
-  plot(time_grid, alpha_median, type = "l", lwd = 2.5, col = "blue",
-       xlab = "Time", ylab = expression(alpha[t]),
-       ylim = c(0, 1.1), axes = FALSE, main = "")
+  plot(time_grid,
+       alpha_median,
+       type = "l",
+       lwd = 2.5,
+       col = "steelblue",
+       xlab = "Time",
+       ylab = expression(alpha[t]),
+       ylim = c(0, 1.1),
+       axes = FALSE,
+       main = "")
 
   axis(side = 1)
   axis(side = 2, at = seq(0, 1, by = 0.2))
+
+  # Add observed data (if provided and show_obs = TRUE)
+  if (!is.null(obs_data) && show_obs) {
+    points(time_grid,
+           obs_data,
+           pch = obs_pch,
+           cex = obs_cex,
+           col = obs_color)
+  }
+
+  # Add true alpha (if provided - for simulations)
+  if (!is.null(true_alpha)) {
+    lines(time_grid,
+          true_alpha,
+          lwd = 2.5,
+          col = "black",
+          lty = 2)
+  }
 
   # Add credible band
   if (ci) {
     polygon(c(time_grid, rev(time_grid)),
             c(alpha_lower, rev(alpha_upper)),
-            col = grDevices::rgb(0.2, 0.5, 0.8, 0.2), border = NA)
-    lines(time_grid, alpha_median, lwd = 2.5, col = "blue")
+            col = grDevices::adjustcolor("steelblue", alpha.f = 0.2),
+            border = NA)
+    lines(time_grid, alpha_median, lwd = 2.5, col = "steelblue")
   }
 
-  # Add true alpha (if provided - for simulations)
-  if (!is.null(true_alpha)) {
-    lines(time_grid, true_alpha, lwd = 2.5, col = "red", lty = 2)
-  }
-
-  # Add observed data (if provided and show_obs = TRUE)
-  if (!is.null(obs_data) && show_obs) {
-    points(time_grid, obs_data, pch = obs_pch, cex = obs_cex, col = obs_color)
-  }
-
-  grid()
+  grid(nx = NA, ny = NULL)
+  segments(x0 = axTicks(1), y0 = -0.04, x1 = axTicks(1), y1 = 1.03,
+           col = "lightgray", lwd = par("lwd"), lty = "dotted")
 
   # Build legend
   legend_items <- c(expression(hat(alpha)[t]))
-  legend_cols <- c("blue")
+  legend_cols <- c("steelblue")
   legend_lty <- c(1)
   legend_lwd <- c(2.5)
   legend_pch <- c(NA)
@@ -370,7 +401,7 @@ plot_alpha_trajectory_base <- function(alpha,
 
   if (ci) {
     legend_items <- c(legend_items, ci_label)
-    legend_cols <- c(legend_cols, grDevices::rgb(0.2, 0.5, 0.8, 0.3))
+    legend_cols <- c(legend_cols, grDevices::adjustcolor("steelblue", alpha.f = 0.3))
     legend_lty <- c(legend_lty, 1)
     legend_lwd <- c(legend_lwd, 10)
     legend_pch <- c(legend_pch, NA)
@@ -379,9 +410,9 @@ plot_alpha_trajectory_base <- function(alpha,
 
   if (!is.null(true_alpha)) {
     legend_items <- c(expression(alpha[t]), legend_items)
-    legend_cols  <- c("red", legend_cols)
+    legend_cols  <- c("black", legend_cols)
     legend_lty   <- c(2, legend_lty)
-    legend_lwd   <- c(2, legend_lwd)
+    legend_lwd   <- c(2.5, legend_lwd)
     legend_pch   <- c(NA, legend_pch)
     legend_tw <- c(legend_tw, 50)
   }
@@ -436,7 +467,7 @@ plot_alpha_trajectory_base <- function(alpha,
 plot_component_probabilities_base <- function(z,
                                               threshold = 0.5,
                                               color_above = "purple",
-                                              color_below = "blue",
+                                              color_below = "steelblue",
                                               ...) {
 
   n_obs <- ncol(z)
@@ -455,7 +486,7 @@ plot_component_probabilities_base <- function(z,
   plot(z_prob,
        type = "h",
        lwd = 2,
-       col = ifelse(z_prob > threshold, color_above, color_below),
+       col = ifelse(z_prob > threshold, "purple", "steelblue"),
        xlab = "Time",
        ylab = expression(paste("P(", z[t], " = 1 | data)")),
        ylim = c(0, 1.1),
@@ -466,14 +497,14 @@ plot_component_probabilities_base <- function(z,
 
   # Add threshold line
   segments(x0 = 1, y0 = threshold, x1 = n_obs, y1 = threshold,
-           col = "red", lwd = 2, lty = 2)
+           col = "black", lwd = 2, lty = 2)
 
   legend("topright",
          horiz = TRUE,
          legend = c(paste0("P(z_t = 1) > ", threshold),
                     paste0("P(z_t = 1) ≤ ", threshold),
                     "Threshold"),
-         col = c(color_above, color_below, "red"),
+         col = c("purple", "steelblue", "black"),
          lty = c(1, 1, 2),
          lwd = 2,
          bty = "n")
@@ -565,15 +596,15 @@ plot_binomial_alpha_base <- function(x,
 }
 
 
-#' Plot acceptance rates
+#' Plot acceptance proportions
 #'
 #' @param accept_prop Matrix of acceptance proportions
-#' @param target_acceptance Numeric, target acceptance rate for reference line
+#' @param target_acceptance Numeric, target acceptance proportion for reference line
 #' @param ... Additional arguments (currently unused)
 #'
 #' @keywords internal
 #' @noRd
-plot_acceptance_rates_base <- function(accept_prop, target_acceptance = 0.44, ...) {
+plot_acceptance_proportions_base <- function(accept_prop, target_acceptance = 0.44, ...) {
 
   min_acc <- apply(accept_prop, 2, min)
   max_acc <- apply(accept_prop, 2, max)
@@ -593,8 +624,8 @@ plot_acceptance_rates_base <- function(accept_prop, target_acceptance = 0.44, ..
     type = "l",
     col = "black",
     lwd = 2,
-    xlab = "Time (t)",
-    ylab = "Acceptance Rate",
+    xlab = "Time",
+    ylab = "Acceptance Proportion",
     ylim = c(r1_acc, r2_acc),
     main = ""
   )
@@ -606,14 +637,14 @@ plot_acceptance_rates_base <- function(accept_prop, target_acceptance = 0.44, ..
     border = NA
   )
 
-  abline(h = target_acceptance, col = "red", lty = 2, lwd = 2)
+  abline(h = target_acceptance, col = "red", lty = 3, lwd = 2)
 
   legend(
     "topright",
-    legend = c("Median acceptance", "Min-Max range",
+    legend = c("Median", "Range",
                sprintf("Target (%.2f)", target_acceptance)),
     col = c("black", "gray", "red"),
-    lty = c(1, 1, 2),
+    lty = c(1, 1, 3),
     lwd = c(2, 8, 2),
     horiz = TRUE,
     bty = "n"
@@ -621,7 +652,7 @@ plot_acceptance_rates_base <- function(accept_prop, target_acceptance = 0.44, ..
 
   grid()
 
-  mtext("Metropolis-Hastings Acceptance Rates", outer = TRUE, cex = 1.3, font = 2)
+  mtext("Metropolis-Hastings Acceptance Proportions", outer = TRUE, cex = 1.3, font = 2)
 
   invisible(NULL)
 }
@@ -798,7 +829,9 @@ validate_ci_level <- function(ci_level) {
 #' @keywords internal
 #' @noRd
 plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
-                                          ci_level = 0.95, ...) {
+                                          ci_level = 0.95,
+                                          true_states = NULL,
+                                          ...) {
 
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
@@ -828,7 +861,8 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
 
   # 5. Pages n+2 onwards: Dynamic states
   plot_dynamic_states_generic_base(x, model_order = model_order,
-                                   ci = ci, ci_level = ci_level, ...)
+                                   ci = ci, ci_level = ci_level,
+                                   true_states = true_states, ...)
 
   # 6. Final pages: Mixture weights (only for mixture models)
   if (model_info$has_mixture) {
@@ -850,6 +884,9 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
 #' @param model_order Integer: 1, 2, or 3. If NULL, auto-detected.
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
+#' @param true_states List with true state trajectories (or NULL).
+#'   Should contain elements: theta_1, theta_2 (if order >= 2), theta_3 (if order == 3).
+#'   Each element should be a numeric vector of length n_obs.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
@@ -865,7 +902,9 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
 #' @noRd
 plot_dynamic_states_generic_base <- function(x, which = NULL,
                                              model_order = NULL,
-                                             ci = TRUE, ci_level = 0.95, ...) {
+                                             ci = TRUE, ci_level = 0.95,
+                                             true_states = NULL,
+                                             ...) {
 
   # Auto-detect model order if needed
   if (is.null(model_order)) {
@@ -916,6 +955,12 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       state_name <- state_labels$state_names[i]
       summary_i <- state_summaries[[state_name]]
 
+      # Extract true state if provided
+      true_state_i <- NULL
+      if (!is.null(true_states)) {
+        true_state_i <- true_states[[state_name]]
+      }
+
       plot_state_trajectory_base(
         time_grid = time_grid,
         median = summary_i$median,
@@ -925,7 +970,8 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
         main = state_labels$state_titles[i],
         col = state_labels$state_colors[i],
         ci = ci,
-        ci_label = ci_label
+        ci_label = ci_label,
+        true_state = true_state_i
       )
     }
 
@@ -986,7 +1032,23 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
            xlab = expression(theta["t,1"]),
            ylab = expression(theta["t,2"]),
            main = "State Space",
-           pch = 16, cex = 0.9, col = grDevices::rgb(1, 0.5, 0, 0.2))
+           pch = 16, cex = 0.9, col = grDevices::rgb(0.5, 0.5, 0.5, 0.2))
+
+      # Add true state trajectory if provided
+      if (!is.null(true_states) &&
+          !is.null(true_states$theta_1) &&
+          !is.null(true_states$theta_2)) {
+        lines(true_states$theta_1, true_states$theta_2,
+              col = "black", lwd = 2, lty = 2)
+        legend("topright",
+               legend = c("MCMC samples", "True trajectory"),
+               col = c(grDevices::rgb(0.5, 0.5, 0.5, 0.5), "black"),
+               pch = c(16, NA),
+               lty = c(NA, 2),
+               lwd = c(NA, 2),
+               bty = "n")
+      }
+
       grid()
 
       # Plot 2.2: Level Innovations
@@ -1005,6 +1067,17 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       # Plot 2.3: Joint Trajectories
       ylim_range <- range(c(state_summaries$theta_1$median,
                             state_summaries$theta_2$median))
+
+      # # Include true states in range if provided
+      # if (!is.null(true_states)) {
+      #   if (!is.null(true_states$theta_1)) {
+      #     ylim_range <- range(c(ylim_range, true_states$theta_1))
+      #   }
+      #   if (!is.null(true_states$theta_2)) {
+      #     ylim_range <- range(c(ylim_range, true_states$theta_2))
+      #   }
+      # }
+
       if (diff(ylim_range) == 0) {
         ylim_range <- ylim_range + c(-0.75, 0.75)
       }
@@ -1016,11 +1089,39 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
            main = "Joint Trajectories", ylim = ylim_range)
       lines(time_grid, state_summaries$theta_2$median,
             col = state_labels$state_colors[2], lwd = 2)
+
+      # # Add true trajectories if provided
+      # if (!is.null(true_states)) {
+      #   if (!is.null(true_states$theta_1)) {
+      #     lines(time_grid, true_states$theta_1, col = "black", lwd = 2, lty = 2)
+      #   }
+      #   if (!is.null(true_states$theta_2)) {
+      #     lines(time_grid, true_states$theta_2, col = "black", lwd = 2, lty = 2)
+      #   }
+      # }
+
       grid()
+
+      # Build legend
+      legend_items <- state_labels$state_labels
+      legend_cols <- state_labels$state_colors
+      legend_lty <- c(1, 1)
+      legend_lwd <- c(2, 2)
+
+      # if (!is.null(true_states) &&
+      #     (!is.null(true_states$theta_1) || !is.null(true_states$theta_2))) {
+      #   legend_items <- c(legend_items, "True States")
+      #   legend_cols <- c(legend_cols, "black")
+      #   legend_lty <- c(legend_lty, 2)
+      #   legend_lwd <- c(legend_lwd, 2)
+      # }
+
       legend("topright", horiz = TRUE,
-             legend = state_labels$state_labels,
-             col = state_labels$state_colors,
-             lty = 1, lwd = 2, bty = "n")
+             legend = legend_items,
+             col = legend_cols,
+             lty = legend_lty,
+             lwd = legend_lwd,
+             bty = "n")
 
       # Plot 2.4: Trend Innovations
       plot_innovation_base(
@@ -1048,6 +1149,20 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       ylim_range <- range(c(state_summaries$theta_1$median,
                             state_summaries$theta_2$median,
                             state_summaries$theta_3$median))
+
+      # # Include true states in range if provided
+      # if (!is.null(true_states)) {
+      #   if (!is.null(true_states$theta_1)) {
+      #     ylim_range <- range(c(ylim_range, true_states$theta_1))
+      #   }
+      #   if (!is.null(true_states$theta_2)) {
+      #     ylim_range <- range(c(ylim_range, true_states$theta_2))
+      #   }
+      #   if (!is.null(true_states$theta_3)) {
+      #     ylim_range <- range(c(ylim_range, true_states$theta_3))
+      #   }
+      # }
+
       if (diff(ylim_range) == 0) {
         ylim_range <- ylim_range + c(-0.75, 0.75)
       }
@@ -1061,11 +1176,44 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
             col = state_labels$state_colors[2], lwd = 2)
       lines(time_grid, state_summaries$theta_3$median,
             col = state_labels$state_colors[3], lwd = 2)
+
+      # # Add true trajectories if provided
+      # if (!is.null(true_states)) {
+      #   if (!is.null(true_states$theta_1)) {
+      #     lines(time_grid, true_states$theta_1, col = "black", lwd = 2, lty = 2)
+      #   }
+      #   if (!is.null(true_states$theta_2)) {
+      #     lines(time_grid, true_states$theta_2, col = "black", lwd = 2, lty = 2)
+      #   }
+      #   if (!is.null(true_states$theta_3)) {
+      #     lines(time_grid, true_states$theta_3, col = "black", lwd = 2, lty = 2)
+      #   }
+      # }
+
       grid()
+
+      # Build legend
+      legend_items <- state_labels$state_labels
+      legend_cols <- state_labels$state_colors
+      legend_lty <- c(1, 1, 1)
+      legend_lwd <- c(2, 2, 2)
+
+      # if (!is.null(true_states) &&
+      #     (!is.null(true_states$theta_1) ||
+      #      !is.null(true_states$theta_2) ||
+      #      !is.null(true_states$theta_3))) {
+      #   legend_items <- c(legend_items, "True States")
+      #   legend_cols <- c(legend_cols, "black")
+      #   legend_lty <- c(legend_lty, 2)
+      #   legend_lwd <- c(legend_lwd, 2)
+      # }
+
       legend("topright", horiz = TRUE,
-             legend = state_labels$state_labels,
-             col = state_labels$state_colors,
-             lty = 1, lwd = 2, bty = "n")
+             legend = legend_items,
+             col = legend_cols,
+             lty = legend_lty,
+             lwd = legend_lwd,
+             bty = "n")
 
       # Plot 2.2: Level Innovations
       plot_innovation_base(
@@ -1137,6 +1285,9 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
           labels = c(expression(theta["t,1"]),
                      expression(theta["t,2"]),
                      expression(theta["t,3"])))
+
+    # Note: Adding true state trajectories to pairs() plot is complex
+    # and may not be visually useful. Consider if needed.
   }
 
   invisible(NULL)

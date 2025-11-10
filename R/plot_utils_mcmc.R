@@ -277,7 +277,8 @@ get_param_config <- function(x,
     name = quote(theta["0,1"]),
     label = expression(theta["0,1"]),
     name_str = "theta_01",
-    label_str = "theta_01"
+    label_str = "theta_01",
+    color = "steelblue"
   )
 
   if (model_order >= 2L) {
@@ -286,7 +287,8 @@ get_param_config <- function(x,
       name = quote(theta["0,2"]),
       label = expression(theta["0,2"]),
       name_str = "theta_02",
-      label_str = "theta_02"
+      label_str = "theta_02",
+      color = "firebrick"
     )
   }
 
@@ -296,7 +298,8 @@ get_param_config <- function(x,
       name = quote(theta["0,3"]),
       label = expression(theta["0,3"]),
       name_str = "theta_03",
-      label_str = "theta_03"
+      label_str = "theta_03",
+      color = "darkgreen"
     )
   }
 
@@ -306,7 +309,8 @@ get_param_config <- function(x,
     name = quote(W[1]^{-1}),
     label = expression(W[1]^{-1}),
     name_str = "W_1^{-1}",
-    label_str = "W_1^{-1}"
+    label_str = "W_1^{-1}",
+    color = "steelblue"
   )
 
   if (model_order >= 2L) {
@@ -315,7 +319,8 @@ get_param_config <- function(x,
       name = quote(W[2]^{-1}),
       label = expression(W[2]^{-1}),
       name_str = "W_2^{-1}",
-      label_str = "W_2^{-1}"
+      label_str = "W_2^{-1}",
+      color = "firebrick"
     )
   }
 
@@ -325,7 +330,8 @@ get_param_config <- function(x,
       name = quote(W[3]^{-1}),
       label = expression(W[3]^{-1}),
       name_str = "W_3^{-1}",
-      label_str = "W_3^{-1}"
+      label_str = "W_3^{-1}",
+      color = "darkgreen"
     )
   }
 
@@ -478,6 +484,7 @@ plot_mcmc_diagnostics_generic <- function(x,
         param_name = param_info$name,
         param_label = param_info$label,
         true_value = true_value,
+        color = param_info$color,
         ...
       )
     } else {

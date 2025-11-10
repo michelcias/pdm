@@ -596,10 +596,14 @@ plot_binomial_alpha_base <- function(x,
 }
 
 
-#' Plot acceptance proportions
+#' Plot acceptance proportions (base graphics)
 #'
-#' @param accept_prop Matrix of acceptance proportions
-#' @param target_acceptance Numeric, target acceptance proportion for reference line
+#' @description Plots Metropolis-Hastings acceptance proportions over time points,
+#'   showing median acceptance with min-max range and target reference line.
+#'
+#' @param accept_prop Matrix of acceptance proportions (n_chain x n_obs)
+#' @param target_acceptance Numeric, target acceptance proportion for reference line.
+#'   Default is 0.44 (theoretically optimal for univariate random-walk proposals).
 #' @param ... Additional arguments (currently unused)
 #'
 #' @keywords internal

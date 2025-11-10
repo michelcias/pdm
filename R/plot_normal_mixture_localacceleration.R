@@ -29,11 +29,6 @@
 #'   For \code{type = "params"}, \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"}: not used (both alpha_t and z_t are shown).
 #'   If \code{NULL} (default), all available plots are shown.
-#' @param engine Character string specifying the graphics engine. One of:
-#'   \describe{
-#'     \item{\code{"base"}}{Base R graphics (default, no dependencies)}
-#'     \item{\code{"ggplot2"}}{ggplot2 graphics (requires \pkg{ggplot2})}
-#'   }
 #' @param ask Logical; if \code{TRUE}, the user is asked before each plot when
 #'   \code{type = "all"}. Default is \code{interactive()} when \code{type = "all"},
 #'   \code{FALSE} otherwise.
@@ -93,24 +88,6 @@
 #'   \item Page 15: Mixture weight alpha_t
 #'   \item Page 16: Component membership P(z_t = 1 | data)
 #' }
-#'
-#' The \code{engine} argument allows choosing between base R graphics (lightweight,
-#' no dependencies) and ggplot2 (modern, publication-ready). If ggplot2 is not
-#' installed and \code{engine = "ggplot2"}, the function falls back to base graphics
-#' with a warning.
-#'
-#' @section Dependencies:
-#'
-#' The ggplot2 engine has optional dependencies for enhanced visualizations:
-#' \itemize{
-#'   \item \pkg{hexbin}: For hexagonal binning in joint posterior plots
-#'   \item \pkg{patchwork}: For combining multiple plots into layouts
-#' }
-#'
-#' If these packages are not installed, the function will use fallback methods
-#' (e.g., scatterplots instead of hexbins). Install with:
-#' \code{install.packages(c("hexbin", "patchwork"))}
-#'
 #' @examples
 #' \dontrun{
 #' ## Simulation of data
@@ -177,7 +154,7 @@
 #' )
 #'
 #' # Complete dashboard (16 pages)
-#' plot(out_logit, type = "all", engine = "base")
+#' plot(out_logit, type = "all")
 #'
 #' # Diagnostics for specific parameters
 #' plot(out_logit, type = "mcmc", which = 1:2)  # Only mu_1 and mu_2
@@ -190,9 +167,6 @@
 #' pdf("diagnostics.pdf", width = 10, height = 8)
 #' plot(out_logit, type = "all", ask = FALSE)
 #' dev.off()
-#'
-#' # Use ggplot2 engine
-#' plot(out_logit, type = "mcmc", which = 1, engine = "ggplot2")
 #' }
 #'
 #' @seealso \code{\link{mcmc_normal_mixture_localacceleration}},
@@ -203,7 +177,6 @@ plot.normal_mixture_localacceleration <- function(x,
                                                   type = c("all", "mcmc", "params",
                                                            "states", "alpha"),
                                                   which = NULL,
-                                                  engine = c("base", "ggplot2"),
                                                   ask = NULL,
                                                   overlay_data = TRUE,
                                                   ci = TRUE,
@@ -211,44 +184,22 @@ plot.normal_mixture_localacceleration <- function(x,
                                                   ...) {
 
   type <- match.arg(type)
-  engine <- match.arg(engine)
-
-  if (engine == "ggplot2" && !requireNamespace("ggplot2", quietly = TRUE)) {
-    warning("Package 'ggplot2' is not installed. Falling back to base graphics.")
-    engine <- "base"
-  }
 
   if (is.null(ask)) {
     ask <- interactive() && type == "all"
   }
 
-  if (engine == "base") {
-    switch(type,
-           all = plot_all_mixture_generic_base(x, ask = ask, ci = ci,
-                                               ci_level = ci_level, ...),
-           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
-                                                engine = "base", ...),
-           params = plot_mixture_params_base(x$mu_1, x$mu_2, x$prec_1, x$prec_2,
-                                             which = which, ...),
-           states = plot_dynamic_states_generic_base(x, which = which,
-                                                     ci = ci, ci_level = ci_level, ...),
-           alpha = plot_mixture_weights_base(x$alpha, x$z,
-                                             ci = ci, ci_level = ci_level, ...),
-    )
-  } else {
-    switch(type,
-           all = plot_all_mixture_generic_ggplot(x, ask = ask, ci = ci,
-                                                 ci_level = ci_level, ...),
-           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
-                                                engine = "ggplot2", ...),
-           params = plot_mixture_params_ggplot(x$mu_1, x$mu_2, x$prec_1, x$prec_2,
-                                               which = which, ...),
-           states = plot_dynamic_states_generic_ggplot(x, which = which,
-                                                       ci = ci, ci_level = ci_level, ...),
-           alpha = plot_mixture_weights_ggplot(x$alpha, x$z,
-                                               ci = ci, ci_level = ci_level, ...)
-    )
-  }
+  switch(type,
+         all = plot_all_mixture_generic_base(x, ask = ask, ci = ci,
+                                             ci_level = ci_level, ...),
+         mcmc = plot_mcmc_diagnostics_generic(x, which = which, ...),
+         params = plot_mixture_params_base(x$mu_1, x$mu_2, x$prec_1, x$prec_2,
+                                           which = which, ...),
+         states = plot_dynamic_states_generic_base(x, which = which,
+                                                   ci = ci, ci_level = ci_level, ...),
+         alpha = plot_mixture_weights_base(x$alpha, x$z,
+                                           ci = ci, ci_level = ci_level, ...)
+  )
 
   invisible(x)
 }

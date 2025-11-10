@@ -19,11 +19,6 @@
 #'   }
 #'   For \code{type = "states"}: indices of subplots.
 #'   If \code{NULL} (default), all available plots are shown.
-#' @param engine Character string specifying the graphics engine. One of:
-#'   \describe{
-#'     \item{\code{"base"}}{Base R graphics (default, no dependencies)}
-#'     \item{\code{"ggplot2"}}{ggplot2 graphics (requires \pkg{ggplot2})}
-#'   }
 #' @param ask Logical; if \code{TRUE}, the user is asked before each plot when
 #'   \code{type = "all"}. Default is \code{interactive()} when \code{type = "all"},
 #'   \code{FALSE} otherwise.
@@ -63,22 +58,6 @@
 #'   \item Pages 1-3: Individual parameter diagnostics (4 panels each)
 #'   \item Pages 4-5: Dynamic state trajectory and diagnostics
 #' }
-#'
-#' The \code{engine} argument allows choosing between base R graphics (lightweight,
-#' no dependencies) and ggplot2 (modern, publication-ready). If ggplot2 is not
-#' installed and \code{engine = "ggplot2"}, the function falls back to base graphics
-#' with a warning.
-#'
-#' @section Dependencies:
-#'
-#' The ggplot2 engine has an optional dependency for enhanced visualizations:
-#' \itemize{
-#'   \item \pkg{patchwork}: For combining multiple plots into layouts
-#' }
-#'
-#' If this package is not installed, the function will display plots sequentially.
-#' Install with: \code{install.packages("patchwork")}
-#'
 #' @examples
 #' \dontrun{
 #' ## Simulation of data
@@ -105,7 +84,7 @@
 #' )
 #'
 #' # Complete dashboard (5 pages)
-#' plot(out, type = "all", engine = "base")
+#' plot(out, type = "all")
 #'
 #' # Diagnostics for specific parameters
 #' plot(out, type = "mcmc", which = 1)  # Only phi_y
@@ -118,9 +97,6 @@
 #' pdf("diagnostics.pdf", width = 10, height = 8)
 #' plot(out, type = "all", ask = FALSE)
 #' dev.off()
-#'
-#' # Use ggplot2 engine
-#' plot(out, type = "mcmc", which = 1, engine = "ggplot2")
 #' }
 #'
 #' @seealso \code{\link{mcmc_normal_locallevel}},
@@ -130,59 +106,33 @@
 plot.normal_locallevel <- function(x,
                                    type = c("all", "mcmc", "states"),
                                    which = NULL,
-                                   engine = c("base", "ggplot2"),
                                    ask = NULL,
                                    ci = TRUE,
                                    ci_level = 0.95,
                                    ...) {
 
   type <- match.arg(type)
-  engine <- match.arg(engine)
-
-  if (engine == "ggplot2" && !requireNamespace("ggplot2", quietly = TRUE)) {
-    warning("Package 'ggplot2' is not installed. Falling back to base graphics.")
-    engine <- "base"
-  }
 
   if (is.null(ask)) {
     ask <- interactive() && type == "all"
   }
 
-  if (engine == "base") {
-    switch(type,
-           all = {
-             oldpar <- par(no.readonly = TRUE)
-             on.exit(par(oldpar))
-             if (ask) {
-               oldask <- par(ask = TRUE)
-               on.exit(par(oldask), add = TRUE)
-             }
-             plot_mcmc_diagnostics_generic(x, which = NULL, engine = "base", ...)
-             plot_dynamic_states_generic_base(x, which = NULL, ci = ci,
-                                              ci_level = ci_level, ...)
-           },
-           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
-                                                engine = "base", ...),
-           states = plot_dynamic_states_generic_base(x, which = which,
-                                                     ci = ci, ci_level = ci_level, ...)
-    )
-  } else {
-    switch(type,
-           all = {
-             if (ask) {
-               message("Press [Enter] to see next plot...")
-             }
-             plot_mcmc_diagnostics_generic(x, which = NULL, engine = "ggplot2", ...)
-             if (ask) readline()
-             plot_dynamic_states_generic_ggplot(x, which = NULL, ci = ci,
-                                                ci_level = ci_level, ...)
-           },
-           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
-                                                engine = "ggplot2", ...),
-           states = plot_dynamic_states_generic_ggplot(x, which = which,
-                                                       ci = ci, ci_level = ci_level, ...)
-    )
-  }
+  switch(type,
+         all = {
+           oldpar <- par(no.readonly = TRUE)
+           on.exit(par(oldpar))
+           if (ask) {
+             oldask <- par(ask = TRUE)
+             on.exit(par(oldask), add = TRUE)
+           }
+           plot_mcmc_diagnostics_generic(x, which = NULL, ...)
+           plot_dynamic_states_generic_base(x, which = NULL, ci = ci,
+                                            ci_level = ci_level, ...)
+         },
+         mcmc = plot_mcmc_diagnostics_generic(x, which = which, ...),
+         states = plot_dynamic_states_generic_base(x, which = which,
+                                                   ci = ci, ci_level = ci_level, ...)
+  )
 
   invisible(x)
 }

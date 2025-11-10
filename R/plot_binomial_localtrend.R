@@ -23,11 +23,6 @@
 #'   For \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
 #'   If \code{NULL} (default), all available plots are shown.
-#' @param engine Character string specifying the graphics engine. One of:
-#'   \describe{
-#'     \item{\code{"base"}}{Base R graphics (default, no dependencies)}
-#'     \item{\code{"ggplot2"}}{ggplot2 graphics (requires \pkg{ggplot2})}
-#'   }
 #' @param ask Logical; if \code{TRUE}, the user is asked before each plot when
 #'   \code{type = "all"}. Default is \code{interactive()} when \code{type = "all"},
 #'   \code{FALSE} otherwise.
@@ -114,11 +109,6 @@
 #'   \item Page 8: Acceptance proportions (only if available)
 #' }
 #'
-#' The \code{engine} argument allows choosing between base R graphics (lightweight,
-#' no dependencies) and ggplot2 (modern, publication-ready). If ggplot2 is not
-#' installed and \code{engine = "ggplot2"}, the function falls back to base graphics
-#' with a warning.
-#'
 #' @section Target Acceptance Proportion:
 #'
 #' The acceptance proportion plot displays a reference line showing the target acceptance
@@ -140,16 +130,6 @@
 #'     which can be clearer for presentations or when focusing on the temporal
 #'     pattern of the success probabilities.
 #' }
-#'
-#' @section Dependencies:
-#'
-#' The ggplot2 engine has an optional dependency for enhanced visualizations:
-#' \itemize{
-#'   \item \pkg{patchwork}: For combining multiple plots into layouts
-#' }
-#'
-#' If this package is not installed, the function will display plots sequentially.
-#' Install with: \code{install.packages("patchwork")}
 #'
 #' @examples
 #' \dontrun{
@@ -187,11 +167,10 @@
 #' )
 #'
 #' # Complete dashboard (8 pages, includes acceptance proportions if available)
-#' plot(out, type = "all", engine = "base")
+#' plot(out, type = "all")
 #'
 #' # Only acceptance proportions (will show target line at 0.44)
 #' plot(out, type = "acceptance")
-#' plot(out, type = "acceptance", engine = "ggplot2")
 #'
 #' # Diagnostics for specific parameters
 #' plot(out, type = "mcmc", which = 1:2)  # Initial states
@@ -211,12 +190,6 @@
 #' plot(out, type = "all", ask = FALSE)
 #' dev.off()
 #'
-#' # Use ggplot2 engine
-#' plot(out, type = "mcmc", which = 1, engine = "ggplot2")
-#'
-#' # Compare with and without observations using ggplot2
-#' plot(out, type = "alpha", engine = "ggplot2", show_obs = TRUE)
-#' plot(out, type = "alpha", engine = "ggplot2", show_obs = FALSE)
 #' }
 #'
 #' @seealso \code{\link{mcmc_binomial_localtrend}},
@@ -226,7 +199,6 @@
 plot.binomial_localtrend <- function(x,
                                      type = c("all", "mcmc", "states", "alpha", "acceptance"),
                                      which = NULL,
-                                     engine = c("base", "ggplot2"),
                                      ask = NULL,
                                      ci = TRUE,
                                      ci_level = 0.95,
@@ -235,12 +207,6 @@ plot.binomial_localtrend <- function(x,
                                      ...) {
 
   type <- match.arg(type)
-  engine <- match.arg(engine)
-
-  if (engine == "ggplot2" && !requireNamespace("ggplot2", quietly = TRUE)) {
-    warning("Package 'ggplot2' is not installed. Falling back to base graphics.")
-    engine <- "base"
-  }
 
   # Check if acceptance proportions are available only when specifically requested
   if (type == "acceptance" && is.null(x$accept_prop)) {
@@ -258,97 +224,60 @@ plot.binomial_localtrend <- function(x,
     target_acc <- 0.44  # Default fallback for objects created before this feature
   }
 
-  if (engine == "base") {
-    switch(type,
-           all = {
-             oldpar <- par(no.readonly = TRUE)
-             on.exit(par(oldpar))
-             if (ask) {
-               oldask <- par(ask = TRUE)
-               on.exit(par(oldask), add = TRUE)
-             }
-             plot_mcmc_diagnostics_generic(x,
-                                           which = NULL,
-                                           engine = "base",
-                                           true_values = true_values,
-                                           ...)
-             plot_dynamic_states_generic_base(x,
-                                              which = NULL,
-                                              ci = ci,
-                                              ci_level = ci_level,
-                                              true_values = true_values,
-                                              ...)
-             plot_binomial_alpha_base(x,
-                                      ci = ci,
-                                      ci_level = ci_level,
-                                      show_obs = show_obs,
-                                      true_alpha = true_values$alpha,
-                                      ...)
-             # Plot acceptance proportions only if available
-             if (!is.null(x$accept_prop)) {
-               plot_acceptance_proportions_base(x$accept_prop,
-                                                target_acceptance = target_acc,
-                                                ...)
-             }
-           },
-           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
-                                                engine = "base",
-                                                true_values = true_values,
-                                                ...),
-           states = plot_dynamic_states_generic_base(x,
-                                                     which = which,
-                                                     ci = ci,
-                                                     ci_level = ci_level,
-                                                     true_values = true_values,
-                                                     ...),
-           alpha = plot_binomial_alpha_base(x,
+  switch(type,
+         all = {
+           oldpar <- par(no.readonly = TRUE)
+           on.exit(par(oldpar))
+           if (ask) {
+             oldask <- par(ask = TRUE)
+             on.exit(par(oldask), add = TRUE)
+           }
+           plot_mcmc_diagnostics_generic(x,
+                                         which = NULL,
+                                         true_values = true_values,
+                                         ...)
+           plot_dynamic_states_generic_base(x,
+                                            which = NULL,
                                             ci = ci,
                                             ci_level = ci_level,
-                                            show_obs = show_obs,
-                                            true_alpha = true_values$alpha,
-                                            ...),
-           acceptance = {
-             if (!is.null(x$accept_prop)) {
-               plot_acceptance_proportions_base(x$accept_prop,
-                                                target_acceptance = target_acc,
-                                                ...)
-             }
+                                            true_values = true_values,
+                                            ...)
+           plot_binomial_alpha_base(x,
+                                    ci = ci,
+                                    ci_level = ci_level,
+                                    show_obs = show_obs,
+                                    true_alpha = true_values$alpha,
+                                    ...)
+           # Plot acceptance proportions only if available
+           if (!is.null(x$accept_prop)) {
+             plot_acceptance_proportions_base(x$accept_prop,
+                                              target_acceptance = target_acc,
+                                              ...)
            }
-    )
-  } else {
-    switch(type,
-           all = {
-             if (ask) {
-               message("Press [Enter] to see next plot...")
-             }
-             plot_mcmc_diagnostics_generic(x, which = NULL, engine = "ggplot2", ...)
-             if (ask) readline()
-             plot_dynamic_states_generic_ggplot(x, which = NULL, ci = ci,
-                                                ci_level = ci_level, ...)
-             if (ask) readline()
-             plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level,
-                                        show_obs = show_obs, ...)
-             # Plot acceptance proportions only if available
-             if (!is.null(x$accept_prop)) {
-               if (ask) readline()
-               plot_acceptance_rates_ggplot(x$accept_prop,
-                                            target_acceptance = target_acc, ...)
-             }
-           },
-           mcmc = plot_mcmc_diagnostics_generic(x, which = which,
-                                                engine = "ggplot2", ...),
-           states = plot_dynamic_states_generic_ggplot(x, which = which,
-                                                       ci = ci, ci_level = ci_level, ...),
-           alpha = plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level,
-                                              show_obs = show_obs, ...),
-           acceptance = {
-             if (!is.null(x$accept_prop)) {
-               plot_acceptance_rates_ggplot(x$accept_prop,
-                                            target_acceptance = target_acc, ...)
-             }
+         },
+         mcmc = plot_mcmc_diagnostics_generic(x, which = which,
+                                              true_values = true_values,
+                                              ...),
+         states = plot_dynamic_states_generic_base(x,
+                                                   which = which,
+                                                   ci = ci,
+                                                   ci_level = ci_level,
+                                                   true_values = true_values,
+                                                   ...),
+         alpha = plot_binomial_alpha_base(x,
+                                          ci = ci,
+                                          ci_level = ci_level,
+                                          show_obs = show_obs,
+                                          true_alpha = true_values$alpha,
+                                          ...),
+         acceptance = {
+           if (!is.null(x$accept_prop)) {
+             plot_acceptance_proportions_base(x$accept_prop,
+                                              target_acceptance = target_acc,
+                                              ...)
            }
-    )
-  }
+         }
+  )
 
   invisible(x)
 }

@@ -1019,7 +1019,7 @@ plot_all_mixture_generic_ggplot <- function(x, ask = TRUE, ci = TRUE,
   # 3. Pages 1-n: MCMC diagnostics
   plot_mcmc_diagnostics_generic(x, which = seq_len(n_params),
                                 param_config = param_config,
-                                engine = "ggplot2", ...)
+                                ...)
   if (ask) readline()
 
   # 4. Page n+1: Mixture parameters (only for mixture models)

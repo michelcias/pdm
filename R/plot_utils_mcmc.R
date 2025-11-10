@@ -9,7 +9,6 @@
 #'   \itemize{
 #'     \item Parameter configuration based on model type and order
 #'     \item Generic MCMC diagnostic plot dispatching
-#'     \item Coordination between base and ggplot2 graphics engines
 #'   }
 #'
 #'   These functions are not exported and are intended for internal use only
@@ -168,7 +167,7 @@ get_n_params <- function(model_class, model_order) {
 #'
 #' @description Creates a standardized list of parameter metadata for all
 #'   scalar parameters in a model, including MCMC samples and plotting
-#'   specifications for both base and ggplot2 graphics engines.
+#'   specifications for base R graphics.
 #'
 #' @param x An object inheriting from "pdm_mcmc".
 #' @param model_class Character: "mixture", "binomial", or "normal". If NULL,
@@ -181,8 +180,8 @@ get_n_params <- function(model_class, model_order) {
 #'     \item{samples}{Numeric vector of MCMC samples (length n_chain)}
 #'     \item{name}{Quoted expression for base graphics titles}
 #'     \item{label}{Expression for base graphics axis labels}
-#'     \item{name_str}{Character string for ggplot2 internal use}
-#'     \item{label_str}{Character string for ggplot2 label mapping}
+#'     \item{name_str}{Character string identifier for the parameter}
+#'     \item{label_str}{Character string identifier for labels}
 #'   }
 #'
 #' @details Parameters are ordered as:
@@ -404,15 +403,14 @@ validate_param_config <- function(config) {
 
 #' Generic MCMC diagnostics plot dispatcher
 #'
-#' @description Dispatches MCMC diagnostic plots to the appropriate graphics
-#'   engine (base or ggplot2) for one or more parameters.
+#' @description Dispatches MCMC diagnostic plots using base graphics for one
+#'   or more parameters.
 #'
 #' @param x An object inheriting from "pdm_mcmc".
 #' @param which Integer vector specifying which parameters to plot. If NULL,
 #'   all parameters are plotted.
 #' @param param_config Pre-computed parameter configuration list. If NULL,
 #'   will be auto-generated from x using \code{get_param_config()}.
-#' @param engine Character: "base" or "ggplot2".
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
@@ -420,40 +418,30 @@ validate_param_config <- function(config) {
 #' @details For each selected parameter, creates a 4-panel diagnostic plot:
 #'   trace plot, autocorrelation function, posterior density, and running mean.
 #'   The actual plotting is delegated to \code{plot_param_diagnostics_base()}
-#'   or \code{plot_param_diagnostics_ggplot()} from plot_utils_base.R and
-#'   plot_utils_ggplot.R respectively.
+#'   from plot_utils_base.R.
 #'
 #' @keywords internal
 #' @noRd
 plot_mcmc_diagnostics_generic <- function(x,
                                           which = NULL,
                                           param_config = NULL,
-                                          engine = c("base", "ggplot2"),
                                           true_values = NULL,
                                           ...) {
 
-  # 1. Validate and match engine argument
-  engine <- match.arg(engine)
-
-  # 2. Check ggplot2 availability if needed
-  if (engine == "ggplot2" && !requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required for ggplot2 engine but is not installed")
-  }
-
-  # 3. Generate parameter configuration if not provided
+  # 1. Generate parameter configuration if not provided
   if (is.null(param_config)) {
     param_config <- get_param_config(x)
   }
 
-  # 4. Validate parameter configuration
+  # 2. Validate parameter configuration
   validate_param_config(param_config)
 
-  # 5. Set default for which (all parameters)
+  # 3. Set default for which (all parameters)
   if (is.null(which)) {
     which <- seq_along(param_config)
   }
 
-  # 6. Validate which
+  # 4. Validate which
   if (!is.numeric(which) || any(which != floor(which))) {
     stop("`which` must be an integer vector")
   }
@@ -462,13 +450,13 @@ plot_mcmc_diagnostics_generic <- function(x,
     stop("`which` must be between 1 and ", length(param_config))
   }
 
-  # 7. Plot each selected parameter
+  # 5. Plot each selected parameter
   for (i in which) {
     param_info <- param_config[[i]]
 
     true_value <- NULL
 
-    if (!is.null(true_values) && engine == "base") {
+    if (!is.null(true_values)) {
       param_name <- param_info$name_str
       if (param_name == "theta_01") true_value <- true_values$theta_01
       if (param_name == "theta_02") true_value <- true_values$theta_02
@@ -478,29 +466,14 @@ plot_mcmc_diagnostics_generic <- function(x,
       if (param_name == "W_3^{-1}") true_value <- true_values$prec_theta3
     }
 
-    if (engine == "base") {
-      plot_param_diagnostics_base(
-        param_samples = param_info$samples,
-        param_name = param_info$name,
-        param_label = param_info$label,
-        true_value = true_value,
-        color = param_info$color,
-        ...
-      )
-    } else {
-      # Delegate to ggplot2 function
-      p <- plot_param_diagnostics_ggplot(
-        param_samples = param_info$samples,
-        param_name = param_info$name_str,
-        param_label_text = param_info$label_str,
-        ...
-      )
-
-      # Print plot if not NULL
-      if (!is.null(p)) {
-        print(p)
-      }
-    }
+    plot_param_diagnostics_base(
+      param_samples = param_info$samples,
+      param_name = param_info$name,
+      param_label = param_info$label,
+      true_value = true_value,
+      color = param_info$color,
+      ...
+    )
   }
 
   invisible(NULL)

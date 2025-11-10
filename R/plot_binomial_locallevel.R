@@ -39,15 +39,24 @@
 #'   red points on the alpha_t trajectory. Set to \code{FALSE} to show only
 #'   the estimated trajectory without observations. This parameter only
 #'   affects \code{type = "alpha"} and \code{type = "all"}.
-#' @param true_values Named list containing true parameter values for comparison.
+#' @param true_values Named list containing true scalar parameter values for comparison
+#'   in MCMC diagnostic plots (\code{type = "mcmc"}) and alpha plots (\code{type = "alpha"}).
 #'   Expected elements:
 #'   \describe{
-#'     \item{\code{theta01}}{True initial level}
-#'     \item{\code{prec1}}{True level innovation precision (W_1^{-1})}
-#'     \item{\code{theta1}}{Numeric vector of true theta_1 states over time}
-#'     \item{\code{alpha}}{Numeric vector of true alpha_t probabilities over time}
+#'     \item{\code{theta_01}}{Scalar: True initial level}
+#'     \item{\code{prec_theta1}}{Scalar: True level innovation precision (W_1^{-1})}
+#'     \item{\code{alpha}}{Vector: True alpha_t probabilities over time (for \code{type = "alpha"})}
 #'   }
 #'   If \code{NULL} (default), no true values are displayed.
+#' @param true_states Named list containing true dynamic state trajectories for comparison
+#'   in state plots (\code{type = "states"}). Expected elements:
+#'   \describe{
+#'     \item{\code{theta_1}}{Vector: True theta_1 state values over time (length n_obs)}
+#'   }
+#'   If \code{NULL} (default), no true state trajectories are displayed.
+#'
+#'   \strong{Note:} If you only have the true \code{alpha}, obtain \code{theta_1} using
+#'   the logit transformation: \code{true_states = list(theta_1 = qlogis(alpha))}.
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return Invisibly returns the input object \code{x}.

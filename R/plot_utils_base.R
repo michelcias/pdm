@@ -856,7 +856,7 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
   # 3. Pages 1-n: MCMC diagnostics for each parameter
   plot_mcmc_diagnostics_generic(x, which = seq_len(n_params),
                                 param_config = param_config,
-                                engine = "base", ...)
+                                ...)
 
   # 4. Page n+1: Mixture parameters (only for mixture models)
   if (model_info$has_mixture) {

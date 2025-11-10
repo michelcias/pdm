@@ -8,7 +8,6 @@
   x,
   type = c("all", "mcmc", "states"),
   which = NULL,
-  engine = c("base", "ggplot2"),
   ask = NULL,
   ci = TRUE,
   ci_level = 0.95,
@@ -34,12 +33,6 @@ For \code{type = "mcmc"}:
 }
 For \code{type = "states"}: indices of subplots.
 If \code{NULL} (default), all available plots are shown.}
-
-\item{engine}{Character string specifying the graphics engine. One of:
-\describe{
-  \item{\code{"base"}}{Base R graphics (default, no dependencies)}
-  \item{\code{"ggplot2"}}{ggplot2 graphics (requires \pkg{ggplot2})}
-}}
 
 \item{ask}{Logical; if \code{TRUE}, the user is asked before each plot when
 \code{type = "all"}. Default is \code{interactive()} when \code{type = "all"},
@@ -88,24 +81,7 @@ Generates 5 pages in total:
   \item Pages 1-3: Individual parameter diagnostics (4 panels each)
   \item Pages 4-5: Dynamic state trajectory and diagnostics
 }
-
-The \code{engine} argument allows choosing between base R graphics (lightweight,
-no dependencies) and ggplot2 (modern, publication-ready). If ggplot2 is not
-installed and \code{engine = "ggplot2"}, the function falls back to base graphics
-with a warning.
 }
-\section{Dependencies}{
-
-
-The ggplot2 engine has an optional dependency for enhanced visualizations:
-\itemize{
-  \item \pkg{patchwork}: For combining multiple plots into layouts
-}
-
-If this package is not installed, the function will display plots sequentially.
-Install with: \code{install.packages("patchwork")}
-}
-
 \examples{
 \dontrun{
 ## Simulation of data
@@ -132,7 +108,7 @@ out <- mcmc_normal_locallevel(
 )
 
 # Complete dashboard (5 pages)
-plot(out, type = "all", engine = "base")
+plot(out, type = "all")
 
 # Diagnostics for specific parameters
 plot(out, type = "mcmc", which = 1)  # Only phi_y
@@ -145,9 +121,6 @@ plot(out, type = "states")
 pdf("diagnostics.pdf", width = 10, height = 8)
 plot(out, type = "all", ask = FALSE)
 dev.off()
-
-# Use ggplot2 engine
-plot(out, type = "mcmc", which = 1, engine = "ggplot2")
 }
 
 }

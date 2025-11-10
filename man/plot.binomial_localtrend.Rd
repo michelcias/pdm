@@ -8,7 +8,6 @@
   x,
   type = c("all", "mcmc", "states", "alpha", "acceptance"),
   which = NULL,
-  engine = c("base", "ggplot2"),
   ask = NULL,
   ci = TRUE,
   ci_level = 0.95,
@@ -26,7 +25,7 @@
   \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
   \item{\code{"states"}}{Dynamic states (theta_1, theta_2 trajectories)}
   \item{\code{"alpha"}}{Success probabilities over time (alpha_t)}
-  \item{\code{"acceptance"}}{Metropolis-Hastings acceptance rates (if available)}
+  \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 }}
 
 \item{which}{Integer vector specifying which diagnostic plots to display.
@@ -40,12 +39,6 @@ For \code{type = "mcmc"}:
 For \code{type = "states"}: indices of subplots.
 For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
 If \code{NULL} (default), all available plots are shown.}
-
-\item{engine}{Character string specifying the graphics engine. One of:
-\describe{
-  \item{\code{"base"}}{Base R graphics (default, no dependencies)}
-  \item{\code{"ggplot2"}}{ggplot2 graphics (requires \pkg{ggplot2})}
-}}
 
 \item{ask}{Logical; if \code{TRUE}, the user is asked before each plot when
 \code{type = "all"}. Default is \code{interactive()} when \code{type = "all"},
@@ -64,20 +57,31 @@ red points on the alpha_t trajectory. Set to \code{FALSE} to show only
 the estimated trajectory without observations. This parameter only
 affects \code{type = "alpha"} and \code{type = "all"}.}
 
-\item{true_values}{Named list containing true parameter values for comparison.
+\item{true_values}{Named list containing true scalar parameter values for comparison
+in MCMC diagnostic plots (\code{type = "mcmc"}) and alpha plots (\code{type = "alpha"}).
 Expected elements:
 \describe{
-  \item{\code{theta01}}{True initial level}
-  \item{\code{theta02}}{True initial trend}
-  \item{\code{prec1}}{True level innovation precision (W_1^{-1})}
-  \item{\code{prec2}}{True trend innovation precision (W_2^{-1})}
-  \item{\code{theta1}}{Numeric vector of true theta_1 states over time}
-  \item{\code{theta2}}{Numeric vector of true theta_2 states over time}
-  \item{\code{alpha}}{Numeric vector of true alpha_t probabilities over time}
+  \item{\code{theta_01}}{Scalar: True initial level}
+  \item{\code{theta_02}}{Scalar: True initial trend}
+  \item{\code{prec_theta1}}{Scalar: True level innovation precision (W_1^{-1})}
+  \item{\code{prec_theta2}}{Scalar: True trend innovation precision (W_2^{-1})}
+  \item{\code{alpha}}{Vector: True alpha_t probabilities over time (for \code{type = "alpha"})}
 }
 If \code{NULL} (default), no true values are displayed.}
 
 \item{...}{Additional arguments passed to plotting functions.}
+
+\item{true_states}{Named list containing true dynamic state trajectories for comparison
+  in state plots (\code{type = "states"}). Expected elements:
+  \describe{
+    \item{\code{theta_1}}{Vector: True theta_1 state values over time (length n_obs)}
+    \item{\code{theta_2}}{Vector: True theta_2 state values over time (length n_obs)}
+  }
+  If \code{NULL} (default), no true state trajectories are displayed.
+
+  \strong{Note:} If you only have the true \code{alpha}, you can obtain \code{theta_1}
+  using \code{qlogis(alpha)}. However, \code{theta_2} (trend) cannot be recovered
+  from \code{alpha_true} alone. It must come from your simulation data.}
 }
 \value{
 Invisibly returns the input object \code{x}.
@@ -114,11 +118,11 @@ Available parameters: theta_01, theta_02, W_1^{-1}, W_2^{-1}
   \item Optional observed proportions overlay (controlled by \code{show_obs})
 }
 
-\strong{Acceptance Rates (\code{type = "acceptance"}):}
+\strong{Acceptance Proportions (\code{type = "acceptance"}):}
 \itemize{
   \item Metropolis-Hastings acceptance proportions over time
   \item Min-Max range across MCMC iterations
-  \item Target acceptance rate reference line (uses the \code{target_acceptance}
+  \item Target acceptance proportion reference line (uses the \code{target_acceptance}
     value specified in \code{mcmc_binomial_localtrend})
   \item Only available if the model was run with \code{return_accept_prop = TRUE}
 }
@@ -130,21 +134,16 @@ Generates up to 8 pages in total:
   \item Pages 1-4: Individual parameter diagnostics (4 panels each)
   \item Pages 5-6: Dynamic state trajectories and diagnostics
   \item Page 7: Success probabilities alpha_t
-  \item Page 8: Acceptance rates (only if available)
+  \item Page 8: Acceptance proportions (only if available)
 }
-
-The \code{engine} argument allows choosing between base R graphics (lightweight,
-no dependencies) and ggplot2 (modern, publication-ready). If ggplot2 is not
-installed and \code{engine = "ggplot2"}, the function falls back to base graphics
-with a warning.
 }
-\section{Target Acceptance Rate}{
+\section{Target Acceptance Proportion}{
 
 
-The acceptance rate plot displays a reference line showing the target acceptance
+The acceptance proportion plot displays a reference line showing the target acceptance
 proportion that was specified when running \code{mcmc_binomial_localtrend}.
 This allows visual assessment of whether the adaptive Metropolis-Hastings algorithm
-successfully achieved the desired acceptance rate. The target value is automatically
+successfully achieved the desired acceptance proportion. The target value is automatically
 extracted from the model object and displayed in the plot legend.
 }
 
@@ -162,18 +161,6 @@ proportions in the success probabilities plot:
     which can be clearer for presentations or when focusing on the temporal
     pattern of the success probabilities.
 }
-}
-
-\section{Dependencies}{
-
-
-The ggplot2 engine has an optional dependency for enhanced visualizations:
-\itemize{
-  \item \pkg{patchwork}: For combining multiple plots into layouts
-}
-
-If this package is not installed, the function will display plots sequentially.
-Install with: \code{install.packages("patchwork")}
 }
 
 \examples{
@@ -211,12 +198,11 @@ out <- mcmc_binomial_localtrend(
   seed = 456
 )
 
-# Complete dashboard (8 pages, includes acceptance rates if available)
-plot(out, type = "all", engine = "base")
+# Complete dashboard (8 pages, includes acceptance proportions if available)
+plot(out, type = "all")
 
-# Only acceptance rates (will show target line at 0.44)
+# Only acceptance proportions (will show target line at 0.44)
 plot(out, type = "acceptance")
-plot(out, type = "acceptance", engine = "ggplot2")
 
 # Diagnostics for specific parameters
 plot(out, type = "mcmc", which = 1:2)  # Initial states
@@ -236,12 +222,6 @@ pdf("diagnostics.pdf", width = 10, height = 8)
 plot(out, type = "all", ask = FALSE)
 dev.off()
 
-# Use ggplot2 engine
-plot(out, type = "mcmc", which = 1, engine = "ggplot2")
-
-# Compare with and without observations using ggplot2
-plot(out, type = "alpha", engine = "ggplot2", show_obs = TRUE)
-plot(out, type = "alpha", engine = "ggplot2", show_obs = FALSE)
 }
 
 }

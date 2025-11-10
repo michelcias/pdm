@@ -8,7 +8,6 @@
   x,
   type = c("all", "mcmc", "params", "states", "alpha"),
   which = NULL,
-  engine = c("base", "ggplot2"),
   ask = NULL,
   overlay_data = TRUE,
   ci = TRUE,
@@ -41,12 +40,6 @@ For \code{type = "mcmc"}:
 For \code{type = "params"}, \code{type = "states"}: indices of subplots.
 For \code{type = "alpha"}: not used (both alpha_t and z_t are shown).
 If \code{NULL} (default), all available plots are shown.}
-
-\item{engine}{Character string specifying the graphics engine. One of:
-\describe{
-  \item{\code{"base"}}{Base R graphics (default, no dependencies)}
-  \item{\code{"ggplot2"}}{ggplot2 graphics (requires \pkg{ggplot2})}
-}}
 
 \item{ask}{Logical; if \code{TRUE}, the user is asked before each plot when
 \code{type = "all"}. Default is \code{interactive()} when \code{type = "all"},
@@ -114,26 +107,7 @@ Generates 10 pages in total:
   \item Page 10: Mixture weight alpha_t
   \item Page 11: Component membership P(z_t = 1 | data)
 }
-
-The \code{engine} argument allows choosing between base R graphics (lightweight,
-no dependencies) and ggplot2 (modern, publication-ready). If ggplot2 is not
-installed and \code{engine = "ggplot2"}, the function falls back to base graphics
-with a warning.
 }
-\section{Dependencies}{
-
-
-The ggplot2 engine has optional dependencies for enhanced visualizations:
-\itemize{
-  \item \pkg{hexbin}: For hexagonal binning in joint posterior plots
-  \item \pkg{patchwork}: For combining multiple plots into layouts
-}
-
-If these packages are not installed, the function will use fallback methods
-(e.g., scatterplots instead of hexbins). Install with:
-\code{install.packages(c("hexbin", "patchwork"))}
-}
-
 \examples{
 \dontrun{
 ## Simulation of data
@@ -192,7 +166,7 @@ out_logit <- mcmc_normal_mixture_locallevel(
 )
 
 # Complete dashboard (10 pages)
-plot(out_logit, type = "all", engine = "base")
+plot(out_logit, type = "all")
 
 # Diagnostics for specific parameters
 plot(out_logit, type = "mcmc", which = 1:2)  # Only mu_1 and mu_2
@@ -205,9 +179,6 @@ plot(out_logit, type = "alpha")
 pdf("diagnostics.pdf", width = 10, height = 8)
 plot(out_logit, type = "all", ask = FALSE)
 dev.off()
-
-# Use ggplot2 engine
-plot(out_logit, type = "mcmc", which = 1, engine = "ggplot2")
 }
 
 }

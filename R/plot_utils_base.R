@@ -811,30 +811,16 @@ validate_ci_level <- function(ci_level) {
 #' @param ask Logical; if TRUE, prompts user before each new page.
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
+#' @param true_values Named list containing true values (or NULL).
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
-#'
-#' @details Generates a complete dashboard with the following pages:
-#'   \itemize{
-#'     \item Pages 1-n: MCMC diagnostics for each parameter (4 panels each)
-#'     \item Page n+1: Mixture component bivariate relationships
-#'     \item Pages n+2 onwards: Dynamic state trajectories and diagnostics
-#'     \item Final pages: Mixture weight alpha_t and component indicators z_t
-#'   }
-#'
-#'   The number of pages adapts automatically based on model order:
-#'   \itemize{
-#'     \item Order 1 (locallevel): 10 total pages
-#'     \item Order 2 (localtrend): 13 total pages
-#'     \item Order 3 (localacceleration): 16 total pages
-#'   }
 #'
 #' @keywords internal
 #' @noRd
 plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
                                           ci_level = 0.95,
-                                          true_states = NULL,
+                                          true_values = NULL,
                                           ...) {
 
   oldpar <- par(no.readonly = TRUE)
@@ -856,6 +842,7 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
   # 3. Pages 1-n: MCMC diagnostics for each parameter
   plot_mcmc_diagnostics_generic(x, which = seq_len(n_params),
                                 param_config = param_config,
+                                true_values = true_values,
                                 ...)
 
   # 4. Page n+1: Mixture parameters (only for mixture models)
@@ -866,7 +853,7 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
   # 5. Pages n+2 onwards: Dynamic states
   plot_dynamic_states_generic_base(x, model_order = model_order,
                                    ci = ci, ci_level = ci_level,
-                                   true_states = true_states, ...)
+                                   true_values = true_values, ...)
 
   # 6. Final pages: Mixture weights (only for mixture models)
   if (model_info$has_mixture) {
@@ -888,8 +875,8 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
 #' @param model_order Integer: 1, 2, or 3. If NULL, auto-detected.
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
-#' @param true_states List with true state trajectories (or NULL).
-#'   Should contain elements: theta_1, theta_2 (if order >= 2), theta_3 (if order == 3).
+#' @param true_values Named list with true values (or NULL).
+#'   Expected elements: theta_1, theta_2 (if order >= 2), theta_3 (if order == 3).
 #'   Each element should be a numeric vector of length n_obs.
 #' @param ... Additional arguments (currently unused).
 #'
@@ -907,7 +894,7 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
 plot_dynamic_states_generic_base <- function(x, which = NULL,
                                              model_order = NULL,
                                              ci = TRUE, ci_level = 0.95,
-                                             true_states = NULL,
+                                             true_values = NULL,
                                              ...) {
 
   # Auto-detect model order if needed
@@ -961,8 +948,8 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
 
       # Extract true state if provided
       true_state_i <- NULL
-      if (!is.null(true_states)) {
-        true_state_i <- true_states[[state_name]]
+      if (!is.null(true_values)) {
+        true_state_i <- true_values[[state_name]]
       }
 
       plot_state_trajectory_base(
@@ -1039,10 +1026,10 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
            pch = 16, cex = 0.9, col = grDevices::rgb(0.5, 0.5, 0.5, 0.2))
 
       # Add true state trajectory if provided
-      if (!is.null(true_states) &&
-          !is.null(true_states$theta_1) &&
-          !is.null(true_states$theta_2)) {
-        lines(true_states$theta_1, true_states$theta_2,
+      if (!is.null(true_values) &&
+          !is.null(true_values$theta_1) &&
+          !is.null(true_values$theta_2)) {
+        lines(true_values$theta_1, true_values$theta_2,
               col = "black", lwd = 2, lty = 2)
         legend("topright",
                legend = c("MCMC samples", "True trajectory"),
@@ -1072,16 +1059,6 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       ylim_range <- range(c(state_summaries$theta_1$median,
                             state_summaries$theta_2$median))
 
-      # # Include true states in range if provided
-      # if (!is.null(true_states)) {
-      #   if (!is.null(true_states$theta_1)) {
-      #     ylim_range <- range(c(ylim_range, true_states$theta_1))
-      #   }
-      #   if (!is.null(true_states$theta_2)) {
-      #     ylim_range <- range(c(ylim_range, true_states$theta_2))
-      #   }
-      # }
-
       if (diff(ylim_range) == 0) {
         ylim_range <- ylim_range + c(-0.75, 0.75)
       }
@@ -1094,16 +1071,6 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       lines(time_grid, state_summaries$theta_2$median,
             col = state_labels$state_colors[2], lwd = 2)
 
-      # # Add true trajectories if provided
-      # if (!is.null(true_states)) {
-      #   if (!is.null(true_states$theta_1)) {
-      #     lines(time_grid, true_states$theta_1, col = "black", lwd = 2, lty = 2)
-      #   }
-      #   if (!is.null(true_states$theta_2)) {
-      #     lines(time_grid, true_states$theta_2, col = "black", lwd = 2, lty = 2)
-      #   }
-      # }
-
       grid()
 
       # Build legend
@@ -1111,14 +1078,6 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       legend_cols <- state_labels$state_colors
       legend_lty <- c(1, 1)
       legend_lwd <- c(2, 2)
-
-      # if (!is.null(true_states) &&
-      #     (!is.null(true_states$theta_1) || !is.null(true_states$theta_2))) {
-      #   legend_items <- c(legend_items, "True States")
-      #   legend_cols <- c(legend_cols, "black")
-      #   legend_lty <- c(legend_lty, 2)
-      #   legend_lwd <- c(legend_lwd, 2)
-      # }
 
       legend("topright", horiz = TRUE,
              legend = legend_items,
@@ -1154,19 +1113,6 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
                             state_summaries$theta_2$median,
                             state_summaries$theta_3$median))
 
-      # # Include true states in range if provided
-      # if (!is.null(true_states)) {
-      #   if (!is.null(true_states$theta_1)) {
-      #     ylim_range <- range(c(ylim_range, true_states$theta_1))
-      #   }
-      #   if (!is.null(true_states$theta_2)) {
-      #     ylim_range <- range(c(ylim_range, true_states$theta_2))
-      #   }
-      #   if (!is.null(true_states$theta_3)) {
-      #     ylim_range <- range(c(ylim_range, true_states$theta_3))
-      #   }
-      # }
-
       if (diff(ylim_range) == 0) {
         ylim_range <- ylim_range + c(-0.75, 0.75)
       }
@@ -1181,19 +1127,6 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       lines(time_grid, state_summaries$theta_3$median,
             col = state_labels$state_colors[3], lwd = 2)
 
-      # # Add true trajectories if provided
-      # if (!is.null(true_states)) {
-      #   if (!is.null(true_states$theta_1)) {
-      #     lines(time_grid, true_states$theta_1, col = "black", lwd = 2, lty = 2)
-      #   }
-      #   if (!is.null(true_states$theta_2)) {
-      #     lines(time_grid, true_states$theta_2, col = "black", lwd = 2, lty = 2)
-      #   }
-      #   if (!is.null(true_states$theta_3)) {
-      #     lines(time_grid, true_states$theta_3, col = "black", lwd = 2, lty = 2)
-      #   }
-      # }
-
       grid()
 
       # Build legend
@@ -1201,16 +1134,6 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       legend_cols <- state_labels$state_colors
       legend_lty <- c(1, 1, 1)
       legend_lwd <- c(2, 2, 2)
-
-      # if (!is.null(true_states) &&
-      #     (!is.null(true_states$theta_1) ||
-      #      !is.null(true_states$theta_2) ||
-      #      !is.null(true_states$theta_3))) {
-      #   legend_items <- c(legend_items, "True States")
-      #   legend_cols <- c(legend_cols, "black")
-      #   legend_lty <- c(legend_lty, 2)
-      #   legend_lwd <- c(legend_lwd, 2)
-      # }
 
       legend("topright", horiz = TRUE,
              legend = legend_items,
@@ -1289,9 +1212,6 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
           labels = c(expression(theta["t,1"]),
                      expression(theta["t,2"]),
                      expression(theta["t,3"])))
-
-    # Note: Adding true state trajectories to pairs() plot is complex
-    # and may not be visually useful. Consider if needed.
   }
 
   invisible(NULL)

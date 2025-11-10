@@ -38,32 +38,53 @@
 #'   red points on the alpha_t trajectory. Set to \code{FALSE} to show only
 #'   the estimated trajectory without observations. This parameter only
 #'   affects \code{type = "alpha"} and \code{type = "all"}.
-#' @param true_values Named list containing true scalar parameter values for comparison
-#'   in MCMC diagnostic plots (\code{type = "mcmc"}) and alpha plots (\code{type = "alpha"}).
-#'   Expected elements:
-#'   \describe{
-#'     \item{\code{theta_01}}{Scalar: True initial level}
-#'     \item{\code{theta_02}}{Scalar: True initial trend}
-#'     \item{\code{theta_03}}{Scalar: True initial acceleration}
-#'     \item{\code{prec_theta1}}{Scalar: True level innovation precision (W_1^{-1})}
-#'     \item{\code{prec_theta2}}{Scalar: True trend innovation precision (W_2^{-1})}
-#'     \item{\code{prec_theta3}}{Scalar: True acceleration innovation precision (W_3^{-1})}
-#'     \item{\code{alpha}}{Vector: True alpha_t probabilities over time (for \code{type = "alpha"})}
-#'   }
-#'   If \code{NULL} (default), no true values are displayed.
-#' @param true_states Named list containing true dynamic state trajectories for comparison
-#'   in state plots (\code{type = "states"}). Expected elements:
-#'   \describe{
-#'     \item{\code{theta_1}}{Vector: True theta_1 state values over time (length n_obs)}
-#'     \item{\code{theta_2}}{Vector: True theta_2 state values over time (length n_obs)}
-#'     \item{\code{theta_3}}{Vector: True theta_3 state values over time (length n_obs)}
-#'   }
-#'   If \code{NULL} (default), no true state trajectories are displayed.
+#' @param true_values Named list containing true parameter values and/or state trajectories
+#'   for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
 #'
-#'   \strong{Note:} If you only have the true \code{alpha}, you can obtain \code{theta_1}
-#'   using \code{qlogis(alpha)}. However, \code{theta_2} (trend) and \code{theta_3}
-#'   (acceleration) cannot be recovered from \code{alpha} alone. They must come from
-#'   your simulation data.
+#'   \strong{Important:} All parameter names in \code{true_values} must match exactly
+#'   the component names returned by \code{\link{mcmc_binomial_localacceleration}}.
+#'
+#'   Accepted elements:
+#'   \describe{
+#'     \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
+#'       \itemize{
+#'         \item \code{theta_01}: Initial level state
+#'         \item \code{theta_02}: Initial trend state
+#'         \item \code{theta_03}: Initial acceleration state
+#'         \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
+#'         \item \code{prec_theta2}: Trend innovation precision (W_2^{-1})
+#'         \item \code{prec_theta3}: Acceleration innovation precision (W_3^{-1})
+#'       }
+#'     }
+#'     \item{\strong{State trajectories} (for \code{type = "states"}):}{
+#'       \itemize{
+#'         \item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
+#'         \item \code{theta_2}: Numeric vector of length \code{n_obs} with true trend state values
+#'         \item \code{theta_3}: Numeric vector of length \code{n_obs} with true acceleration state values
+#'       }
+#'     }
+#'     \item{\strong{Success probabilities} (for \code{type = "alpha"}):}{
+#'       \itemize{
+#'         \item \code{alpha}: Numeric vector of length \code{n_obs} with true alpha_t probabilities
+#'       }
+#'     }
+#'   }
+#'
+#'   \strong{Note on state trajectories:} If you only have the true \code{alpha},
+#'   you can obtain \code{theta_1} using \code{qlogis(alpha)}. However, \code{theta_2}
+#'   (trend) and \code{theta_3} (acceleration) cannot be recovered from \code{alpha}
+#'   alone and must come from your simulation data.
+#'
+#'   You can provide any subset of these elements. For example, to compare only
+#'   initial states and alpha:
+#'   \preformatted{
+#'   true_values = list(
+#'     theta_01 = 0.5,
+#'     theta_02 = 0.01,
+#'     theta_03 = 0.001,
+#'     alpha = alpha_true_vector
+#'   )
+#'   }
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return Invisibly returns the input object \code{x}.
@@ -71,7 +92,7 @@
 #' @details
 #' This function provides comprehensive visual diagnostics for Bayesian MCMC output:
 #'
-#' \strong{MCMC Diagnostics (\code{type = "mcmc"}):}
+#' \strong{MCMC Diagnostics} (\code{type = "mcmc"}):
 #'
 #' Each parameter gets a dedicated page with 4 panels:
 #' \itemize{
@@ -83,20 +104,20 @@
 #'
 #' Available parameters: theta_01, theta_02, theta_03, W_1^{-1}, W_2^{-1}, W_3^{-1}
 #'
-#' \strong{Dynamic States (\code{type = "states"}):}
+#' \strong{Dynamic States} (\code{type = "states"}):
 #' \itemize{
 #'   \item Time-varying state trajectories with credible bands (on logit scale)
 #'   \item Innovation sequences
 #'   \item State space relationships
 #' }
 #'
-#' \strong{Success Probabilities (\code{type = "alpha"}):}
+#' \strong{Success Probabilities} (\code{type = "alpha"}):
 #' \itemize{
 #'   \item alpha_t trajectory with credible bands
 #'   \item Optional observed proportions overlay (controlled by \code{show_obs})
 #' }
 #'
-#' \strong{Acceptance Proportions (\code{type = "acceptance"}):}
+#' \strong{Acceptance Proportions} (\code{type = "acceptance"}):
 #' \itemize{
 #'   \item Metropolis-Hastings acceptance proportions over time
 #'   \item Min-Max range across MCMC iterations
@@ -105,7 +126,7 @@
 #'   \item Only available if the model was run with \code{return_accept_prop = TRUE}
 #' }
 #'
-#' \strong{Complete Dashboard (\code{type = "all"}):}
+#' \strong{Complete Dashboard} (\code{type = "all"}):
 #'
 #' Generates up to 11 pages in total:
 #' \itemize{
@@ -170,8 +191,8 @@
 #'   prior_prec2_rate = 1,
 #'   prior_prec3_shape = 1600,
 #'   prior_prec3_rate = 1,
-#'   target_acceptance = 0.44,      # Specify target acceptance proportion
-#'   return_accept_prop = TRUE,     # Enable acceptance proportion tracking
+#'   target_acceptance = 0.44,
+#'   return_accept_prop = TRUE,
 #'   verbose = TRUE,
 #'   seed = 456
 #' )
@@ -179,54 +200,38 @@
 #' # Complete dashboard (11 pages, includes acceptance proportions if available)
 #' plot(out, type = "all")
 #'
+#' # Plot with true values for validation (simulation study)
+#' # Note: All names match the output from mcmc_binomial_localacceleration()
+#' true_vals <- list(
+#'   theta_01 = 0.5,
+#'   theta_02 = 0.01,
+#'   theta_03 = 0.001,
+#'   prec_theta1 = 100,
+#'   prec_theta2 = 400,
+#'   prec_theta3 = 1600,
+#'   alpha = alpha_true
+#' )
+#' plot(out, type = "all", true_values = true_vals)
+#'
 #' # Only acceptance proportions (will show target line at 0.44)
 #' plot(out, type = "acceptance")
 #'
-#' # Diagnostics for specific parameters
-#' plot(out, type = "mcmc", which = 1:3)  # Initial states
-#' plot(out, type = "mcmc", which = 4:6)  # Innovation precisions
+#' # Diagnostics for specific parameters with true values
+#' plot(out, type = "mcmc", which = 1:3, true_values = true_vals)
 #'
-#' # Success probabilities with observed proportions (default)
-#' plot(out, type = "alpha")
+#' # Success probabilities with true alpha
+#' plot(out, type = "alpha", true_values = list(alpha = alpha_true))
 #'
 #' # Success probabilities WITHOUT observed proportions
 #' plot(out, type = "alpha", show_obs = FALSE)
 #'
-#' # Dynamic states only
-#' plot(out, type = "states")
-#'
-#' # Example with different target acceptance proportion
-#' out2 <- mcmc_binomial_localacceleration(
-#'   y,
-#'   n_trials = n_trials,
-#'   burnin = 1000,
-#'   thinning = 50,
-#'   n_chain = 1000,
-#'   prior_theta01_mean = 0,
-#'   prior_theta01_prec = 1,
-#'   prior_theta02_mean = 0,
-#'   prior_theta02_prec = 1,
-#'   prior_theta03_mean = 0,
-#'   prior_theta03_prec = 1,
-#'   prior_prec1_shape = 100,
-#'   prior_prec1_rate = 1,
-#'   prior_prec2_shape = 400,
-#'   prior_prec2_rate = 1,
-#'   prior_prec3_shape = 1600,
-#'   prior_prec3_rate = 1,
-#'   target_acceptance = 0.30,      # Different target
-#'   return_accept_prop = TRUE,
-#'   verbose = TRUE,
-#'   seed = 789
-#' )
-#'
-#' # Acceptance plot will now show target line at 0.30
-#' plot(out2, type = "acceptance")
-#'
-#' # Save to multi-page PDF
-#' pdf("diagnostics.pdf", width = 10, height = 8)
-#' plot(out, type = "all", ask = FALSE)
-#' dev.off()
+#' # Dynamic states with true trajectories
+#' # (requires theta_1, theta_2, theta_3 from simulation)
+#' plot(out, type = "states", true_values = list(
+#'   theta_1 = theta1_true,
+#'   theta_2 = theta2_true,
+#'   theta_3 = theta3_true
+#' ))
 #'
 #' }
 #'
@@ -319,4 +324,3 @@ plot.binomial_localacceleration <- function(x,
 
   invisible(x)
 }
-

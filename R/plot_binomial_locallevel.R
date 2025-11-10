@@ -10,7 +10,7 @@
 #'     \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
 #'     \item{\code{"states"}}{Dynamic states (theta_1 trajectory)}
 #'     \item{\code{"alpha"}}{Success probabilities over time (alpha_t)}
-#'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance rates (if available)}
+#'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 #'   }
 #' @param which Integer vector specifying which diagnostic plots to display.
 #'   For \code{type = "mcmc"}:
@@ -79,11 +79,11 @@
 #'   \item Optional observed proportions overlay (controlled by \code{show_obs})
 #' }
 #'
-#' \strong{Acceptance Rates (\code{type = "acceptance"}):}
+#' \strong{Acceptance Proportions (\code{type = "acceptance"}):}
 #' \itemize{
 #'   \item Metropolis-Hastings acceptance proportions over time
 #'   \item Min-Max range across MCMC iterations
-#'   \item Target acceptance rate reference line (uses the \code{target_acceptance}
+#'   \item Target acceptance proportion reference line (uses the \code{target_acceptance}
 #'     value specified in \code{mcmc_binomial_locallevel})
 #'   \item Only available if the model was run with \code{return_accept_prop = TRUE}
 #' }
@@ -95,7 +95,7 @@
 #'   \item Pages 1-2: Individual parameter diagnostics (4 panels each)
 #'   \item Page 3: Dynamic state trajectory and diagnostics
 #'   \item Page 4: Success probabilities alpha_t
-#'   \item Page 5: Acceptance rates (only if available)
+#'   \item Page 5: Acceptance proportions (only if available)
 #' }
 #'
 #' The \code{engine} argument allows choosing between base R graphics (lightweight,
@@ -103,12 +103,12 @@
 #' installed and \code{engine = "ggplot2"}, the function falls back to base graphics
 #' with a warning.
 #'
-#' @section Target Acceptance Rate:
+#' @section Target Acceptance Proportion:
 #'
-#' The acceptance rate plot displays a reference line showing the target acceptance
+#' The acceptance proportion plot displays a reference line showing the target acceptance
 #' proportion that was specified when running \code{mcmc_binomial_locallevel}.
 #' This allows visual assessment of whether the adaptive Metropolis-Hastings algorithm
-#' successfully achieved the desired acceptance rate. The target value is automatically
+#' successfully achieved the desired acceptance proportion. The target value is automatically
 #' extracted from the model object and displayed in the plot legend.
 #'
 #' @section Controlling Observed Data Display:
@@ -165,10 +165,10 @@
 #'   seed = 456
 #' )
 #'
-#' # Complete dashboard (5 pages, includes acceptance rates if available)
+#' # Complete dashboard (5 pages, includes acceptance proportions if available)
 #' plot(out, type = "all", engine = "base")
 #'
-#' # Only acceptance rates (will show target line at 0.44)
+#' # Only acceptance proportions (will show target line at 0.44)
 #' plot(out, type = "acceptance")
 #' plot(out, type = "acceptance", engine = "ggplot2")
 #'
@@ -263,11 +263,11 @@ plot.binomial_locallevel <- function(x,
                                       show_obs = show_obs,
                                       true_alpha = true_values$alpha,
                                       ...)
-             # Plot acceptance rates only if available
+             # Plot acceptance proportions only if available
              if (!is.null(x$accept_prop)) {
-               plot_acceptance_rates_base(x$accept_prop,
-                                          target_acceptance = target_acc,
-                                          ...)
+               plot_acceptance_proportions_base(x$accept_prop,
+                                                target_acceptance = target_acc,
+                                                ...)
              }
            },
            mcmc = plot_mcmc_diagnostics_generic(x, which = which,
@@ -288,9 +288,9 @@ plot.binomial_locallevel <- function(x,
                                             ...),
            acceptance = {
              if (!is.null(x$accept_prop)) {
-               plot_acceptance_rates_base(x$accept_prop,
-                                          target_acceptance = target_acc,
-                                          ...)
+               plot_acceptance_proportions_base(x$accept_prop,
+                                                target_acceptance = target_acc,
+                                                ...)
              }
            }
     )
@@ -307,7 +307,7 @@ plot.binomial_locallevel <- function(x,
              if (ask) readline()
              plot_binomial_alpha_ggplot(x, ci = ci, ci_level = ci_level,
                                         show_obs = show_obs, ...)
-             # Plot acceptance rates only if available
+             # Plot acceptance proportions only if available
              if (!is.null(x$accept_prop)) {
                if (ask) readline()
                plot_acceptance_rates_ggplot(x$accept_prop,

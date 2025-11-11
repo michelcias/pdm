@@ -362,11 +362,11 @@ out <- mcmc_binomial_localacceleration(
   prior_theta03_prec      = 1,
   # Informative priors for innovation precisions
   # (centered near true values with moderate uncertainty)
-  prior_prec1_shape       = 1000,
+  prior_prec1_shape       = 100,
   prior_prec1_rate        = 1,
-  prior_prec2_shape       = 10000,
+  prior_prec2_shape       = 400,
   prior_prec2_rate        = 1,
-  prior_prec3_shape       = 100000,
+  prior_prec3_shape       = 1600,
   prior_prec3_rate        = 1,
   target_acceptance       = 0.44,
   return_accept_prop      = TRUE,
@@ -430,14 +430,12 @@ plot(out, type = "mcmc", true_values = list(
 ))
 
 #    Example 2: Only level state trajectory
-plot(out, type = "states", which = 1, true_values = list(
-  theta_1 = theta1_true
-))
+plot(out, type = "states", which = 1,
+     true_values = list(theta_1 = theta1_true))
 
 #    Example 3: Only success probabilities
-plot(out, type = "alpha", true_values = list(
-  alpha = alpha_true
-))
+plot(out, type = "alpha",
+     true_values = list(alpha = alpha_true))
 
 }
 

@@ -268,7 +268,7 @@ n_trials <- 20     # Number of trials per observation
 
 # True parameter values (these would be unknown in real applications)
 theta01_true     <- 0        # True initial level (on logit scale)
-prec_theta1_true <- 1000     # True level innovation precision (high = smooth)
+prec_theta1_true <- 50       # True level innovation precision (high = smooth)
 
 # --- Step 2: Simulate latent states following the state-space model ---
 # Generate innovation sequence (random shocks to state)
@@ -308,7 +308,7 @@ par(mfrow = c(1, 1))
 out <- mcmc_binomial_locallevel(
   y,
   n_trials                = n_trials,
-  burnin                  = 1000,
+  burnin                  = 10000,
   thinning                = 50,
   n_chain                 = 1000,
   # Prior centered at true initial value
@@ -316,7 +316,7 @@ out <- mcmc_binomial_locallevel(
   prior_theta01_prec      = 1,
   # Informative prior for innovation precision
   # (centered near true value with moderate uncertainty)
-  prior_prec1_shape       = 1000,
+  prior_prec1_shape       = 10,
   prior_prec1_rate        = 1,
   target_acceptance       = 0.44,
   return_accept_prop      = TRUE,
@@ -370,14 +370,12 @@ plot(out, type = "mcmc", true_values = list(
 ))
 
 #    Example 2: Only level state trajectory
-plot(out, type = "states", true_values = list(
-  theta_1 = theta1_true
-))
+plot(out, type = "states",
+     true_values = list(theta_1 = theta1_true))
 
 #    Example 3: Only success probabilities
-plot(out, type = "alpha", true_values = list(
-  alpha = alpha_true
-))
+plot(out, type = "alpha",
+     true_values = list(alpha = alpha_true))
 
 }
 

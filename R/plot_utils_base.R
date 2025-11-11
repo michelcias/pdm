@@ -976,12 +976,28 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
     innov_labels <- get_innovation_labels(model_order)
 
     # -----------------------------------------------------------------------
-    # ORDER 1: [Trajectory, Innovation] side by side
+    # ORDER 1: Lag-1 Scatter + Innovation Time Series
     # -----------------------------------------------------------------------
     if (model_order == 1) {
-      par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0),
+      par(mfrow = c(1, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0),
           mgp = c(2.5, 1, 0))
 
+      # Plot 2.1: Lag-1 Scatter Plot (Local Level dynamics)
+      # Shows relationship between consecutive states: theta_{t-1,1} vs theta_{t,1}
+      theta_lag <- state_summaries$theta_1$median[-n_obs]     # theta_{t-1,1}
+      theta_current <- state_summaries$theta_1$median[-1]     # theta_{t,1}
+
+      plot(theta_lag, theta_current,
+           xlab = expression(theta["t-1,1"]),
+           ylab = expression(theta["t,1"]),
+           main = "State Transition Dynamics",
+           pch = 16,
+           cex = 0.9,
+           col = innov_labels$innov_colors[1])
+      abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)  # 45° reference line
+      grid()
+
+      # Plot 2.2: Innovation Time Series
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_1$median,
@@ -998,47 +1014,33 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
     }
 
     # -----------------------------------------------------------------------
-    # ORDER 2: [Scatter, Innov1, Joint, Innov2]
+    # ORDER 2: Scatter Plots + Innovation Time Series
     # -----------------------------------------------------------------------
     if (model_order == 2) {
       par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
 
-      # Plot 2.1: State Space (theta_1 vs theta_2)
-      theta_df <- data.frame(
-        theta1 = as.vector(x$theta_1),
-        theta2 = as.vector(x$theta_2)
-      )
+      # Plot 2.1: Trend influence on Level Innovation
+      # Shows how previous trend affects level innovation
+      theta2_lag <- state_summaries$theta_2$median[-n_obs]    # theta_{t-1,2}
+      delta_theta1 <- state_summaries$theta_1$median[-1] -
+        state_summaries$theta_1$median[-n_obs]  # Delta theta_{t,1}
 
-      max_points <- 5000L
-      if (nrow(theta_df) > max_points) {
-        set.seed(123)
-        theta_df <- theta_df[sample.int(nrow(theta_df), max_points), ]
-      }
-
-      plot(theta_df$theta1, theta_df$theta2,
-           xlab = expression(theta["t,1"]),
-           ylab = expression(theta["t,2"]),
-           main = "State Space",
-           pch = 16, cex = 0.9, col = grDevices::rgb(0.5, 0.5, 0.5, 0.2))
-
-      # Add true state trajectory if provided
-      if (!is.null(true_values) &&
-          !is.null(true_values$theta_1) &&
-          !is.null(true_values$theta_2)) {
-        lines(true_values$theta_1, true_values$theta_2,
-              col = "black", lwd = 2, lty = 2)
-        legend("topright",
-               legend = c("MCMC samples", "True trajectory"),
-               col = c(grDevices::rgb(0.5, 0.5, 0.5, 0.5), "black"),
-               pch = c(16, NA),
-               lty = c(NA, 2),
-               lwd = c(NA, 2),
-               bty = "n")
-      }
-
+      plot(theta2_lag, delta_theta1,
+           xlab = expression(theta["t-1,2"]),
+           ylab = expression(Delta*theta["t,1"]),
+           main = "Trend Effect on Level Innovation",
+           pch = 16,
+           cex = 0.9,
+           col = innov_labels$innov_colors[1])
+      abline(a = 0,
+             b = 1,
+             col = innov_labels$innov_colors[1],
+             lty = 2,
+             lwd = 1.5)  # Expected relationship
+      grid()
       grid()
 
-      # Plot 2.2: Level Innovations
+      # Plot 2.2: Level Innovation Time Series
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_1$median,
@@ -1051,38 +1053,25 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
         ci_label = ci_label
       )
 
-      # Plot 2.3: Joint Trajectories
-      ylim_range <- range(c(state_summaries$theta_1$median,
-                            state_summaries$theta_2$median))
+      # Plot 2.3: Trend State Transition Dynamics
+      # Shows relationship between consecutive trend states
+      theta2_current <- state_summaries$theta_2$median[-1]    # theta_{t,2}
 
-      if (diff(ylim_range) == 0) {
-        ylim_range <- ylim_range + c(-0.75, 0.75)
-      }
-      ylim_range[2] <- ylim_range[2] + 0.3 * diff(ylim_range)
-
-      plot(time_grid, state_summaries$theta_1$median, type = "l", lwd = 2,
-           col = state_labels$state_colors[1],
-           xlab = "Time", ylab = "State Value",
-           main = "Joint Trajectories", ylim = ylim_range)
-      lines(time_grid, state_summaries$theta_2$median,
-            col = state_labels$state_colors[2], lwd = 2)
-
+      plot(theta2_lag, theta2_current,
+           xlab = expression(theta["t-1,2"]),
+           ylab = expression(theta["t,2"]),
+           main = "Trend Transition Dynamics",
+           pch = 16,
+           cex = 0.9,
+           col = innov_labels$innov_colors[2])
+      abline(a = 0,
+             b = 1,
+             col = innov_labels$innov_colors[2],
+             lty = 2,
+             lwd = 1.5)  # Expected relationship
       grid()
 
-      # Build legend
-      legend_items <- state_labels$state_labels
-      legend_cols <- state_labels$state_colors
-      legend_lty <- c(1, 1)
-      legend_lwd <- c(2, 2)
-
-      legend("topright", horiz = TRUE,
-             legend = legend_items,
-             col = legend_cols,
-             lty = legend_lty,
-             lwd = legend_lwd,
-             bty = "n")
-
-      # Plot 2.4: Trend Innovations
+      # Plot 2.4: Trend Innovation Time Series
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_2$median,
@@ -1181,33 +1170,339 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
     }
   }
 
+  # # =========================================================================
+  # # Page 3: State Space Relationships (order 3 only)
+  # # =========================================================================
+  #
+  # if (3 %in% which && model_order == 3) {
+  #   par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 0, 0))
+  #
+  #   # Subsample for performance
+  #   max_points <- 5000L
+  #   theta_df <- data.frame(
+  #     theta1 = as.vector(x$theta_1),
+  #     theta2 = as.vector(x$theta_2),
+  #     theta3 = as.vector(x$theta_3)
+  #   )
+  #
+  #   if (nrow(theta_df) > max_points) {
+  #     set.seed(123)
+  #     theta_df <- theta_df[sample.int(nrow(theta_df), max_points), ]
+  #   }
+  #
+  #   pairs(theta_df,
+  #         pch = 16, cex = 0.6,
+  #         col = grDevices::rgb(0.2, 0.5, 0.8, 0.2),
+  #         main = "Pairwise State Relationships",
+  #         labels = c(expression(theta["t,1"]),
+  #                    expression(theta["t,2"]),
+  #                    expression(theta["t,3"])))
+  # }
+
+  # # =========================================================================
+  # # Page 3: Consolidated Diagnostics (Order 3 Only)
+  # # =========================================================================
+  #
+  # if (3 %in% which && model_order == 3) {
+  #
+  #   # Setup 3x3 layout
+  #   par(mfrow = c(3, 3), mar = c(4, 4, 2.5, 1),
+  #       oma = c(0, 0, 3, 0), mgp = c(2.5, 1, 0))
+  #
+  #   # --- Prepare Data ---
+  #
+  #   # Get state summaries
+  #   theta_1_median <- state_summaries$theta_1$median
+  #   theta_2_median <- state_summaries$theta_2$median
+  #   theta_3_median <- state_summaries$theta_3$median
+  #
+  #   # Get innovation summaries (already computed for Page 2)
+  #   # If Page 2 logic is removed, uncomment the next two lines
+  #   # innovations <- compute_innovations(x, model_order)
+  #   # innov_summaries <- lapply(innovations, summarise_state, ci, ci_level)
+  #
+  #   innov_1_median <- innov_summaries$innov_1$median
+  #   innov_2_median <- innov_summaries$innov_2$median
+  #   innov_3_median <- innov_summaries$innov_3$median
+  #
+  #   # Get labels and colors
+  #   col_level <- innov_labels$innov_colors[1] # steelblue
+  #   col_trend <- innov_labels$innov_colors[2] # firebrick
+  #   col_accel <- innov_labels$innov_colors[3] # darkgreen
+  #
+  #   # Calculate deltas and lags (medians)
+  #   delta_theta_1 <- theta_1_median[-1] - theta_1_median[-n_obs]
+  #   delta_theta_2 <- theta_2_median[-1] - theta_2_median[-n_obs]
+  #
+  #   theta_2_lag <- theta_2_median[-n_obs]
+  #   theta_3_lag <- theta_3_median[-n_obs]
+  #   theta_3_current <- theta_3_median[-1]
+  #
+  #   # Get lagged innovations (for alignment in scatter plots)
+  #   innov_1_lagged <- innov_1_median[-1]
+  #   innov_2_lagged <- innov_2_median[-1]
+  #   innov_3_lagged <- innov_3_median[-1]
+  #
+  #   # --- Column 1: Transition Dynamics ---
+  #
+  #   # Plot 1.1: Trend Effect on Level
+  #   plot(theta_2_lag, delta_theta_1,
+  #        xlab = expression(theta["t-1,2"]),
+  #        ylab = expression(Delta*theta["t,1"]),
+  #        main = "Transition: Level",
+  #        pch = 16, cex = 0.8, col = col_level)
+  #   abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
+  #   grid()
+  #
+  #   # Plot 1.2: Acceleration Effect on Trend
+  #   plot(theta_3_lag, delta_theta_2,
+  #        xlab = expression(theta["t-1,3"]),
+  #        ylab = expression(Delta*theta["t,2"]),
+  #        main = "Transition: Trend",
+  #        pch = 16, cex = 0.8, col = col_trend)
+  #   abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
+  #   grid()
+  #
+  #   # Plot 1.3: Acceleration Transition (Random Walk)
+  #   plot(theta_3_lag, theta_3_current,
+  #        xlab = expression(theta["t-1,3"]),
+  #        ylab = expression(theta["t,3"]),
+  #        main = "Transition: Acceleration",
+  #        pch = 16, cex = 0.8, col = col_accel)
+  #   abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
+  #   grid()
+  #
+  #   # --- Column 2: Predictor vs. Residual ---
+  #
+  #   # Plot 2.1: Level Predictor vs. Residual
+  #   plot(theta_2_lag, innov_1_lagged,
+  #        xlab = expression(theta["t-1,2"] (Predictor)),
+  #        ylab = expression(u["t,1"] (Residual)),
+  #        main = "Diagnostic: Level",
+  #        pch = 16, cex = 0.8, col = col_level)
+  #   abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+  #   grid()
+  #
+  #   # Plot 2.2: Trend Predictor vs. Residual
+  #   plot(theta_3_lag, innov_2_lagged,
+  #        xlab = expression(theta["t-1,3"] (Predictor)),
+  #        ylab = expression(u["t,2"] (Residual)),
+  #        main = "Diagnostic: Trend",
+  #        pch = 16, cex = 0.8, col = col_trend)
+  #   abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+  #   grid()
+  #
+  #   # Plot 2.3: Acceleration Predictor vs. Residual
+  #   # Note: Predictor is theta[t-1,3], Residual is u[t,3]
+  #   plot(theta_3_lag, innov_3_lagged,
+  #        xlab = expression(theta["t-1,3"] (Predictor)),
+  #        ylab = expression(u["t,3"] (Residual)),
+  #        main = "Diagnostic: Acceleration",
+  #        pch = 16, cex = 0.8, col = col_accel)
+  #   abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+  #   grid()
+  #
+  #   # --- Column 3: Innovation Time Series ---
+  #
+  #   # Plot 3.1: Level Innovations
+  #   plot_innovation_base(
+  #     time_grid = time_grid,
+  #     median = innov_summaries$innov_1$median,
+  #     lower = innov_summaries$innov_1$lower,
+  #     upper = innov_summaries$innov_1$upper,
+  #     ylab = innov_labels$innov_labels[[1]],
+  #     main = innov_labels$innov_titles[1],
+  #     col_bar = innov_labels$innov_colors[1],
+  #     ci = ci,
+  #     ci_label = ci_label
+  #   )
+  #
+  #   # Plot 3.2: Trend Innovations
+  #   plot_innovation_base(
+  #     time_grid = time_grid,
+  #     median = innov_summaries$innov_2$median,
+  #     lower = innov_summaries$innov_2$lower,
+  #     upper = innov_summaries$innov_2$upper,
+  #     ylab = innov_labels$innov_labels[[2]],
+  #     main = innov_labels$innov_titles[2],
+  #     col_bar = innov_labels$innov_colors[2],
+  #     ci = ci,
+  #     ci_label = ci_label
+  #   )
+  #
+  #   # Plot 3.3: Acceleration Innovations
+  #   plot_innovation_base(
+  #     time_grid = time_grid,
+  #     median = innov_summaries$innov_3$median,
+  #     lower = innov_summaries$innov_3$lower,
+  #     upper = innov_summaries$innov_3$upper,
+  #     ylab = innov_labels$innov_labels[[3]],
+  #     main = innov_labels$innov_titles[3],
+  #     col_bar = innov_labels$innov_colors[3],
+  #     ci = ci,
+  #     ci_label = ci_label
+  #   )
+  #
+  #   # --- Overall Title ---
+  #   mtext("Dynamic State Diagnostics (Order 3)",
+  #         outer = TRUE, cex = 1.3, font = 2)
+  # }
+
   # =========================================================================
-  # Page 3: State Space Relationships (order 3 only)
+  # Page 3: Consolidated Diagnostics (Order 3 Only) - Phase Space Version
   # =========================================================================
 
   if (3 %in% which && model_order == 3) {
-    par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 0, 0))
 
-    # Subsample for performance
-    max_points <- 5000L
-    theta_df <- data.frame(
-      theta1 = as.vector(x$theta_1),
-      theta2 = as.vector(x$theta_2),
-      theta3 = as.vector(x$theta_3)
+    # Setup 3x3 layout
+    par(mfrow = c(3, 3), mar = c(4, 4, 2.5, 1),
+        oma = c(0, 0, 3, 0), mgp = c(2.5, 1, 0))
+
+    # --- Prepare Data ---
+
+    # Get state summaries
+    theta_1_median <- state_summaries$theta_1$median
+    theta_2_median <- state_summaries$theta_2$median
+    theta_3_median <- state_summaries$theta_3$median
+
+    # Get innovation summaries (already computed for Page 2)
+    # If Page 2 logic is removed, uncomment the next two lines
+    # innovations <- compute_innovations(x, model_order)
+    # innov_summaries <- lapply(innovations, summarise_state, ci, ci_level)
+
+    # Get labels and colors
+    col_level <- state_labels$state_colors[1] # steelblue
+    col_trend <- state_labels$state_colors[2] # firebrick
+    col_accel <- state_labels$state_colors[3] # darkgreen
+
+    # Calculate deltas and lags (medians)
+    delta_theta_1 <- theta_1_median[-1] - theta_1_median[-n_obs]
+    delta_theta_2 <- theta_2_median[-1] - theta_2_median[-n_obs]
+
+    theta_2_lag <- theta_2_median[-n_obs]
+    theta_3_lag <- theta_3_median[-n_obs]
+    theta_3_current <- theta_3_median[-1]
+
+    # (time_grid is defined earlier in the parent function)
+
+    # --- Column 1: Transition Dynamics ---
+
+    # Plot 1.1: Trend Effect on Level
+    plot(theta_2_lag, delta_theta_1,
+         xlab = expression(theta["t-1,2"]),
+         ylab = expression(Delta*theta["t,1"]),
+         main = "Transition: Level",
+         pch = 16, cex = 0.8, col = col_level)
+    abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
+    grid()
+
+    # Plot 1.2: Acceleration Effect on Trend
+    plot(theta_3_lag, delta_theta_2,
+         xlab = expression(theta["t-1,3"]),
+         ylab = expression(Delta*theta["t,2"]),
+         main = "Transition: Trend",
+         pch = 16, cex = 0.8, col = col_trend)
+    abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
+    grid()
+
+    # Plot 1.3: Acceleration Transition (Random Walk)
+    plot(theta_3_lag, theta_3_current,
+         xlab = expression(theta["t-1,3"]),
+         ylab = expression(theta["t,3"]),
+         main = "Transition: Acceleration",
+         pch = 16, cex = 0.8, col = col_accel)
+    abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
+    grid()
+
+    # --- Column 2: Phase Space & Joint Dynamics ---
+
+    # Plot 2.1: Level-Trend Phase Space
+    plot(theta_1_median, theta_2_median, type = "l",
+         col = "gray40", lwd = 1.5,
+         xlab = expression(theta["t,1"] (Level)),
+         ylab = expression(theta["t,2"] (Trend)),
+         main = "Phase Space: Level-Trend")
+    grid()
+    points(theta_1_median[1], theta_2_median[1],
+           pch = 21, bg = "green", col = "black", cex = 1.5) # Start
+    points(theta_1_median[n_obs], theta_2_median[n_obs],
+           pch = 21, bg = "red", col = "black", cex = 1.5) # End
+    legend("topright", legend = c("Start", "End"),
+           pch = 16, col = c("green", "red"), bty = "n", cex = 0.8)
+
+    # Plot 2.2: Trend-Acceleration Phase Space
+    plot(theta_2_median, theta_3_median, type = "l",
+         col = "gray40", lwd = 1.5,
+         xlab = expression(theta["t,2"] (Trend)),
+         ylab = expression(theta["t,3"] (Accel)),
+         main = "Phase Space: Trend-Accel")
+    grid()
+    points(theta_2_median[1], theta_3_median[1],
+           pch = 21, bg = "green", col = "black", cex = 1.5) # Start
+    points(theta_2_median[n_obs], theta_3_median[n_obs],
+           pch = 21, bg = "red", col = "black", cex = 1.5) # End
+
+    # Plot 2.3: Joint Trajectories (Time Series)
+    # (This panel is from the original Page 2, Plot 2.1)
+    ylim_range <- range(c(theta_1_median, theta_2_median, theta_3_median))
+    if (diff(ylim_range) == 0) { ylim_range <- ylim_range + c(-0.5, 0.5) }
+
+    plot(time_grid, theta_1_median, type = "l", lwd = 2,
+         col = col_level,
+         xlab = "Time", ylab = "State Value",
+         main = "Joint Trajectories", ylim = ylim_range)
+    lines(time_grid, theta_2_median, col = col_trend, lwd = 2)
+    lines(time_grid, theta_3_median, col = col_accel, lwd = 2)
+    grid()
+    legend("topright", horiz = TRUE,
+           legend = state_labels$state_labels,
+           col = state_labels$state_colors,
+           lty = 1, lwd = 2, bty = "n", cex = 0.8)
+
+    # --- Column 3: Innovation Time Series ---
+
+    # Plot 3.1: Level Innovations
+    plot_innovation_base(
+      time_grid = time_grid,
+      median = innov_summaries$innov_1$median,
+      lower = innov_summaries$innov_1$lower,
+      upper = innov_summaries$innov_1$upper,
+      ylab = innov_labels$innov_labels[[1]],
+      main = innov_labels$innov_titles[1],
+      col_bar = innov_labels$innov_colors[1],
+      ci = ci,
+      ci_label = ci_label
     )
 
-    if (nrow(theta_df) > max_points) {
-      set.seed(123)
-      theta_df <- theta_df[sample.int(nrow(theta_df), max_points), ]
-    }
+    # Plot 3.2: Trend Innovations
+    plot_innovation_base(
+      time_grid = time_grid,
+      median = innov_summaries$innov_2$median,
+      lower = innov_summaries$innov_2$lower,
+      upper = innov_summaries$innov_2$upper,
+      ylab = innov_labels$innov_labels[[2]],
+      main = innov_labels$innov_titles[2],
+      col_bar = innov_labels$innov_colors[2],
+      ci = ci,
+      ci_label = ci_label
+    )
 
-    pairs(theta_df,
-          pch = 16, cex = 0.6,
-          col = grDevices::rgb(0.2, 0.5, 0.8, 0.2),
-          main = "Pairwise State Relationships",
-          labels = c(expression(theta["t,1"]),
-                     expression(theta["t,2"]),
-                     expression(theta["t,3"])))
+    # Plot 3.3: Acceleration Innovations
+    plot_innovation_base(
+      time_grid = time_grid,
+      median = innov_summaries$innov_3$median,
+      lower = innov_summaries$innov_3$lower,
+      upper = innov_summaries$innov_3$upper,
+      ylab = innov_labels$innov_labels[[3]],
+      main = innov_labels$innov_titles[3],
+      col_bar = innov_labels$innov_colors[3],
+      ci = ci,
+      ci_label = ci_label
+    )
+
+    # --- Overall Title ---
+    mtext("Dynamic State Diagnostics (Order 3)",
+          outer = TRUE, cex = 1.3, font = 2)
   }
 
   invisible(NULL)

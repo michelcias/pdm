@@ -397,7 +397,6 @@ plot_alpha_trajectory_base <- function(alpha,
   legend_lty <- c(1)
   legend_lwd <- c(2.5)
   legend_pch <- c(NA)
-  legend_tw <- c(50)
 
   if (ci) {
     legend_items <- c(legend_items, ci_label)
@@ -405,7 +404,6 @@ plot_alpha_trajectory_base <- function(alpha,
     legend_lty <- c(legend_lty, 1)
     legend_lwd <- c(legend_lwd, 10)
     legend_pch <- c(legend_pch, NA)
-    legend_tw <- c(legend_tw, 50)
   }
 
   if (!is.null(true_alpha)) {
@@ -414,7 +412,6 @@ plot_alpha_trajectory_base <- function(alpha,
     legend_lty   <- c(2, legend_lty)
     legend_lwd   <- c(2.5, legend_lwd)
     legend_pch   <- c(NA, legend_pch)
-    legend_tw <- c(legend_tw, 50)
   }
 
   if (!is.null(obs_data) && show_obs) {
@@ -423,7 +420,6 @@ plot_alpha_trajectory_base <- function(alpha,
     legend_lty <- c(legend_lty, NA)
     legend_lwd <- c(legend_lwd, NA)
     legend_pch <- c(legend_pch, obs_pch)
-    legend_tw <- c(legend_tw, strwidth(obs_label))
   }
 
   legend("topright",
@@ -432,7 +428,7 @@ plot_alpha_trajectory_base <- function(alpha,
          lty = legend_lty,
          lwd = legend_lwd,
          pch = legend_pch,
-         horiz = TRUE, text.width = legend_tw,
+         horiz = TRUE,
          bty = "n")
 
   # Add title
@@ -583,7 +579,7 @@ plot_binomial_alpha_base <- function(x,
     ci_level = ci_level,
     title = "Binomial Success Probabilities",
     obs_data = obs_data,
-    obs_label = "Observed proportions",
+    obs_label = expression(y[t] / n["trials"]),
     show_obs = show_obs,
     obs_color = grDevices::rgb(0.75, 0.3, 0.0, 0.5),
     obs_pch = 16,

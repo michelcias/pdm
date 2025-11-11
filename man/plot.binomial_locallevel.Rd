@@ -55,27 +55,45 @@ red points on the alpha_t trajectory. Set to \code{FALSE} to show only
 the estimated trajectory without observations. This parameter only
 affects \code{type = "alpha"} and \code{type = "all"}.}
 
-\item{true_values}{Named list containing true scalar parameter values for comparison
-in MCMC diagnostic plots (\code{type = "mcmc"}) and alpha plots (\code{type = "alpha"}).
-Expected elements:
-\describe{
-  \item{\code{theta_01}}{Scalar: True initial level}
-  \item{\code{prec_theta1}}{Scalar: True level innovation precision (W_1^{-1})}
-  \item{\code{alpha}}{Vector: True alpha_t probabilities over time (for \code{type = "alpha"})}
-}
-If \code{NULL} (default), no true values are displayed.}
+\item{true_values}{Named list containing true parameter values and/or state trajectories
+  for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
+
+  \strong{Important:} All parameter names in \code{true_values} must match exactly
+  the component names returned by \code{\link{mcmc_binomial_locallevel}}.
+
+  Accepted elements:
+  \describe{
+    \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
+      \itemize{
+        \item \code{theta_01}: Initial level state
+        \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
+      }
+    }
+    \item{\strong{State trajectories} (for \code{type = "states"}):}{
+      \itemize{
+        \item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
+      }
+    }
+    \item{\strong{Success probabilities} (for \code{type = "alpha"}):}{
+      \itemize{
+        \item \code{alpha}: Numeric vector of length \code{n_obs} with true alpha_t probabilities
+      }
+    }
+  }
+
+  \strong{Note on state trajectories:} If you only have the true \code{alpha},
+  you can obtain \code{theta_1} using \code{qlogis(alpha)}.
+
+  You can provide any subset of these elements. For example, to compare only
+  the initial state and alpha:
+  \preformatted{
+  true_values = list(
+    theta_01 = 0.5,
+    alpha = alpha_true_vector
+  )
+  }}
 
 \item{...}{Additional arguments passed to plotting functions.}
-
-\item{true_states}{Named list containing true dynamic state trajectories for comparison
-  in state plots (\code{type = "states"}). Expected elements:
-  \describe{
-    \item{\code{theta_1}}{Vector: True theta_1 state values over time (length n_obs)}
-  }
-  If \code{NULL} (default), no true state trajectories are displayed.
-
-  \strong{Note:} If you only have the true \code{alpha}, obtain \code{theta_1} using
-  the logit transformation: \code{true_states = list(theta_1 = qlogis(alpha))}.}
 }
 \value{
 Invisibly returns the input object \code{x}.
@@ -87,7 +105,7 @@ Produces diagnostic plots for MCMC output from binomial
 \details{
 This function provides comprehensive visual diagnostics for Bayesian MCMC output:
 
-\strong{MCMC Diagnostics (\code{type = "mcmc"}):}
+\strong{MCMC Diagnostics} (\code{type = "mcmc"}):
 
 Each parameter gets a dedicated page with 4 panels:
 \itemize{
@@ -99,19 +117,19 @@ Each parameter gets a dedicated page with 4 panels:
 
 Available parameters: theta_01, W_1^{-1}
 
-\strong{Dynamic States (\code{type = "states"}):}
+\strong{Dynamic States} (\code{type = "states"}):
 \itemize{
   \item Time-varying state trajectory with credible bands (on logit scale)
   \item Innovation sequence
 }
 
-\strong{Success Probabilities (\code{type = "alpha"}):}
+\strong{Success Probabilities} (\code{type = "alpha"}):
 \itemize{
   \item alpha_t trajectory with credible bands
   \item Optional observed proportions overlay (controlled by \code{show_obs})
 }
 
-\strong{Acceptance Proportions (\code{type = "acceptance"}):}
+\strong{Acceptance Proportions} (\code{type = "acceptance"}):
 \itemize{
   \item Metropolis-Hastings acceptance proportions over time
   \item Min-Max range across MCMC iterations
@@ -120,7 +138,7 @@ Available parameters: theta_01, W_1^{-1}
   \item Only available if the model was run with \code{return_accept_prop = TRUE}
 }
 
-\strong{Complete Dashboard (\code{type = "all"}):}
+\strong{Complete Dashboard} (\code{type = "all"}):
 
 Generates up to 5 pages in total:
 \itemize{
@@ -158,57 +176,208 @@ proportions in the success probabilities plot:
 
 \examples{
 \dontrun{
-## Simulation of data
-set.seed(123)
-n <- 500
-n_trials <- 20
+# =============================================================================
+# Example 1: Practical Data Analysis (No True Parameters Known)
+# =============================================================================
+# This example demonstrates a typical workflow when analyzing real data where
+# true parameter values are unknown. We generate synthetic data with a simple
+# oscillating pattern to mimic real-world temporal variation.
 
-# Generate true probabilities
+set.seed(123)
+n <- 400          # Number of time points
+n_trials <- 20    # Number of trials per observation
+
+# Generate simple oscillating success probabilities (mimicking seasonal patterns)
 alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
 
-# Generate binomial observations
+# Generate binomial observations (e.g., number of successes over time)
 y <- rbinom(n, size = n_trials, prob = alpha_true)
 
-## Running the Gibbs sampler with acceptance proportion tracking
+# Fit the local-level model with weakly informative priors
+# (appropriate when we have limited prior knowledge)
 out <- mcmc_binomial_locallevel(
   y,
-  n_trials = n_trials,
-  burnin = 1000,
-  thinning = 50,
-  n_chain = 1000,
-  prior_theta01_mean = 0,
-  prior_theta01_prec = 1,
-  prior_prec1_shape = 100,
-  prior_prec1_rate = 1,
-  target_acceptance = 0.44,
-  return_accept_prop = TRUE,
-  verbose = TRUE,
-  seed = 456
+  n_trials                = n_trials,
+  burnin                  = 1000,      # Discard first 1000 iterations
+  thinning                = 50,        # Keep every 50th iteration
+  n_chain                 = 1000,      # Retain 1000 posterior samples
+  # Weakly informative prior for initial state (centered at 0 on logit scale)
+  prior_theta01_mean      = 0,
+  prior_theta01_prec      = 1,
+  # Weakly informative prior for innovation precision
+  # (shape = rate implies mean = 1, but with high variance)
+  prior_prec1_shape       = 100,
+  prior_prec1_rate        = 1,
+  target_acceptance       = 0.44,      # Optimal acceptance rate for RWMH
+  return_accept_prop      = TRUE,      # Track acceptance rates for diagnostics
+  verbose                 = TRUE,      # Show progress bar
+  seed                    = 456        # For reproducibility
 )
 
-# Complete dashboard (5 pages, includes acceptance proportions if available)
+# --- Visualization Options ---
+
+# 1. Complete diagnostic dashboard (5 pages)
+#    Includes: MCMC diagnostics, state trajectory, alpha plot, acceptance rates
 plot(out, type = "all")
 
-# Only acceptance proportions (will show target line at 0.44)
-plot(out, type = "acceptance")
+# 2. MCMC convergence diagnostics for all parameters
+#    Trace plots, ACF, posterior densities, running means
+plot(out, type = "mcmc")
 
-# Diagnostics for specific parameters
-plot(out, type = "mcmc", which = 1)  # Initial state
-plot(out, type = "mcmc", which = 2)  # Innovation precision
+# 3. Focus on initial state parameter only
+plot(out, type = "mcmc", which = 1)  # theta_01
 
-# Success probabilities with observed proportions (default)
-plot(out, type = "alpha")
+# 4. Focus on innovation precision parameter
+plot(out, type = "mcmc", which = 2)  # W_1^{-1}
 
-# Success probabilities WITHOUT observed proportions
-plot(out, type = "alpha", show_obs = FALSE)
-
-# Dynamic states only
+# 5. Dynamic state trajectory (theta_1 on logit scale)
+#    Shows level component over time
 plot(out, type = "states")
 
-# Save to multi-page PDF
-pdf("diagnostics.pdf", width = 10, height = 8)
-plot(out, type = "all", ask = FALSE)
+# 6. Success probabilities with observed proportions overlay
+#    Red points show observed y_t / n_trials for model validation
+plot(out, type = "alpha")
+
+# 7. Success probabilities without observed data (cleaner for presentations)
+plot(out, type = "alpha", show_obs = FALSE)
+
+# 8. Metropolis-Hastings acceptance rates diagnostic
+#    Check if adaptive tuning achieved target acceptance proportion
+plot(out, type = "acceptance")
+
+# 9. Adjust credible interval level (default is 95\%)
+plot(out, type = "alpha", ci_level = 0.90)  # 90\% credible intervals
+
+# 10. Save all diagnostics to a multi-page PDF
+pdf("model_diagnostics.pdf", width = 10, height = 8)
+plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 dev.off()
+
+
+# =============================================================================
+# Example 2: Simulation Study (True Parameters Known for Validation)
+# =============================================================================
+# This example demonstrates how to validate model performance using simulated
+# data where true parameter values are known. This is essential for assessing
+# whether the model can recover known parameters and for method development.
+
+# --- Step 1: Set up simulation parameters ---
+set.seed(10)
+n <- 100           # Number of time points
+n_trials <- 20     # Number of trials per observation
+
+# True parameter values (these would be unknown in real applications)
+theta01_true     <- 0        # True initial level (on logit scale)
+prec_theta1_true <- 1000     # True level innovation precision (high = smooth)
+
+# --- Step 2: Simulate latent states following the state-space model ---
+# Generate innovation sequence (random shocks to state)
+u1 <- rnorm(n, mean = 0, sd = sqrt(1 / prec_theta1_true))  # Level innovations
+
+# Initialize state vector
+theta1_true <- numeric(n)  # Level state (on logit scale)
+
+# First time point (t=1): state = initial value + innovation
+theta1_true[1] <- theta01_true + u1[1]
+
+# Subsequent time points (t=2,...,n): follow state evolution equation
+# theta_{t,1} = theta_{t-1,1} + u_{t,1}  (random walk)
+for (t in 2:n) {
+  theta1_true[t] <- theta1_true[t-1] + u1[t]
+}
+
+# --- Step 3: Generate observations ---
+# Transform level state to probability scale using inverse logit
+alpha_true <- plogis(theta1_true)  # Success probabilities in [0,1]
+
+# Generate binomial observations
+y <- rbinom(n = n, size = n_trials, prob = alpha_true)
+
+# Optional: Visualize true trajectories before fitting
+par(mfrow = c(1, 2))
+plot(theta1_true, type = "l", main = "True Level State (logit scale)",
+     xlab = "Time", ylab = expression(theta["t,1"]))
+plot(alpha_true, type = "l", main = "True Success Probabilities",
+     xlab = "Time", ylab = expression(alpha[t]), ylim = c(0, 1))
+points(y / n_trials, col = "red", pch = 16, cex = 0.5)
+par(mfrow = c(1, 1))
+
+# --- Step 4: Fit the model with informative priors ---
+# Note: In practice, we wouldn't know true values, but here we use
+# priors centered near truth to demonstrate parameter recovery
+out <- mcmc_binomial_locallevel(
+  y,
+  n_trials                = n_trials,
+  burnin                  = 1000,
+  thinning                = 50,
+  n_chain                 = 1000,
+  # Prior centered at true initial value
+  prior_theta01_mean      = 0,
+  prior_theta01_prec      = 1,
+  # Informative prior for innovation precision
+  # (centered near true value with moderate uncertainty)
+  prior_prec1_shape       = 1000,
+  prior_prec1_rate        = 1,
+  target_acceptance       = 0.44,
+  return_accept_prop      = TRUE,
+  verbose                 = TRUE,
+  seed                    = 456
+)
+
+# --- Step 5: Model validation using true parameter values ---
+# Create named list with ALL true values (matching output component names)
+# IMPORTANT: All names must match exactly the components returned by
+# mcmc_binomial_locallevel() - see ?mcmc_binomial_locallevel
+true_vals <- list(
+  # Scalar parameters (for MCMC diagnostics)
+  theta_01     = theta01_true,
+  prec_theta1  = prec_theta1_true,
+  # State trajectory (for state plots)
+  theta_1      = theta1_true,
+  # Success probabilities (for alpha plot)
+  alpha        = alpha_true
+)
+
+# --- Validation Plots ---
+
+# 1. Complete dashboard with true values overlaid
+#    True values appear as dashed black lines in all relevant plots
+plot(out, type = "all", true_values = true_vals)
+
+# 2. MCMC diagnostics with true parameter values (scalar parameters)
+#    Check if posterior distributions contain true values
+plot(out, type = "mcmc", true_values = true_vals)
+
+# 3. Focus on initial state with true value
+plot(out, type = "mcmc", which = 1, true_values = true_vals)
+
+# 4. Focus on innovation precision with true value
+plot(out, type = "mcmc", which = 2, true_values = true_vals)
+
+# 5. Dynamic state with true trajectory overlaid
+#    Assess how well the model tracks the true time-varying state
+plot(out, type = "states", true_values = true_vals)
+
+# 6. Success probabilities with true alpha trajectory
+#    Compare estimated alpha_t with true values
+plot(out, type = "alpha", true_values = true_vals)
+
+# 7. Partial validation: only compare specific components
+#    Example 1: Only initial state and precision
+plot(out, type = "mcmc", true_values = list(
+  theta_01    = theta01_true,
+  prec_theta1 = prec_theta1_true
+))
+
+#    Example 2: Only level state trajectory
+plot(out, type = "states", true_values = list(
+  theta_1 = theta1_true
+))
+
+#    Example 3: Only success probabilities
+plot(out, type = "alpha", true_values = list(
+  alpha = alpha_true
+))
 
 }
 

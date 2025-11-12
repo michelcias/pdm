@@ -58,43 +58,74 @@ plot_param_diagnostics_base <- function(param_samples,
                                         color = "steelblue",
                                         ...) {
 
+  # Setup plotting environment
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
-  par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 3, 0),
+  par(mfrow = c(2, 2),
+      mar = c(4, 4, 3, 1),
+      oma = c(0, 0, 3, 0),
       mgp = c(2.5, 1, 0))
 
-  # 1. Trace Plot
+  # =========================================================================
+  # Panel 1: Trace Plot
+  # =========================================================================
+
+  # Compute y-axis range with buffer
   range_param <- range(param_samples)
   range_param[2] <- range_param[2] + 0.25 * diff(range_param)
 
-  plot(param_samples, type = "l", col = "gray40", lwd = 0.8,
-       xlab = "Iteration", ylab = param_label, ylim = range_param,
+  plot(param_samples,
+       type = "l",
+       col = "gray40",
+       lwd = 0.8,
+       xlab = "Iteration",
+       ylab = param_label,
+       ylim = range_param,
        main = "Trace Plot")
-  segments(x0 = 1, y0 = median(param_samples),
-           x1 = length(param_samples), y1 = median(param_samples),
-           col = color, lwd = 2, lty = 1)
+
+  # Add median reference line
+  segments(x0 = 1,
+           y0 = median(param_samples),
+           x1 = length(param_samples),
+           y1 = median(param_samples),
+           col = color,
+           lwd = 2,
+           lty = 1)
+
+  # Add true value reference line (if provided)
   if (!is.null(true_value)) {
-    segments(x0 = 1, y0 = true_value,
-             x1 = length(param_samples), y1 = true_value,
-             col = "black", lwd = 2, lty = 2)
+    segments(x0 = 1,
+             y0 = true_value,
+             x1 = length(param_samples),
+             y1 = true_value,
+             col = "black",
+             lwd = 2,
+             lty = 2)
     legend("topright",
            legend = c("Trace", "Median", "True Value"),
            col = c("gray40", color, "black"),
            lwd = c(0.8, 2, 2),
-           horiz = TRUE,
            lty = c(1, 1, 2),
-           bty = "n", cex = 0.8)
+           horiz = TRUE,
+           bty = "n",
+           cex = 0.8)
   } else {
     legend("topright",
            legend = c("Trace", "Median"),
            col = c("gray40", color),
-           lwd = c(0.8, 2), horiz = TRUE,
-           lty = c(1, 1), bty = "n", cex = 0.8)
+           lwd = c(0.8, 2),
+           lty = c(1, 1),
+           horiz = TRUE,
+           bty = "n",
+           cex = 0.8)
   }
   grid()
 
-  # 2. Autocorrelation Function
+  # =========================================================================
+  # Panel 2: Autocorrelation Function
+  # =========================================================================
+
   acf(param_samples,
       main = "",
       col = color,
@@ -102,73 +133,128 @@ plot_param_diagnostics_base <- function(param_samples,
   title(main = "Autocorrelation")
   grid()
 
-  # 3. Posterior Density
+  # =========================================================================
+  # Panel 3: Posterior Density
+  # =========================================================================
+
   dens <- density(param_samples)
-  plot(dens, main = "Posterior Density",
-       xlab = param_label, lwd = 2, col = color, ylim = c(0, max(dens$y) * 1.25))
-  polygon(dens, col = grDevices::adjustcolor(color, alpha.f = 0.2), border = NA)
-  segments(x0 = median(param_samples), y0 = 0,
-           x1 = median(param_samples), y1 = max(dens$y),
-           col = color, lwd = 2, lty = 1)
+
+  plot(dens,
+       main = "Posterior Density",
+       xlab = param_label,
+       lwd = 2,
+       col = color,
+       ylim = c(0, max(dens$y) * 1.25))
+
+  # Add shaded density area
+  polygon(dens,
+          col = grDevices::adjustcolor(color, alpha.f = 0.2),
+          border = NA)
+
+  # Add median reference line
+  segments(x0 = median(param_samples),
+           y0 = 0,
+           x1 = median(param_samples),
+           y1 = max(dens$y),
+           col = color,
+           lwd = 2,
+           lty = 1)
+
+  # Add true value reference line (if provided)
   if (!is.null(true_value)) {
-    segments(x0 = true_value, y0 = 0,
-             x1 = true_value, y1 = max(dens$y),
-             col = "black", lwd = 2, lty = 2)
+    segments(x0 = true_value,
+             y0 = 0,
+             x1 = true_value,
+             y1 = max(dens$y),
+             col = "black",
+             lwd = 2,
+             lty = 2)
     legend("topright",
            legend = c("Median", "True Value"),
            col = c(color, "black"),
            lwd = c(2, 2),
-           horiz = TRUE,
            lty = c(1, 2),
-           bty = "n", cex = 0.8)
+           horiz = TRUE,
+           bty = "n",
+           cex = 0.8)
   } else {
     legend("topright",
            legend = "Median",
            col = color,
            lwd = 2,
-           horiz = TRUE,
            lty = 1,
-           bty = "n", cex = 0.8)
+           horiz = TRUE,
+           bty = "n",
+           cex = 0.8)
   }
   grid()
 
-  # 4. Running Mean (Convergence Check)
-  running_mean <- cumsum(param_samples) / seq_along(param_samples)
-  range_runnint <- range(running_mean, mean(param_samples))
-  range_runnint[2] <- range_runnint[2] + 0.25 * diff(range_runnint)
+  # =========================================================================
+  # Panel 4: Running Mean (Convergence Diagnostic)
+  # =========================================================================
 
-  plot(running_mean, type = "l", col = grDevices::adjustcolor(color, alpha.f = 0.4),
-       lwd = 2, lty = 1,
-       xlab = "Iteration", ylab = param_label, ylim = range_runnint,
+  running_mean <- cumsum(param_samples) / seq_along(param_samples)
+
+  # Compute y-axis range with buffer
+  range_running <- range(running_mean, mean(param_samples))
+  range_running[2] <- range_running[2] + 0.25 * diff(range_running)
+
+  plot(running_mean,
+       type = "l",
+       col = grDevices::adjustcolor(color, alpha.f = 0.4),
+       lwd = 2,
+       lty = 1,
+       xlab = "Iteration",
+       ylab = param_label,
+       ylim = range_running,
        main = "Running Mean")
-  segments(x0 = 1, y0 = mean(param_samples),
-           x1 = length(param_samples), y1 = mean(param_samples),
-           col = color, lwd = 2, lty = 3)
+
+  # Add mean reference line
+  segments(x0 = 1,
+           y0 = mean(param_samples),
+           x1 = length(param_samples),
+           y1 = mean(param_samples),
+           col = color,
+           lwd = 2,
+           lty = 3)
+
+  # Add true value reference line (if provided)
   if (!is.null(true_value)) {
-    segments(x0 = 1, y0 = true_value,
-             x1 = length(param_samples), y1 = true_value,
-             col = "black", lwd = 2, lty = 2)
+    segments(x0 = 1,
+             y0 = true_value,
+             x1 = length(param_samples),
+             y1 = true_value,
+             col = "black",
+             lwd = 2,
+             lty = 2)
     legend("topright",
            legend = c("Running Mean", "Mean", "True Value"),
            col = c(color, color, "black"),
            lwd = c(2, 2, 2),
-           horiz = TRUE,
            lty = c(1, 3, 2),
-           bty = "n", cex = 0.8)
+           horiz = TRUE,
+           bty = "n",
+           cex = 0.8)
   } else {
     legend("topright",
            legend = c("Running Mean", "Mean"),
            col = c(color, color),
            lwd = c(2, 2),
-           horiz = TRUE,
            lty = c(1, 3),
-           bty = "n", cex = 0.8)
+           horiz = TRUE,
+           bty = "n",
+           cex = 0.8)
   }
   grid()
 
-  # Overall title
+  # =========================================================================
+  # Overall Title
+  # =========================================================================
+
   mtext(substitute(paste("MCMC Diagnostics: ", x), list(x = param_name)),
-        outer = TRUE, cex = 1.3, font = 2)
+        outer = TRUE,
+        cex = 1.3,
+        font = 2)
 
   invisible(NULL)
 }
@@ -191,10 +277,10 @@ plot_param_diagnostics_base <- function(param_samples,
 #'
 #' @details The four panels show:
 #'   \enumerate{
-#'     \item mu_1 vs mu_2 (component separation) - uses neutral gray color
-#'     \item mu_1 vs phi_1 (mean-precision relationship for component 1) - uses neutral gray color
-#'     \item mu_2 vs phi_2 (mean-precision relationship for component 2) - uses neutral gray color
-#'     \item phi_1 vs phi_2 (precision comparison) - uses neutral gray color
+#'     \item mu_1 vs mu_2 (component separation)
+#'     \item mu_1 vs phi_1 (mean-precision relationship for component 1)
+#'     \item mu_2 vs phi_2 (mean-precision relationship for component 2)
+#'     \item phi_1 vs phi_2 (precision comparison)
 #'   }
 #'
 #'   Note: Mixture parameters do not correspond to dynamic states (level, trend,
@@ -203,59 +289,94 @@ plot_param_diagnostics_base <- function(param_samples,
 #'
 #' @keywords internal
 #' @noRd
-plot_mixture_params_base <- function(mu_1, mu_2, prec_1, prec_2,
-                                     which = NULL, ...) {
+plot_mixture_params_base <- function(mu_1,
+                                     mu_2,
+                                     prec_1,
+                                     prec_2,
+                                     which = NULL,
+                                     ...) {
 
+  # Setup plotting environment
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
-  if (is.null(which)) which <- 1:4
+  if (is.null(which)) {
+    which <- 1:4
+  }
 
-  par(mfrow = c(2, 2), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
+  par(mfrow = c(2, 2),
+      mar = c(4, 4, 2, 1),
+      oma = c(0, 0, 2, 0),
       mgp = c(2.5, 1, 0))
 
-  # Plot 1: mu_1 vs mu_2
+  # =========================================================================
+  # Panel 1: mu_1 vs mu_2 (Component Separation)
+  # =========================================================================
+
   if (1 %in% which) {
-    plot(mu_1, mu_2,
+    plot(mu_1,
+         mu_2,
          xlab = expression(mu[1]),
          ylab = expression(mu[2]),
          main = expression(paste(mu[1], " vs ", mu[2])),
-         pch = 16, col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
+         pch = 16,
+         col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
     grid()
   }
 
-  # Plot 2: mu_1 vs phi_1
+  # =========================================================================
+  # Panel 2: mu_1 vs phi_1 (Component 1 Mean-Precision)
+  # =========================================================================
+
   if (2 %in% which) {
-    plot(mu_1, prec_1,
+    plot(mu_1,
+         prec_1,
          xlab = expression(mu[1]),
          ylab = expression(phi[1]),
          main = expression(paste(mu[1], " vs ", phi[1])),
-         pch = 16, col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
+         pch = 16,
+         col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
     grid()
   }
 
-  # Plot 3: mu_2 vs phi_2
+  # =========================================================================
+  # Panel 3: mu_2 vs phi_2 (Component 2 Mean-Precision)
+  # =========================================================================
+
   if (3 %in% which) {
-    plot(mu_2, prec_2,
+    plot(mu_2,
+         prec_2,
          xlab = expression(mu[2]),
          ylab = expression(phi[2]),
          main = expression(paste(mu[2], " vs ", phi[2])),
-         pch = 16, col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
+         pch = 16,
+         col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
     grid()
   }
 
-  # Plot 4: phi_1 vs phi_2
+  # =========================================================================
+  # Panel 4: phi_1 vs phi_2 (Precision Comparison)
+  # =========================================================================
+
   if (4 %in% which) {
-    plot(prec_1, prec_2,
+    plot(prec_1,
+         prec_2,
          xlab = expression(phi[1]),
          ylab = expression(phi[2]),
          main = expression(paste(phi[1], " vs ", phi[2])),
-         pch = 16, col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
+         pch = 16,
+         col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
     grid()
   }
 
+  # =========================================================================
+  # Overall Title
+  # =========================================================================
+
   mtext("Mixture Component Parameters (Bivariate Relationships)",
-        outer = TRUE, cex = 1.3, font = 2)
+        outer = TRUE,
+        cex = 1.3,
+        font = 2)
 
   invisible(NULL)
 }
@@ -314,22 +435,31 @@ plot_alpha_trajectory_base <- function(alpha,
                                        true_alpha = NULL,
                                        ...) {
 
-  # Validate ci_level
-  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
-             ci_level <= 0 || ci_level >= 1)) {
+  # =========================================================================
+  # Validate Parameters
+  # =========================================================================
+
+  if (ci && (!is.numeric(ci_level) ||
+             length(ci_level) != 1 ||
+             ci_level <= 0 ||
+             ci_level >= 1)) {
     stop("`ci_level` must be a single numeric value between 0 and 1")
   }
 
-  # Validate show_obs
   if (!is.logical(show_obs) || length(show_obs) != 1) {
     stop("`show_obs` must be a single logical value")
   }
+
+  # =========================================================================
+  # Prepare Data
+  # =========================================================================
 
   n_obs <- ncol(alpha)
   time_grid <- seq_len(n_obs)
 
   # Compute summary statistics
   alpha_median <- apply(alpha, 2, stats::median)
+
   if (ci) {
     ci_lower_prob <- (1 - ci_level) / 2
     ci_upper_prob <- 1 - ci_lower_prob
@@ -338,14 +468,22 @@ plot_alpha_trajectory_base <- function(alpha,
     ci_label <- paste0(round(ci_level * 100), "% CI")
   }
 
-  # Setup plotting area
+  # =========================================================================
+  # Setup Plotting Environment
+  # =========================================================================
+
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
 
-  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0),
+  par(mfrow = c(1, 1),
+      mar = c(4, 4, 2, 1),
+      oma = c(0, 0, 2, 0),
       mgp = c(2.5, 1, 0))
 
-  # Base plot
+  # =========================================================================
+  # Create Base Plot
+  # =========================================================================
+
   plot(time_grid,
        alpha_median,
        type = "l",
@@ -360,7 +498,10 @@ plot_alpha_trajectory_base <- function(alpha,
   axis(side = 1)
   axis(side = 2, at = seq(0, 1, by = 0.2))
 
-  # Add observed data (if provided and show_obs = TRUE)
+  # =========================================================================
+  # Add Observed Data (if provided and requested)
+  # =========================================================================
+
   if (!is.null(obs_data) && show_obs) {
     points(time_grid,
            obs_data,
@@ -369,7 +510,10 @@ plot_alpha_trajectory_base <- function(alpha,
            col = obs_color)
   }
 
-  # Add true alpha (if provided - for simulations)
+  # =========================================================================
+  # Add True Alpha (if provided)
+  # =========================================================================
+
   if (!is.null(true_alpha)) {
     lines(time_grid,
           true_alpha,
@@ -378,42 +522,65 @@ plot_alpha_trajectory_base <- function(alpha,
           lty = 2)
   }
 
-  # Add credible band
+  # =========================================================================
+  # Add Credible Interval Band
+  # =========================================================================
+
   if (ci) {
     polygon(c(time_grid, rev(time_grid)),
             c(alpha_lower, rev(alpha_upper)),
             col = grDevices::adjustcolor("steelblue", alpha.f = 0.2),
             border = NA)
-    lines(time_grid, alpha_median, lwd = 2.5, col = "steelblue")
+    # Redraw median line on top
+    lines(time_grid,
+          alpha_median,
+          lwd = 2.5,
+          col = "steelblue")
   }
 
-  grid(nx = NA, ny = NULL)
-  segments(x0 = axTicks(1), y0 = -0.04, x1 = axTicks(1), y1 = 1.03,
-           col = "lightgray", lwd = par("lwd"), lty = "dotted")
+  # =========================================================================
+  # Add Grid Lines
+  # =========================================================================
 
-  # Build legend
+  grid(nx = NA, ny = NULL)
+  segments(x0 = axTicks(1),
+           y0 = -0.04,
+           x1 = axTicks(1),
+           y1 = 1.03,
+           col = "lightgray",
+           lwd = par("lwd"),
+           lty = "dotted")
+
+  # =========================================================================
+  # Build Legend
+  # =========================================================================
+
   legend_items <- c(expression(hat(alpha)[t]))
   legend_cols <- c("steelblue")
   legend_lty <- c(1)
   legend_lwd <- c(2.5)
   legend_pch <- c(NA)
 
+  # Add credible interval to legend
   if (ci) {
     legend_items <- c(legend_items, ci_label)
-    legend_cols <- c(legend_cols, grDevices::adjustcolor("steelblue", alpha.f = 0.3))
+    legend_cols <- c(legend_cols,
+                     grDevices::adjustcolor("steelblue", alpha.f = 0.3))
     legend_lty <- c(legend_lty, 1)
     legend_lwd <- c(legend_lwd, 10)
     legend_pch <- c(legend_pch, NA)
   }
 
+  # Add true alpha to legend
   if (!is.null(true_alpha)) {
     legend_items <- c(expression(alpha[t]), legend_items)
-    legend_cols  <- c("black", legend_cols)
-    legend_lty   <- c(2, legend_lty)
-    legend_lwd   <- c(2.5, legend_lwd)
-    legend_pch   <- c(NA, legend_pch)
+    legend_cols <- c("black", legend_cols)
+    legend_lty <- c(2, legend_lty)
+    legend_lwd <- c(2.5, legend_lwd)
+    legend_pch <- c(NA, legend_pch)
   }
 
+  # Add observed data to legend
   if (!is.null(obs_data) && show_obs) {
     legend_items <- c(legend_items, obs_label)
     legend_cols <- c(legend_cols, obs_color)
@@ -422,6 +589,7 @@ plot_alpha_trajectory_base <- function(alpha,
     legend_pch <- c(legend_pch, obs_pch)
   }
 
+  # Display legend
   legend("topright",
          legend = legend_items,
          col = legend_cols,
@@ -431,9 +599,15 @@ plot_alpha_trajectory_base <- function(alpha,
          horiz = TRUE,
          bty = "n")
 
-  # Add title
+  # =========================================================================
+  # Add Overall Title
+  # =========================================================================
+
   if (!is.null(title)) {
-    mtext(title, outer = TRUE, cex = 1.3, font = 2)
+    mtext(title,
+          outer = TRUE,
+          cex = 1.3,
+          font = 2)
   }
 
   invisible(NULL)
@@ -469,20 +643,22 @@ plot_component_probabilities_base <- function(z,
   n_obs <- ncol(z)
   time_grid <- seq_len(n_obs)
 
-  # Compute posterior probabilities
+  # Compute posterior probabilities P(z_t = 1 | data)
   z_prob <- apply(z, 2, mean)
 
   # Setup plotting area
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
 
-  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
+  par(mfrow = c(1, 1),
+      mar = c(4, 4, 2, 1),
+      oma = c(0, 0, 2, 0))
 
-  # Create plot
+  # Create bar plot with threshold-based coloring
   plot(z_prob,
        type = "h",
        lwd = 2,
-       col = ifelse(z_prob > threshold, "purple", "steelblue"),
+       col = ifelse(z_prob > threshold, color_above, color_below),
        xlab = "Time",
        ylab = expression(paste("P(", z[t], " = 1 | data)")),
        ylim = c(0, 1.1),
@@ -491,24 +667,33 @@ plot_component_probabilities_base <- function(z,
   axis(side = 1)
   axis(side = 2, at = c(0, 0.5, 1))
 
-  # Add threshold line
-  segments(x0 = 1, y0 = threshold, x1 = n_obs, y1 = threshold,
-           col = "black", lwd = 2, lty = 2)
+  # Add threshold reference line
+  segments(x0 = 1,
+           y0 = threshold,
+           x1 = n_obs,
+           y1 = threshold,
+           col = "black",
+           lwd = 2,
+           lty = 2)
 
+  # Add legend
   legend("topright",
          horiz = TRUE,
          legend = c(paste0("P(z_t = 1) > ", threshold),
                     paste0("P(z_t = 1) ≤ ", threshold),
                     "Threshold"),
-         col = c("purple", "steelblue", "black"),
+         col = c(color_above, color_below, "black"),
          lty = c(1, 1, 2),
          lwd = 2,
          bty = "n")
 
   grid(nx = NA, ny = NULL)
 
+  # Overall title
   mtext(expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
-        outer = TRUE, cex = 1.3, font = 2)
+        outer = TRUE,
+        cex = 1.3,
+        font = 2)
 
   invisible(NULL)
 }
@@ -529,6 +714,8 @@ plot_component_probabilities_base <- function(z,
 #' @param ci_level Numeric; credible interval level.
 #' @param show_obs Logical; whether to display observed proportions.
 #'   Default is TRUE.
+#' @param true_alpha Numeric vector; true alpha values for simulation studies.
+#'   If provided, overlays the true trajectory.
 #' @param ... Additional arguments passed to plot_alpha_trajectory_base.
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
@@ -554,6 +741,7 @@ plot_binomial_alpha_base <- function(x,
                                      true_alpha = NULL,
                                      ...) {
 
+  # Validate parameters
   if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
              ci_level <= 0 || ci_level >= 1)) {
     stop("`ci_level` must be a single numeric value between 0 and 1")
@@ -563,10 +751,11 @@ plot_binomial_alpha_base <- function(x,
     stop("`show_obs` must be a single logical value")
   }
 
-  # Extract observed proportions (if available and show_obs = TRUE)
+  # Extract observed data
   y <- attr(x, "y")
   n_trials <- attr(x, "n_trials")
 
+  # Compute observed proportions if available and requested
   obs_data <- NULL
   if (show_obs && !is.null(y) && !is.null(n_trials)) {
     obs_data <- y / n_trials
@@ -597,62 +786,77 @@ plot_binomial_alpha_base <- function(x,
 #' @description Plots Metropolis-Hastings acceptance proportions over time points,
 #'   showing median acceptance with min-max range and target reference line.
 #'
-#' @param accept_prop Matrix of acceptance proportions (n_chain x n_obs)
-#' @param target_acceptance Numeric, target acceptance proportion for reference line.
+#' @param accept_prop Matrix of acceptance proportions (n_chain x n_obs).
+#' @param target_acceptance Numeric; target acceptance proportion for reference line.
 #'   Default is 0.44 (theoretically optimal for univariate random-walk proposals).
-#' @param ... Additional arguments (currently unused)
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Function is called for its side effects (plotting).
 #'
 #' @keywords internal
 #' @noRd
-plot_acceptance_proportions_base <- function(accept_prop, target_acceptance = 0.44, ...) {
+plot_acceptance_proportions_base <- function(accept_prop,
+                                             target_acceptance = 0.44,
+                                             ...) {
 
+  # Compute summary statistics
   min_acc <- apply(accept_prop, 2, min)
   max_acc <- apply(accept_prop, 2, max)
   med_acc <- apply(accept_prop, 2, median)
 
+  # Compute y-axis range with buffer
   range_acc <- range(min_acc, max_acc)
   r1_acc <- range_acc[1] - 0.05
   r2_acc <- range_acc[2] + 0.25 * diff(range_acc)
 
+  # Setup plotting area
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
-  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
+  par(mfrow = c(1, 1),
+      mar = c(4, 4, 2, 1),
+      oma = c(0, 0, 2, 0))
 
-  plot(
-    med_acc,
-    type = "l",
-    col = "black",
-    lwd = 2,
-    xlab = "Time",
-    ylab = "Acceptance Proportion",
-    ylim = c(r1_acc, r2_acc),
-    main = ""
-  )
+  # Plot median trajectory
+  plot(med_acc,
+       type = "l",
+       col = "black",
+       lwd = 2,
+       xlab = "Time",
+       ylab = "Acceptance Proportion",
+       ylim = c(r1_acc, r2_acc),
+       main = "")
 
-  polygon(
-    c(1:length(med_acc), rev(1:length(med_acc))),
-    c(min_acc, rev(max_acc)),
-    col = grDevices::rgb(0.7, 0.7, 0.7, alpha = 0.3),
-    border = NA
-  )
+  # Add min-max range band
+  polygon(c(1:length(med_acc), rev(1:length(med_acc))),
+          c(min_acc, rev(max_acc)),
+          col = grDevices::rgb(0.7, 0.7, 0.7, alpha = 0.3),
+          border = NA)
 
-  abline(h = target_acceptance, col = "red", lty = 3, lwd = 2)
+  # Add target acceptance reference line
+  abline(h = target_acceptance,
+         col = "red",
+         lty = 3,
+         lwd = 2)
 
-  legend(
-    "topright",
-    legend = c("Median", "Range",
-               sprintf("Target (%.2f)", target_acceptance)),
-    col = c("black", "gray", "red"),
-    lty = c(1, 1, 3),
-    lwd = c(2, 8, 2),
-    horiz = TRUE,
-    bty = "n"
-  )
+  # Add legend
+  legend("topright",
+         legend = c("Median",
+                    "Range",
+                    sprintf("Target (%.2f)", target_acceptance)),
+         col = c("black", "gray", "red"),
+         lty = c(1, 1, 3),
+         lwd = c(2, 8, 2),
+         horiz = TRUE,
+         bty = "n")
 
   grid()
 
-  mtext("Metropolis-Hastings Acceptance Proportions", outer = TRUE, cex = 1.3, font = 2)
+  # Overall title
+  mtext("Metropolis-Hastings Acceptance Proportions",
+        outer = TRUE,
+        cex = 1.3,
+        font = 2)
 
   invisible(NULL)
 }
@@ -668,6 +872,8 @@ plot_acceptance_proportions_base <- function(accept_prop, target_acceptance = 0.
 #' @param ci_level Numeric; credible interval level.
 #' @param show_obs Logical; whether to display observed binary outcomes.
 #'   Default is TRUE.
+#' @param true_alpha Numeric vector; true alpha values for simulation studies.
+#'   If provided, overlays the true trajectory.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
@@ -692,6 +898,7 @@ plot_bernoulli_alpha_base <- function(x,
                                       true_alpha = NULL,
                                       ...) {
 
+  # Validate parameters
   if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
              ci_level <= 0 || ci_level >= 1)) {
     stop("`ci_level` must be a single numeric value between 0 and 1")
@@ -704,11 +911,10 @@ plot_bernoulli_alpha_base <- function(x,
   # Extract observed binary outcomes
   y <- attr(x, "y")
 
-  # Prepare observed data for plotting: map binary values directly
-  obs_data <- if (show_obs && !is.null(y)) {
-    as.numeric(y)  # Convert binary to numeric (0.0 and 1.0)
-  } else {
-    NULL
+  # Prepare observed data: map binary values directly to 0.0 and 1.0
+  obs_data <- NULL
+  if (show_obs && !is.null(y)) {
+    obs_data <- as.numeric(y)
   }
 
   # Delegate to generic alpha trajectory plotting function
@@ -746,7 +952,7 @@ plot_bernoulli_alpha_base <- function(x,
 #' @return NULL (invisibly). Function is called for its side effects (plotting).
 #'
 #' @details
-#'   This function now delegates to two specialized functions:
+#'   This function delegates to two specialized functions:
 #'   \itemize{
 #'     \item \code{plot_alpha_trajectory_base()}: Page 1 (alpha_t trajectory)
 #'     \item \code{plot_component_probabilities_base()}: Page 2 (z_t probabilities)
@@ -754,21 +960,24 @@ plot_bernoulli_alpha_base <- function(x,
 #'
 #' @keywords internal
 #' @noRd
-plot_mixture_weights_base <- function(alpha, z, ci = TRUE,
-                                      ci_level = 0.95, ...) {
+plot_mixture_weights_base <- function(alpha,
+                                      z,
+                                      ci = TRUE,
+                                      ci_level = 0.95,
+                                      ...) {
 
-  # Page 1: Alpha trajectory (generic function)
+  # Page 1: Alpha trajectory with credible bands
   plot_alpha_trajectory_base(
     alpha = alpha,
     ci = ci,
     ci_level = ci_level,
     title = expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
-    obs_data = NULL,  # No observed data for mixture models
+    obs_data = NULL,
     show_obs = FALSE,
     ...
   )
 
-  # Page 2: Component probabilities (mixture-specific function)
+  # Page 2: Component probabilities
   plot_component_probabilities_base(z, ...)
 
   invisible(NULL)
@@ -781,13 +990,15 @@ plot_mixture_weights_base <- function(alpha, z, ci = TRUE,
 #'
 #' @param ci_level Numeric value to validate.
 #'
-#' @return NULL if valid, stops with error message if invalid.
+#' @return NULL (invisibly) if valid, stops with error message if invalid.
 #'
 #' @keywords internal
 #' @noRd
 validate_ci_level <- function(ci_level) {
-  if (!is.numeric(ci_level) || length(ci_level) != 1 ||
-      ci_level <= 0 || ci_level >= 1) {
+  if (!is.numeric(ci_level) ||
+      length(ci_level) != 1 ||
+      ci_level <= 0 ||
+      ci_level >= 1) {
     stop("`ci_level` must be a single numeric value between 0 and 1")
   }
   invisible(NULL)
@@ -808,17 +1019,31 @@ validate_ci_level <- function(ci_level) {
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param true_values Named list containing true values (or NULL).
+#'   Expected elements depend on model type and order.
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
 #'
+#' @details Creates a complete dashboard with the following pages:
+#'   \enumerate{
+#'     \item MCMC diagnostics for each parameter
+#'     \item Mixture parameters bivariate relationships (mixture models only)
+#'     \item Dynamic state trajectories
+#'     \item Dynamic state diagnostics
+#'     \item Phase space trajectories (order 2-3 only)
+#'     \item Mixture weights and component probabilities (mixture models only)
+#'   }
+#'
 #' @keywords internal
 #' @noRd
-plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
+plot_all_mixture_generic_base <- function(x,
+                                          ask = TRUE,
+                                          ci = TRUE,
                                           ci_level = 0.95,
                                           true_values = NULL,
                                           ...) {
 
+  # Setup plotting environment
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
@@ -827,33 +1052,47 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
     on.exit(par(oldask), add = TRUE)
   }
 
-  # 1. Detect model type
+  # Detect model type and order
   model_info <- detect_model_type(x)
   model_order <- model_info$model_order
 
-  # 2. Get parameter configuration
-  param_config <- get_param_config(x, model_info$model_class, model_order)
+  # Get parameter configuration
+  param_config <- get_param_config(x,
+                                   model_info$model_class,
+                                   model_order)
   n_params <- length(param_config)
 
-  # 3. Pages 1-n: MCMC diagnostics for each parameter
-  plot_mcmc_diagnostics_generic(x, which = seq_len(n_params),
+  # Section 1: MCMC diagnostics for each parameter
+  plot_mcmc_diagnostics_generic(x,
+                                which = seq_len(n_params),
                                 param_config = param_config,
                                 true_values = true_values,
                                 ...)
 
-  # 4. Page n+1: Mixture parameters (only for mixture models)
+  # Section 2: Mixture parameters (mixture models only)
   if (model_info$has_mixture) {
-    plot_mixture_params_base(x$mu_1, x$mu_2, x$prec_1, x$prec_2, ...)
+    plot_mixture_params_base(x$mu_1,
+                             x$mu_2,
+                             x$prec_1,
+                             x$prec_2,
+                             ...)
   }
 
-  # 5. Pages n+2 onwards: Dynamic states
-  plot_dynamic_states_generic_base(x, model_order = model_order,
-                                   ci = ci, ci_level = ci_level,
-                                   true_values = true_values, ...)
+  # Section 3: Dynamic states (trajectories, diagnostics, phase space)
+  plot_dynamic_states_generic_base(x,
+                                   model_order = model_order,
+                                   ci = ci,
+                                   ci_level = ci_level,
+                                   true_values = true_values,
+                                   ...)
 
-  # 6. Final pages: Mixture weights (only for mixture models)
+  # Section 4: Mixture weights (mixture models only)
   if (model_info$has_mixture) {
-    plot_mixture_weights_base(x$alpha, x$z, ci = ci, ci_level = ci_level, ...)
+    plot_mixture_weights_base(x$alpha,
+                              x$z,
+                              ci = ci,
+                              ci_level = ci_level,
+                              ...)
   }
 
   invisible(NULL)
@@ -880,16 +1119,18 @@ plot_all_mixture_generic_base <- function(x, ask = TRUE, ci = TRUE,
 #'
 #' @details Number of pages generated:
 #'   \itemize{
-#'     \item Order 1: 2 pages (trajectory + diagnostics)
-#'     \item Order 2: 2 pages (trajectories + diagnostics with scatter plot)
-#'     \item Order 3: 3 pages (trajectories + diagnostics + state space)
+#'     \item Order 1: 2 pages (trajectory + 1x3 diagnostics)
+#'     \item Order 2: 3 pages (trajectory + 2x3 diagnostics + 1x1 phase space)
+#'     \item Order 3: 3 pages (trajectory + 3x3 diagnostics + 1x2 phase space)
 #'   }
 #'
 #' @keywords internal
 #' @noRd
-plot_dynamic_states_generic_base <- function(x, which = NULL,
+plot_dynamic_states_generic_base <- function(x,
+                                             which = NULL,
                                              model_order = NULL,
-                                             ci = TRUE, ci_level = 0.95,
+                                             ci = TRUE,
+                                             ci_level = 0.95,
                                              true_values = NULL,
                                              ...) {
 
@@ -901,14 +1142,16 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
 
   validate_ci_level(ci_level)
 
-  # Determine number of pages (order 1 now has 2 pages)
-  n_pages <- if (model_order == 1) 2L else model_order
+  # Determine number of pages based on model order
+  # Order 1: 2 pages (trajectory + diagnostics)
+  # Orders 2-3: 3 pages (trajectory + diagnostics + phase space)
+  n_pages <- if (model_order == 1) 2L else 3L
 
   if (is.null(which)) {
     which <- seq_len(n_pages)
   }
 
-  # Validate which
+  # Validate which parameter
   if (any(which < 1) || any(which > n_pages)) {
     stop("`which` must be between 1 and ", n_pages)
   }
@@ -919,7 +1162,7 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
   n_obs <- attr(x, "n_obs")
   time_grid <- seq_len(n_obs)
 
-  # Prepare CI parameters
+  # Prepare credible interval parameters
   if (ci) {
     ci_lower_prob <- (1 - ci_level) / 2
     ci_upper_prob <- 1 - ci_lower_prob
@@ -930,13 +1173,26 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
   state_summaries <- summarise_all_states(x, model_order, ci, ci_level)
   state_labels <- get_state_labels(model_order)
 
+  # Pre-compute innovations if diagnostic page is requested (Page 2)
+  innovations <- NULL
+  innov_summaries <- NULL
+  innov_labels <- NULL
+
+  if (2 %in% which) {
+    innovations <- compute_innovations(x, model_order)
+    innov_summaries <- lapply(innovations, summarise_state, ci, ci_level)
+    innov_labels <- get_innovation_labels(model_order)
+  }
+
   # =========================================================================
-  # Page 1: State Trajectories
+  # Page 1: State Trajectories (All Orders)
   # =========================================================================
 
   if (1 %in% which) {
-    par(mfrow = c(model_order, 1), mar = c(4, 4, 3, 1),
-        oma = c(0, 0, 2, 0), mgp = c(2.5, 1, 0))
+    par(mfrow = c(model_order, 1),
+        mar = c(4, 4, 3, 1),
+        oma = c(0, 0, 2, 0),
+        mgp = c(2.5, 1, 0))
 
     for (i in seq_len(model_order)) {
       state_name <- state_labels$state_names[i]
@@ -962,42 +1218,61 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
       )
     }
 
-    mtext("Dynamic State Trajectories", outer = TRUE, cex = 1.3, font = 2)
+    mtext("Dynamic State Trajectories",
+          outer = TRUE,
+          cex = 1.3,
+          font = 2)
   }
 
   # =========================================================================
-  # Page 2: Diagnostics - Different layouts for each order
+  # Page 2: Consolidated Diagnostics (All Orders)
   # =========================================================================
 
   if (2 %in% which) {
-    # Compute innovations
-    innovations <- compute_innovations(x, model_order)
-    innov_summaries <- lapply(innovations, summarise_state, ci, ci_level)
-    innov_labels <- get_innovation_labels(model_order)
 
     # -----------------------------------------------------------------------
-    # ORDER 1: Lag-1 Scatter + Innovation Time Series
+    # ORDER 1: Consolidated 1x3 Diagnostics
     # -----------------------------------------------------------------------
     if (model_order == 1) {
-      par(mfrow = c(1, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0),
+      par(mfrow = c(1, 3),
+          mar = c(4, 4, 2.5, 1),
+          oma = c(0, 0, 3, 0),
           mgp = c(2.5, 1, 0))
 
-      # Plot 2.1: Lag-1 Scatter Plot (Local Level dynamics)
-      # Shows relationship between consecutive states: theta_{t-1,1} vs theta_{t,1}
-      theta_lag <- state_summaries$theta_1$median[-n_obs]     # theta_{t-1,1}
-      theta_current <- state_summaries$theta_1$median[-1]     # theta_{t,1}
+      # --- Prepare Data ---
+      theta_1_median <- state_summaries$theta_1$median
+      innov_1_median <- innov_summaries$innov_1$median
+      col_level <- innov_labels$innov_colors[1]
 
-      plot(theta_lag, theta_current,
+      theta_lag <- theta_1_median[-n_obs]
+      theta_current <- theta_1_median[-1]
+      innov_1_lagged <- innov_1_median[-1]
+
+      # Panel 1: Level Transition
+      plot(theta_lag,
+           theta_current,
            xlab = expression(theta["t-1,1"]),
            ylab = expression(theta["t,1"]),
-           main = "State Transition Dynamics",
+           main = "Level Transition",
            pch = 16,
-           cex = 0.9,
-           col = innov_labels$innov_colors[1])
-      abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)  # 45° reference line
+           cex = 0.8,
+           col = col_level)
+      abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
       grid()
 
-      # Plot 2.2: Innovation Time Series
+      # Panel 2: Level Diagnostic
+      plot(theta_lag,
+           innov_1_lagged,
+           xlab = expression(theta["t-1,1"]),
+           ylab = expression(u["t,1"]),
+           main = "Level Diagnostic",
+           pch = 16,
+           cex = 0.8,
+           col = col_level)
+      abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+      grid()
+
+      # Panel 3: Level Innovation
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_1$median,
@@ -1005,42 +1280,71 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
         upper = innov_summaries$innov_1$upper,
         ylab = innov_labels$innov_labels[[1]],
         main = innov_labels$innov_titles[1],
-        col_bar = innov_labels$innov_colors[1],
+        col_bar = col_level,
         ci = ci,
         ci_label = ci_label
       )
 
-      mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
+      # Overall title
+      mtext("Dynamic State Diagnostics",
+            outer = TRUE,
+            cex = 1.3,
+            font = 2)
     }
 
     # -----------------------------------------------------------------------
-    # ORDER 2: Scatter Plots + Innovation Time Series
+    # ORDER 2: Consolidated 2x3 Diagnostics
     # -----------------------------------------------------------------------
     if (model_order == 2) {
-      par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
+      par(mfrow = c(2, 3),
+          mar = c(4, 4, 2.5, 1),
+          oma = c(0, 0, 3, 0),
+          mgp = c(2.5, 1, 0))
 
-      # Plot 2.1: Trend influence on Level Innovation
-      # Shows how previous trend affects level innovation
-      theta2_lag <- state_summaries$theta_2$median[-n_obs]    # theta_{t-1,2}
-      delta_theta1 <- state_summaries$theta_1$median[-1] -
-        state_summaries$theta_1$median[-n_obs]  # Delta theta_{t,1}
+      # --- Prepare Data ---
+      theta_1_median <- state_summaries$theta_1$median
+      theta_2_median <- state_summaries$theta_2$median
 
-      plot(theta2_lag, delta_theta1,
+      innov_1_median <- innov_summaries$innov_1$median
+      innov_2_median <- innov_summaries$innov_2$median
+
+      col_level <- innov_labels$innov_colors[1]
+      col_trend <- innov_labels$innov_colors[2]
+
+      delta_theta_1 <- theta_1_median[-1] - theta_1_median[-n_obs]
+      theta_2_lag <- theta_2_median[-n_obs]
+      theta_2_current <- theta_2_median[-1]
+
+      innov_1_lagged <- innov_1_median[-1]
+      innov_2_lagged <- innov_2_median[-1]
+
+      # --- ROW 1: LEVEL ---
+
+      # Panel (1,1): Level Transition
+      plot(theta_2_lag,
+           delta_theta_1,
            xlab = expression(theta["t-1,2"]),
            ylab = expression(Delta*theta["t,1"]),
-           main = "Trend Effect on Level Innovation",
+           main = "Level Transition",
            pch = 16,
-           cex = 0.9,
-           col = innov_labels$innov_colors[1])
-      abline(a = 0,
-             b = 1,
-             col = innov_labels$innov_colors[1],
-             lty = 2,
-             lwd = 1.5)  # Expected relationship
-      grid()
+           cex = 0.8,
+           col = col_level)
+      abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
       grid()
 
-      # Plot 2.2: Level Innovation Time Series
+      # Panel (1,2): Level Diagnostic
+      plot(theta_2_lag,
+           innov_1_lagged,
+           xlab = expression(theta["t-1,2"]),
+           ylab = expression(u["t,1"]),
+           main = "Level Diagnostic",
+           pch = 16,
+           cex = 0.8,
+           col = col_level)
+      abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+      grid()
+
+      # Panel (1,3): Level Innovation
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_1$median,
@@ -1048,30 +1352,38 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
         upper = innov_summaries$innov_1$upper,
         ylab = innov_labels$innov_labels[[1]],
         main = innov_labels$innov_titles[1],
-        col_bar = innov_labels$innov_colors[1],
+        col_bar = col_level,
         ci = ci,
         ci_label = ci_label
       )
 
-      # Plot 2.3: Trend State Transition Dynamics
-      # Shows relationship between consecutive trend states
-      theta2_current <- state_summaries$theta_2$median[-1]    # theta_{t,2}
+      # --- ROW 2: TREND ---
 
-      plot(theta2_lag, theta2_current,
+      # Panel (2,1): Trend Transition
+      plot(theta_2_lag,
+           theta_2_current,
            xlab = expression(theta["t-1,2"]),
            ylab = expression(theta["t,2"]),
-           main = "Trend Transition Dynamics",
+           main = "Trend Transition",
            pch = 16,
-           cex = 0.9,
-           col = innov_labels$innov_colors[2])
-      abline(a = 0,
-             b = 1,
-             col = innov_labels$innov_colors[2],
-             lty = 2,
-             lwd = 1.5)  # Expected relationship
+           cex = 0.8,
+           col = col_trend)
+      abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
       grid()
 
-      # Plot 2.4: Trend Innovation Time Series
+      # Panel (2,2): Trend Diagnostic
+      plot(theta_2_lag,
+           innov_2_lagged,
+           xlab = expression(theta["t-1,2"]),
+           ylab = expression(u["t,2"]),
+           main = "Trend Diagnostic",
+           pch = 16,
+           cex = 0.8,
+           col = col_trend)
+      abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+      grid()
+
+      # Panel (2,3): Trend Innovation
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_2$median,
@@ -1079,55 +1391,78 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
         upper = innov_summaries$innov_2$upper,
         ylab = innov_labels$innov_labels[[2]],
         main = innov_labels$innov_titles[2],
-        col_bar = innov_labels$innov_colors[2],
+        col_bar = col_trend,
         ci = ci,
         ci_label = ci_label
       )
 
-      mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
+      # Overall title
+      mtext("Dynamic State Diagnostics",
+            outer = TRUE,
+            cex = 1.3,
+            font = 2)
     }
 
     # -----------------------------------------------------------------------
-    # ORDER 3: [Joint, Innov1, Innov2, Innov3]
+    # ORDER 3: Consolidated 3x3 Diagnostics
     # -----------------------------------------------------------------------
     if (model_order == 3) {
-      par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), oma = c(0, 0, 2, 0))
+      par(mfrow = c(3, 3),
+          mar = c(4, 4, 2.5, 1),
+          oma = c(0, 0, 3, 0),
+          mgp = c(2.5, 1, 0))
 
-      # Plot 2.1: Joint Trajectories
-      ylim_range <- range(c(state_summaries$theta_1$median,
-                            state_summaries$theta_2$median,
-                            state_summaries$theta_3$median))
+      # --- Prepare Data ---
+      theta_1_median <- state_summaries$theta_1$median
+      theta_2_median <- state_summaries$theta_2$median
+      theta_3_median <- state_summaries$theta_3$median
 
-      if (diff(ylim_range) == 0) {
-        ylim_range <- ylim_range + c(-0.75, 0.75)
-      }
-      ylim_range[2] <- ylim_range[2] + 0.3 * diff(ylim_range)
+      innov_1_median <- innov_summaries$innov_1$median
+      innov_2_median <- innov_summaries$innov_2$median
+      innov_3_median <- innov_summaries$innov_3$median
 
-      plot(time_grid, state_summaries$theta_1$median, type = "l", lwd = 2,
-           col = state_labels$state_colors[1],
-           xlab = "Time", ylab = "State Value",
-           main = "Joint Trajectories", ylim = ylim_range)
-      lines(time_grid, state_summaries$theta_2$median,
-            col = state_labels$state_colors[2], lwd = 2)
-      lines(time_grid, state_summaries$theta_3$median,
-            col = state_labels$state_colors[3], lwd = 2)
+      col_level <- innov_labels$innov_colors[1]
+      col_trend <- innov_labels$innov_colors[2]
+      col_accel <- innov_labels$innov_colors[3]
 
+      delta_theta_1 <- theta_1_median[-1] - theta_1_median[-n_obs]
+      delta_theta_2 <- theta_2_median[-1] - theta_2_median[-n_obs]
+
+      theta_2_lag <- theta_2_median[-n_obs]
+      theta_3_lag <- theta_3_median[-n_obs]
+      theta_3_current <- theta_3_median[-1]
+
+      innov_1_lagged <- innov_1_median[-1]
+      innov_2_lagged <- innov_2_median[-1]
+      innov_3_lagged <- innov_3_median[-1]
+
+      # --- ROW 1: LEVEL ---
+
+      # Panel (1,1): Level Transition
+      plot(theta_2_lag,
+           delta_theta_1,
+           xlab = expression(theta["t-1,2"]),
+           ylab = expression(Delta*theta["t,1"]),
+           main = "Level Transition",
+           pch = 16,
+           cex = 0.8,
+           col = col_level)
+      abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
       grid()
 
-      # Build legend
-      legend_items <- state_labels$state_labels
-      legend_cols <- state_labels$state_colors
-      legend_lty <- c(1, 1, 1)
-      legend_lwd <- c(2, 2, 2)
+      # Panel (1,2): Level Diagnostic
+      plot(theta_2_lag,
+           innov_1_lagged,
+           xlab = expression(theta["t-1,2"]),
+           ylab = expression(u["t,1"]),
+           main = "Level Diagnostic",
+           pch = 16,
+           cex = 0.8,
+           col = col_level)
+      abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+      grid()
 
-      legend("topright", horiz = TRUE,
-             legend = legend_items,
-             col = legend_cols,
-             lty = legend_lty,
-             lwd = legend_lwd,
-             bty = "n")
-
-      # Plot 2.2: Level Innovations
+      # Panel (1,3): Level Innovation
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_1$median,
@@ -1135,12 +1470,38 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
         upper = innov_summaries$innov_1$upper,
         ylab = innov_labels$innov_labels[[1]],
         main = innov_labels$innov_titles[1],
-        col_bar = innov_labels$innov_colors[1],
+        col_bar = col_level,
         ci = ci,
         ci_label = ci_label
       )
 
-      # Plot 2.3: Trend Innovations
+      # --- ROW 2: TREND ---
+
+      # Panel (2,1): Trend Transition
+      plot(theta_3_lag,
+           delta_theta_2,
+           xlab = expression(theta["t-1,3"]),
+           ylab = expression(Delta*theta["t,2"]),
+           main = "Trend Transition",
+           pch = 16,
+           cex = 0.8,
+           col = col_trend)
+      abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
+      grid()
+
+      # Panel (2,2): Trend Diagnostic
+      plot(theta_3_lag,
+           innov_2_lagged,
+           xlab = expression(theta["t-1,3"]),
+           ylab = expression(u["t,2"]),
+           main = "Trend Diagnostic",
+           pch = 16,
+           cex = 0.8,
+           col = col_trend)
+      abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+      grid()
+
+      # Panel (2,3): Trend Innovation
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_2$median,
@@ -1148,12 +1509,38 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
         upper = innov_summaries$innov_2$upper,
         ylab = innov_labels$innov_labels[[2]],
         main = innov_labels$innov_titles[2],
-        col_bar = innov_labels$innov_colors[2],
+        col_bar = col_trend,
         ci = ci,
         ci_label = ci_label
       )
 
-      # Plot 2.4: Acceleration Innovations
+      # --- ROW 3: ACCELERATION ---
+
+      # Panel (3,1): Acceleration Transition
+      plot(theta_3_lag,
+           theta_3_current,
+           xlab = expression(theta["t-1,3"]),
+           ylab = expression(theta["t,3"]),
+           main = "Acceleration Transition",
+           pch = 16,
+           cex = 0.8,
+           col = col_accel)
+      abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
+      grid()
+
+      # Panel (3,2): Acceleration Diagnostic
+      plot(theta_3_lag,
+           innov_3_lagged,
+           xlab = expression(theta["t-1,3"]),
+           ylab = expression(u["t,3"]),
+           main = "Acceleration Diagnostic",
+           pch = 16,
+           cex = 0.8,
+           col = col_accel)
+      abline(h = 0, col = "black", lty = 2, lwd = 1.5)
+      grid()
+
+      # Panel (3,3): Acceleration Innovation
       plot_innovation_base(
         time_grid = time_grid,
         median = innov_summaries$innov_3$median,
@@ -1161,348 +1548,187 @@ plot_dynamic_states_generic_base <- function(x, which = NULL,
         upper = innov_summaries$innov_3$upper,
         ylab = innov_labels$innov_labels[[3]],
         main = innov_labels$innov_titles[3],
-        col_bar = innov_labels$innov_colors[3],
+        col_bar = col_accel,
         ci = ci,
         ci_label = ci_label
       )
 
-      mtext("Dynamic State Diagnostics", outer = TRUE, cex = 1.3, font = 2)
+      # Overall title
+      mtext("Dynamic State Diagnostics",
+            outer = TRUE,
+            cex = 1.3,
+            font = 2)
     }
   }
 
-  # # =========================================================================
-  # # Page 3: State Space Relationships (order 3 only)
-  # # =========================================================================
-  #
-  # if (3 %in% which && model_order == 3) {
-  #   par(mfrow = c(1, 1), mar = c(4, 4, 3, 1), oma = c(0, 0, 0, 0))
-  #
-  #   # Subsample for performance
-  #   max_points <- 5000L
-  #   theta_df <- data.frame(
-  #     theta1 = as.vector(x$theta_1),
-  #     theta2 = as.vector(x$theta_2),
-  #     theta3 = as.vector(x$theta_3)
-  #   )
-  #
-  #   if (nrow(theta_df) > max_points) {
-  #     set.seed(123)
-  #     theta_df <- theta_df[sample.int(nrow(theta_df), max_points), ]
-  #   }
-  #
-  #   pairs(theta_df,
-  #         pch = 16, cex = 0.6,
-  #         col = grDevices::rgb(0.2, 0.5, 0.8, 0.2),
-  #         main = "Pairwise State Relationships",
-  #         labels = c(expression(theta["t,1"]),
-  #                    expression(theta["t,2"]),
-  #                    expression(theta["t,3"])))
-  # }
-
-  # # =========================================================================
-  # # Page 3: Consolidated Diagnostics (Order 3 Only)
-  # # =========================================================================
-  #
-  # if (3 %in% which && model_order == 3) {
-  #
-  #   # Setup 3x3 layout
-  #   par(mfrow = c(3, 3), mar = c(4, 4, 2.5, 1),
-  #       oma = c(0, 0, 3, 0), mgp = c(2.5, 1, 0))
-  #
-  #   # --- Prepare Data ---
-  #
-  #   # Get state summaries
-  #   theta_1_median <- state_summaries$theta_1$median
-  #   theta_2_median <- state_summaries$theta_2$median
-  #   theta_3_median <- state_summaries$theta_3$median
-  #
-  #   # Get innovation summaries (already computed for Page 2)
-  #   # If Page 2 logic is removed, uncomment the next two lines
-  #   # innovations <- compute_innovations(x, model_order)
-  #   # innov_summaries <- lapply(innovations, summarise_state, ci, ci_level)
-  #
-  #   innov_1_median <- innov_summaries$innov_1$median
-  #   innov_2_median <- innov_summaries$innov_2$median
-  #   innov_3_median <- innov_summaries$innov_3$median
-  #
-  #   # Get labels and colors
-  #   col_level <- innov_labels$innov_colors[1] # steelblue
-  #   col_trend <- innov_labels$innov_colors[2] # firebrick
-  #   col_accel <- innov_labels$innov_colors[3] # darkgreen
-  #
-  #   # Calculate deltas and lags (medians)
-  #   delta_theta_1 <- theta_1_median[-1] - theta_1_median[-n_obs]
-  #   delta_theta_2 <- theta_2_median[-1] - theta_2_median[-n_obs]
-  #
-  #   theta_2_lag <- theta_2_median[-n_obs]
-  #   theta_3_lag <- theta_3_median[-n_obs]
-  #   theta_3_current <- theta_3_median[-1]
-  #
-  #   # Get lagged innovations (for alignment in scatter plots)
-  #   innov_1_lagged <- innov_1_median[-1]
-  #   innov_2_lagged <- innov_2_median[-1]
-  #   innov_3_lagged <- innov_3_median[-1]
-  #
-  #   # --- Column 1: Transition Dynamics ---
-  #
-  #   # Plot 1.1: Trend Effect on Level
-  #   plot(theta_2_lag, delta_theta_1,
-  #        xlab = expression(theta["t-1,2"]),
-  #        ylab = expression(Delta*theta["t,1"]),
-  #        main = "Transition: Level",
-  #        pch = 16, cex = 0.8, col = col_level)
-  #   abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
-  #   grid()
-  #
-  #   # Plot 1.2: Acceleration Effect on Trend
-  #   plot(theta_3_lag, delta_theta_2,
-  #        xlab = expression(theta["t-1,3"]),
-  #        ylab = expression(Delta*theta["t,2"]),
-  #        main = "Transition: Trend",
-  #        pch = 16, cex = 0.8, col = col_trend)
-  #   abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
-  #   grid()
-  #
-  #   # Plot 1.3: Acceleration Transition (Random Walk)
-  #   plot(theta_3_lag, theta_3_current,
-  #        xlab = expression(theta["t-1,3"]),
-  #        ylab = expression(theta["t,3"]),
-  #        main = "Transition: Acceleration",
-  #        pch = 16, cex = 0.8, col = col_accel)
-  #   abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
-  #   grid()
-  #
-  #   # --- Column 2: Predictor vs. Residual ---
-  #
-  #   # Plot 2.1: Level Predictor vs. Residual
-  #   plot(theta_2_lag, innov_1_lagged,
-  #        xlab = expression(theta["t-1,2"] (Predictor)),
-  #        ylab = expression(u["t,1"] (Residual)),
-  #        main = "Diagnostic: Level",
-  #        pch = 16, cex = 0.8, col = col_level)
-  #   abline(h = 0, col = "black", lty = 2, lwd = 1.5)
-  #   grid()
-  #
-  #   # Plot 2.2: Trend Predictor vs. Residual
-  #   plot(theta_3_lag, innov_2_lagged,
-  #        xlab = expression(theta["t-1,3"] (Predictor)),
-  #        ylab = expression(u["t,2"] (Residual)),
-  #        main = "Diagnostic: Trend",
-  #        pch = 16, cex = 0.8, col = col_trend)
-  #   abline(h = 0, col = "black", lty = 2, lwd = 1.5)
-  #   grid()
-  #
-  #   # Plot 2.3: Acceleration Predictor vs. Residual
-  #   # Note: Predictor is theta[t-1,3], Residual is u[t,3]
-  #   plot(theta_3_lag, innov_3_lagged,
-  #        xlab = expression(theta["t-1,3"] (Predictor)),
-  #        ylab = expression(u["t,3"] (Residual)),
-  #        main = "Diagnostic: Acceleration",
-  #        pch = 16, cex = 0.8, col = col_accel)
-  #   abline(h = 0, col = "black", lty = 2, lwd = 1.5)
-  #   grid()
-  #
-  #   # --- Column 3: Innovation Time Series ---
-  #
-  #   # Plot 3.1: Level Innovations
-  #   plot_innovation_base(
-  #     time_grid = time_grid,
-  #     median = innov_summaries$innov_1$median,
-  #     lower = innov_summaries$innov_1$lower,
-  #     upper = innov_summaries$innov_1$upper,
-  #     ylab = innov_labels$innov_labels[[1]],
-  #     main = innov_labels$innov_titles[1],
-  #     col_bar = innov_labels$innov_colors[1],
-  #     ci = ci,
-  #     ci_label = ci_label
-  #   )
-  #
-  #   # Plot 3.2: Trend Innovations
-  #   plot_innovation_base(
-  #     time_grid = time_grid,
-  #     median = innov_summaries$innov_2$median,
-  #     lower = innov_summaries$innov_2$lower,
-  #     upper = innov_summaries$innov_2$upper,
-  #     ylab = innov_labels$innov_labels[[2]],
-  #     main = innov_labels$innov_titles[2],
-  #     col_bar = innov_labels$innov_colors[2],
-  #     ci = ci,
-  #     ci_label = ci_label
-  #   )
-  #
-  #   # Plot 3.3: Acceleration Innovations
-  #   plot_innovation_base(
-  #     time_grid = time_grid,
-  #     median = innov_summaries$innov_3$median,
-  #     lower = innov_summaries$innov_3$lower,
-  #     upper = innov_summaries$innov_3$upper,
-  #     ylab = innov_labels$innov_labels[[3]],
-  #     main = innov_labels$innov_titles[3],
-  #     col_bar = innov_labels$innov_colors[3],
-  #     ci = ci,
-  #     ci_label = ci_label
-  #   )
-  #
-  #   # --- Overall Title ---
-  #   mtext("Dynamic State Diagnostics (Order 3)",
-  #         outer = TRUE, cex = 1.3, font = 2)
-  # }
-
   # =========================================================================
-  # Page 3: Consolidated Diagnostics (Order 3 Only) - Phase Space Version
+  # Page 3: Phase Space Trajectories (Order 2 and 3 Only)
   # =========================================================================
 
-  if (3 %in% which && model_order == 3) {
+  if (3 %in% which && model_order > 1) {
 
-    # Setup 3x3 layout
-    par(mfrow = c(3, 3), mar = c(4, 4, 2.5, 1),
-        oma = c(0, 0, 3, 0), mgp = c(2.5, 1, 0))
-
-    # --- Prepare Data ---
-
-    # Get state summaries
     theta_1_median <- state_summaries$theta_1$median
     theta_2_median <- state_summaries$theta_2$median
-    theta_3_median <- state_summaries$theta_3$median
 
-    # Get innovation summaries (already computed for Page 2)
-    # If Page 2 logic is removed, uncomment the next two lines
-    # innovations <- compute_innovations(x, model_order)
-    # innov_summaries <- lapply(innovations, summarise_state, ci, ci_level)
+    # -----------------------------------------------------------------------
+    # ORDER 2: Single Phase Space Plot (1x1)
+    # -----------------------------------------------------------------------
+    if (model_order == 2) {
+      par(mfrow = c(1, 1),
+          mar = c(4, 4, 3, 1),
+          oma = c(0, 0, 3, 0),
+          mgp = c(2.5, 1, 0))
 
-    # Get labels and colors
-    col_level <- state_labels$state_colors[1] # steelblue
-    col_trend <- state_labels$state_colors[2] # firebrick
-    col_accel <- state_labels$state_colors[3] # darkgreen
+      # Compute y-axis range with buffer
+      range_theta_2 <- range(theta_2_median)
+      if (diff(range_theta_2) == 0) {
+        range_theta_2 <- range_theta_2 + c(-0.5, 0.5)
+      }
+      range_theta_2[2] <- range_theta_2[2] + 0.25 * diff(range_theta_2)
 
-    # Calculate deltas and lags (medians)
-    delta_theta_1 <- theta_1_median[-1] - theta_1_median[-n_obs]
-    delta_theta_2 <- theta_2_median[-1] - theta_2_median[-n_obs]
+      # Plot: Level-Trend Phase Space
+      plot(theta_1_median,
+           theta_2_median,
+           type = "l",
+           col = "gray40",
+           lwd = 1.5,
+           xlab = expression(theta["t,1"]),
+           ylab = expression(theta["t,2"]),
+           ylim = range_theta_2,
+           main = "Level-Trend Trajectory")
+      grid()
 
-    theta_2_lag <- theta_2_median[-n_obs]
-    theta_3_lag <- theta_3_median[-n_obs]
-    theta_3_current <- theta_3_median[-1]
+      # Mark start and end points
+      points(theta_1_median[1],
+             theta_2_median[1],
+             pch = 21,
+             bg = "green",
+             col = "black",
+             cex = 1.5)
+      points(theta_1_median[n_obs],
+             theta_2_median[n_obs],
+             pch = 21,
+             bg = "red",
+             col = "black",
+             cex = 1.5)
 
-    # (time_grid is defined earlier in the parent function)
+      # Add legend
+      legend("topright",
+             legend = c("Start", "End"),
+             horiz = TRUE,
+             pch = 16,
+             col = c("green", "red"),
+             bty = "n",
+             cex = 0.9)
 
-    # --- Column 1: Transition Dynamics ---
+      # Overall title
+      mtext("State-Space Phase Trajectory",
+            outer = TRUE,
+            cex = 1.3,
+            font = 2)
+    }
 
-    # Plot 1.1: Trend Effect on Level
-    plot(theta_2_lag, delta_theta_1,
-         xlab = expression(theta["t-1,2"]),
-         ylab = expression(Delta*theta["t,1"]),
-         main = "Transition: Level",
-         pch = 16, cex = 0.8, col = col_level)
-    abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
-    grid()
+    # -----------------------------------------------------------------------
+    # ORDER 3: Two Phase Space Plots (1x2)
+    # -----------------------------------------------------------------------
+    if (model_order == 3) {
+      par(mfrow = c(1, 2),
+          mar = c(4, 4, 3, 1),
+          oma = c(0, 0, 3, 0),
+          mgp = c(2.5, 1, 0))
 
-    # Plot 1.2: Acceleration Effect on Trend
-    plot(theta_3_lag, delta_theta_2,
-         xlab = expression(theta["t-1,3"]),
-         ylab = expression(Delta*theta["t,2"]),
-         main = "Transition: Trend",
-         pch = 16, cex = 0.8, col = col_trend)
-    abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
-    grid()
+      theta_3_median <- state_summaries$theta_3$median
 
-    # Plot 1.3: Acceleration Transition (Random Walk)
-    plot(theta_3_lag, theta_3_current,
-         xlab = expression(theta["t-1,3"]),
-         ylab = expression(theta["t,3"]),
-         main = "Transition: Acceleration",
-         pch = 16, cex = 0.8, col = col_accel)
-    abline(a = 0, b = 1, col = "black", lty = 2, lwd = 1.5)
-    grid()
+      # Compute y-axis ranges with buffer
+      range_theta_2 <- range(theta_2_median)
+      range_theta_3 <- range(theta_3_median)
 
-    # --- Column 2: Phase Space & Joint Dynamics ---
+      if (diff(range_theta_2) == 0) {
+        range_theta_2 <- range_theta_2 + c(-0.5, 0.5)
+      }
+      if (diff(range_theta_3) == 0) {
+        range_theta_3 <- range_theta_3 + c(-0.5, 0.5)
+      }
 
-    # Plot 2.1: Level-Trend Phase Space
-    plot(theta_1_median, theta_2_median, type = "l",
-         col = "gray40", lwd = 1.5,
-         xlab = expression(theta["t,1"] (Level)),
-         ylab = expression(theta["t,2"] (Trend)),
-         main = "Phase Space: Level-Trend")
-    grid()
-    points(theta_1_median[1], theta_2_median[1],
-           pch = 21, bg = "green", col = "black", cex = 1.5) # Start
-    points(theta_1_median[n_obs], theta_2_median[n_obs],
-           pch = 21, bg = "red", col = "black", cex = 1.5) # End
-    legend("topright", legend = c("Start", "End"),
-           pch = 16, col = c("green", "red"), bty = "n", cex = 0.8)
+      range_theta_2[2] <- range_theta_2[2] + 0.25 * diff(range_theta_2)
+      range_theta_3[2] <- range_theta_3[2] + 0.25 * diff(range_theta_3)
 
-    # Plot 2.2: Trend-Acceleration Phase Space
-    plot(theta_2_median, theta_3_median, type = "l",
-         col = "gray40", lwd = 1.5,
-         xlab = expression(theta["t,2"] (Trend)),
-         ylab = expression(theta["t,3"] (Accel)),
-         main = "Phase Space: Trend-Accel")
-    grid()
-    points(theta_2_median[1], theta_3_median[1],
-           pch = 21, bg = "green", col = "black", cex = 1.5) # Start
-    points(theta_2_median[n_obs], theta_3_median[n_obs],
-           pch = 21, bg = "red", col = "black", cex = 1.5) # End
+      # Panel 1: Level-Trend Phase Space
+      plot(theta_1_median,
+           theta_2_median,
+           type = "l",
+           col = "gray40",
+           lwd = 1.5,
+           xlab = expression(theta["t,1"]),
+           ylab = expression(theta["t,2"]),
+           ylim = range_theta_2,
+           main = "Level-Trend Trajectory")
+      grid()
 
-    # Plot 2.3: Joint Trajectories (Time Series)
-    # (This panel is from the original Page 2, Plot 2.1)
-    ylim_range <- range(c(theta_1_median, theta_2_median, theta_3_median))
-    if (diff(ylim_range) == 0) { ylim_range <- ylim_range + c(-0.5, 0.5) }
+      # Mark start and end points
+      points(theta_1_median[1],
+             theta_2_median[1],
+             pch = 21,
+             bg = "green",
+             col = "black",
+             cex = 1.5)
+      points(theta_1_median[n_obs],
+             theta_2_median[n_obs],
+             pch = 21,
+             bg = "red",
+             col = "black",
+             cex = 1.5)
 
-    plot(time_grid, theta_1_median, type = "l", lwd = 2,
-         col = col_level,
-         xlab = "Time", ylab = "State Value",
-         main = "Joint Trajectories", ylim = ylim_range)
-    lines(time_grid, theta_2_median, col = col_trend, lwd = 2)
-    lines(time_grid, theta_3_median, col = col_accel, lwd = 2)
-    grid()
-    legend("topright", horiz = TRUE,
-           legend = state_labels$state_labels,
-           col = state_labels$state_colors,
-           lty = 1, lwd = 2, bty = "n", cex = 0.8)
+      # Add legend
+      legend("topright",
+             legend = c("Start", "End"),
+             horiz = TRUE,
+             pch = 16,
+             col = c("green", "red"),
+             bty = "n",
+             cex = 0.9)
 
-    # --- Column 3: Innovation Time Series ---
+      # Panel 2: Trend-Acceleration Phase Space
+      plot(theta_2_median,
+           theta_3_median,
+           type = "l",
+           col = "gray40",
+           lwd = 1.5,
+           xlab = expression(theta["t,2"]),
+           ylab = expression(theta["t,3"]),
+           ylim = range_theta_3,
+           main = "Trend-Acceleration Trajectory")
+      grid()
 
-    # Plot 3.1: Level Innovations
-    plot_innovation_base(
-      time_grid = time_grid,
-      median = innov_summaries$innov_1$median,
-      lower = innov_summaries$innov_1$lower,
-      upper = innov_summaries$innov_1$upper,
-      ylab = innov_labels$innov_labels[[1]],
-      main = innov_labels$innov_titles[1],
-      col_bar = innov_labels$innov_colors[1],
-      ci = ci,
-      ci_label = ci_label
-    )
+      # Mark start and end points
+      points(theta_2_median[1],
+             theta_3_median[1],
+             pch = 21,
+             bg = "green",
+             col = "black",
+             cex = 1.5)
+      points(theta_2_median[n_obs],
+             theta_3_median[n_obs],
+             pch = 21,
+             bg = "red",
+             col = "black",
+             cex = 1.5)
 
-    # Plot 3.2: Trend Innovations
-    plot_innovation_base(
-      time_grid = time_grid,
-      median = innov_summaries$innov_2$median,
-      lower = innov_summaries$innov_2$lower,
-      upper = innov_summaries$innov_2$upper,
-      ylab = innov_labels$innov_labels[[2]],
-      main = innov_labels$innov_titles[2],
-      col_bar = innov_labels$innov_colors[2],
-      ci = ci,
-      ci_label = ci_label
-    )
+      # Add legend
+      legend("topright",
+             legend = c("Start", "End"),
+             horiz = TRUE,
+             pch = 16,
+             col = c("green", "red"),
+             bty = "n",
+             cex = 0.9)
 
-    # Plot 3.3: Acceleration Innovations
-    plot_innovation_base(
-      time_grid = time_grid,
-      median = innov_summaries$innov_3$median,
-      lower = innov_summaries$innov_3$lower,
-      upper = innov_summaries$innov_3$upper,
-      ylab = innov_labels$innov_labels[[3]],
-      main = innov_labels$innov_titles[3],
-      col_bar = innov_labels$innov_colors[3],
-      ci = ci,
-      ci_label = ci_label
-    )
-
-    # --- Overall Title ---
-    mtext("Dynamic State Diagnostics (Order 3)",
-          outer = TRUE, cex = 1.3, font = 2)
+      # Overall title
+      mtext("State-Space Phase Trajectories",
+            outer = TRUE,
+            cex = 1.3,
+            font = 2)
+    }
   }
 
   invisible(NULL)

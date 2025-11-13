@@ -266,7 +266,8 @@ get_param_config <- function(x,
       name = quote(V^{-1}),
       label = expression(V^{-1}),
       name_str = "V^{-1}",
-      label_str = "V^{-1}"
+      label_str = "V^{-1}",
+      color = "purple"
     )
   }
 
@@ -464,6 +465,8 @@ plot_mcmc_diagnostics_generic <- function(x,
       if (param_name == "W_1^{-1}") true_value <- true_values$prec_theta1
       if (param_name == "W_2^{-1}") true_value <- true_values$prec_theta2
       if (param_name == "W_3^{-1}") true_value <- true_values$prec_theta3
+      if (param_name == "W_3^{-1}") true_value <- true_values$prec_theta3
+      if (param_name ==   "V^{-1}") true_value <- true_values$prec_y
     }
 
     plot_param_diagnostics_base(

@@ -141,7 +141,7 @@ n <- 500          # Number of time points
 
 # Generate complex time-varying pattern (mimicking real-world trends)
 grid_vals <- seq_len(n) / n
-mu_true <- 10 + 5 * sin(4 * pi * grid_vals) + 2 * sin(8 * pi * grid_vals)
+mu_true <- 10 - 5 * sin(4 * pi * grid_vals) + 2 * sin(8 * pi * grid_vals)
 
 # Generate Gaussian observations
 y <- rnorm(n, mean = mu_true, sd = 1)
@@ -151,24 +151,24 @@ y <- rnorm(n, mean = mu_true, sd = 1)
 out <- mcmc_normal_localacceleration(
   y,
   burnin                  = 2000,      # Discard first 2000 iterations
-  thinning                = 100,       # Keep every 100th iteration
+  thinning                = 50,        # Keep every 50th iteration
   n_chain                 = 1000,      # Retain 1000 posterior samples
   # Weakly informative priors for initial states
-  prior_theta01_mean      = mean(y),
-  prior_theta01_prec      = 1 / var(y),
+  prior_theta01_mean      = 0,
+  prior_theta01_prec      = 1,
   prior_theta02_mean      = 0,
-  prior_theta02_prec      = 1 / var(y),
+  prior_theta02_prec      = 1,
   prior_theta03_mean      = 0,
-  prior_theta03_prec      = 1e-3,
+  prior_theta03_prec      = 1,
   # Weakly informative priors for precisions
-  prior_prec1_shape       = 0.1,
-  prior_prec1_rate        = 0.1,
-  prior_prec2_shape       = 0.01,
-  prior_prec2_rate        = 0.01,
-  prior_prec3_shape       = 0.1,
-  prior_prec3_rate        = 0.01,
-  prior_prec_y_shape      = 0.1,
-  prior_prec_y_rate       = 0.1,
+  prior_prec1_shape       = 100,
+  prior_prec1_rate        = 1,
+  prior_prec2_shape       = 100,
+  prior_prec2_rate        = 1,
+  prior_prec3_shape       = 100,
+  prior_prec3_rate        = 1,
+  prior_prec_y_shape      = 1,
+  prior_prec_y_rate       = 1,
   verbose                 = TRUE,      # Show progress bar
   seed                    = 456        # For reproducibility
 )
@@ -216,7 +216,7 @@ dev.off()
 # whether the model can recover known parameters and for method development.
 
 # --- Step 1: Set up simulation parameters ---
-set.seed(10)
+set.seed(1)
 n <- 100           # Number of time points
 
 # True parameter values (these would be unknown in real applications)
@@ -283,22 +283,22 @@ out <- mcmc_normal_localacceleration(
   thinning                = 100,
   n_chain                 = 1000,
   # Priors centered at true initial values
-  prior_theta01_mean      = theta01_true,
-  prior_theta01_prec      = 1 / var(y),
-  prior_theta02_mean      = theta02_true,
-  prior_theta02_prec      = 1 / var(y),
-  prior_theta03_mean      = theta03_true,
-  prior_theta03_prec      = 1e-3,
+  prior_theta01_mean      = 0,
+  prior_theta01_prec      = 1,
+  prior_theta02_mean      = 0,
+  prior_theta02_prec      = 1,
+  prior_theta03_mean      = 0,
+  prior_theta03_prec      = 1,
   # Informative priors for precisions
   # (centered near true values with moderate uncertainty)
-  prior_prec1_shape       = 0.1,
-  prior_prec1_rate        = 0.1,
-  prior_prec2_shape       = 0.01,
-  prior_prec2_rate        = 0.01,
-  prior_prec3_shape       = 0.1,
-  prior_prec3_rate        = 0.01,
-  prior_prec_y_shape      = 0.1,
-  prior_prec_y_rate       = 0.1,
+  prior_prec1_shape       = 10,
+  prior_prec1_rate        = 1,
+  prior_prec2_shape       = 100,
+  prior_prec2_rate        = 1,
+  prior_prec3_shape       = 100,
+  prior_prec3_rate        = 1,
+  prior_prec_y_shape      = 1,
+  prior_prec_y_rate       = 1,
   verbose                 = TRUE,
   seed                    = 456
 )

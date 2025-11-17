@@ -216,16 +216,16 @@ dev.off()
 # whether the model can recover known parameters and for method development.
 
 # --- Step 1: Set up simulation parameters ---
-set.seed(1)
+set.seed(3)
 n <- 100           # Number of time points
 
 # True parameter values (these would be unknown in real applications)
-theta01_true     <- 10       # True initial level
+theta01_true     <- 1        # True initial level
 theta02_true     <- 0.5      # True initial trend
-theta03_true     <- 0.01     # True initial acceleration
-prec_theta1_true <- 10       # True level innovation precision (1/0.10)
-prec_theta2_true <- 100      # True trend innovation precision (1/0.01)
-prec_theta3_true <- 1000     # True acceleration precision (1/0.001)
+theta03_true     <- 0.1      # True initial acceleration
+prec_theta1_true <- 100      # True level innovation precision (1/0.10)
+prec_theta2_true <- 1000     # True trend innovation precision (1/0.01)
+prec_theta3_true <- 10000    # True acceleration precision (1/0.001)
 prec_y_true      <- 1        # True observation precision (1/1.00)
 
 # --- Step 2: Simulate latent states following the state-space model ---
@@ -279,23 +279,23 @@ par(mfrow = c(1, 1))
 # priors centered near truth to demonstrate parameter recovery
 out <- mcmc_normal_localacceleration(
   y,
-  burnin                  = 2000,
+  burnin                  = 10000,
   thinning                = 100,
   n_chain                 = 1000,
   # Priors centered at true initial values
   prior_theta01_mean      = 0,
-  prior_theta01_prec      = 1,
+  prior_theta01_prec      = 1 / 10,
   prior_theta02_mean      = 0,
-  prior_theta02_prec      = 1,
+  prior_theta02_prec      = 1 / 10,
   prior_theta03_mean      = 0,
-  prior_theta03_prec      = 1,
+  prior_theta03_prec      = 1 / 10,
   # Informative priors for precisions
   # (centered near true values with moderate uncertainty)
-  prior_prec1_shape       = 10,
+  prior_prec1_shape       = 100,
   prior_prec1_rate        = 1,
-  prior_prec2_shape       = 100,
+  prior_prec2_shape       = 1000,
   prior_prec2_rate        = 1,
-  prior_prec3_shape       = 100,
+  prior_prec3_shape       = 1000,
   prior_prec3_rate        = 1,
   prior_prec_y_shape      = 1,
   prior_prec_y_rate       = 1,

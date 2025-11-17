@@ -269,23 +269,23 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
 
   /* Initialize theta_3 trajectory via random walk from initial acceleration */
   double init_sd_3 = sqrt(1.0 / prec_theta3_previous);
-  theta_3_previous[0] = rnorm(theta_03_previous, init_sd_3);
+  theta_3_previous[0] = 0.0;//rnorm(theta_03_previous, init_sd_3);
   for (int j = 1; j < n; j++) {
-    theta_3_previous[j] = rnorm(theta_3_previous[j - 1], init_sd_3);
+    theta_3_previous[j] = 0.0;//rnorm(theta_3_previous[j - 1], init_sd_3);
   }
 
   /* Initialize theta_2 trajectory via random walk with acceleration from initial trend */
   double init_sd_2 = sqrt(1.0 / prec_theta2_previous);
-  theta_2_previous[0] = rnorm(theta_02_previous + theta_03_previous, init_sd_2);
+  theta_2_previous[0] = 0.0;//rnorm(theta_02_previous + theta_03_previous, init_sd_2);
   for (int j = 1; j < n; j++) {
-    theta_2_previous[j] = rnorm(theta_2_previous[j - 1] + theta_3_previous[j - 1], init_sd_2);
+    theta_2_previous[j] = 0.0;//rnorm(theta_2_previous[j - 1] + theta_3_previous[j - 1], init_sd_2);
   }
 
   /* Initialize theta_1 trajectory via random walk with trend from initial level */
   double init_sd_1 = sqrt(1.0 / prec_theta1_previous);
-  theta_1_previous[0] = rnorm(theta_01_previous + theta_02_previous, init_sd_1);
+  theta_1_previous[0] = 0.0;//rnorm(theta_01_previous + theta_02_previous, init_sd_1);
   for (int j = 1; j < n; j++) {
-    theta_1_previous[j] = rnorm(theta_1_previous[j - 1] + theta_2_previous[j - 1], init_sd_1);
+    theta_1_previous[j] = 0.0;//rnorm(theta_1_previous[j - 1] + theta_2_previous[j - 1], init_sd_1);
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */

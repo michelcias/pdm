@@ -109,7 +109,7 @@
 #'
 #' # Generate complex time-varying pattern (mimicking real-world trends)
 #' grid_vals <- seq_len(n) / n
-#' mu_true <- 10 + 5 * sin(2 * pi * grid_vals) + 2 * sin(4 * pi * grid_vals)
+#' mu_true <- 10 - 5 * sin(2 * pi * grid_vals) + 2 * sin(4 * pi * grid_vals)
 #'
 #' # Generate Gaussian observations
 #' y <- rnorm(n, mean = mu_true, sd = 1)
@@ -118,21 +118,21 @@
 #' # (appropriate when we have limited prior knowledge)
 #' out <- mcmc_normal_localtrend(
 #'   y,
-#'   burnin                  = 2000,      # Discard first 2000 iterations
-#'   thinning                = 100,       # Keep every 100th iteration
+#'   burnin                  = 10000,     # Discard first 2000 iterations
+#'   thinning                = 50,        # Keep every 100th iteration
 #'   n_chain                 = 1000,      # Retain 1000 posterior samples
 #'   # Weakly informative priors for initial states
-#'   prior_theta01_mean      = mean(y),
-#'   prior_theta01_prec      = 1 / var(y),
+#'   prior_theta01_mean      = 0,
+#'   prior_theta01_prec      = 1 / 100,
 #'   prior_theta02_mean      = 0,
-#'   prior_theta02_prec      = 1 / var(y),
+#'   prior_theta02_prec      = 1 / 100,
 #'   # Weakly informative priors for precisions
-#'   prior_prec1_shape       = 0.1,
-#'   prior_prec1_rate        = 0.1,
-#'   prior_prec2_shape       = 0.01,
-#'   prior_prec2_rate        = 0.01,
-#'   prior_prec_y_shape      = 0.1,
-#'   prior_prec_y_rate       = 0.1,
+#'   prior_prec1_shape       = 10,
+#'   prior_prec1_rate        = 1,
+#'   prior_prec2_shape       = 100,
+#'   prior_prec2_rate        = 1,
+#'   prior_prec_y_shape      = 1,
+#'   prior_prec_y_rate       = 1,
 #'   verbose                 = TRUE,      # Show progress bar
 #'   seed                    = 456        # For reproducibility
 #' )
@@ -234,22 +234,22 @@
 #' # priors centered near truth to demonstrate parameter recovery
 #' out <- mcmc_normal_localtrend(
 #'   y,
-#'   burnin                  = 2000,
+#'   burnin                  = 10000,
 #'   thinning                = 100,
 #'   n_chain                 = 1000,
 #'   # Priors centered at true initial values
-#'   prior_theta01_mean      = theta01_true / 2,
-#'   prior_theta01_prec      = 1 / var(y),
-#'   prior_theta02_mean      = theta02_true / 2,
-#'   prior_theta02_prec      = 1 / var(y),
+#'   prior_theta01_mean      = 0,
+#'   prior_theta01_prec      = 1 / 100,
+#'   prior_theta02_mean      = 0,
+#'   prior_theta02_prec      = 1 / 100,
 #'   # Informative priors for precisions
 #'   # (centered near true values with moderate uncertainty)
-#'   prior_prec1_shape       = 0.1,
-#'   prior_prec1_rate        = 0.1,
-#'   prior_prec2_shape       = 0.01,
-#'   prior_prec2_rate        = 0.01,
-#'   prior_prec_y_shape      = 0.1,
-#'   prior_prec_y_rate       = 0.1,
+#'   prior_prec1_shape       = 10,
+#'   prior_prec1_rate        = 1,
+#'   prior_prec2_shape       = 100,
+#'   prior_prec2_rate        = 1,
+#'   prior_prec_y_shape      = 1,
+#'   prior_prec_y_rate       = 1,
 #'   verbose                 = TRUE,
 #'   seed                    = 456
 #' )

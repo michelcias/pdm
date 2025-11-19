@@ -229,18 +229,10 @@ SEXP C_MCMC_normal_localtrend(SEXP y_,
   prec_theta2_previous = rgamma(nu_02, 1.0 / eta_02);
   prec_y_previous      = rgamma(nu_y, 1.0 / eta_y);
 
-  /* Initialize theta_2 trajectory via random walk from initial trend */
-  double init_sd_2 = sqrt(1.0 / prec_theta2_previous);
-  theta_2_previous[0] = rnorm(theta_02_previous, init_sd_2);
-  for (int j = 1; j < n; j++) {
-    theta_2_previous[j] = rnorm(theta_2_previous[j - 1], init_sd_2);
-  }
-
-  /* Initialize theta_1 trajectory via random walk with trend from initial level */
-  double init_sd_1 = sqrt(1.0 / prec_theta1_previous);
-  theta_1_previous[0] = rnorm(theta_01_previous + theta_02_previous, init_sd_1);
-  for (int j = 1; j < n; j++) {
-    theta_1_previous[j] = rnorm(theta_1_previous[j - 1] + theta_2_previous[j - 1], init_sd_1);
+  /* Initialize theta_1 and theta_2 trajectories with neutral starting values */
+  for (int j = 0; j < n; j++) {
+    theta_1_previous[j] = 0.0;
+    theta_2_previous[j] = 0.0;
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */

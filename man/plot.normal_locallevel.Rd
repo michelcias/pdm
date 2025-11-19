@@ -136,16 +136,16 @@ y <- rnorm(n, mean = mu_true, sd = 0.5)
 out <- mcmc_normal_locallevel(
   y,
   burnin                  = 1000,      # Discard first 1000 iterations
-  thinning                = 5,         # Keep every 5th iteration
+  thinning                = 100,       # Keep every 5th iteration
   n_chain                 = 1000,      # Retain 1000 posterior samples
   # Weakly informative prior for initial state
-  prior_theta01_mean      = mean(y),
-  prior_theta01_prec      = 1,
+  prior_theta01_mean      = 0,
+  prior_theta01_prec      = 1 / 100,
   # Weakly informative priors for precisions
-  prior_prec_y_shape      = 0.01,
-  prior_prec_y_rate       = 0.01,
-  prior_prec1_shape       = 0.01,
-  prior_prec1_rate        = 0.01,
+  prior_prec1_shape       = 100,
+  prior_prec1_rate        = 1,
+  prior_prec_y_shape      = 10,
+  prior_prec_y_rate       = 1,
   verbose                 = TRUE,      # Show progress bar
   seed                    = 456        # For reproducibility
 )
@@ -238,18 +238,18 @@ par(mfrow = c(1, 1))
 # priors centered near truth to demonstrate parameter recovery
 out <- mcmc_normal_locallevel(
   y,
-  burnin                  = 1000,
-  thinning                = 5,
+  burnin                  = 10000,
+  thinning                = 100,
   n_chain                 = 1000,
   # Prior centered at true initial value
   prior_theta01_mean      = 0,
-  prior_theta01_prec      = 1,
+  prior_theta01_prec      = 1 / 100,
   # Informative priors for precisions
   # (centered near true values with moderate uncertainty)
-  prior_prec_y_shape      = 0.01,
-  prior_prec_y_rate       = 0.01,
-  prior_prec1_shape       = 0.01,
-  prior_prec1_rate        = 0.01,
+  prior_prec1_shape       = 10,
+  prior_prec1_rate        = 1,
+  prior_prec_y_shape      = 1,
+  prior_prec_y_rate       = 1,
   verbose                 = TRUE,
   seed                    = 456
 )

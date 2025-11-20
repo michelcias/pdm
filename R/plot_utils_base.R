@@ -493,13 +493,13 @@ plot_mixture_params_base <- function(mu_1,
              pch = 4,
              cex = 2,
              lwd = 3,
-             col = "red")
+             col = "black")
 
       # Add legend for true value
       legend("topright",
              legend = "True Value",
              pch = 4,
-             col = "red",
+             col = "black",
              pt.lwd = 3,
              bty = "n",
              cex = 0.9)
@@ -528,13 +528,13 @@ plot_mixture_params_base <- function(mu_1,
              pch = 4,
              cex = 2,
              lwd = 3,
-             col = "red")
+             col = "black")
 
       # Add legend for true value
       legend("topright",
              legend = "True Value",
              pch = 4,
-             col = "red",
+             col = "black",
              pt.lwd = 3,
              bty = "n",
              cex = 0.9)
@@ -563,13 +563,13 @@ plot_mixture_params_base <- function(mu_1,
              pch = 4,
              cex = 2,
              lwd = 3,
-             col = "red")
+             col = "black")
 
       # Add legend for true value
       legend("topright",
              legend = "True Value",
              pch = 4,
-             col = "red",
+             col = "black",
              pt.lwd = 3,
              bty = "n",
              cex = 0.9)
@@ -598,13 +598,13 @@ plot_mixture_params_base <- function(mu_1,
              pch = 4,
              cex = 2,
              lwd = 3,
-             col = "red")
+             col = "black")
 
       # Add legend for true value
       legend("topright",
              legend = "True Value",
              pch = 4,
-             col = "red",
+             col = "black",
              pt.lwd = 3,
              bty = "n",
              cex = 0.9)

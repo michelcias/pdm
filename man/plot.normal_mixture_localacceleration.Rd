@@ -220,17 +220,17 @@ out_logit <- mcmc_normal_mixture_localacceleration(
   y,
   link               = "logit",
   burnin             = 2000,      # Discard first 2000 iterations
-  thinning           = 10,        # Keep every 10th iteration
+  thinning           = 100,       # Keep every 10th iteration
   n_chain            = 1000,      # Retain 1000 posterior samples
   # Weakly informative priors for mixture components
   prior_mu01_mean    = NULL,      # Use default (25th percentile)
-  prior_mu01_prec    = 0.01,
-  prior_prec01_shape = 0.01,
-  prior_prec01_rate  = 0.01,
+  prior_mu01_prec    = 1 / 100,
+  prior_prec01_shape = 1 / 100,
+  prior_prec01_rate  = 1 / 100,
   prior_mu02_mean    = NULL,      # Use default (75th percentile)
-  prior_mu02_prec    = 0.01,
-  prior_prec02_shape = 0.01,
-  prior_prec02_rate  = 0.01,
+  prior_mu02_prec    = 1 / 100,
+  prior_prec02_shape = 1 / 100,
+  prior_prec02_rate  = 1 / 100,
   # Weakly informative priors for initial states (centered at 0)
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
@@ -300,8 +300,8 @@ dev.off()
 # whether the model can recover known parameters and for method development.
 
 # --- Step 1: Set up simulation parameters ---
-set.seed(789)
-n <- 200           # Number of time points
+set.seed(10)
+n <- 100           # Number of time points
 
 # True mixture parameters (these would be unknown in real applications)
 mu_1_true <- 0
@@ -310,12 +310,12 @@ prec_1_true <- 4  # 1/sigma_1^2 where sigma_1 = 0.5
 prec_2_true <- 4  # 1/sigma_2^2 where sigma_2 = 0.5
 
 # True dynamic state parameters
-theta01_true <- 0        # True initial level
-theta02_true <- 0        # True initial trend
-theta03_true <- 0        # True initial acceleration
-prec_theta1_true <- 1000     # True level innovation precision (high = smooth)
-prec_theta2_true <- 10000    # True trend innovation precision (very smooth)
-prec_theta3_true <- 100000   # True acceleration precision (nearly constant)
+theta01_true <- 0           # True initial level
+theta02_true <- 0           # True initial trend
+theta03_true <- 0           # True initial acceleration
+prec_theta1_true <- 100     # True level innovation precision (high = smooth)
+prec_theta2_true <- 1000    # True trend innovation precision (very smooth)
+prec_theta3_true <- 10000   # True acceleration precision (nearly constant)
 
 # --- Step 2: Simulate latent states following the state-space model ---
 # Generate innovation sequences (random shocks to states)
@@ -374,18 +374,18 @@ par(mfrow = c(1, 1))
 out <- mcmc_normal_mixture_localacceleration(
   y,
   link               = "logit",
-  burnin             = 2000,
-  thinning           = 10,
+  burnin             = 50000,
+  thinning           = 500,
   n_chain            = 1000,
   # Priors for mixture components
   prior_mu01_mean    = NULL,  # Use default (25th percentile)
-  prior_mu01_prec    = 0.01,
-  prior_prec01_shape = 0.01,
-  prior_prec01_rate  = 0.01,
+  prior_mu01_prec    = 1 / 100,
+  prior_prec01_shape = 10,
+  prior_prec01_rate  = 1,
   prior_mu02_mean    = NULL,  # Use default (75th percentile)
-  prior_mu02_prec    = 0.01,
-  prior_prec02_shape = 0.01,
-  prior_prec02_rate  = 0.01,
+  prior_mu02_prec    = 1 / 100,
+  prior_prec02_shape = 10,
+  prior_prec02_rate  = 1,
   # Priors centered at true initial values
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
@@ -397,9 +397,9 @@ out <- mcmc_normal_mixture_localacceleration(
   # (centered near true values with moderate uncertainty)
   prior_prec1_shape  = 100,
   prior_prec1_rate   = 1,
-  prior_prec2_shape  = 400,
+  prior_prec2_shape  = 1000,
   prior_prec2_rate   = 1,
-  prior_prec3_shape  = 900,
+  prior_prec3_shape  = 10000,
   prior_prec3_rate   = 1,
   verbose            = TRUE,
   seed               = 456

@@ -263,7 +263,8 @@ plot_param_diagnostics_base <- function(param_samples,
 #' Plot mixture component bivariate relationships (base graphics)
 #'
 #' @description Creates a 2x2 grid of scatterplots showing relationships
-#'   between mixture component parameters (means and precisions).
+#'   between mixture component parameters (means and precisions). Optionally
+#'   overlays true parameter values for simulation validation studies.
 #'
 #' @param mu_1 Numeric vector of MCMC samples for component 1 mean.
 #' @param mu_2 Numeric vector of MCMC samples for component 2 mean.
@@ -271,21 +272,99 @@ plot_param_diagnostics_base <- function(param_samples,
 #' @param prec_2 Numeric vector of MCMC samples for component 2 precision.
 #' @param which Integer vector specifying which subplots to display (1:4).
 #'   If NULL, all four plots are shown.
-#' @param ... Additional arguments (currently unused).
+#' @param true_values Named list containing true parameter values for comparison.
+#'   If NULL (default), no true values are displayed. Expected elements:
+#'   \describe{
+#'     \item{mu_1}{Numeric scalar; true mean of component 1}
+#'     \item{mu_2}{Numeric scalar; true mean of component 2}
+#'     \item{prec_1}{Numeric scalar; true precision of component 1 (phi_1)}
+#'     \item{prec_2}{Numeric scalar; true precision of component 2 (phi_2)}
+#'   }
+#'   Any subset of these elements can be provided. Only panels with complete
+#'   true values for both parameters will display the true value marker.
+#' @param ... Additional arguments (currently unused, for future extensibility).
 #'
 #' @return NULL (invisibly). Function is called for its side effects (plotting).
 #'
 #' @details The four panels show:
 #'   \enumerate{
-#'     \item mu_1 vs mu_2 (component separation)
+#'     \item mu_1 vs mu_2 (component separation in mean space)
 #'     \item mu_1 vs phi_1 (mean-precision relationship for component 1)
 #'     \item mu_2 vs phi_2 (mean-precision relationship for component 2)
-#'     \item phi_1 vs phi_2 (precision comparison)
+#'     \item phi_1 vs phi_2 (precision comparison between components)
 #'   }
 #'
+#'   \strong{True Value Display:}
+#'   When \code{true_values} is provided, true parameter values are marked
+#'   with red "X" symbols (pch = 4) on each panel. This allows visual assessment
+#'   of whether the posterior distribution correctly covers the true values,
+#'   which is essential for validating model performance in simulation studies.
+#'
+#'   \strong{Color Scheme:}
 #'   Note: Mixture parameters do not correspond to dynamic states (level, trend,
 #'   acceleration), so they use neutral gray colors to avoid confusion with the
-#'   state-specific color scheme (blue for level, red for trend, green for acceleration).
+#'   state-specific color scheme (blue for level, red for trend, green for
+#'   acceleration).
+#'
+#'   \strong{Interpretation:}
+#'   \itemize{
+#'     \item \strong{Panel 1 (mu_1 vs mu_2):} Shows component separation. Points
+#'       far from the diagonal indicate well-separated components. True value
+#'       should fall within the posterior cloud.
+#'     \item \strong{Panels 2-3 (mu vs phi):} Show mean-precision relationships
+#'       for each component. Can reveal posterior dependencies between location
+#'       and scale parameters.
+#'     \item \strong{Panel 4 (phi_1 vs phi_2):} Shows precision relationship.
+#'       Points near diagonal suggest similar variances between components.
+#'   }
+#'
+#' @examples
+#' \dontrun{
+#' # Example 1: Basic usage without true values
+#' plot_mixture_params_base(
+#'   mu_1 = mcmc_output$mu_1,
+#'   mu_2 = mcmc_output$mu_2,
+#'   prec_1 = mcmc_output$prec_1,
+#'   prec_2 = mcmc_output$prec_2
+#' )
+#'
+#' # Example 2: Display only specific panels
+#' plot_mixture_params_base(
+#'   mu_1 = mcmc_output$mu_1,
+#'   mu_2 = mcmc_output$mu_2,
+#'   prec_1 = mcmc_output$prec_1,
+#'   prec_2 = mcmc_output$prec_2,
+#'   which = c(1, 4)  # Only mu_1 vs mu_2 and phi_1 vs phi_2
+#' )
+#'
+#' # Example 3: Simulation validation with true values
+#' true_params <- list(
+#'   mu_1 = 0,
+#'   mu_2 = 2,
+#'   prec_1 = 4,
+#'   prec_2 = 4
+#' )
+#'
+#' plot_mixture_params_base(
+#'   mu_1 = mcmc_output$mu_1,
+#'   mu_2 = mcmc_output$mu_2,
+#'   prec_1 = mcmc_output$prec_1,
+#'   prec_2 = mcmc_output$prec_2,
+#'   true_values = true_params
+#' )
+#'
+#' # Example 4: Partial true values (only means)
+#' plot_mixture_params_base(
+#'   mu_1 = mcmc_output$mu_1,
+#'   mu_2 = mcmc_output$mu_2,
+#'   prec_1 = mcmc_output$prec_1,
+#'   prec_2 = mcmc_output$prec_2,
+#'   true_values = list(mu_1 = 0, mu_2 = 2)  # Only Panel 1 will show true values
+#' )
+#' }
+#'
+#' @seealso \code{\link{plot.normal_mixture_localacceleration}} for the main
+#'   plot method that calls this function.
 #'
 #' @keywords internal
 #' @noRd
@@ -294,84 +373,247 @@ plot_mixture_params_base <- function(mu_1,
                                      prec_1,
                                      prec_2,
                                      which = NULL,
+                                     true_values = NULL,
                                      ...) {
 
-  # Setup plotting environment
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  # ===========================================================================
+  # INPUT VALIDATION
+  # ===========================================================================
 
+  # Validate MCMC samples
+  if (!is.numeric(mu_1) || !is.numeric(mu_2) ||
+      !is.numeric(prec_1) || !is.numeric(prec_2)) {
+    stop("All MCMC sample arguments must be numeric vectors")
+  }
+
+  n_samples <- length(mu_1)
+  if (length(mu_2) != n_samples || length(prec_1) != n_samples ||
+      length(prec_2) != n_samples) {
+    stop("All MCMC sample vectors must have the same length")
+  }
+
+  # Validate which parameter
   if (is.null(which)) {
     which <- 1:4
   }
+
+  if (!is.numeric(which) || any(which != floor(which))) {
+    stop("`which` must be an integer vector")
+  }
+
+  if (any(which < 1) || any(which > 4)) {
+    stop("`which` must contain values between 1 and 4")
+  }
+
+  # ===========================================================================
+  # EXTRACT TRUE VALUES (if provided)
+  # ===========================================================================
+
+  true_mu_1 <- NULL
+  true_mu_2 <- NULL
+  true_prec_1 <- NULL
+  true_prec_2 <- NULL
+
+  if (!is.null(true_values)) {
+    if (!is.list(true_values)) {
+      warning("`true_values` must be a named list. Ignoring true values.")
+      true_values <- NULL
+    } else {
+      # Extract true values if they exist
+      if ("mu_1" %in% names(true_values)) {
+        true_mu_1 <- true_values$mu_1
+        if (!is.numeric(true_mu_1) || length(true_mu_1) != 1) {
+          warning("`true_values$mu_1` must be a single numeric value. Ignoring.")
+          true_mu_1 <- NULL
+        }
+      }
+
+      if ("mu_2" %in% names(true_values)) {
+        true_mu_2 <- true_values$mu_2
+        if (!is.numeric(true_mu_2) || length(true_mu_2) != 1) {
+          warning("`true_values$mu_2` must be a single numeric value. Ignoring.")
+          true_mu_2 <- NULL
+        }
+      }
+
+      if ("prec_1" %in% names(true_values)) {
+        true_prec_1 <- true_values$prec_1
+        if (!is.numeric(true_prec_1) || length(true_prec_1) != 1) {
+          warning("`true_values$prec_1` must be a single numeric value. Ignoring.")
+          true_prec_1 <- NULL
+        }
+      }
+
+      if ("prec_2" %in% names(true_values)) {
+        true_prec_2 <- true_values$prec_2
+        if (!is.numeric(true_prec_2) || length(true_prec_2) != 1) {
+          warning("`true_values$prec_2` must be a single numeric value. Ignoring.")
+          true_prec_2 <- NULL
+        }
+      }
+    }
+  }
+
+  # Define color scheme
+  col_comp1 <- grDevices::rgb(1.0, 0.55, 0.0, 0.4)   # darkorange
+  col_comp2 <- grDevices::rgb(0.58, 0.0, 0.83, 0.4)  # darkviolet
+  col_between <- grDevices::rgb(0.79, 0.28, 0.41, 0.4)  # mediumpurple
+
+  # ===========================================================================
+  # SETUP PLOTTING ENVIRONMENT
+  # ===========================================================================
+
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar))
 
   par(mfrow = c(2, 2),
       mar = c(4, 4, 2, 1),
       oma = c(0, 0, 2, 0),
       mgp = c(2.5, 1, 0))
 
-  # =========================================================================
-  # Panel 1: mu_1 vs mu_2 (Component Separation)
-  # =========================================================================
+  # ===========================================================================
+  # PANEL 1: mu_1 vs mu_2 (Component Separation)
+  # ===========================================================================
 
   if (1 %in% which) {
+    # Create scatterplot of posterior samples
     plot(mu_1,
          mu_2,
          xlab = expression(mu[1]),
          ylab = expression(mu[2]),
          main = expression(paste(mu[1], " vs ", mu[2])),
          pch = 16,
-         col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
+         col = col_between)
     grid()
+
+    # Add true value marker if both true means are available
+    if (!is.null(true_mu_1) && !is.null(true_mu_2)) {
+      points(true_mu_1,
+             true_mu_2,
+             pch = 4,
+             cex = 2,
+             lwd = 3,
+             col = "red")
+
+      # Add legend for true value
+      legend("topright",
+             legend = "True Value",
+             pch = 4,
+             col = "red",
+             pt.lwd = 3,
+             bty = "n",
+             cex = 0.9)
+    }
   }
 
-  # =========================================================================
-  # Panel 2: mu_1 vs phi_1 (Component 1 Mean-Precision)
-  # =========================================================================
+  # ===========================================================================
+  # PANEL 2: mu_1 vs phi_1 (Component 1 Mean-Precision)
+  # ===========================================================================
 
   if (2 %in% which) {
+    # Create scatterplot showing relationship between mean and precision
     plot(mu_1,
          prec_1,
          xlab = expression(mu[1]),
          ylab = expression(phi[1]),
          main = expression(paste(mu[1], " vs ", phi[1])),
          pch = 16,
-         col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
+         col = col_comp1)
     grid()
+
+    # Add true value marker if both parameters are available
+    if (!is.null(true_mu_1) && !is.null(true_prec_1)) {
+      points(true_mu_1,
+             true_prec_1,
+             pch = 4,
+             cex = 2,
+             lwd = 3,
+             col = "red")
+
+      # Add legend for true value
+      legend("topright",
+             legend = "True Value",
+             pch = 4,
+             col = "red",
+             pt.lwd = 3,
+             bty = "n",
+             cex = 0.9)
+    }
   }
 
-  # =========================================================================
-  # Panel 3: mu_2 vs phi_2 (Component 2 Mean-Precision)
-  # =========================================================================
+  # ===========================================================================
+  # PANEL 3: mu_2 vs phi_2 (Component 2 Mean-Precision)
+  # ===========================================================================
 
   if (3 %in% which) {
+    # Create scatterplot showing relationship between mean and precision
     plot(mu_2,
          prec_2,
          xlab = expression(mu[2]),
          ylab = expression(phi[2]),
          main = expression(paste(mu[2], " vs ", phi[2])),
          pch = 16,
-         col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
+         col = col_comp2)
     grid()
+
+    # Add true value marker if both parameters are available
+    if (!is.null(true_mu_2) && !is.null(true_prec_2)) {
+      points(true_mu_2,
+             true_prec_2,
+             pch = 4,
+             cex = 2,
+             lwd = 3,
+             col = "red")
+
+      # Add legend for true value
+      legend("topright",
+             legend = "True Value",
+             pch = 4,
+             col = "red",
+             pt.lwd = 3,
+             bty = "n",
+             cex = 0.9)
+    }
   }
 
-  # =========================================================================
-  # Panel 4: phi_1 vs phi_2 (Precision Comparison)
-  # =========================================================================
+  # ===========================================================================
+  # PANEL 4: phi_1 vs phi_2 (Precision Comparison)
+  # ===========================================================================
 
   if (4 %in% which) {
+    # Create scatterplot comparing precisions between components
     plot(prec_1,
          prec_2,
          xlab = expression(phi[1]),
          ylab = expression(phi[2]),
          main = expression(paste(phi[1], " vs ", phi[2])),
          pch = 16,
-         col = grDevices::rgb(0.3, 0.3, 0.3, 0.3))
+         col = col_between)
     grid()
+
+    # Add true value marker if both precisions are available
+    if (!is.null(true_prec_1) && !is.null(true_prec_2)) {
+      points(true_prec_1,
+             true_prec_2,
+             pch = 4,
+             cex = 2,
+             lwd = 3,
+             col = "red")
+
+      # Add legend for true value
+      legend("topright",
+             legend = "True Value",
+             pch = 4,
+             col = "red",
+             pt.lwd = 3,
+             bty = "n",
+             cex = 0.9)
+    }
   }
 
-  # =========================================================================
-  # Overall Title
-  # =========================================================================
+  # ===========================================================================
+  # OVERALL TITLE
+  # ===========================================================================
 
   mtext("Mixture Component Parameters (Bivariate Relationships)",
         outer = TRUE,
@@ -618,27 +860,76 @@ plot_alpha_trajectory_base <- function(alpha,
 #'
 #' @description Plots posterior probabilities P(z_t = 1 | data) for mixture
 #'   models, showing which component is more likely at each time point.
+#'   Uses mixture component colors for visual consistency.
 #'
 #' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
 #' @param threshold Numeric; decision threshold for coloring (default 0.5).
 #' @param color_above Character; color when P(z_t = 1) > threshold.
+#'   Default is "darkviolet" (Component 2).
 #' @param color_below Character; color when P(z_t = 1) <= threshold.
+#'   Default is "darkorange" (Component 1).
+#' @param true_z Numeric vector; true component indicators for simulation studies.
+#'   If provided, overlays the true values as red markers.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return NULL (invisibly). Function is called for its side effects (plotting).
 #'
 #' @details Creates a bar plot showing the posterior probability that each
-#'   observation belongs to component 1. Bars are colored based on whether
-#'   the probability exceeds the threshold (default 0.5), making it easy to
-#'   identify the most likely component assignment at each time point.
+#'   observation belongs to component 2 (z_t = 1). Bars are colored based on
+#'   whether the probability exceeds the threshold (default 0.5), making it
+#'   easy to identify the most likely component assignment at each time point.
+#'
+#'   \strong{Interpretation:}
+#'   \itemize{
+#'     \item \strong{Orange bars} (P(z_t = 1) ≤ 0.5): Observation more likely
+#'       from Component 1 (lower mean component in the constraint mu_1 < mu_2)
+#'     \item \strong{Violet bars} (P(z_t = 1) > 0.5): Observation more likely
+#'       from Component 2 (higher mean component)
+#'     \item \strong{Red X markers} (if true_z provided): True component membership
+#'   }
+#'
+#'   The color scheme matches the mixture parameter diagnostics, where:
+#'   \itemize{
+#'     \item darkorange represents Component 1 (mu_1, phi_1)
+#'     \item darkviolet represents Component 2 (mu_2, phi_2)
+#'   }
 #'
 #' @keywords internal
 #' @noRd
 plot_component_probabilities_base <- function(z,
                                               threshold = 0.5,
-                                              color_above = "purple",
-                                              color_below = "steelblue",
+                                              color_above = "darkviolet",
+                                              color_below = "darkorange",
+                                              true_z = NULL,
                                               ...) {
+
+  # ===========================================================================
+  # INPUT VALIDATION
+  # ===========================================================================
+
+  if (!is.matrix(z)) {
+    stop("`z` must be a matrix")
+  }
+
+  if (!is.numeric(threshold) || length(threshold) != 1 ||
+      threshold <= 0 || threshold >= 1) {
+    stop("`threshold` must be a single numeric value between 0 and 1")
+  }
+
+  # Validate true_z if provided
+  if (!is.null(true_z)) {
+    if (!is.numeric(true_z)) {
+      warning("`true_z` must be numeric. Ignoring true values.")
+      true_z <- NULL
+    } else if (length(true_z) != ncol(z)) {
+      warning("`true_z` length must match number of time points. Ignoring true values.")
+      true_z <- NULL
+    }
+  }
+
+  # ===========================================================================
+  # COMPUTE POSTERIOR PROBABILITIES
+  # ===========================================================================
 
   n_obs <- ncol(z)
   time_grid <- seq_len(n_obs)
@@ -646,15 +937,25 @@ plot_component_probabilities_base <- function(z,
   # Compute posterior probabilities P(z_t = 1 | data)
   z_prob <- apply(z, 2, mean)
 
-  # Setup plotting area
+  # ===========================================================================
+  # SETUP PLOTTING ENVIRONMENT
+  # ===========================================================================
+
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
 
   par(mfrow = c(1, 1),
       mar = c(4, 4, 2, 1),
-      oma = c(0, 0, 2, 0))
+      oma = c(0, 0, 2, 0),
+      mgp = c(2.5, 1, 0))
 
-  # Create bar plot with threshold-based coloring
+  # ===========================================================================
+  # CREATE BAR PLOT WITH COMPONENT COLORS
+  # ===========================================================================
+
+  # Create bar plot with threshold-based coloring using component colors
+  # color_below (darkorange) = Component 1 (z_t = 0, or P(z_t = 1) ≤ 0.5)
+  # color_above (darkviolet) = Component 2 (z_t = 1, or P(z_t = 1) > 0.5)
   plot(z_prob,
        type = "h",
        lwd = 2,
@@ -667,29 +968,73 @@ plot_component_probabilities_base <- function(z,
   axis(side = 1)
   axis(side = 2, at = c(0, 0.5, 1))
 
+  # ===========================================================================
+  # ADD REFERENCE LINES AND TRUE VALUES
+  # ===========================================================================
+
   # Add threshold reference line
   segments(x0 = 1,
            y0 = threshold,
            x1 = n_obs,
            y1 = threshold,
-           col = "black",
+           col = "darkgray",
            lwd = 2,
            lty = 2)
 
-  # Add legend
-  legend("topright",
-         horiz = TRUE,
-         legend = c(paste0("P(z_t = 1) > ", threshold),
-                    paste0("P(z_t = 1) ≤ ", threshold),
-                    "Threshold"),
-         col = c(color_above, color_below, "black"),
-         lty = c(1, 1, 2),
-         lwd = 2,
-         bty = "n")
+  # Overlay true z values if provided
+  if (!is.null(true_z)) {
+    points(time_grid,
+           true_z,
+           pch = 4,
+           cex = 0.5,
+           lwd = 2.5,
+           col = "black")
+  }
+
+  # ===========================================================================
+  # ADD GRID
+  # ===========================================================================
 
   grid(nx = NA, ny = NULL)
 
-  # Overall title
+  # ===========================================================================
+  # BUILD AND DISPLAY LEGEND
+  # ===========================================================================
+
+  # Build legend with component-based interpretation
+  legend_items <- c(
+    paste0("P(z_t = 1) > ", threshold),
+    paste0("P(z_t = 1) ≤ ", threshold),
+    "Threshold"
+  )
+  legend_cols <- c(color_above, color_below, "darkgray")
+  legend_lty <- c(1, 1, 2)
+  legend_lwd <- c(2, 2, 2)
+  legend_pch <- c(NA, NA, NA)
+
+  # Add true_z to legend if provided
+  if (!is.null(true_z)) {
+    legend_items <- c(legend_items, expression(paste("True ", z[t])))
+    legend_cols <- c(legend_cols, "black")
+    legend_lty <- c(legend_lty, NA)
+    legend_lwd <- c(legend_lwd, 2.5)
+    legend_pch <- c(legend_pch, 4)
+  }
+
+  legend("topright",
+         horiz = TRUE,
+         legend = legend_items,
+         col = legend_cols,
+         lty = legend_lty,
+         lwd = legend_lwd,
+         pch = legend_pch,
+         bty = "n",
+         cex = 0.9)
+
+  # ===========================================================================
+  # OVERALL TITLE
+  # ===========================================================================
+
   mtext(expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
         outer = TRUE,
         cex = 1.3,
@@ -940,14 +1285,25 @@ plot_bernoulli_alpha_base <- function(x,
 #' Plot mixture weight trajectory with credible intervals (base graphics)
 #'
 #' @description Creates a two-page visualization of mixture weights:
-#'   Page 1 shows alpha_t trajectory with credible bands,
-#'   Page 2 shows posterior probabilities P(z_t = 1 | data).
+#'   Page 1 shows alpha_t trajectory with credible bands and optional data overlay,
+#'   Page 2 shows posterior probabilities P(z_t = 1 | data) with component colors.
 #'
 #' @param alpha Matrix of MCMC samples for mixture weights (n_chain x n_obs).
 #' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
-#' @param ... Additional arguments (currently unused).
+#' @param overlay_data Logical; whether to overlay observed data on alpha plot.
+#'   Default is TRUE. If TRUE and observed data is available, the data is
+#'   rescaled to [0, 1] and plotted on Page 1 for visual context.
+#' @param obs_data Numeric vector of observed data values (length n_obs).
+#'   If NULL, attempts to extract from attributes. If not available and
+#'   overlay_data = TRUE, a warning is issued. Data is automatically rescaled
+#'   to the unit interval for visualization.
+#' @param true_alpha Numeric vector; true alpha values for simulation studies.
+#'   If provided, overlays the true trajectory on Page 1.
+#' @param true_z Numeric vector; true component indicators for simulation studies.
+#'   If provided, overlays the true values on Page 2.
+#' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return NULL (invisibly). Function is called for its side effects (plotting).
 #'
@@ -958,27 +1314,142 @@ plot_bernoulli_alpha_base <- function(x,
 #'     \item \code{plot_component_probabilities_base()}: Page 2 (z_t probabilities)
 #'   }
 #'
+#'   \strong{Data Overlay and Rescaling (Page 1):}
+#'   When \code{overlay_data = TRUE} and observed data is available, the original
+#'   data is rescaled to the unit interval [0, 1] using min-max normalization:
+#'   \deqn{y_{scaled} = \frac{y - \min(y)}{\max(y) - \min(y)}}
+#'
+#'   This rescaling improves visibility by mapping the data to the same scale
+#'   as the mixture weights (alpha_t ∈ [0, 1]). The rescaled data helps identify
+#'   temporal patterns and potential relationships between observed values and
+#'   component membership probabilities.
+#'
+#'   \strong{Important:} The rescaling is purely for visualization purposes and
+#'   does not affect the model estimation. The legend clearly indicates that
+#'   the displayed data is rescaled.
+#'
+#'   \strong{Color Scheme for Component Probabilities (Page 2):}
+#'   Page 2 uses the mixture component colors to visualize membership probabilities:
+#'   \itemize{
+#'     \item \strong{darkorange} (Component 1): P(z_t = 1) ≤ 0.5 (more likely Component 1)
+#'     \item \strong{darkviolet} (Component 2): P(z_t = 1) > 0.5 (more likely Component 2)
+#'   }
+#'
+#'   This color scheme matches the mixture component parameter colors used in
+#'   MCMC diagnostics, providing visual consistency across all plots.
+#'
 #' @keywords internal
 #' @noRd
 plot_mixture_weights_base <- function(alpha,
                                       z,
                                       ci = TRUE,
                                       ci_level = 0.95,
+                                      overlay_data = TRUE,
+                                      obs_data = NULL,
+                                      true_alpha = NULL,
+                                      true_z = NULL,
                                       ...) {
 
-  # Page 1: Alpha trajectory with credible bands
+  # ===========================================================================
+  # INPUT VALIDATION
+  # ===========================================================================
+
+  if (!is.matrix(alpha) || !is.matrix(z)) {
+    stop("`alpha` and `z` must be matrices")
+  }
+
+  if (ncol(alpha) != ncol(z)) {
+    stop("`alpha` and `z` must have the same number of columns (time points)")
+  }
+
+  # Validate ci_level
+  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
+             ci_level <= 0 || ci_level >= 1)) {
+    stop("`ci_level` must be a single numeric value between 0 and 1")
+  }
+
+  # Validate overlay_data
+  if (!is.logical(overlay_data) || length(overlay_data) != 1) {
+    stop("`overlay_data` must be a single logical value")
+  }
+
+  # ===========================================================================
+  # PREPARE OBSERVED DATA FOR OVERLAY WITH RESCALING
+  # ===========================================================================
+
+  # Determine if we should show observed data
+  show_obs <- overlay_data && !is.null(obs_data)
+  obs_data_rescaled <- NULL
+  obs_label <- expression(y[t])
+
+  # Validate and rescale obs_data if overlay is requested
+  if (overlay_data && !is.null(obs_data)) {
+    if (!is.numeric(obs_data)) {
+      warning("`obs_data` must be numeric. Data overlay disabled.")
+      show_obs <- FALSE
+    } else if (length(obs_data) != ncol(alpha)) {
+      warning("`obs_data` length must match number of time points. Data overlay disabled.")
+      show_obs <- FALSE
+    } else {
+      # Rescale data to [0, 1] using min-max normalization
+      min_y <- min(obs_data, na.rm = TRUE)
+      max_y <- max(obs_data, na.rm = TRUE)
+
+      # Check if all values are the same (avoid division by zero)
+      if (max_y - min_y < .Machine$double.eps) {
+        warning("Observed data has no variation (all values equal). ",
+                "Data overlay disabled.")
+        show_obs <- FALSE
+      } else {
+        obs_data_rescaled <- (obs_data - min_y) / (max_y - min_y)
+
+        # Update label to indicate rescaling
+        obs_label <- expression(paste(y[t], " (rescaled)"))
+
+        # Optional: Print rescaling info for user reference
+        message("Note: Observed data rescaled to [0, 1] for visualization.")
+        message(sprintf("  Original range: [%.3f, %.3f]", min_y, max_y))
+      }
+    }
+  }
+
+  # Issue message if overlay requested but no data available
+  if (overlay_data && is.null(obs_data)) {
+    message("Note: overlay_data = TRUE but no observed data available. ",
+            "Plotting without data overlay.")
+  }
+
+  # ===========================================================================
+  # PAGE 1: Alpha trajectory with credible bands and optional rescaled data
+  # ===========================================================================
+
   plot_alpha_trajectory_base(
     alpha = alpha,
     ci = ci,
     ci_level = ci_level,
     title = expression(paste("Time-Varying Mixture Weight: ", alpha[t])),
-    obs_data = NULL,
-    show_obs = FALSE,
+    obs_data = obs_data_rescaled,
+    obs_label = obs_label,
+    show_obs = show_obs,
+    obs_color = grDevices::rgb(0.75, 0.3, 0.0, 0.5),
+    obs_pch = 16,
+    obs_cex = 0.8,
+    true_alpha = true_alpha,
     ...
   )
 
-  # Page 2: Component probabilities
-  plot_component_probabilities_base(z, ...)
+  # ===========================================================================
+  # PAGE 2: Component probabilities with mixture colors
+  # ===========================================================================
+
+  plot_component_probabilities_base(
+    z = z,
+    threshold = 0.5,
+    color_above = "darkviolet",   # Component 2 color (z_t = 1)
+    color_below = "darkorange",   # Component 1 color (z_t = 0)
+    true_z = true_z,
+    ...
+  )
 
   invisible(NULL)
 }
@@ -1018,20 +1489,38 @@ validate_ci_level <- function(ci_level) {
 #' @param ask Logical; if TRUE, prompts user before each new page.
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
+#' @param overlay_data Logical; whether to overlay observed data on mixture
+#'   weight plots. Default is TRUE. If TRUE and data is available, observed
+#'   values are rescaled to [0, 1] and plotted for visual context.
 #' @param true_values Named list containing true values (or NULL).
-#'   Expected elements depend on model type and order.
+#'   Expected elements depend on model type and order. For mixture models:
+#'   \itemize{
+#'     \item Mixture parameters: mu_1, mu_2, prec_1, prec_2
+#'     \item Initial states: theta_01, theta_02, theta_03
+#'     \item Innovation precisions: prec_theta1, prec_theta2, prec_theta3
+#'     \item State trajectories: theta_1, theta_2, theta_3 (vectors of length n_obs)
+#'     \item Mixture weights: alpha (vector of length n_obs)
+#'     \item Component indicators: z (vector of length n_obs)
+#'   }
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
 #'
 #' @details Creates a complete dashboard with the following pages:
 #'   \enumerate{
-#'     \item MCMC diagnostics for each parameter
+#'     \item MCMC diagnostics for each parameter (4-panel plots)
 #'     \item Mixture parameters bivariate relationships (mixture models only)
-#'     \item Dynamic state trajectories
-#'     \item Dynamic state diagnostics
+#'     \item Dynamic state trajectories with credible bands
+#'     \item Dynamic state diagnostics (transitions and innovations)
 #'     \item Phase space trajectories (order 2-3 only)
 #'     \item Mixture weights and component probabilities (mixture models only)
+#'   }
+#'
+#'   The total number of pages varies by model:
+#'   \itemize{
+#'     \item \strong{Mixture + Order 1:} 6 + 2 + 2 = 10 pages
+#'     \item \strong{Mixture + Order 2:} 8 + 2 + 3 + 2 = 15 pages
+#'     \item \strong{Mixture + Order 3:} 10 + 2 + 3 + 2 = 17 pages
 #'   }
 #'
 #' @keywords internal
@@ -1040,10 +1529,14 @@ plot_all_mixture_generic_base <- function(x,
                                           ask = TRUE,
                                           ci = TRUE,
                                           ci_level = 0.95,
+                                          overlay_data = TRUE,
                                           true_values = NULL,
                                           ...) {
 
-  # Setup plotting environment
+  # ===========================================================================
+  # SETUP PLOTTING ENVIRONMENT
+  # ===========================================================================
+
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
 
@@ -1052,7 +1545,10 @@ plot_all_mixture_generic_base <- function(x,
     on.exit(par(oldask), add = TRUE)
   }
 
-  # Detect model type and order
+  # ===========================================================================
+  # DETECT MODEL CHARACTERISTICS
+  # ===========================================================================
+
   model_info <- detect_model_type(x)
   model_order <- model_info$model_order
 
@@ -1062,23 +1558,33 @@ plot_all_mixture_generic_base <- function(x,
                                    model_order)
   n_params <- length(param_config)
 
-  # Section 1: MCMC diagnostics for each parameter
+  # ===========================================================================
+  # SECTION 1: MCMC diagnostics for each parameter
+  # ===========================================================================
+
   plot_mcmc_diagnostics_generic(x,
                                 which = seq_len(n_params),
                                 param_config = param_config,
                                 true_values = true_values,
                                 ...)
 
-  # Section 2: Mixture parameters (mixture models only)
+  # ===========================================================================
+  # SECTION 2: Mixture parameters (mixture models only)
+  # ===========================================================================
+
   if (model_info$has_mixture) {
     plot_mixture_params_base(x$mu_1,
                              x$mu_2,
                              x$prec_1,
                              x$prec_2,
+                             true_values = true_values,
                              ...)
   }
 
-  # Section 3: Dynamic states (trajectories, diagnostics, phase space)
+  # ===========================================================================
+  # SECTION 3: Dynamic states (trajectories, diagnostics, phase space)
+  # ===========================================================================
+
   plot_dynamic_states_generic_base(x,
                                    model_order = model_order,
                                    ci = ci,
@@ -1086,13 +1592,19 @@ plot_all_mixture_generic_base <- function(x,
                                    true_values = true_values,
                                    ...)
 
-  # Section 4: Mixture weights (mixture models only)
+  # ===========================================================================
+  # SECTION 4: Mixture weights (mixture models only)
+  # ===========================================================================
+
   if (model_info$has_mixture) {
     plot_mixture_weights_base(x$alpha,
                               x$z,
                               ci = ci,
                               ci_level = ci_level,
-                              ...)
+                              overlay_data = overlay_data,
+                              obs_data = attr(x, "y"),
+                              true_alpha = true_values$alpha,
+                              true_z = true_values$z)
   }
 
   invisible(NULL)

@@ -182,6 +182,7 @@ get_n_params <- function(model_class, model_order) {
 #'     \item{label}{Expression for base graphics axis labels}
 #'     \item{name_str}{Character string identifier for the parameter}
 #'     \item{label_str}{Character string identifier for labels}
+#'     \item{color}{Character string specifying plot color}
 #'   }
 #'
 #' @details Parameters are ordered as:
@@ -196,6 +197,25 @@ get_n_params <- function(model_class, model_order) {
 #'
 #'   The W*_inv naming convention maps to prec_theta* in the object:
 #'   W1_inv corresponds to x$prec_theta1, etc.
+#'
+#'   \strong{Color Scheme:}
+#'   \itemize{
+#'     \item \strong{Mixture components:}
+#'       \itemize{
+#'         \item "darkorange" for Component 1 (mu_1, phi_1)
+#'         \item "darkviolet" for Component 2 (mu_2, phi_2)
+#'       }
+#'     \item \strong{Dynamic states:}
+#'       \itemize{
+#'         \item "steelblue" for level-related (theta_01, W_1^{-1})
+#'         \item "firebrick" for trend-related (theta_02, W_2^{-1})
+#'         \item "darkgreen" for acceleration-related (theta_03, W_3^{-1})
+#'       }
+#'     \item \strong{Observation precision:}
+#'       \itemize{
+#'         \item "purple" for V^{-1} (normal models)
+#'       }
+#'   }
 #'
 #'   Note: Binomial models (binomial/Bernoulli with logit/probit link) do NOT
 #'   have observation precision parameter.
@@ -231,7 +251,8 @@ get_param_config <- function(x,
       name = quote(mu[1]),
       label = expression(mu[1]),
       name_str = "mu_1",
-      label_str = "mu_1"
+      label_str = "mu_1",
+      color = "darkorange"  # Component 1 color
     )
 
     config$mu_2 <- list(
@@ -239,7 +260,8 @@ get_param_config <- function(x,
       name = quote(mu[2]),
       label = expression(mu[2]),
       name_str = "mu_2",
-      label_str = "mu_2"
+      label_str = "mu_2",
+      color = "darkviolet"  # Component 2 color
     )
 
     config$phi_1 <- list(
@@ -247,7 +269,8 @@ get_param_config <- function(x,
       name = quote(phi[1]),
       label = expression(phi[1]),
       name_str = "phi_1",
-      label_str = "phi_1"
+      label_str = "phi_1",
+      color = "darkorange"  # Component 1 color (matching mu_1)
     )
 
     config$phi_2 <- list(
@@ -255,7 +278,8 @@ get_param_config <- function(x,
       name = quote(phi[2]),
       label = expression(phi[2]),
       name_str = "phi_2",
-      label_str = "phi_2"
+      label_str = "phi_2",
+      color = "darkviolet"  # Component 2 color (matching mu_2)
     )
   }
 
@@ -412,6 +436,15 @@ validate_param_config <- function(config) {
 #'   all parameters are plotted.
 #' @param param_config Pre-computed parameter configuration list. If NULL,
 #'   will be auto-generated from x using \code{get_param_config()}.
+#' @param true_values Named list containing true parameter values for comparison.
+#'   If NULL (default), no true values are displayed. Expected elements depend
+#'   on model type:
+#'   \itemize{
+#'     \item \strong{Mixture models:} mu_1, mu_2, prec_1, prec_2
+#'     \item \strong{Normal models:} prec_y
+#'     \item \strong{All models:} theta_01, theta_02, theta_03, prec_theta1,
+#'       prec_theta2, prec_theta3
+#'   }
 #' @param ... Additional arguments passed to plotting functions.
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
@@ -421,6 +454,10 @@ validate_param_config <- function(config) {
 #'   The actual plotting is delegated to \code{plot_param_diagnostics_base()}
 #'   from plot_utils_base.R.
 #'
+#'   True values (when provided) are overlaid as dashed black lines on all
+#'   diagnostic panels, allowing visual assessment of parameter recovery in
+#'   simulation studies.
+#'
 #' @keywords internal
 #' @noRd
 plot_mcmc_diagnostics_generic <- function(x,
@@ -429,20 +466,32 @@ plot_mcmc_diagnostics_generic <- function(x,
                                           true_values = NULL,
                                           ...) {
 
+  # ===========================================================================
   # 1. Generate parameter configuration if not provided
+  # ===========================================================================
+
   if (is.null(param_config)) {
     param_config <- get_param_config(x)
   }
 
+  # ===========================================================================
   # 2. Validate parameter configuration
+  # ===========================================================================
+
   validate_param_config(param_config)
 
+  # ===========================================================================
   # 3. Set default for which (all parameters)
+  # ===========================================================================
+
   if (is.null(which)) {
     which <- seq_along(param_config)
   }
 
+  # ===========================================================================
   # 4. Validate which
+  # ===========================================================================
+
   if (!is.numeric(which) || any(which != floor(which))) {
     stop("`which` must be an integer vector")
   }
@@ -451,24 +500,70 @@ plot_mcmc_diagnostics_generic <- function(x,
     stop("`which` must be between 1 and ", length(param_config))
   }
 
+  # ===========================================================================
   # 5. Plot each selected parameter
+  # ===========================================================================
+
   for (i in which) {
     param_info <- param_config[[i]]
 
     true_value <- NULL
 
+    # Extract true value if provided
     if (!is.null(true_values)) {
       param_name <- param_info$name_str
-      if (param_name == "theta_01") true_value <- true_values$theta_01
-      if (param_name == "theta_02") true_value <- true_values$theta_02
-      if (param_name == "theta_03") true_value <- true_values$theta_03
-      if (param_name == "W_1^{-1}") true_value <- true_values$prec_theta1
-      if (param_name == "W_2^{-1}") true_value <- true_values$prec_theta2
-      if (param_name == "W_3^{-1}") true_value <- true_values$prec_theta3
-      if (param_name == "W_3^{-1}") true_value <- true_values$prec_theta3
-      if (param_name ==   "V^{-1}") true_value <- true_values$prec_y
+
+      # ------------------------------------------------------------------
+      # Mixture component parameters
+      # ------------------------------------------------------------------
+      if (param_name == "mu_1") {
+        true_value <- true_values$mu_1
+      }
+      if (param_name == "mu_2") {
+        true_value <- true_values$mu_2
+      }
+      if (param_name == "phi_1") {
+        true_value <- true_values$prec_1
+      }
+      if (param_name == "phi_2") {
+        true_value <- true_values$prec_2
+      }
+
+      # ------------------------------------------------------------------
+      # Observation precision (normal models)
+      # ------------------------------------------------------------------
+      if (param_name == "V^{-1}") {
+        true_value <- true_values$prec_y
+      }
+
+      # ------------------------------------------------------------------
+      # Initial state parameters
+      # ------------------------------------------------------------------
+      if (param_name == "theta_01") {
+        true_value <- true_values$theta_01
+      }
+      if (param_name == "theta_02") {
+        true_value <- true_values$theta_02
+      }
+      if (param_name == "theta_03") {
+        true_value <- true_values$theta_03
+      }
+
+      # ------------------------------------------------------------------
+      # Innovation precision parameters
+      # ------------------------------------------------------------------
+      if (param_name == "W_1^{-1}") {
+        true_value <- true_values$prec_theta1
+      }
+      if (param_name == "W_2^{-1}") {
+        true_value <- true_values$prec_theta2
+      }
+      if (param_name == "W_3^{-1}") {
+        true_value <- true_values$prec_theta3
+      }
     }
 
+    # Plot diagnostics for this parameter
     plot_param_diagnostics_base(
       param_samples = param_info$samples,
       param_name = param_info$name,

@@ -12,6 +12,7 @@
   overlay_data = TRUE,
   ci = TRUE,
   ci_level = 0.95,
+  true_values = NULL,
   ...
 )
 }
@@ -54,6 +55,53 @@ support them. Default is \code{TRUE}.}
 \item{ci_level}{Numeric; Bayesian confidence level for credible intervals
 (between 0 and 1). Default is \code{0.95}.}
 
+\item{true_values}{Named list containing true parameter values and/or state trajectories
+  for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
+
+  \strong{Important:} All parameter names in \code{true_values} must match exactly
+  the component names returned by \code{\link{mcmc_normal_mixture_locallevel}}.
+
+  Accepted elements:
+  \describe{
+    \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
+      \itemize{
+        \item \code{mu_1}: Mean of mixture component 1
+        \item \code{mu_2}: Mean of mixture component 2
+        \item \code{prec_1}: Precision of mixture component 1 (phi_1)
+        \item \code{prec_2}: Precision of mixture component 2 (phi_2)
+        \item \code{theta_01}: Initial level state
+        \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
+      }
+    }
+    \item{\strong{State trajectories} (for \code{type = "states"}):}{
+      \itemize{
+        \item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
+      }
+    }
+    \item{\strong{Mixture weights and indicators} (for \code{type = "alpha"}):}{
+      \itemize{
+        \item \code{alpha}: Numeric vector of length \code{n_obs} with true mixture weights (P(z_t = 1))
+        \item \code{z}: Numeric vector of length \code{n_obs} with true component indicators (0 or 1)
+      }
+    }
+  }
+
+  \strong{Note on mixture identifiability:} Due to label switching, the model enforces
+  the constraint \code{mu_1 < mu_2}. Ensure your true values respect this ordering.
+  If your simulation used different labels, swap them before comparison.
+
+  You can provide any subset of these elements. For example, to compare only
+  mixture parameters and weights:
+  \preformatted{
+  true_values = list(
+    mu_1 = 0,
+    mu_2 = 2,
+    prec_1 = 4,
+    prec_2 = 4,
+    alpha = alpha_true_vector
+  )
+  }}
+
 \item{...}{Additional arguments passed to plotting functions.}
 }
 \value{
@@ -83,6 +131,7 @@ Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, W_1^{-1}
   \item Joint posterior of component means (mu_1 vs mu_2)
   \item Marginal posteriors for means and precisions
   \item Component separation diagnostics
+  \item Optional true parameter values overlay
 }
 
 \strong{Dynamic States (\code{type = "states"}):}
@@ -93,8 +142,8 @@ Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, W_1^{-1}
 
 \strong{Mixture Weights (\code{type = "alpha"}):}
 \itemize{
-  \item Page 1: alpha_t trajectory with credible bands and data overlay
-  \item Page 2: Posterior probabilities of component membership (z_t)
+  \item Page 1: alpha_t trajectory with credible bands and optional data/true values overlay
+  \item Page 2: Posterior probabilities of component membership (z_t) with optional true indicators
 }
 
 \strong{Complete Dashboard (\code{type = "all"}):}
@@ -103,22 +152,41 @@ Generates 10 pages in total:
 \itemize{
   \item Pages 1-6: Individual parameter diagnostics (4 panels each)
   \item Page 7: Mixture parameters (bivariate relationships)
-  \item Pages 8-9: Dynamic state trajectory and diagnostics
-  \item Page 10: Mixture weight alpha_t
-  \item Page 11: Component membership P(z_t = 1 | data)
+  \item Page 8: Dynamic state trajectory and diagnostics
+  \item Page 9: Mixture weight alpha_t
+  \item Page 10: Component membership P(z_t = 1 | data)
 }
 }
+\section{Controlling Data Display}{
+
+
+The \code{overlay_data} parameter controls the display of observed data in
+mixture weight plots:
+
+\itemize{
+  \item When \code{overlay_data = TRUE} (default): The original data \code{y}
+    is overlaid on the mixture weight plot, providing visual context for the
+    estimated component membership probabilities.
+  \item When \code{overlay_data = FALSE}: Only the estimated mixture weights
+    are shown, which can be clearer for presentations or when focusing solely
+    on the temporal pattern of mixture probabilities.
+}
+}
+
 \examples{
 \dontrun{
-## Simulation of data
-n <- 400  # Number of observations to simulate
+# =============================================================================
+# Example 1: Practical Data Analysis (No True Parameters Known)
+# =============================================================================
+# This example demonstrates a typical workflow when analyzing real data where
+# true parameter values are unknown. We generate synthetic data with a simple
+# oscillating pattern to mimic real-world temporal variation in mixture weights.
 
-# Use a fixed seed for data simulation
 set.seed(123)
+n <- 400          # Number of time points
 
-# Generate true mixture weights following a sinusoidal pattern
-grid_vals <- seq_len(n) / n
-alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
+# Generate simple oscillating mixture weights (mimicking temporal patterns)
+alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
 
 # Generate latent component indicators
 z_true <- rbinom(n, size = 1, prob = alpha_true)
@@ -133,52 +201,242 @@ mu_y <- (1 - z_true) * mu_1_true + z_true * mu_2_true
 sigma_y <- (1 - z_true) * sigma_1_true + z_true * sigma_2_true
 y <- rnorm(n, mean = mu_y, sd = sigma_y)
 
-## Running the Gibbs sampler with logit link
+# Fit the local-level model with weakly informative priors
+# (appropriate when we have limited prior knowledge)
 out_logit <- mcmc_normal_mixture_locallevel(
   y,
   link               = "logit",
-  burnin             = 2000,
-  thinning           = 10,
-  n_chain            = 1000,
-  prior_mu01_mean    = NULL,  # Use default (25th percentile)
-  prior_mu01_prec    = 0.01,
-  prior_prec01_shape = 0.01,
-  prior_prec01_rate  = 0.01,
-  prior_mu02_mean    = NULL,  # Use default (75th percentile)
-  prior_mu02_prec    = 0.01,
-  prior_prec02_shape = 0.01,
-  prior_prec02_rate  = 0.01,
+  burnin             = 10000,      # Discard first 2000 iterations
+  thinning           = 100,        # Keep every 10th iteration
+  n_chain            = 1000,      # Retain 1000 posterior samples
+  # Weakly informative priors for mixture components
+  prior_mu01_mean    = NULL,      # Use default (25th percentile)
+  prior_mu01_prec    = 1 / 100,
+  prior_prec01_shape = 1 / 100,
+  prior_prec01_rate  = 1 / 100,
+  prior_mu02_mean    = NULL,      # Use default (75th percentile)
+  prior_mu02_prec    = 1 / 100,
+  prior_prec02_shape = 1 / 100,
+  prior_prec02_rate  = 1 / 100,
+  # Weakly informative prior for initial state (centered at 0)
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
+  # Weakly informative prior for innovation precision
   prior_prec1_shape  = 100,
   prior_prec1_rate   = 1,
-  lag_update         = 50,
-  max_step_size      = 1.0,
-  base_adaptation_rate = 0.01,
-  decay_exponent     = 0.6,
-  target_acceptance  = 0.44,
-  min_deviation_threshold = NULL,  # Use default (1/lag_update)
-  return_log_sigma   = FALSE,
-  return_accept_prop = FALSE,
+  verbose            = TRUE,      # Show progress bar
+  seed               = 456        # For reproducibility
+)
+
+# --- Visualization Options ---
+
+# 1. Complete diagnostic dashboard (10 pages)
+#    Includes: MCMC diagnostics, mixture parameters, state trajectory, weights
+plot(out_logit, type = "all")
+
+# 2. MCMC convergence diagnostics for all parameters
+#    Trace plots, ACF, posterior densities, running means
+plot(out_logit, type = "mcmc")
+
+# 3. Focus on mixture component parameters only
+plot(out_logit, type = "mcmc", which = 1:4)  # mu_1, mu_2, phi_1, phi_2
+
+# 4. Focus on dynamic state parameters
+plot(out_logit, type = "mcmc", which = 5:6)  # theta_01, W_1^{-1}
+
+# 5. Mixture parameter relationships (bivariate plots)
+#    Shows joint posterior of component means and precisions
+plot(out_logit, type = "params")
+
+# 6. Dynamic state trajectory (theta_1)
+#    Shows level component over time
+plot(out_logit, type = "states")
+
+# 7. States without credible intervals (cleaner for presentations)
+plot(out_logit, type = "states", ci = FALSE)
+
+# 8. Mixture weights with data overlay
+#    Shows alpha_t trajectory and component membership probabilities
+plot(out_logit, type = "alpha")
+
+# 9. Mixture weights without data overlay (cleaner for presentations)
+plot(out_logit, type = "alpha", overlay_data = FALSE)
+
+# 10. Adjust credible interval level (default is 95\%)
+plot(out_logit, type = "alpha", ci_level = 0.90)  # 90\% credible intervals
+
+# 11. Save all diagnostics to a multi-page PDF
+pdf("mixture_diagnostics.pdf", width = 10, height = 8)
+plot(out_logit, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
+dev.off()
+
+
+# =============================================================================
+# Example 2: Simulation Study (True Parameters Known for Validation)
+# =============================================================================
+# This example demonstrates how to validate model performance using simulated
+# data where true parameter values are known. This is essential for assessing
+# whether the model can recover known parameters and for method development.
+
+# --- Step 1: Set up simulation parameters ---
+set.seed(10)
+n <- 100           # Number of time points
+
+# True mixture parameters (these would be unknown in real applications)
+mu_1_true <- 0
+mu_2_true <- 2
+prec_1_true <- 4  # 1/sigma_1^2 where sigma_1 = 0.5
+prec_2_true <- 4  # 1/sigma_2^2 where sigma_2 = 0.5
+
+# True dynamic state parameters
+theta01_true <- 0        # True initial level
+prec_theta1_true <- 50   # True level innovation precision (high = smooth)
+
+# --- Step 2: Simulate latent states following the state-space model ---
+# Generate innovation sequence (random shocks to state)
+u1 <- rnorm(n, mean = 0, sd = sqrt(1 / prec_theta1_true))  # Level innovations
+
+# Initialize state vector
+theta1_true <- numeric(n)  # Level state
+
+# First time point (t=1): state = initial value + innovation
+theta1_true[1] <- theta01_true + u1[1]
+
+# Subsequent time points (t=2,...,n): follow state evolution equation
+# theta_{t,1} = theta_{t-1,1} + u_{t,1}  (random walk)
+for (t in 2:n) {
+  theta1_true[t] <- theta1_true[t-1] + u1[t]
+}
+
+# --- Step 3: Generate mixture weights and observations ---
+# For logit link: alpha_t = expit(theta_{t,1}) = 1/(1 + exp(-theta_{t,1}))
+alpha_true <- plogis(theta1_true)  # Mixture weights in [0,1]
+
+# Generate latent component indicators
+z_true <- rbinom(n, size = 1, prob = alpha_true)
+
+# Generate observations from the mixture
+mu_y <- (1 - z_true) * mu_1_true + z_true * mu_2_true
+sigma_y <- (1 - z_true) * sqrt(1/prec_1_true) + z_true * sqrt(1/prec_2_true)
+y <- rnorm(n, mean = mu_y, sd = sigma_y)
+
+# Optional: Visualize true trajectories before fitting
+par(mfrow = c(1, 2))
+plot(theta1_true, type = "l", main = "True Level State",
+     xlab = "Time", ylab = expression(theta["t,1"]))
+plot(alpha_true, type = "l", main = "True Mixture Weights",
+     xlab = "Time", ylab = expression(alpha[t]), ylim = c(0, 1))
+points(z_true, col = "red", pch = 16, cex = 0.5)
+plot(y, type = "p", main = "Observations", xlab = "Time", ylab = "y",
+     pch = 16, col = ifelse(z_true == 1, "blue", "red"))
+legend("topright", legend = c("Component 1", "Component 2"),
+       col = c("red", "blue"), pch = 16)
+par(mfrow = c(1, 1))
+
+# --- Step 4: Fit the model with informative priors ---
+# Note: In practice, we wouldn't know true values, but here we use
+# priors centered near truth to demonstrate parameter recovery
+out <- mcmc_normal_mixture_locallevel(
+  y,
+  link               = "logit",
+  burnin             = 10000,
+  thinning           = 100,
+  n_chain            = 1000,
+  # Priors for mixture components
+  prior_mu01_mean    = NULL,  # Use default (25th percentile)
+  prior_mu01_prec    = 1 / 100,
+  prior_prec01_shape = 1 / 100,
+  prior_prec01_rate  = 1 / 100,
+  prior_mu02_mean    = NULL,  # Use default (75th percentile)
+  prior_mu02_prec    = 1 / 100,
+  prior_prec02_shape = 1 / 100,
+  prior_prec02_rate  = 1 / 100,
+  # Prior centered at true initial value
+  prior_theta01_mean = 0,
+  prior_theta01_prec = 1,
+  # Informative prior for innovation precision
+  # (centered near true value with moderate uncertainty)
+  prior_prec1_shape  = 10,
+  prior_prec1_rate   = 1,
   verbose            = TRUE,
-  bar_width          = 60,
   seed               = 456
 )
 
-# Complete dashboard (10 pages)
-plot(out_logit, type = "all")
+# --- Step 5: Model validation using true parameter values ---
+# Create named list with ALL true values (matching output component names)
+# IMPORTANT: All names must match exactly the components returned by
+# mcmc_normal_mixture_locallevel() - see ?mcmc_normal_mixture_locallevel
+true_vals <- list(
+  # Mixture parameters (for MCMC diagnostics and params plot)
+  mu_1        = mu_1_true,
+  mu_2        = mu_2_true,
+  prec_1      = prec_1_true,
+  prec_2      = prec_2_true,
+  # Scalar dynamic state parameters (for MCMC diagnostics)
+  theta_01    = theta01_true,
+  prec_theta1 = prec_theta1_true,
+  # State trajectory (for state plots)
+  theta_1     = theta1_true,
+  # Mixture weights and indicators (for alpha plot)
+  alpha       = alpha_true,
+  z           = z_true
+)
 
-# Diagnostics for specific parameters
-plot(out_logit, type = "mcmc", which = 1:2)  # Only mu_1 and mu_2
-plot(out_logit, type = "mcmc", which = 3:4)  # Only phi_1 and phi_2
+# --- Validation Plots ---
 
-# Mixture weights (2 pages: alpha_t and z_t)
-plot(out_logit, type = "alpha")
+# 1. Complete dashboard with true values overlaid
+#    True values appear as dashed black lines in all relevant plots
+plot(out, type = "all", true_values = true_vals)
 
-# Save to multi-page PDF
-pdf("diagnostics.pdf", width = 10, height = 8)
-plot(out_logit, type = "all", ask = FALSE)
-dev.off()
+# 2. MCMC diagnostics with true parameter values (scalar parameters)
+#    Check if posterior distributions contain true values
+plot(out, type = "mcmc", true_values = true_vals)
+
+# 3. Focus on mixture parameters with true values
+plot(out, type = "mcmc", which = 1:4, true_values = true_vals)
+
+# 4. Focus on dynamic state parameters with true values
+plot(out, type = "mcmc", which = 5:6, true_values = true_vals)
+
+# 5. Mixture parameter bivariate relationships with true values
+#    Shows joint posterior and component separation
+plot(out, type = "params", true_values = true_vals)
+
+# 6. Dynamic state with true trajectory overlaid
+#    Assess how well the model tracks the true time-varying state
+plot(out, type = "states", true_values = true_vals)
+
+# 7. Mixture weights with true values
+#    Compare estimated alpha_t and z_t with true values
+plot(out, type = "alpha", true_values = true_vals)
+
+# 8. Partial validation: only compare specific components
+
+#    Example 1: Only mixture parameters
+plot(out, type = "mcmc", which = 1:4, true_values = list(
+  mu_1   = mu_1_true,
+  mu_2   = mu_2_true,
+  prec_1 = prec_1_true,
+  prec_2 = prec_2_true
+))
+
+#    Example 2: Only initial state and innovation precision
+plot(out, type = "mcmc", which = 5:6, true_values = list(
+  theta_01    = theta01_true,
+  prec_theta1 = prec_theta1_true
+))
+
+#    Example 3: Only level state trajectory
+plot(out, type = "states",
+     true_values = list(theta_1 = theta1_true))
+
+#    Example 4: Only mixture weights (without indicators)
+plot(out, type = "alpha",
+     true_values = list(alpha = alpha_true))
+
+#    Example 5: Only component indicators
+plot(out, type = "alpha",
+     true_values = list(z = z_true))
 }
 
 }

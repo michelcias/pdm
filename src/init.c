@@ -1,35 +1,39 @@
 /**
  * @file init.c
  * @brief R package initialization and function registration
- * @details Handles dynamic loading and registration of C functions for the pdm package.
- *          Registers .Call entry points for MCMC algorithms and utility functions,
- *          ensuring proper interface between R and C code. Implements security
+ * @details Handles dynamic loading and registration of C functions for the pdm package. 
+ *          Registers . Call entry points for MCMC algorithms and utility functions,
+ *          ensuring proper interface between R and C code.  Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
- * @date 2025-10-24
- * @version 1.6
+ * @date 2025-12-20
+ * @version 1.7
  *
  * @changelog
- * - v1.7 (2025-10-25): Added registration for Gaussian mixture model with
- *     local-acceleration weights.
+ * - v1.7 (2025-12-20): Added registration for Poisson dynamic models with log link: 
+ *     C_MCMC_log_poisson_locallevel:  18 args
+ *     C_MCMC_log_poisson_localtrend: 22 args
+ *     C_MCMC_log_poisson_localacceleration: 26 args
+ * - v1.6 (2025-10-25): Added registration for Gaussian mixture model with
+ *     local-acceleration weights. 
  *     C_MCMC_normal_mixture_localacceleration: 35 args
- * - v1.6 (2025-10-24): Added registration for Gaussian mixture model with dynamic
+ * - v1.5 (2025-10-24): Added registration for Gaussian mixture model with dynamic
  *     weights and local-level structure.
  *     C_MCMC_normal_mixture_locallevel: 27 args
- * - v1.5 (2025-10-23): Added registration for Gaussian mixture model with dynamic
+ * - v1.4 (2025-10-23): Added registration for Gaussian mixture model with dynamic
  *     weights and local trend structure.
  *     C_MCMC_normal_mixture_localtrend: 31 args
- * - v1.4 (2025-10-15): Updated argument counts for binomial MCMC functions to
+ * - v1.3 (2025-10-15): Updated argument counts for binomial MCMC functions to
  *     include new verbose and bar_width parameters for progress bar support.
  *     C_MCMC_logit_binomial_localtrend: 21 -> 23 args
  *     C_MCMC_probit_bernoulli_localtrend: 12 -> 14 args
- * - v1.3 (2025-10-13): Added missing includes for probit-Bernoulli functions,
+ * - v1.2 (2025-10-13): Added missing includes for probit-Bernoulli functions,
  *     corrected documentation to reflect all registered test helpers, and
  *     updated version metadata to match current development state.
- * - v1.2 (2025-10-05): Updated the table of registered methods to include
+ * - v1.1 (2025-10-05): Updated the table of registered methods to include
  *     the test helper for the probit Bernoulli sampler with fixed parameters,
  *     and revised the associated documentation.
- * - v1.1 (2025-09-23): Added registration for optimized adaptive MCMC functions
+ * - v1.0 (2025-09-23): Added registration for optimized adaptive MCMC functions
  *     including adapt_cwmh_parameters with threshold parameter and legacy wrapper
  *     for backward compatibility.
  */
@@ -48,6 +52,9 @@
 #include "mcmc_binomial_locallevel.h"
 #include "mcmc_binomial_localtrend.h"
 #include "mcmc_binomial_localacceleration.h"
+#include "mcmc_poisson_locallevel.h"
+#include "mcmc_poisson_localtrend.h"
+#include "mcmc_poisson_localacceleration.h"
 #include "test_helpers.h"
 #include "utils.h"
 
@@ -56,34 +63,47 @@
 //==============================================================================
 
 /**
- * @brief Static table defining .Call method entries for R-C interface
+ * @brief Static table defining . Call method entries for R-C interface
  *
  * @details Maps R function names to their corresponding C implementations with
- *          argument counts. This table is used by R's dynamic loading system
- *          to properly route .Call() invocations to the correct C functions.
+ *          argument counts.  This table is used by R's dynamic loading system
+ *          to properly route . Call() invocations to the correct C functions.
  *
  *          **Registered Functions:**
  *
  *          **Main MCMC Functions (Production):**
- *          - C_MCMC_normal_locallevel: Gaussian local level model (12 args)
+ *
+ *          *Gaussian Dynamic Models (3 functions):*
+ *          - C_MCMC_normal_locallevel:  Gaussian local level model (12 args)
  *          - C_MCMC_normal_localtrend: Gaussian local trend model (16 args)
  *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (20 args)
+ *
+ *          *Gaussian Mixture Models with Dynamic Weights (3 functions):*
  *          - C_MCMC_normal_mixture_locallevel: Gaussian mixture with local-level weights (27 args)
- *          - C_MCMC_normal_mixture_localtrend: Gaussian mixture with dynamic weights (31 args)
- *          - C_MCMC_normal_mixture_localacceleration: Gaussian mixture with local-acceleration weights (35 args)
+ *          - C_MCMC_normal_mixture_localtrend: Gaussian mixture with local-trend weights (31 args)
+ *          - C_MCMC_normal_mixture_localacceleration:  Gaussian mixture with local-acceleration weights (35 args)
+ *
+ *          *Binomial Dynamic Models with Logit Link (3 functions):*
  *          - C_MCMC_logit_binomial_locallevel: Binomial local level with logit link (19 args)
- *          - C_MCMC_logit_binomial_localtrend: Binomial local trend with logit link (23 args)
+ *          - C_MCMC_logit_binomial_localtrend:  Binomial local trend with logit link (23 args)
  *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration with logit (27 args)
+ *
+ *          *Bernoulli Dynamic Models with Probit Link (3 functions):*
  *          - C_MCMC_probit_bernoulli_locallevel: Bernoulli local level with probit link (10 args)
  *          - C_MCMC_probit_bernoulli_localtrend: Bernoulli local trend with probit link (14 args)
- *          - C_MCMC_probit_bernoulli_localacceleration: Bernoulli local acceleration with probit (18 args)
+ *          - C_MCMC_probit_bernoulli_localacceleration:  Bernoulli local acceleration with probit (18 args)
+ *
+ *          *Poisson Dynamic Models with Log Link (3 functions):*
+ *          - C_MCMC_log_poisson_locallevel: Poisson local level with log link (18 args)
+ *          - C_MCMC_log_poisson_localtrend:  Poisson local trend with log link (22 args)
+ *          - C_MCMC_log_poisson_localacceleration: Poisson local acceleration with log link (26 args)
  *
  *          **Test Helper Functions:**
  *
  *          *Utility and Basic Functions (4 functions):*
- *          - test_ilogit: Inverse logit transformation (1 arg)
- *          - test_generate_normal_vector: Multivariate normal sampling (4 args)
- *          - test_adapt_cwmh_parameters: CWMH adaptation testing (10 args)
+ *          - test_ilogit:  Inverse logit transformation (1 arg)
+ *          - test_generate_normal_vector:  Multivariate normal sampling (4 args)
+ *          - test_adapt_cwmh_parameters:  CWMH adaptation testing (10 args)
  *          - reset_adaptation_cache: Cache management (0 args)
  *
  *          *Precision Parameter Sampling (3 functions):*
@@ -93,9 +113,9 @@
  *
  *          *State Parameter Sampling (4 functions):*
  *          - test_generate_theta_1_locallevel: Local level first state (4 args)
- *          - test_generate_theta_1: Local trend first state (6 args)
- *          - test_generate_theta_k: Intermediate state (6 args)
- *          - test_generate_theta_p: Final state (4 args)
+ *          - test_generate_theta_1:  Local trend first state (6 args)
+ *          - test_generate_theta_k:  Intermediate state (6 args)
+ *          - test_generate_theta_p:  Final state (4 args)
  *
  *          *Initial State Parameter Sampling (4 functions):*
  *          - test_generate_theta_01_locallevel: Local level initial mean (4 args)
@@ -125,9 +145,10 @@
  *          - v1.4 (2025-10-15): Added progress bar support (verbose, bar_width parameters)
  *          - v1.5 (2025-10-23): Added Gaussian mixture model with dynamic weights (local trend)
  *          - v1.6 (2025-10-24): Added Gaussian mixture model with local-level weights
+ *          - v1.7 (2025-12-20): Added Poisson dynamic models with log link (local level, trend, acceleration)
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
- * @note Argument counts are enforced by R's .Call() mechanism at runtime
+ * @note Argument counts are enforced by R's . Call() mechanism at runtime
  * @note NULL terminator is required for proper array traversal by R
  * @note Names must match exactly those used in R wrapper functions
  * @note Test functions enable comprehensive unit testing of internal algorithms
@@ -166,6 +187,11 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_probit_bernoulli_locallevel",            (DL_FUNC) &C_MCMC_probit_bernoulli_locallevel,        10},
   {"_pdm_C_MCMC_probit_bernoulli_localtrend",            (DL_FUNC) &C_MCMC_probit_bernoulli_localtrend,        14},
   {"_pdm_C_MCMC_probit_bernoulli_localacceleration",     (DL_FUNC) &C_MCMC_probit_bernoulli_localacceleration, 18},
+
+  // --- Poisson Dynamic Models (Log Link) ---
+  {"_pdm_C_MCMC_log_poisson_locallevel",            (DL_FUNC) &C_MCMC_log_poisson_locallevel,        18},
+  {"_pdm_C_MCMC_log_poisson_localtrend",            (DL_FUNC) &C_MCMC_log_poisson_localtrend,        22},
+  {"_pdm_C_MCMC_log_poisson_localacceleration",     (DL_FUNC) &C_MCMC_log_poisson_localacceleration, 26},
 
   //============================================================================
   // TEST HELPER FUNCTIONS
@@ -219,7 +245,7 @@ static const R_CallMethodDef CallEntries[] = {
 //==============================================================================
 
 /**
- * @brief Register compiled routines for the pdm package.
+ * @brief Register compiled routines for the pdm package. 
  *
  * @details The initialization routine registers every compiled entry point with
  *          R's dynamic loader and disables runtime symbol lookup to enforce
@@ -229,7 +255,7 @@ static const R_CallMethodDef CallEntries[] = {
  *
  * @param dll Pointer to the DllInfo structure supplied automatically by R during library loading.
  *
- * @return Nothing. Registration occurs for its side effects on R's loader state.
+ * @return Nothing.  Registration occurs for its side effects on R's loader state.
  *
  * @note The function name must follow the "R_init_<package>" convention so that
  *       R invokes it during library() calls.
@@ -238,7 +264,7 @@ static const R_CallMethodDef CallEntries[] = {
  * @note All production and testing routines must appear in CallEntries to remain
  *       accessible from R wrappers.
  *
- * @warning Calling this function manually from user code is unsupported.
+ * @warning Calling this function manually from user code is unsupported. 
  * @warning Updating CallEntries without synchronising the R wrappers will break
  *          the package interface.
  *
@@ -252,10 +278,10 @@ void R_init_pdm(DllInfo *dll)
   /* Register .Call entry points for C functions accessible from R */
   R_registerRoutines(
     dll,         /* dll: package DLL information */
-    NULL,        /* cMethods: no .C registrations */
-    CallEntries, /* callMethods: .Call registration table */
-    NULL,        /* fMethods: no .Fortran registrations */
-    NULL         /* rMethods: no .External registrations */
+    NULL,        /* cMethods: no . C registrations */
+    CallEntries, /* callMethods: . Call registration table */
+    NULL,        /* fMethods: no . Fortran registrations */
+    NULL         /* rMethods: no . External registrations */
   );
 
   /* Disable dynamic symbol lookup for improved security and encapsulation */

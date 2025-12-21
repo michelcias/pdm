@@ -631,35 +631,48 @@ plot_mixture_params_base <- function(mu_1,
 #' Plot alpha trajectory with credible intervals (base graphics)
 #'
 #' @description Generic function to plot time-varying alpha_t trajectory
-#'   with optional credible bands. Can overlay observed data and true values
+#'   with optional credible bands.  Can overlay observed data and true values
 #'   for simulation studies.
 #'
 #' @param alpha Matrix of MCMC samples for alpha (n_chain x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param title Character or expression; main title for the plot.
-#' @param obs_data Numeric vector of observed data (proportions or binary).
+#' @param obs_data Numeric vector of observed data (proportions, binary, or counts).
 #'   If NULL, no observations are plotted.
 #' @param obs_label Character; legend label for observed data.
 #' @param show_obs Logical; whether to display observed data points.
-#'   Default is TRUE. Ignored if obs_data is NULL.
+#'   Default is TRUE.  Ignored if obs_data is NULL.
 #' @param obs_color Character; color for observed data points.
 #' @param obs_pch Integer; point character for observed data.
 #' @param obs_cex Numeric; point size for observed data.
 #' @param true_alpha Numeric vector; true alpha values for simulation studies.
 #'   If provided, overlays the true trajectory.
+#' @param ylim_auto Logical; whether to automatically compute y-axis limits
+#'   based on data.  Default is FALSE.  If FALSE, uses ylim = c(0, 1.1) for
+#'   probability-scale plots (binomial/Bernoulli/mixture). If TRUE, computes
+#'   ylim from data range (appropriate for Poisson rates which can exceed 1).
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return NULL (invisibly). Function is called for its side effects (plotting).
 #'
-#' @details This is a generic plotting function used by both mixture models
-#'   (for mixture weights) and binomial/Bernoulli models (for success
-#'   probabilities). The function creates a single-page plot with:
+#' @details This is a generic plotting function used by mixture models
+#'   (for mixture weights), binomial/Bernoulli models (for success
+#'   probabilities), and Poisson models (for event rates). The function
+#'   creates a single-page plot with:
 #'   \itemize{
 #'     \item Median trajectory of alpha_t (blue line)
 #'     \item Optional credible interval band (gray)
 #'     \item Optional observed data overlay (points)
 #'     \item Optional true values (for simulation validation)
+#'   }
+#'
+#'   \strong{Y-axis scaling:}
+#'   \itemize{
+#'     \item For probability models (binomial/Bernoulli/mixture weights):
+#'       Set \code{ylim_auto = FALSE} to use fixed [0, 1.1] range
+#'     \item For rate models (Poisson): Set \code{ylim_auto = TRUE} to
+#'       compute range dynamically from data
 #'   }
 #'
 #' @keywords internal
@@ -675,6 +688,7 @@ plot_alpha_trajectory_base <- function(alpha,
                                        obs_pch = 16,
                                        obs_cex = 0.6,
                                        true_alpha = NULL,
+                                       ylim_auto = FALSE,
                                        ...) {
 
   # =========================================================================
@@ -688,8 +702,12 @@ plot_alpha_trajectory_base <- function(alpha,
     stop("`ci_level` must be a single numeric value between 0 and 1")
   }
 
-  if (!is.logical(show_obs) || length(show_obs) != 1) {
+  if (! is.logical(show_obs) || length(show_obs) != 1) {
     stop("`show_obs` must be a single logical value")
+  }
+
+  if (!is. logical(ylim_auto) || length(ylim_auto) != 1) {
+    stop("`ylim_auto` must be a single logical value")
   }
 
   # =========================================================================
@@ -705,9 +723,40 @@ plot_alpha_trajectory_base <- function(alpha,
   if (ci) {
     ci_lower_prob <- (1 - ci_level) / 2
     ci_upper_prob <- 1 - ci_lower_prob
-    alpha_lower <- apply(alpha, 2, stats::quantile, probs = ci_lower_prob)
+    alpha_lower <- apply(alpha, 2, stats:: quantile, probs = ci_lower_prob)
     alpha_upper <- apply(alpha, 2, stats::quantile, probs = ci_upper_prob)
     ci_label <- paste0(round(ci_level * 100), "% CI")
+  }
+
+  # =========================================================================
+  # Compute Y-axis Limits
+  # =========================================================================
+
+  if (ylim_auto) {
+    # Automatic range computation for rate models (e.g., Poisson)
+    y_min <- 0  # Always start at zero for rates/probabilities
+
+    # Collect all relevant values for range calculation
+    range_vals <- alpha_median
+    if (ci) {
+      range_vals <- c(range_vals, alpha_lower, alpha_upper)
+    }
+    if (! is.null(obs_data) && show_obs) {
+      range_vals <- c(range_vals, obs_data)
+    }
+    if (!is.null(true_alpha)) {
+      range_vals <- c(range_vals, true_alpha)
+    }
+
+    y_max <- max(range_vals, na.rm = TRUE)
+
+    # Add 10% buffer to top
+    y_max <- y_max * 1.1
+
+    ylim_val <- c(y_min, y_max)
+  } else {
+    # Fixed range for probability models (binomial/Bernoulli/mixture weights)
+    ylim_val <- c(0, 1.1)
   }
 
   # =========================================================================
@@ -720,7 +769,7 @@ plot_alpha_trajectory_base <- function(alpha,
   par(mfrow = c(1, 1),
       mar = c(4, 4, 2, 1),
       oma = c(0, 0, 2, 0),
-      mgp = c(2.5, 1, 0))
+      mgp = c(2. 5, 1, 0))
 
   # =========================================================================
   # Create Base Plot
@@ -729,22 +778,30 @@ plot_alpha_trajectory_base <- function(alpha,
   plot(time_grid,
        alpha_median,
        type = "l",
-       lwd = 2.5,
+       lwd = 2. 5,
        col = "steelblue",
        xlab = "Time",
        ylab = expression(alpha[t]),
-       ylim = c(0, 1.1),
+       ylim = ylim_val,
        axes = FALSE,
        main = "")
 
+  # Determine y-axis tick locations
+  if (ylim_auto) {
+    # Automatic ticks for rate models
+    axis(side = 2)
+  } else {
+    # Fixed ticks for probability models
+    axis(side = 2, at = seq(0, 1, by = 0.2))
+  }
+
   axis(side = 1)
-  axis(side = 2, at = seq(0, 1, by = 0.2))
 
   # =========================================================================
   # Add Observed Data (if provided and requested)
   # =========================================================================
 
-  if (!is.null(obs_data) && show_obs) {
+  if (! is.null(obs_data) && show_obs) {
     points(time_grid,
            obs_data,
            pch = obs_pch,
@@ -756,7 +813,7 @@ plot_alpha_trajectory_base <- function(alpha,
   # Add True Alpha (if provided)
   # =========================================================================
 
-  if (!is.null(true_alpha)) {
+  if (!is. null(true_alpha)) {
     lines(time_grid,
           true_alpha,
           lwd = 2.5,
@@ -771,7 +828,7 @@ plot_alpha_trajectory_base <- function(alpha,
   if (ci) {
     polygon(c(time_grid, rev(time_grid)),
             c(alpha_lower, rev(alpha_upper)),
-            col = grDevices::adjustcolor("steelblue", alpha.f = 0.2),
+            col = grDevices::adjustcolor("steelblue", alpha. f = 0.2),
             border = NA)
     # Redraw median line on top
     lines(time_grid,
@@ -785,10 +842,15 @@ plot_alpha_trajectory_base <- function(alpha,
   # =========================================================================
 
   grid(nx = NA, ny = NULL)
+
+  # Vertical grid lines
+  y_top <- ylim_val[2]
+  y_bottom <- ylim_val[1] - 0.04 * diff(ylim_val)
+
   segments(x0 = axTicks(1),
-           y0 = -0.04,
+           y0 = y_bottom,
            x1 = axTicks(1),
-           y1 = 1.03,
+           y1 = y_top * 1.03,
            col = "lightgray",
            lwd = par("lwd"),
            lty = "dotted")
@@ -814,7 +876,7 @@ plot_alpha_trajectory_base <- function(alpha,
   }
 
   # Add true alpha to legend
-  if (!is.null(true_alpha)) {
+  if (!is. null(true_alpha)) {
     legend_items <- c(expression(alpha[t]), legend_items)
     legend_cols <- c("black", legend_cols)
     legend_lty <- c(2, legend_lty)
@@ -823,7 +885,7 @@ plot_alpha_trajectory_base <- function(alpha,
   }
 
   # Add observed data to legend
-  if (!is.null(obs_data) && show_obs) {
+  if (! is.null(obs_data) && show_obs) {
     legend_items <- c(legend_items, obs_label)
     legend_cols <- c(legend_cols, obs_color)
     legend_lty <- c(legend_lty, NA)
@@ -1119,6 +1181,7 @@ plot_binomial_alpha_base <- function(x,
     obs_pch = 16,
     obs_cex = 0.8,
     true_alpha = true_alpha,
+    ylim_auto = FALSE,
     ...
   )
 
@@ -1275,6 +1338,84 @@ plot_bernoulli_alpha_base <- function(x,
     obs_pch = 16,
     obs_cex = 0.8,
     true_alpha = true_alpha,
+    ...
+  )
+
+  invisible(NULL)
+}
+
+#' Plot Poisson rates (base graphics)
+#'
+#' @description Wrapper function for plotting Poisson model rates
+#'   (alpha_t). Used by all Poisson model types (locallevel, localtrend,
+#'   localacceleration).
+#'
+#' @param x An object inheriting from a poisson model class.
+#' @param ci Logical; whether to display credible intervals.
+#' @param ci_level Numeric; credible interval level.
+#' @param show_obs Logical; whether to display observed counts.
+#'   Default is TRUE.
+#' @param true_alpha Numeric vector; true alpha values for simulation studies.
+#'   If provided, overlays the true trajectory.
+#' @param ...  Additional arguments passed to plot_alpha_trajectory_base.
+#'
+#' @return NULL (invisibly). Function is called for side effects (plotting).
+#'
+#' @details This function extracts alpha samples and observed data from
+#'   Poisson model objects and delegates to the generic
+#'   \code{plot_alpha_trajectory_base()} function. Unlike binomial models,
+#'   observed counts are plotted directly without proportion calculations,
+#'   and the y-axis is automatically scaled to accommodate count data.
+#'
+#'   Used by:
+#'   \itemize{
+#'     \item \code{plot. poisson_locallevel}
+#'     \item \code{plot.poisson_localtrend}
+#'     \item \code{plot. poisson_localacceleration}
+#'   }
+#'
+#' @keywords internal
+#' @noRd
+plot_poisson_alpha_base <- function(x,
+                                    ci = TRUE,
+                                    ci_level = 0.95,
+                                    show_obs = TRUE,
+                                    true_alpha = NULL,
+                                    .. .) {
+
+  # Validate parameters
+  if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
+             ci_level <= 0 || ci_level >= 1)) {
+    stop("`ci_level` must be a single numeric value between 0 and 1")
+  }
+
+  if (!is.logical(show_obs) || length(show_obs) != 1) {
+    stop("`show_obs` must be a single logical value")
+  }
+
+  # Extract observed data
+  y <- attr(x, "y")
+
+  # Prepare observed counts if available and requested
+  obs_data <- NULL
+  if (show_obs && !is.null(y)) {
+    obs_data <- y  # Direct counts, no proportion calculation
+  }
+
+  # Delegate to generic alpha trajectory plotting function with automatic ylim
+  plot_alpha_trajectory_base(
+    alpha = x$alpha,
+    ci = ci,
+    ci_level = ci_level,
+    title = "Poisson Rates",
+    obs_data = obs_data,
+    obs_label = expression(y[t]),
+    show_obs = show_obs,
+    obs_color = grDevices::rgb(0.75, 0.3, 0.0, 0.5),
+    obs_pch = 16,
+    obs_cex = 0.8,
+    true_alpha = true_alpha,
+    ylim_auto = TRUE,  # KEY:  Enable automatic y-axis scaling for Poisson rates
     ...
   )
 

@@ -1,7 +1,7 @@
 #' @title Gibbs Sampler for a Local-Trend Poisson Dynamic Model
 #'
 #' @description Runs a Gibbs sampler for the local-trend Poisson dynamic model
-#'   with log link. 
+#'   with log link.
 #'
 #' @details The model is defined as:
 #' \deqn{
@@ -59,7 +59,7 @@
 #'
 #' The adaptive algorithm uses a diminishing adaptation schedule that ensures
 #' theoretical convergence guarantees (Roberts and Rosenthal, 2007). Adaptation
-#' occurs every `lag_update` iterations (e.g., at MCMC iterations 50, 100, 150, ... 
+#' occurs every `lag_update` iterations (e.g., at MCMC iterations 50, 100, 150, ...
 #' if `lag_update = 50`), and only after sufficient history has been accumulated
 #' (iteration >= `lag_update`).
 #'
@@ -68,7 +68,7 @@
 #'
 #' \deqn{\log(\sigma_t) \leftarrow \log(\sigma_t) + \text{sign}(\hat{p}_t - p^*) \cdot \gamma_m \cdot \mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}},}
 #'
-#' where: 
+#' where:
 #' \itemize{
 #'   \item \eqn{\gamma_m} is the diminishing step size at MCMC iteration \eqn{m}, computed as
 #'     \deqn{\gamma_m = \min\left(\text{max\_step\_size}, \frac{\text{base\_adaptation\_rate}}{m^\xi}\right);}
@@ -81,29 +81,29 @@
 #'     the condition is true, 0 otherwise.
 #' }
 #'
-#' The update only occurs if the absolute deviation exceeds the threshold: 
-#' \deqn{|\hat{p}_t - p^*| > \tau. }
+#' The update only occurs if the absolute deviation exceeds the threshold:
+#' \deqn{|\hat{p}_t - p^*| > \tau.}
 #'
-#' This threshold-based approach prevents spurious updates due to random fluctuations. 
+#' This threshold-based approach prevents spurious updates due to random fluctuations.
 #'
 #' \strong{Parameter Interactions:}
 #'
 #' The adaptive tuning parameters interact as follows:
 #' \itemize{
 #'   \item \strong{lag_update}:  Controls both the sliding window size for computing acceptance
-#'     proportions AND the frequency of adaptation.  Adaptation occurs at MCMC iterations
-#'     \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}.  Larger values
-#'     provide more stable estimates but slower adaptation.  Common choices:  50-200 iterations.
+#'     proportions AND the frequency of adaptation. Adaptation occurs at MCMC iterations
+#'     \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Larger values
+#'     provide more stable estimates but slower adaptation. Common choices:  50-200 iterations.
 #'   \item \strong{target_acceptance}:  Optimal acceptance rate for the Metropolis-Hastings
 #'     algorithm. The value 0.44 is theoretically optimal for univariate random-walk proposals
 #'     (Roberts and Rosenthal, 2001). Each time point \eqn{t} has its own acceptance rate
-#'     \eqn{\hat{p}_t}. 
+#'     \eqn{\hat{p}_t}.
 #'   \item \strong{min_deviation_threshold}:  Minimum deviation \eqn{|\hat{p}_t - p^*|}
 #'     required to trigger adaptation for time point \eqn{t}. The default `NULL` uses the
 #'     practical threshold \eqn{1/\text{lag\_update}}, corresponding to one additional
 #'     acceptance/rejection in the sliding window.
 #'   \item \strong{max_step_size}: Maximum allowed change in log-scale proposal variance
-#'     per adaptation step.  Prevents extreme adjustments.  Common choices: 0.01-0.1.
+#'     per adaptation step. Prevents extreme adjustments. Common choices: 0.01-0.1.
 #'   \item \strong{base_adaptation_rate}: Controls the overall speed of adaptation before
 #'     decay is applied. Higher values lead to faster but potentially less stable adaptation.
 #'     Common choices: 0.1-10.0.
@@ -118,47 +118,47 @@
 #' With `lag_update = 50`, `base_adaptation_rate = 1.0`, `decay_exponent = 0.6`,
 #' and `max_step_size = 0.1`:
 #' \itemize{
-#'   \item At MCMC iteration 50: \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}. 
+#'   \item At MCMC iteration 50: \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}.
 #'   \item At MCMC iteration 100: \eqn{\gamma_{100} = \min(0.1, 1.0/100^{0.6}) \approx 0.0631}.
 #'   \item At MCMC iteration 1000: \eqn{\gamma_{1000} = \min(0.1, 1.0/1000^{0.6}) \approx 0.0158}.
 #' }
 #'
 #' This ensures that adaptation becomes increasingly conservative as the chain progresses,
-#' satisfying theoretical requirements for ergodicity. 
+#' satisfying theoretical requirements for ergodicity.
 #'
 #' \strong{Recommended Settings:}
 #'
-#' For most applications: 
+#' For most applications:
 #' \itemize{
 #'   \item `lag_update = 50`: Provides good balance between stability and responsiveness;
 #'   \item `max_step_size = 0.1`: Conservative adjustment rate;
 #'   \item `base_adaptation_rate = 1.0`: Moderate adaptation speed;
 #'   \item `decay_exponent = 0.6`: Standard diminishing adaptation;
 #'   \item `target_acceptance = 0.44`: Theoretically optimal for univariate proposals;
-#'   \item `min_deviation_threshold = NULL`: Uses practical default of 1/lag_update. 
+#'   \item `min_deviation_threshold = NULL`: Uses practical default of 1/lag_update.
 #' }
 #'
 #' Burn-in and thinning are applied so that exactly `n_chain` posterior samples
-#' are returned. 
+#' are returned.
 #'
 #' @param y Numeric vector of observed Poisson counts (length \eqn{n}). Each
 #'   element must be a non-negative integer.
-#' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations. 
-#' @param thinning Integer \eqn{\geq 1}, thinning interval. 
+#' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
+#' @param thinning Integer \eqn{\geq 1}, thinning interval.
 #' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_theta01_mean Numeric, prior mean for the initial state \eqn{\theta_{0,1}}.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,1}}.
 #' @param prior_theta02_mean Numeric, prior mean for the initial state \eqn{\theta_{0,2}}.
-#' @param prior_theta02_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,2}}. 
+#' @param prior_theta02_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,2}}.
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_1}.
-#' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}. 
+#' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}.
 #' @param prior_prec2_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_2}.
 #' @param prior_prec2_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_2}.
 #' @param lag_update Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
-#'   computing acceptance proportions.  Default is 50.
+#'   computing acceptance proportions. Default is 50.
 #' @param max_step_size Numeric > 0, maximum allowed change in log-scale proposal variance
-#'   per adaptation step.  Default is 0.1.
-#' @param base_adaptation_rate Numeric > 0, base rate controlling adaptation speed. 
+#'   per adaptation step. Default is 0.1.
+#' @param base_adaptation_rate Numeric > 0, base rate controlling adaptation speed.
 #'   Default is 1.0.
 #' @param decay_exponent Numeric in (0.5, 1], exponent controlling diminishing adaptation
 #'   rate. Default is 0.6.
@@ -166,7 +166,7 @@
 #'   Metropolis-Hastings proposals. Default is 0.44 (theoretically optimal).
 #' @param min_deviation_threshold Numeric \eqn{\geq 0} or `NULL`, minimum absolute deviation
 #'   from `target_acceptance` required to trigger adaptation. If `NULL` (default),
-#'   uses practical threshold of `1.0/lag_update`. Set to `0. 0` for maximum sensitivity
+#'   uses practical threshold of `1.0/lag_update`. Set to `0.0` for maximum sensitivity
 #'   (adapt for any deviation). Larger values make adaptation more conservative.
 #' @param return_log_sigma Logical, whether to return proposal scale diagnostics
 #'   (log-scale proposal standard deviations). Default is `FALSE`.
@@ -195,7 +195,7 @@
 #' }
 #'
 #' @references
-#' Roberts, G.  O., & Rosenthal, J. S. (2001). Optimal scaling for various
+#' Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 #' Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
 #'
 #' Roberts, G. O., & Rosenthal, J. S. (2007). Coupling and ergodicity of adaptive MCMC.
@@ -206,7 +206,7 @@
 #'
 #' @examples
 #' ## Description
-#' # This example demonstrates how to: 
+#' # This example demonstrates how to:
 #' # 1. Simulate data from a local-trend Poisson dynamic model
 #' # 2. Use `mcmc_poisson_localtrend` to estimate parameters and latent states
 #' # 3. Perform a detailed posterior analysis with visualizations
@@ -298,7 +298,7 @@ mcmc_poisson_localtrend <- function(y,
   # --- Input Validation ---
   if (!is.numeric(y)) stop("`y` must be a numeric vector")
   if (!all(is.finite(y))) stop("`y` must contain only finite numeric values (no NA, NaN, Inf)")
-  
+
   # Validate Poisson constraints (non-negative integers)
   if (any(y < 0 | y != floor(y))) stop("`y` values must be non-negative integers")
 
@@ -393,7 +393,7 @@ mcmc_poisson_localtrend <- function(y,
   # --- End Input Validation ---
 
   # Call the C function
-  result <- . Call(
+  result <- .Call(
     "_pdm_C_MCMC_log_poisson_localtrend",
     as.numeric(y),
     as.integer(burnin),

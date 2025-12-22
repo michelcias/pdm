@@ -631,7 +631,7 @@ plot_mixture_params_base <- function(mu_1,
 #' Plot alpha trajectory with credible intervals (base graphics)
 #'
 #' @description Generic function to plot time-varying alpha_t trajectory
-#'   with optional credible bands.  Can overlay observed data and true values
+#'   with optional credible bands. Can overlay observed data and true values
 #'   for simulation studies.
 #'
 #' @param alpha Matrix of MCMC samples for alpha (n_chain x n_obs).
@@ -642,14 +642,14 @@ plot_mixture_params_base <- function(mu_1,
 #'   If NULL, no observations are plotted.
 #' @param obs_label Character; legend label for observed data.
 #' @param show_obs Logical; whether to display observed data points.
-#'   Default is TRUE.  Ignored if obs_data is NULL.
+#'   Default is TRUE. Ignored if obs_data is NULL.
 #' @param obs_color Character; color for observed data points.
 #' @param obs_pch Integer; point character for observed data.
 #' @param obs_cex Numeric; point size for observed data.
 #' @param true_alpha Numeric vector; true alpha values for simulation studies.
 #'   If provided, overlays the true trajectory.
 #' @param ylim_auto Logical; whether to automatically compute y-axis limits
-#'   based on data.  Default is FALSE.  If FALSE, uses ylim = c(0, 1.1) for
+#'   based on data. Default is FALSE. If FALSE, uses ylim = c(0, 1.1) for
 #'   probability-scale plots (binomial/Bernoulli/mixture). If TRUE, computes
 #'   ylim from data range (appropriate for Poisson rates which can exceed 1).
 #' @param ... Additional arguments (currently unused).
@@ -706,7 +706,7 @@ plot_alpha_trajectory_base <- function(alpha,
     stop("`show_obs` must be a single logical value")
   }
 
-  if (!is. logical(ylim_auto) || length(ylim_auto) != 1) {
+  if (!is.logical(ylim_auto) || length(ylim_auto) != 1) {
     stop("`ylim_auto` must be a single logical value")
   }
 
@@ -769,7 +769,7 @@ plot_alpha_trajectory_base <- function(alpha,
   par(mfrow = c(1, 1),
       mar = c(4, 4, 2, 1),
       oma = c(0, 0, 2, 0),
-      mgp = c(2. 5, 1, 0))
+      mgp = c(2.5, 1, 0))
 
   # =========================================================================
   # Create Base Plot
@@ -778,7 +778,7 @@ plot_alpha_trajectory_base <- function(alpha,
   plot(time_grid,
        alpha_median,
        type = "l",
-       lwd = 2. 5,
+       lwd = 2.5,
        col = "steelblue",
        xlab = "Time",
        ylab = expression(alpha[t]),
@@ -813,7 +813,7 @@ plot_alpha_trajectory_base <- function(alpha,
   # Add True Alpha (if provided)
   # =========================================================================
 
-  if (!is. null(true_alpha)) {
+  if (!is.null(true_alpha)) {
     lines(time_grid,
           true_alpha,
           lwd = 2.5,
@@ -828,7 +828,7 @@ plot_alpha_trajectory_base <- function(alpha,
   if (ci) {
     polygon(c(time_grid, rev(time_grid)),
             c(alpha_lower, rev(alpha_upper)),
-            col = grDevices::adjustcolor("steelblue", alpha. f = 0.2),
+            col = grDevices::adjustcolor("steelblue", alpha.f = 0.2),
             border = NA)
     # Redraw median line on top
     lines(time_grid,
@@ -876,7 +876,7 @@ plot_alpha_trajectory_base <- function(alpha,
   }
 
   # Add true alpha to legend
-  if (!is. null(true_alpha)) {
+  if (!is.null(true_alpha)) {
     legend_items <- c(expression(alpha[t]), legend_items)
     legend_cols <- c("black", legend_cols)
     legend_lty <- c(2, legend_lty)
@@ -1357,7 +1357,7 @@ plot_bernoulli_alpha_base <- function(x,
 #'   Default is TRUE.
 #' @param true_alpha Numeric vector; true alpha values for simulation studies.
 #'   If provided, overlays the true trajectory.
-#' @param ...  Additional arguments passed to plot_alpha_trajectory_base.
+#' @param ... Additional arguments passed to plot_alpha_trajectory_base.
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
 #'
@@ -1369,9 +1369,9 @@ plot_bernoulli_alpha_base <- function(x,
 #'
 #'   Used by:
 #'   \itemize{
-#'     \item \code{plot. poisson_locallevel}
+#'     \item \code{plot.poisson_locallevel}
 #'     \item \code{plot.poisson_localtrend}
-#'     \item \code{plot. poisson_localacceleration}
+#'     \item \code{plot.poisson_localacceleration}
 #'   }
 #'
 #' @keywords internal
@@ -1381,7 +1381,7 @@ plot_poisson_alpha_base <- function(x,
                                     ci_level = 0.95,
                                     show_obs = TRUE,
                                     true_alpha = NULL,
-                                    .. .) {
+                                    ...) {
 
   # Validate parameters
   if (ci && (!is.numeric(ci_level) || length(ci_level) != 1 ||
@@ -1538,7 +1538,7 @@ plot_mixture_weights_base <- function(alpha,
 
       # Check if all values are the same (avoid division by zero)
       if (max_y - min_y < .Machine$double.eps) {
-        warning("Observed data has no variation (all values equal). ",
+        warning("Observed data has no variation (all values equal).",
                 "Data overlay disabled.")
         show_obs <- FALSE
       } else {
@@ -1556,7 +1556,7 @@ plot_mixture_weights_base <- function(alpha,
 
   # Issue message if overlay requested but no data available
   if (overlay_data && is.null(obs_data)) {
-    message("Note: overlay_data = TRUE but no observed data available. ",
+    message("Note: overlay_data = TRUE but no observed data available.",
             "Plotting without data overlay.")
   }
 

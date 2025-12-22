@@ -5,13 +5,13 @@
 #'   \code{\link{mcmc_poisson_locallevel}} and should not be called directly by
 #'   users.
 #'
-#' @param result List containing MCMC results returned by the C function. 
+#' @param result List containing MCMC results returned by the C function.
 #' @param n_obs Integer, number of observations in the original data.
 #' @param n_chain Integer, number of MCMC samples retained after burn-in and thinning.
-#' @param burnin Integer, number of burn-in iterations. 
-#' @param thinning Integer, thinning interval. 
-#' @param y Numeric vector of original observed data. 
-#' @param target_acceptance Numeric, target acceptance proportion for Metropolis-Hastings. 
+#' @param burnin Integer, number of burn-in iterations.
+#' @param thinning Integer, thinning interval.
+#' @param y Numeric vector of original observed data.
+#' @param target_acceptance Numeric, target acceptance proportion for Metropolis-Hastings.
 #'
 #' @return An object of class \code{c("poisson_locallevel", "pdm_mcmc", "list")}
 #'   with the following structure:
@@ -74,7 +74,7 @@ new_poisson_locallevel <- function(result,
   if (!is.numeric(y) || length(y) != n_obs) {
     stop("Internal error: y must be a numeric vector of length n_obs")
   }
-  if (!is. numeric(target_acceptance) || length(target_acceptance) != 1 ||
+  if (!is.numeric(target_acceptance) || length(target_acceptance) != 1 ||
       target_acceptance <= 0 || target_acceptance >= 1) {
     stop("Internal error: target_acceptance must be a scalar in (0,1)")
   }
@@ -247,7 +247,7 @@ validate_poisson_locallevel <- function(x) {
     }
   }
 
-  if (!is. null(x$accept_prop)) {
+  if (!is.null(x$accept_prop)) {
     if (!is.matrix(x$accept_prop)) {
       stop("Component 'accept_prop' must be a matrix")
     }
@@ -356,7 +356,7 @@ validate_poisson_locallevel <- function(x) {
 
 #' Check if object is of class poisson_locallevel
 #'
-#' @description Test whether an object is of class \code{poisson_locallevel}. 
+#' @description Test whether an object is of class \code{poisson_locallevel}.
 #'
 #' @param x An object to test.
 #'
@@ -409,7 +409,7 @@ is.poisson_locallevel <- function(x) {
 
 #' Print method for poisson_locallevel objects
 #'
-#' @description Prints a concise summary showing posterior medians. 
+#' @description Prints a concise summary showing posterior medians.
 #'   Use \code{summary()} for comprehensive statistics when available.
 #'
 #' @param x An object of class \code{poisson_locallevel}.

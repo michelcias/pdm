@@ -1,21 +1,27 @@
 /**
  * @file init.c
  * @brief R package initialization and function registration
- * @details Handles dynamic loading and registration of C functions for the pdm package. 
+ * @details Handles dynamic loading and registration of C functions for the pdm package.
  *          Registers . Call entry points for MCMC algorithms and utility functions,
  *          ensuring proper interface between R and C code.  Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
- * @date 2025-12-20
- * @version 1.7
+ * @date 2025-12-21
+ * @version 1.8
  *
  * @changelog
- * - v1.7 (2025-12-20): Added registration for Poisson dynamic models with log link: 
+ * - v1.8 (2025-12-21): Added registration for Poisson model test helpers:
+ *     test_cwmh_alpha_log_poisson_locallevel:  5 args
+ *     test_cwmh_alpha_log_poisson:  6 args
+ *     test_generate_alpha_log_poisson_locallevel:  4 args
+ *     test_generate_alpha_log_poisson: 6 args
+ *     test_mcmc_log_poisson_locallevel_fixed_params: 18 args
+ * - v1.7 (2025-12-20): Added registration for Poisson dynamic models with log link:
  *     C_MCMC_log_poisson_locallevel:  18 args
  *     C_MCMC_log_poisson_localtrend: 22 args
  *     C_MCMC_log_poisson_localacceleration: 26 args
  * - v1.6 (2025-10-25): Added registration for Gaussian mixture model with
- *     local-acceleration weights. 
+ *     local-acceleration weights.
  *     C_MCMC_normal_mixture_localacceleration: 35 args
  * - v1.5 (2025-10-24): Added registration for Gaussian mixture model with dynamic
  *     weights and local-level structure.
@@ -137,6 +143,15 @@
  *          - test_mcmc_binomial_locallevel_fixed_params: Binomial full MCMC (19 args)
  *          - test_mcmc_probit_bernoulli_locallevel_fixed_params: Bernoulli full MCMC (11 args)
  *
+ *          *Poisson Component Testing - Log Link (4 functions):*
+ *          - test_generate_alpha_log_poisson_locallevel: Local level alpha (4 args)
+ *          - test_cwmh_alpha_log_poisson_locallevel: Local level CWMH (5 args)
+ *          - test_generate_alpha_log_poisson: Local trend alpha (6 args)
+ *          - test_cwmh_alpha_log_poisson:  Local trend CWMH (6 args)
+ *
+ *          *Complete Poisson MCMC Testing with Parameter Fixing (1 function):*
+ *          - test_mcmc_log_poisson_locallevel_fixed_params:  Poisson full MCMC (18 args)
+ *
  *          **Version History:**
  *          - v1.0 (Initial): Basic MCMC samplers and utility functions
  *          - v1.1 (2025-09-23): Enhanced adaptive MCMC with threshold parameters
@@ -146,6 +161,7 @@
  *          - v1.5 (2025-10-23): Added Gaussian mixture model with dynamic weights (local trend)
  *          - v1.6 (2025-10-24): Added Gaussian mixture model with local-level weights
  *          - v1.7 (2025-12-20): Added Poisson dynamic models with log link (local level, trend, acceleration)
+ *          - v1.8 (2025-12-21): Added Poisson model test helpers (CWMH, alpha generation, fixed-param MCMC)
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
  * @note Argument counts are enforced by R's . Call() mechanism at runtime
@@ -230,9 +246,16 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_test_generate_alpha_probit_bernoulli_locallevel", (DL_FUNC) &test_generate_alpha_probit_bernoulli_locallevel, 4},
   {"_pdm_test_generate_alpha_probit_bernoulli",            (DL_FUNC) &test_generate_alpha_probit_bernoulli,            6},
 
+  // --- Poisson Model Component Tests (Log Link) ---
+  {"_pdm_test_generate_alpha_log_poisson_locallevel", (DL_FUNC) &test_generate_alpha_log_poisson_locallevel, 4},
+  {"_pdm_test_cwmh_alpha_log_poisson_locallevel",     (DL_FUNC) &test_cwmh_alpha_log_poisson_locallevel,     5},
+  {"_pdm_test_generate_alpha_log_poisson",            (DL_FUNC) &test_generate_alpha_log_poisson,            6},
+  {"_pdm_test_cwmh_alpha_log_poisson",                (DL_FUNC) &test_cwmh_alpha_log_poisson,                6},
+
   // --- Complete MCMC Simulation Tests with Parameter Fixing ---
   {"_pdm_test_mcmc_binomial_locallevel_fixed_params",         (DL_FUNC) &test_mcmc_binomial_locallevel_fixed_params,         19},
   {"_pdm_test_mcmc_probit_bernoulli_locallevel_fixed_params", (DL_FUNC) &test_mcmc_probit_bernoulli_locallevel_fixed_params, 11},
+  {"_pdm_test_mcmc_log_poisson_locallevel_fixed_params",      (DL_FUNC) &test_mcmc_log_poisson_locallevel_fixed_params,      18},
 
   //============================================================================
   // END OF TABLE MARKER
@@ -245,7 +268,7 @@ static const R_CallMethodDef CallEntries[] = {
 //==============================================================================
 
 /**
- * @brief Register compiled routines for the pdm package. 
+ * @brief Register compiled routines for the pdm package.
  *
  * @details The initialization routine registers every compiled entry point with
  *          R's dynamic loader and disables runtime symbol lookup to enforce
@@ -264,7 +287,7 @@ static const R_CallMethodDef CallEntries[] = {
  * @note All production and testing routines must appear in CallEntries to remain
  *       accessible from R wrappers.
  *
- * @warning Calling this function manually from user code is unsupported. 
+ * @warning Calling this function manually from user code is unsupported.
  * @warning Updating CallEntries without synchronising the R wrappers will break
  *          the package interface.
  *

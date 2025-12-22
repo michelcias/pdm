@@ -6,7 +6,7 @@
  * @version 1.0
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of Poisson
- *          dynamic models with log link and local-level structure: 
+ *          dynamic models with log link and local-level structure:
  *          - Log-Poisson: Component-wise Metropolis-Hastings with adaptive tuning
  *
  *          All implementations utilize memory-efficient current/previous iteration buffers
@@ -30,15 +30,15 @@
 #include <string.h>  /* memcpy */
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
-#include "generate_alpha_poisson. h"
+#include "generate_alpha_poisson.h"
 #include "utils.h"
 #include "mcmc_progress_bar.h"
-#include "mcmc_poisson_locallevel. h"
+#include "mcmc_poisson_locallevel.h"
 
 /**
  * @brief Gibbs sampler for local-level Poisson dynamic model with log link
  *
- * @details Implements a complete Gibbs MCMC algorithm for the local-level Poisson model: 
+ * @details Implements a complete Gibbs MCMC algorithm for the local-level Poisson model:
  *
  *          **Observation equation:**
  *          y_t ~ Poisson(alpha_t), where alpha_t = exp(theta_{t,1})
@@ -68,12 +68,12 @@
  *
  *          Total iterations: burnin + (n_chain - 1) * thinning + 1
  *
- * @param y_                       Numeric vector [n] of observed Poisson counts. 
+ * @param y_                       Numeric vector [n] of observed Poisson counts.
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for autocorrelation reduction.
  * @param n_chain_                 Number of retained posterior samples.
- * @param prior_theta01_mean_      Prior mean for theta_{0,1}. 
- * @param prior_theta01_prec_      Prior precision for theta_{0,1}. 
+ * @param prior_theta01_mean_      Prior mean for theta_{0,1}.
+ * @param prior_theta01_prec_      Prior precision for theta_{0,1}.
  * @param prior_prec1_shape_       Gamma shape for 1/W_1.
  * @param prior_prec1_rate_        Gamma rate for 1/W_1.
  * @param lag_update_              Adaptation frequency (iterations).
@@ -82,7 +82,7 @@
  * @param decay_exponent_          Adaptation decay exponent.
  * @param target_acceptance_       Target acceptance proportion.
  * @param min_deviation_threshold_ Minimum deviation to trigger adaptation (>= 0).
- * @param return_log_sigma_        Flag to return log_sigma diagnostics. 
+ * @param return_log_sigma_        Flag to return log_sigma diagnostics.
  * @param return_accept_prop_      Flag to return accept_prop diagnostics.
  * @param verbose_                 Logical:  display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_               Integer: width of progress bar in characters (10-120).
@@ -250,7 +250,7 @@ SEXP C_MCMC_log_poisson_locallevel(SEXP y_,
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */
-  /* Uses current/previous buffers for memory efficiency. 
+  /* Uses current/previous buffers for memory efficiency.
    * Only retained samples are copied to output (post burn-in, thinned). */
   int chain_idx = 0;
 
@@ -260,7 +260,7 @@ SEXP C_MCMC_log_poisson_locallevel(SEXP y_,
     int compute_alpha = (ii >= burnin && ((ii - burnin) % thinning) == 0) ?  1 : 0;
 
     /* ===== Step 1: Sample State Vector theta_1 and Rates alpha ===== */
-    /* Draw theta_1 | y, theta_01, W_1 using component-wise Metropolis-Hastings. 
+    /* Draw theta_1 | y, theta_01, W_1 using component-wise Metropolis-Hastings.
      * Alpha is computed conditionally based on whether this iteration will be retained. */
     generate_alpha_log_poisson_locallevel(
       theta_1_previous,       /* theta_1_previous:  state from previous iteration [n] */

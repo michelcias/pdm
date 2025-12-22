@@ -43,7 +43,7 @@
 #'
 #' For time-varying parameters like \eqn{\theta_{t,1}}, \eqn{\theta_{t,2}},
 #' \eqn{\theta_{t,3}}, and \eqn{\alpha_t}, only summary statistics across time
-#' are reported.  Use \code{plot()} to visualize the full trajectories. 
+#' are reported. Use \code{plot()} to visualize the full trajectories.
 #'
 #' @examples
 #' \dontrun{
@@ -59,9 +59,9 @@
 #' prec3_true <- 1600      # Acceleration innovation precision (1/W[3])
 #'
 #' # Use a fixed seed for data simulation
-#' set. seed(123)
+#' set.seed(123)
 #'
-#' # Generate noise terms: 
+#' # Generate noise terms:
 #' u1 <- rnorm(n, sd = sqrt(1/prec1_true))  # Level evolution noise (u1[t])
 #' u2 <- rnorm(n, sd = sqrt(1/prec2_true))  # Trend evolution noise (u2[t])
 #' u3 <- rnorm(n, sd = sqrt(1/prec3_true))  # Acceleration evolution noise (u3[t])
@@ -105,7 +105,7 @@
 #'   base_adaptation_rate    = 1,
 #'   decay_exponent          = 0.6,
 #'   target_acceptance       = 0.44,
-#'   min_deviation_threshold = NULL,  # Uses practical default:  1. 0/50 = 0.02
+#'   min_deviation_threshold = NULL,  # Uses practical default:  1.0/50 = 0.02
 #'   return_log_sigma        = FALSE,
 #'   return_accept_prop      = TRUE,
 #'   verbose                 = TRUE,  # Enable progress bar
@@ -192,7 +192,7 @@ summary.poisson_localacceleration <- function(object,
 #' @param digits Integer, number of significant digits to display. Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return Invisibly returns the input object \code{x}. 
+#' @return Invisibly returns the input object \code{x}.
 #'
 #' @examples
 #' \dontrun{

@@ -7,10 +7,10 @@
 #'   the result of calling \code{\link{mcmc_poisson_localtrend}}.
 #' @param probs Numeric vector of probabilities for credible intervals.
 #'   Default is \code{c(0.025, 0.975)} for 95\% credible intervals.
-#' @param ...  Additional arguments (currently unused).
+#' @param ... Additional arguments (currently unused).
 #'
 #' @return An object of class \code{summary.poisson_localtrend}, which is
-#'   a list containing: 
+#'   a list containing:
 #'   \describe{
 #'     \item{\code{model_type}}{Character string indicating the model type}
 #'     \item{\code{n_obs}}{Number of observations}
@@ -29,7 +29,7 @@
 #'   }
 #'
 #' @details
-#' This method provides complete posterior inference with multiple statistics: 
+#' This method provides complete posterior inference with multiple statistics:
 #' \describe{
 #'   \item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
 #'   \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
@@ -40,8 +40,8 @@
 #' For a quick overview showing only medians, use \code{print(x)}.
 #'
 #' For time-varying parameters like \eqn{\theta_{t,1}}, \eqn{\theta_{t,2}},
-#' and \eqn{\alpha_t}, only summary statistics across time are reported. 
-#' Use \code{plot()} to visualize the full trajectories. 
+#' and \eqn{\alpha_t}, only summary statistics across time are reported.
+#' Use \code{plot()} to visualize the full trajectories.
 #'
 #' @examples
 #' \dontrun{
@@ -55,9 +55,9 @@
 #' prec2_true <- 400       # Trend innovation precision (1/W[2])
 #'
 #' # Use a fixed seed for data simulation
-#' set. seed(123)
+#' set.seed(123)
 #'
-#' # Generate noise terms: 
+#' # Generate noise terms:
 #' u1 <- rnorm(n, sd = sqrt(1/prec1_true))  # Level evolution noise (u1[t])
 #' u2 <- rnorm(n, sd = sqrt(1/prec2_true))  # Trend evolution noise (u2[t])
 #'
@@ -171,7 +171,7 @@ summary.poisson_localtrend <- function(object,
 #' @param digits Integer, number of significant digits to display. Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return Invisibly returns the input object \code{x}. 
+#' @return Invisibly returns the input object \code{x}.
 #'
 #' @examples
 #' \dontrun{
@@ -182,7 +182,7 @@ summary.poisson_localtrend <- function(object,
 #' prec1_true <- 100
 #' prec2_true <- 400
 #'
-#' set. seed(123)
+#' set.seed(123)
 #' u1 <- rnorm(n, sd = sqrt(1/prec1_true))
 #' u2 <- rnorm(n, sd = sqrt(1/prec2_true))
 #'
@@ -233,7 +233,7 @@ summary.poisson_localtrend <- function(object,
 #'   \code{\link{print.poisson_localtrend}}
 #'
 #' @export
-print.summary. poisson_localtrend <- function(x, digits = 3, ...) {
+print.summary.poisson_localtrend <- function(x, digits = 3, ...) {
 
   cat("\n")
   cat("Summary: Log-Poisson Local-Trend Model\n")

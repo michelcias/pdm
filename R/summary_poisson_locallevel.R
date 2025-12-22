@@ -1,15 +1,15 @@
 #' Summary method for poisson_locallevel objects
 #'
 #' @description Produces comprehensive posterior statistics including means,
-#'   standard deviations, medians, and credible intervals. 
+#'   standard deviations, medians, and credible intervals.
 #'
 #' @param object An object of class \code{poisson_locallevel}, typically
 #'   the result of calling \code{\link{mcmc_poisson_locallevel}}.
-#' @param probs Numeric vector of probabilities for credible intervals. 
+#' @param probs Numeric vector of probabilities for credible intervals.
 #'   Default is \code{c(0.025, 0.975)} for 95\% credible intervals.
-#' @param ...  Additional arguments (currently unused).
+#' @param ... Additional arguments (currently unused).
 #'
-#' @return An object of class \code{summary. poisson_locallevel}, which is
+#' @return An object of class \code{summary.poisson_locallevel}, which is
 #'   a list containing:
 #'   \describe{
 #'     \item{\code{model_type}}{Character string indicating the model type}
@@ -27,7 +27,7 @@
 #'   }
 #'
 #' @details
-#' This method provides complete posterior inference with multiple statistics: 
+#' This method provides complete posterior inference with multiple statistics:
 #' \describe{
 #'   \item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
 #'   \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
@@ -35,10 +35,10 @@
 #'   \item{\strong{CI}}{Credible intervals at specified probabilities}
 #' }
 #'
-#' For a quick overview showing only medians, use \code{print(x)}. 
+#' For a quick overview showing only medians, use \code{print(x)}.
 #'
 #' For time-varying parameters like \eqn{\theta_{t,1}} and \eqn{\alpha_t},
-#' only summary statistics across time are reported.  Use \code{plot()} to
+#' only summary statistics across time are reported. Use \code{plot()} to
 #' visualize the full trajectories.
 #'
 #' @examples
@@ -46,14 +46,14 @@
 #' ## Simulation of data
 #' n <- 500        # Number of observations to simulate
 #'
-#' # True parameters for simulation: 
+#' # True parameters for simulation:
 #' theta0_true <- 0.5     # Initial state (theta[01]) on log scale
 #' prec1_true <- 100      # Innovation precision (1/W[1])
 #'
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
 #'
-#' # Generate noise terms: 
+#' # Generate noise terms:
 #' u1 <- rnorm(n, sd = sqrt(1/prec1_true))  # Evolution noise (u1[t])
 #'
 #' # Simulate latent states and observations:
@@ -141,15 +141,15 @@ summary.poisson_locallevel <- function(object,
 
 #' Print method for summary.poisson_locallevel objects
 #'
-#' @description Prints comprehensive posterior statistics in a readable format. 
+#' @description Prints comprehensive posterior statistics in a readable format.
 #'
 #' @param x An object of class \code{summary.poisson_locallevel}, typically
 #'   the result of calling \code{summary()} on a \code{poisson_locallevel}
 #'   object.
 #' @param digits Integer, number of significant digits to display. Default is 3.
-#' @param ...  Additional arguments (currently unused).
+#' @param ... Additional arguments (currently unused).
 #'
-#' @return Invisibly returns the input object \code{x}. 
+#' @return Invisibly returns the input object \code{x}.
 #'
 #' @examples
 #' \dontrun{

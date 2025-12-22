@@ -1707,6 +1707,7 @@ SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
                                      SEXP y_) {
   const int LAG_UPDATE = 50;
   const int ITER = 1;
+  const int COMPUTE_ALPHA = 1;
   const double MAX_STEP = 0.1;
   const double BASE_ADAPT = 1.0;
   const double DECAY = 0.5;
@@ -1765,7 +1766,7 @@ SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
     DECAY,                /* decay_exponent */
     TARGET,               /* target_acceptance */
     MIN_DEV,              /* min_deviation_threshold */
-    1                     /* compute_alpha */
+    COMPUTE_ALPHA         /* compute_alpha */
   );
   PutRNGstate();
 

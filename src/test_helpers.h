@@ -608,4 +608,155 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
                                                         SEXP prior_prec1_shape_,
                                                         SEXP prior_prec1_rate_);
 
+//==============================================================================
+// POISSON MODEL TEST HELPERS
+//==============================================================================
+
+/**
+ * @brief Test wrapper for component-wise MH in log-Poisson local level model
+ *
+ * @details Exposes cwmh_alpha_log_poisson_locallevel for testing with fixed
+ *          adaptation parameters.
+ *
+ * @param theta_1_in_     Numeric vector with previous state draws [n].
+ * @param theta_01_in_    Scalar prior mean for initial state.
+ * @param prec_theta1_in_ Scalar prior precision for state.
+ * @param y_              Observed Poisson counts [n].
+ * @param log_sigma_in_   Numeric vector of proposal log standard deviations [n].
+ *
+ * @return A list containing updated state draws and log-scale rates (alpha).
+ */
+SEXP test_cwmh_alpha_log_poisson_locallevel(SEXP theta_1_in_,
+                                            SEXP theta_01_in_,
+                                            SEXP prec_theta1_in_,
+                                            SEXP y_,
+                                            SEXP log_sigma_in_);
+
+/**
+ * @brief Test wrapper for adaptive alpha generation in log-Poisson local level model
+ *
+ * @details Runs generate_alpha_log_poisson_locallevel with predetermined tuning
+ *          constants for testing adaptive behavior.
+ *
+ * @param theta_1_in_     Numeric vector with previous state draws [n].
+ * @param theta_01_in_    Scalar prior mean for initial state.
+ * @param prec_theta1_in_ Scalar prior precision for state.
+ * @param y_              Observed Poisson counts [n].
+ *
+ * @return A list containing updated state draws and log-scale rates.
+ */
+SEXP test_generate_alpha_log_poisson_locallevel(SEXP theta_1_in_,
+                                                SEXP theta_01_in_,
+                                                SEXP prec_theta1_in_,
+                                                SEXP y_);
+
+/**
+ * @brief Test wrapper for component-wise MH in log-Poisson local trend model
+ *
+ * @details Exposes cwmh_alpha_log_poisson for testing with fixed adaptation
+ *          parameters.
+ *
+ * @param theta_1_in_     Numeric vector with previous level state draws [n].
+ * @param theta_2_in_     Numeric vector with current trend state draws [n].
+ * @param theta_01_in_    Scalar prior mean for initial level.
+ * @param theta_02_in_    Scalar prior mean for initial trend.
+ * @param prec_theta1_in_ Scalar prior precision for level.
+ * @param y_              Observed Poisson counts [n].
+ *
+ * @return A list containing updated level state draws and log-scale rates.
+ */
+SEXP test_cwmh_alpha_log_poisson(SEXP theta_1_in_,
+                                 SEXP theta_2_in_,
+                                 SEXP theta_01_in_,
+                                 SEXP theta_02_in_,
+                                 SEXP prec_theta1_in_,
+                                 SEXP y_);
+
+/**
+ * @brief Test wrapper for adaptive alpha generation in log-Poisson local trend model
+ *
+ * @details Runs generate_alpha_log_poisson with predetermined tuning constants
+ *          for testing adaptive behavior.
+ *
+ * @param theta_1_in_     Numeric vector with previous level state draws [n].
+ * @param theta_2_in_     Numeric vector with current trend state draws [n].
+ * @param theta_01_in_    Scalar prior mean for initial level.
+ * @param theta_02_in_    Scalar prior mean for initial trend.
+ * @param prec_theta1_in_ Scalar prior precision for level.
+ * @param y_              Observed Poisson counts [n].
+ *
+ * @return A list containing updated level state draws and log-scale rates.
+ */
+SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
+                                     SEXP theta_2_in_,
+                                     SEXP theta_01_in_,
+                                     SEXP theta_02_in_,
+                                     SEXP prec_theta1_in_,
+                                     SEXP y_);
+
+/**
+ * @brief Execute full MCMC sampler for log-Poisson local level model with parameter fixing
+ *
+ * @details Implements full MCMC loop that conditionally fixes parameters during sampling
+ *          based on which "true" parameters are provided.  Critical for testing statistical
+ *          correctness by validating conditional distributions.
+ *
+ *          **Conditional sampling behavior:**
+ *          - If theta_1_true provided: theta_1 fixed to true values (not sampled)
+ *          - If theta_01_true provided: theta_01 fixed to true value (not sampled)
+ *          - If prec_theta1_true provided:  prec_theta1 fixed to true value (not sampled)
+ *          - Otherwise: parameter sampled normally from conditional posterior
+ *
+ *          **Sampling sequence per iteration (when not fixed):**
+ *          1. theta_1, alpha | y, theta_01, prec_theta1 -> CWMH with adaptive tuning
+ *          2. prec_theta1 | theta_1, theta_01 -> Gamma posterior
+ *          3. theta_01 | theta_1, prec_theta1 -> Normal posterior
+ *
+ * @param y_                       Observed Poisson counts [n].
+ * @param burnin_                  Number of burn-in iterations (discarded).
+ * @param thinning_                Thinning interval for retained samples.
+ * @param n_chain_                 Number of chains to simulate.
+ * @param theta_1_true_            Optional:  true theta_1 values [n] to fix (NULL = sample).
+ * @param theta_01_true_           Optional: true theta_01 value to fix (NULL = sample).
+ * @param prec_theta1_true_        Optional: true prec_theta1 value to fix (NULL = sample).
+ * @param prior_theta01_mean_      Prior mean hyperparameter for theta_{0,1}.
+ * @param prior_theta01_prec_      Prior precision hyperparameter for theta_{0,1}.
+ * @param prior_prec1_shape_       Gamma shape hyperparameter for 1/W_1.
+ * @param prior_prec1_rate_        Gamma rate hyperparameter for 1/W_1.
+ * @param lag_update_              Adaptation window length (iterations).
+ * @param max_step_size_           Maximum adaptation step size.
+ * @param base_adaptation_rate_    Base adaptation rate.
+ * @param decay_exponent_          Adaptation decay exponent.
+ * @param target_acceptance_       Target acceptance probability.
+ * @param return_log_sigma_        Logical flag:  return log_sigma diagnostics.
+ * @param return_accept_prop_      Logical flag: return accept_prop diagnostics.
+ *
+ * @return R list with posterior samples (matching production sampler output).
+ *
+ * @note Validates Poisson constraints:  y[i] >= 0 for all i.
+ * @note Validates parameter positivity: precisions > 0.
+ * @note When parameters fixed, corresponding posterior samples are constant.
+ *
+ * @warning For testing only.  Do not use for production inference.
+ * @warning Fixed parameters must have correct dimensions matching observed data.
+ */
+SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
+                                                   SEXP burnin_,
+                                                   SEXP thinning_,
+                                                   SEXP n_chain_,
+                                                   SEXP theta_1_true_,
+                                                   SEXP theta_01_true_,
+                                                   SEXP prec_theta1_true_,
+                                                   SEXP prior_theta01_mean_,
+                                                   SEXP prior_theta01_prec_,
+                                                   SEXP prior_prec1_shape_,
+                                                   SEXP prior_prec1_rate_,
+                                                   SEXP lag_update_,
+                                                   SEXP max_step_size_,
+                                                   SEXP base_adaptation_rate_,
+                                                   SEXP decay_exponent_,
+                                                   SEXP target_acceptance_,
+                                                   SEXP return_log_sigma_,
+                                                   SEXP return_accept_prop_);
+
 #endif /* TEST_HELPERS_H */

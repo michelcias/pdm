@@ -38,6 +38,8 @@
 #include "cwmh_binomial.h"
 #include "generate_alpha_binomial.h"
 #include "mcmc_binomial_locallevel.h"
+#include "cwmh_poisson.h"
+#include "generate_alpha_poisson.h"
 #include "test_helpers.h"
 
 //==============================================================================
@@ -1395,6 +1397,792 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
 
   UNPROTECT(protect_count);
   return res;
+}
+//==============================================================================
+// POISSON CWMH WRAPPERS
+//==============================================================================
+
+/**
+ * @brief Run a single CWMH update for the log-Poisson local level model.
+ *
+ * @details Provides deterministic wrapper around production sampler by setting
+ *          small adaptation windows and exposing resulting states and acceptance
+ *          diagnostics.
+ *
+ * @param theta_1_in_     Numeric vector with previous state draws.
+ * @param theta_01_in_    Scalar prior mean for initial state.
+ * @param prec_theta1_in_ Scalar prior precision for state.
+ * @param y_              Observed Poisson counts.
+ * @param log_sigma_in_   Numeric vector of proposal log standard deviations.
+ *
+ * @return A list containing updated state draws and log-scale rates (alpha).
+ */
+SEXP test_cwmh_alpha_log_poisson_locallevel(SEXP theta_1_in_,
+                                            SEXP theta_01_in_,
+                                            SEXP prec_theta1_in_,
+                                            SEXP y_,
+                                            SEXP log_sigma_in_) {
+  const int LAG_UPDATE = 10;
+  const int ITER = 1;
+  const int COMPUTE_ALPHA = 1;
+
+  int protect_count = 0;
+  SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  protect_count++;
+  double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  protect_count++;
+  ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
+  SEXP log_sigma = PROTECT(coerceVector(log_sigma_in_, REALSXP));
+  protect_count++;
+  ensure_length(log_sigma, LENGTH(theta_1_prev), "log_sigma", "theta_1_in");
+  int n = LENGTH(theta_1_prev);
+
+  double *theta_1_current = (double *) R_alloc(n, sizeof(double));
+  double *alpha_current = (double *) R_alloc(n, sizeof(double));
+  double *theta_1_updated = (double *) R_alloc(LAG_UPDATE * n, sizeof(double));
+  memset(theta_1_updated, 0, LAG_UPDATE * n * sizeof(double));
+  double *hat_theta_1 = (double *) R_alloc(n, sizeof(double));
+  double *theta_1_new = (double *) R_alloc(n, sizeof(double));
+  double *log_accept_prob = (double *) R_alloc(n, sizeof(double));
+
+  GetRNGstate();
+  cwmh_alpha_log_poisson_locallevel(
+    REAL(theta_1_prev),  /* theta_1_previous */
+    theta_1_current,     /* theta_1_current */
+    alpha_current,       /* alpha_current */
+    theta_01_prev,       /* theta_01_previous */
+    prec_theta1_prev,    /* prec_theta1_previous */
+    theta_1_updated,     /* theta_1_updated */
+    REAL(y),             /* y */
+    REAL(log_sigma),     /* log_sigma */
+    hat_theta_1,         /* hat_theta_1 */
+    theta_1_new,         /* theta_1_new */
+    log_accept_prob,     /* log_accept_prob */
+    LAG_UPDATE,          /* lag_update */
+    n,                   /* n */
+    ITER,                /* iter */
+    COMPUTE_ALPHA        /* compute_alpha */
+  );
+  PutRNGstate();
+
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
+  protect_count++;
+  SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
+  protect_count++;
+  SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
+  protect_count++;
+  memcpy(REAL(theta_1_out), theta_1_current, n * sizeof(double));
+  memcpy(REAL(alpha_out), alpha_current, n * sizeof(double));
+
+  SEXP names = PROTECT(allocVector(STRSXP, 2));
+  protect_count++;
+  SET_STRING_ELT(names, 0, mkChar("theta_1"));
+  SET_STRING_ELT(names, 1, mkChar("alpha"));
+
+  SET_VECTOR_ELT(res, 0, theta_1_out);
+  SET_VECTOR_ELT(res, 1, alpha_out);
+  setAttrib(res, R_NamesSymbol, names);
+
+  UNPROTECT(protect_count);
+  return res;
+}
+
+/**
+ * @brief Run a single CWMH update for the two-parameter log-Poisson local trend model.
+ *
+ * @details Mirrors production sampler while keeping proposals fixed so that
+ *          unit tests can inspect latent states and alpha values.
+ *
+ * @param theta_1_in_     Numeric vector with previous level state draws.
+ * @param theta_2_in_     Numeric vector with current trend state draws.
+ * @param theta_01_in_    Scalar prior mean for initial level.
+ * @param theta_02_in_    Scalar prior mean for initial trend.
+ * @param prec_theta1_in_ Scalar prior precision for level.
+ * @param y_              Observed Poisson counts.
+ *
+ * @return A list containing updated level state draws and log-scale rates.
+ */
+SEXP test_cwmh_alpha_log_poisson(SEXP theta_1_in_,
+                                 SEXP theta_2_in_,
+                                 SEXP theta_01_in_,
+                                 SEXP theta_02_in_,
+                                 SEXP prec_theta1_in_,
+                                 SEXP y_) {
+  const int LAG_UPDATE = 10;
+  const int ITER = 1;
+  const int COMPUTE_ALPHA = 1;
+  const double DEFAULT_LOG_SIGMA = log(0.1);
+
+  int protect_count = 0;
+  SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  protect_count++;
+  SEXP theta_2_curr = PROTECT(coerceVector(theta_2_in_, REALSXP));
+  protect_count++;
+  ensure_length(theta_2_curr, LENGTH(theta_1_prev), "theta_2_in", "theta_1_in");
+  double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
+  double theta_02_prev = require_real_scalar(theta_02_in_, "theta_02_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  protect_count++;
+  ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
+  int n = LENGTH(theta_1_prev);
+
+  double *theta_1_current = (double *) R_alloc(n, sizeof(double));
+  double *alpha_current = (double *) R_alloc(n, sizeof(double));
+  double *theta_1_updated = (double *) R_alloc(LAG_UPDATE * n, sizeof(double));
+  memset(theta_1_updated, 0, LAG_UPDATE * n * sizeof(double));
+  double *log_sigma = (double *) R_alloc(n, sizeof(double));
+  for (int i = 0; i < n; i++) {
+    log_sigma[i] = DEFAULT_LOG_SIGMA;
+  }
+  double *hat_theta_1 = (double *) R_alloc(n, sizeof(double));
+  double *theta_1_new = (double *) R_alloc(n, sizeof(double));
+  double *log_accept_prob = (double *) R_alloc(n, sizeof(double));
+
+  GetRNGstate();
+  cwmh_alpha_log_poisson(
+    REAL(theta_1_prev),  /* theta_1_previous */
+    theta_1_current,     /* theta_1_current */
+    REAL(theta_2_curr),  /* theta_2_current */
+    alpha_current,       /* alpha_current */
+    theta_01_prev,       /* theta_01_previous */
+    theta_02_prev,       /* theta_02_previous */
+    prec_theta1_prev,    /* prec_theta1_previous */
+    theta_1_updated,     /* theta_1_updated */
+    REAL(y),             /* y */
+    log_sigma,           /* log_sigma */
+    hat_theta_1,         /* hat_theta_1 */
+    theta_1_new,         /* theta_1_new */
+    log_accept_prob,     /* log_accept_prob */
+    LAG_UPDATE,          /* lag_update */
+    n,                   /* n */
+    ITER,                /* iter */
+    COMPUTE_ALPHA        /* compute_alpha */
+  );
+  PutRNGstate();
+
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
+  protect_count++;
+  SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
+  protect_count++;
+  SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
+  protect_count++;
+  memcpy(REAL(theta_1_out), theta_1_current, n * sizeof(double));
+  memcpy(REAL(alpha_out), alpha_current, n * sizeof(double));
+
+  SEXP names = PROTECT(allocVector(STRSXP, 2));
+  protect_count++;
+  SET_STRING_ELT(names, 0, mkChar("theta_1"));
+  SET_STRING_ELT(names, 1, mkChar("alpha"));
+  SET_VECTOR_ELT(res, 0, theta_1_out);
+  SET_VECTOR_ELT(res, 1, alpha_out);
+  setAttrib(res, R_NamesSymbol, names);
+
+  UNPROTECT(protect_count);
+  return res;
+}
+
+//==============================================================================
+// POISSON ALPHA GENERATION WRAPPERS
+//==============================================================================
+
+/**
+ * @brief Adaptively generate alphas for log-Poisson local level model.
+ *
+ * @details Runs generate_alpha_log_poisson_locallevel with predetermined tuning
+ *          constants so that tests can confirm adaptive behaviour.
+ *
+ * @param theta_1_in_     Numeric vector with previous state draws.
+ * @param theta_01_in_    Scalar prior mean for initial state.
+ * @param prec_theta1_in_ Scalar prior precision for state.
+ * @param y_              Observed Poisson counts.
+ *
+ * @return A list containing updated state draws and log-scale rates.
+ */
+SEXP test_generate_alpha_log_poisson_locallevel(SEXP theta_1_in_,
+                                                SEXP theta_01_in_,
+                                                SEXP prec_theta1_in_,
+                                                SEXP y_) {
+  const int LAG_UPDATE = 50;
+  const int ITER = 1;
+  const double MAX_STEP = 0.1;
+  const double BASE_ADAPT = 1.0;
+  const double DECAY = 0.5;
+  const double TARGET = 0.44;
+  const double MIN_DEV = 1.0 / (double)LAG_UPDATE;
+  const double DEFAULT_LOG_SIGMA = log(0.1);
+
+  int protect_count = 0;
+  SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  protect_count++;
+  double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  protect_count++;
+  ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
+  int n = LENGTH(theta_1_prev);
+
+  double *theta_1_current = (double *) R_alloc(n, sizeof(double));
+  double *alpha_current = (double *) R_alloc(n, sizeof(double));
+  double *theta_1_updated = (double *) R_alloc(LAG_UPDATE * n, sizeof(double));
+  memset(theta_1_updated, 0, LAG_UPDATE * n * sizeof(double));
+  double *accept_prop = (double *) R_alloc(n, sizeof(double));
+  double *log_sigma = (double *) R_alloc(n, sizeof(double));
+  for (int i = 0; i < n; i++) {
+    log_sigma[i] = DEFAULT_LOG_SIGMA;
+  }
+  double *hat_theta_1 = (double *) R_alloc(n, sizeof(double));
+  double *theta_1_new = (double *) R_alloc(n, sizeof(double));
+  double *log_accept_prob = (double *) R_alloc(n, sizeof(double));
+
+  GetRNGstate();
+  generate_alpha_log_poisson_locallevel(
+    REAL(theta_1_prev),   /* theta_1_previous */
+    theta_1_current,      /* theta_1_current */
+    alpha_current,        /* alpha_current */
+    theta_01_prev,        /* theta_01_previous */
+    prec_theta1_prev,     /* prec_theta1_previous */
+    theta_1_updated,      /* theta_1_updated */
+    REAL(y),              /* y */
+    accept_prop,          /* accept_prop */
+    log_sigma,            /* log_sigma */
+    hat_theta_1,          /* hat_theta_1 */
+    theta_1_new,          /* theta_1_new */
+    log_accept_prob,      /* log_accept_prob */
+    LAG_UPDATE,           /* lag_update */
+    n,                    /* n */
+    ITER,                 /* iter */
+    MAX_STEP,             /* max_step_size */
+    BASE_ADAPT,           /* base_adaptation_rate */
+    DECAY,                /* decay_exponent */
+    TARGET,               /* target_acceptance */
+    MIN_DEV,              /* min_deviation_threshold */
+    1                     /* compute_alpha */
+  );
+  PutRNGstate();
+
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
+  protect_count++;
+  SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
+  protect_count++;
+  SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
+  protect_count++;
+  memcpy(REAL(theta_1_out), theta_1_current, n * sizeof(double));
+  memcpy(REAL(alpha_out), alpha_current, n * sizeof(double));
+
+  SEXP names = PROTECT(allocVector(STRSXP, 2));
+  protect_count++;
+  SET_STRING_ELT(names, 0, mkChar("theta_1"));
+  SET_STRING_ELT(names, 1, mkChar("alpha"));
+  SET_VECTOR_ELT(res, 0, theta_1_out);
+  SET_VECTOR_ELT(res, 1, alpha_out);
+  setAttrib(res, R_NamesSymbol, names);
+
+  UNPROTECT(protect_count);
+  return res;
+}
+
+/**
+ * @brief Adaptively generate alphas for two-parameter log-Poisson local trend model.
+ *
+ * @details Exposes adaptive alpha generator with deterministic tuning so that
+ *          regression tests can verify joint state updates.
+ *
+ * @param theta_1_in_     Numeric vector with previous level state draws.
+ * @param theta_2_in_     Numeric vector with current trend state draws.
+ * @param theta_01_in_    Scalar prior mean for initial level.
+ * @param theta_02_in_    Scalar prior mean for initial trend.
+ * @param prec_theta1_in_ Scalar prior precision for level.
+ * @param y_              Observed Poisson counts.
+ *
+ * @return A list containing updated level state draws and log-scale rates.
+ */
+SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
+                                     SEXP theta_2_in_,
+                                     SEXP theta_01_in_,
+                                     SEXP theta_02_in_,
+                                     SEXP prec_theta1_in_,
+                                     SEXP y_) {
+  const int LAG_UPDATE = 50;
+  const int ITER = 1;
+  const double MAX_STEP = 0.1;
+  const double BASE_ADAPT = 1.0;
+  const double DECAY = 0.5;
+  const double TARGET = 0.44;
+  const double MIN_DEV = 1.0 / (double)LAG_UPDATE;
+  const double DEFAULT_LOG_SIGMA = log(0.1);
+
+  int protect_count = 0;
+  SEXP theta_1_prev = PROTECT(coerceVector(theta_1_in_, REALSXP));
+  protect_count++;
+  SEXP theta_2_curr = PROTECT(coerceVector(theta_2_in_, REALSXP));
+  protect_count++;
+  ensure_length(theta_2_curr, LENGTH(theta_1_prev), "theta_2_in", "theta_1_in");
+  double theta_01_prev = require_real_scalar(theta_01_in_, "theta_01_in");
+  double theta_02_prev = require_real_scalar(theta_02_in_, "theta_02_in");
+  double prec_theta1_prev = require_real_scalar(prec_theta1_in_, "prec_theta1_in");
+  SEXP y = PROTECT(coerceVector(y_, REALSXP));
+  protect_count++;
+  ensure_length(y, LENGTH(theta_1_prev), "y", "theta_1_in");
+  int n = LENGTH(theta_1_prev);
+
+  double *theta_1_current = (double *) R_alloc(n, sizeof(double));
+  double *alpha_current = (double *) R_alloc(n, sizeof(double));
+  double *theta_1_updated = (double *) R_alloc(LAG_UPDATE * n, sizeof(double));
+  memset(theta_1_updated, 0, LAG_UPDATE * n * sizeof(double));
+  double *accept_prop = (double *) R_alloc(n, sizeof(double));
+  double *log_sigma = (double *) R_alloc(n, sizeof(double));
+  for (int i = 0; i < n; i++) {
+    log_sigma[i] = DEFAULT_LOG_SIGMA;
+  }
+  double *hat_theta_1 = (double *) R_alloc(n, sizeof(double));
+  double *theta_1_new = (double *) R_alloc(n, sizeof(double));
+  double *log_accept_prob = (double *) R_alloc(n, sizeof(double));
+
+  GetRNGstate();
+  generate_alpha_log_poisson(
+    REAL(theta_1_prev),   /* theta_1_previous */
+    theta_1_current,      /* theta_1_current */
+    REAL(theta_2_curr),   /* theta_2_current */
+    alpha_current,        /* alpha_current */
+    theta_01_prev,        /* theta_01_previous */
+    theta_02_prev,        /* theta_02_previous */
+    prec_theta1_prev,     /* prec_theta1_previous */
+    theta_1_updated,      /* theta_1_updated */
+    REAL(y),              /* y */
+    accept_prop,          /* accept_prop */
+    log_sigma,            /* log_sigma */
+    hat_theta_1,          /* hat_theta_1 */
+    theta_1_new,          /* theta_1_new */
+    log_accept_prob,      /* log_accept_prob */
+    LAG_UPDATE,           /* lag_update */
+    n,                    /* n */
+    ITER,                 /* iter */
+    MAX_STEP,             /* max_step_size */
+    BASE_ADAPT,           /* base_adaptation_rate */
+    DECAY,                /* decay_exponent */
+    TARGET,               /* target_acceptance */
+    MIN_DEV,              /* min_deviation_threshold */
+    1                     /* compute_alpha */
+  );
+  PutRNGstate();
+
+  SEXP res = PROTECT(allocVector(VECSXP, 2));
+  protect_count++;
+  SEXP theta_1_out = PROTECT(allocVector(REALSXP, n));
+  protect_count++;
+  SEXP alpha_out = PROTECT(allocVector(REALSXP, n));
+  protect_count++;
+  memcpy(REAL(theta_1_out), theta_1_current, n * sizeof(double));
+  memcpy(REAL(alpha_out), alpha_current, n * sizeof(double));
+
+  SEXP names = PROTECT(allocVector(STRSXP, 2));
+  protect_count++;
+  SET_STRING_ELT(names, 0, mkChar("theta_1"));
+  SET_STRING_ELT(names, 1, mkChar("alpha"));
+  SET_VECTOR_ELT(res, 0, theta_1_out);
+  SET_VECTOR_ELT(res, 1, alpha_out);
+  setAttrib(res, R_NamesSymbol, names);
+
+  UNPROTECT(protect_count);
+  return res;
+}
+
+//==============================================================================
+// POISSON COMPLETE MCMC WRAPPERS
+//==============================================================================
+
+/**
+ * @brief Execute the full MCMC sampler for the log-Poisson local level model with parameter fixing.
+ *
+ * @details This function implements a full MCMC loop that conditionally fixes parameters during
+ *          sampling based on which "true" parameters are provided. This is critical for testing
+ *          the statistical correctness of the sampler by validating conditional distributions.
+ *
+ *          **Conditional sampling behavior:**
+ *          - If theta_1_true is provided (not NULL): theta_1 is fixed to true values (not sampled)
+ *          - If theta_01_true is provided (not NULL): theta_01 is fixed to true value (not sampled)
+ *          - If prec_theta1_true is provided (not NULL): prec_theta1 is fixed to true value (not sampled)
+ *          - Otherwise: parameter is sampled normally from its conditional posterior
+ *
+ *          **Sampling sequence per iteration (when not fixed):**
+ *          1. theta_1, alpha | y, theta_01, prec_theta1 -> CWMH with adaptive tuning
+ *          2. prec_theta1 | theta_1, theta_01 -> Gamma posterior
+ *          3. theta_01 | theta_1, prec_theta1 -> Normal posterior
+ *
+ * @param y_                       Observed Poisson counts [n].
+ * @param burnin_                  Number of burn-in iterations (discarded).
+ * @param thinning_                Thinning interval for retained samples.
+ * @param n_chain_                 Number of chains to simulate.
+ * @param theta_1_true_            Optional:  true theta_1 values [n] to fix (NULL = sample normally).
+ * @param theta_01_true_           Optional: true theta_01 value to fix (NULL = sample normally).
+ * @param prec_theta1_true_        Optional: true prec_theta1 value to fix (NULL = sample normally).
+ * @param prior_theta01_mean_      Prior mean hyperparameter for theta_{0,1}.
+ * @param prior_theta01_prec_      Prior precision hyperparameter for theta_{0,1}.
+ * @param prior_prec1_shape_       Gamma shape hyperparameter for 1/W_1.
+ * @param prior_prec1_rate_        Gamma rate hyperparameter for 1/W_1.
+ * @param lag_update_              Adaptation window length (iterations).
+ * @param max_step_size_           Maximum adaptation step size.
+ * @param base_adaptation_rate_    Base adaptation rate.
+ * @param decay_exponent_          Adaptation decay exponent.
+ * @param target_acceptance_       Target acceptance probability.
+ * @param return_log_sigma_        Logical flag:  return log_sigma diagnostics.
+ * @param return_accept_prop_      Logical flag: return accept_prop diagnostics.
+ *
+ * @return An R list mirroring the production sampler output.
+ *
+ * @note Validates Poisson constraints:  y[i] >= 0 for all i.
+ * @note Validates parameter positivity: precisions > 0.
+ * @note When parameters are fixed, corresponding posterior samples are constant.
+ *
+ * @warning This function is for testing only. Do not use for production inference.
+ * @warning Fixed parameters must have correct dimensions matching observed data.
+ */
+SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
+                                                   SEXP burnin_,
+                                                   SEXP thinning_,
+                                                   SEXP n_chain_,
+                                                   SEXP theta_1_true_,
+                                                   SEXP theta_01_true_,
+                                                   SEXP prec_theta1_true_,
+                                                   SEXP prior_theta01_mean_,
+                                                   SEXP prior_theta01_prec_,
+                                                   SEXP prior_prec1_shape_,
+                                                   SEXP prior_prec1_rate_,
+                                                   SEXP lag_update_,
+                                                   SEXP max_step_size_,
+                                                   SEXP base_adaptation_rate_,
+                                                   SEXP decay_exponent_,
+                                                   SEXP target_acceptance_,
+                                                   SEXP return_log_sigma_,
+                                                   SEXP return_accept_prop_) {
+
+  /* ========== Parse Data Vector and Validate Length ========== */
+  double   *y_ptr = REAL(y_);
+  R_xlen_t  len   = LENGTH(y_);
+
+  /* Enforce minimum sample size for numerical stability */
+  if (len < 3) {
+    error("test_mcmc_log_poisson_locallevel_fixed_params: sample size 'n' must be at least 3, got %lld",
+          (long long) len);
+  }
+
+  /* Check for integer overflow (R limitation) */
+  if (len > INT_MAX) {
+    error("test_mcmc_log_poisson_locallevel_fixed_params: sample size too large (%lld > %d)",
+          (long long) len, INT_MAX);
+  }
+
+  int n = (int) len;
+
+  /* Validate Poisson constraints:  y[i] >= 0 */
+  for (int t = 0; t < n; t++) {
+    if (y_ptr[t] < 0) {
+      error("test_mcmc_log_poisson_locallevel_fixed_params:  y[%d] = %f must be non-negative",
+            t, y_ptr[t]);
+    }
+    /* Also check for non-integer values (optional but recommended) */
+    if (y_ptr[t] != floor(y_ptr[t])) {
+      error("test_mcmc_log_poisson_locallevel_fixed_params: y[%d] = %f must be an integer",
+            t, y_ptr[t]);
+    }
+  }
+
+  /* ========== Parse MCMC Control Parameters ========== */
+  int burnin   = INTEGER(burnin_)[0];     /* Burn-in iterations to discard */
+  int thinning = INTEGER(thinning_)[0];   /* Thinning interval */
+  int n_chain  = INTEGER(n_chain_)[0];    /* Number of retained samples */
+
+  /* Compute total iterations needed */
+  int n_iter = burnin + (n_chain - 1) * thinning + 1;
+
+  /* ========== Parse Prior Hyperparameters ========== */
+  double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
+  double prec_theta01 = REAL(prior_theta01_prec_)[0]; /* Prior precision for theta_{0,1} */
+  double nu_01        = REAL(prior_prec1_shape_)[0];  /* Gamma shape for 1/W_1 */
+  double eta_01       = REAL(prior_prec1_rate_)[0];   /* Gamma rate for 1/W_1 */
+
+  /* Validate prior parameter positivity */
+  if (prec_theta01 <= 0) {
+    error("test_mcmc_log_poisson_locallevel_fixed_params:  prior_theta01_prec must be positive, got %f",
+          prec_theta01);
+  }
+  if (nu_01 <= 0 || eta_01 <= 0) {
+    error("test_mcmc_log_poisson_locallevel_fixed_params:  Gamma prior parameters must be positive");
+  }
+
+  /* ========== Parse Adaptation Parameters ========== */
+  int    lag_update              = INTEGER(lag_update_)[0];
+  double max_step_size           = REAL(max_step_size_)[0];
+  double base_adaptation_rate    = REAL(base_adaptation_rate_)[0];
+  double decay_exponent          = REAL(decay_exponent_)[0];
+  double target_acceptance       = REAL(target_acceptance_)[0];
+  double min_deviation_threshold = 1.0 / (double)lag_update;
+
+  /* ========== Parse Diagnostic Output Options ========== */
+  int return_log_sigma    = LOGICAL(return_log_sigma_)[0];
+  int return_accept_prop  = LOGICAL(return_accept_prop_)[0];
+
+  /* ========== Check Which Parameters Should Be Fixed ========== */
+  int fix_theta_1      = (theta_1_true_ != R_NilValue && ! Rf_isNull(theta_1_true_));
+  int fix_theta_01     = (theta_01_true_ != R_NilValue && !Rf_isNull(theta_01_true_));
+  int fix_prec_theta1  = (prec_theta1_true_ != R_NilValue && !Rf_isNull(prec_theta1_true_));
+
+  /* Extract true values if provided */
+  double *theta_1_true   = NULL;
+  double  theta_01_true  = 0.0;
+  double  prec_theta1_true = 0.0;
+
+  int protect_count = 0;
+
+  if (fix_theta_1) {
+    SEXP theta_1_tmp = PROTECT(coerceVector(theta_1_true_, REALSXP));
+    protect_count++;
+    if (LENGTH(theta_1_tmp) != n) {
+      UNPROTECT(protect_count);
+      error("test_mcmc_log_poisson_locallevel_fixed_params: theta_1_true must have length %d, got %d",
+            n, LENGTH(theta_1_tmp));
+    }
+    theta_1_true = REAL(theta_1_tmp);
+  }
+
+  if (fix_theta_01) {
+    theta_01_true = require_real_scalar(theta_01_true_, "theta_01_true");
+  }
+
+  if (fix_prec_theta1) {
+    prec_theta1_true = require_real_scalar(prec_theta1_true_, "prec_theta1_true");
+    if (prec_theta1_true <= 0) {
+      UNPROTECT(protect_count);
+      error("test_mcmc_log_poisson_locallevel_fixed_params: prec_theta1_true must be positive, got %f",
+            prec_theta1_true);
+    }
+  }
+
+  /* ========== Allocate Output Storage (Retained Samples Only) ========== */
+  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  protect_count++;
+  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_chain));
+  protect_count++;
+  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_chain));
+  protect_count++;
+  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  protect_count++;
+
+  /* Conditional allocation for diagnostics */
+  SEXP log_sigma_samples   = R_NilValue;
+  SEXP accept_prop_samples = R_NilValue;
+  int n_outputs = 4;  /* Base outputs:  theta_1, theta_01, prec_theta1, alpha */
+
+  if (return_log_sigma) {
+    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    protect_count++;
+    n_outputs++;
+  }
+  if (return_accept_prop) {
+    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    protect_count++;
+    n_outputs++;
+  }
+
+  /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
+  double *theta_1_current   = (double *) R_Calloc(n, double);
+  double *theta_1_previous  = (double *) R_Calloc(n, double);
+  double *alpha_current     = (double *) R_Calloc(n, double);
+
+  /* Scalar parameters for current and previous iterations */
+  double theta_01_current, theta_01_previous;
+  double prec_theta1_current, prec_theta1_previous;
+
+  /* Sliding window buffer for acceptance tracking */
+  double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
+  memset(theta_1_updated, 0, lag_update * n * sizeof(double));
+
+  /* Working arrays for CWMH algorithm */
+  double *accept_prop      = (double *) R_Calloc(n, double);
+  double *log_sigma        = (double *) R_Calloc(n, double);
+  double *hat_theta_1      = (double *) R_Calloc(n, double);
+  double *theta_1_new      = (double *) R_Calloc(n, double);
+  double *log_accept_prob  = (double *) R_Calloc(n, double);
+
+  /* Initialize log_sigma with reasonable starting values */
+  for (int t = 0; t < n; t++) {
+    log_sigma[t] = log(0.1);  /* Initial proposal sd = 0.1 */
+  }
+
+  /* ========== Initialize RNG State ========== */
+  GetRNGstate();
+
+  /* ========== Initialize Parameters (Iteration 0) ========== */
+  /* Draw initial values from priors to start the Markov chain */
+  theta_01_previous = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
+  prec_theta1_previous = fix_prec_theta1 ?  prec_theta1_true :  rgamma(nu_01, 1.0 / eta_01);
+
+  /* Initialize theta_1 and alpha with efficient neutral starting values */
+  if (fix_theta_1) {
+    memcpy(theta_1_previous, theta_1_true, n * sizeof(double));
+    for (int t = 0; t < n; t++) {
+      alpha_current[t] = exp(theta_1_true[t]);
+    }
+  } else {
+    for (int t = 0; t < n; t++) {
+      theta_1_previous[t] = 0.0;   /* Zeros for state trajectory */
+  alpha_current[t]    = 1.0;   /* Neutral rate for Poisson */
+    }
+  }
+
+  /* ========== Main Gibbs Sampling Loop ========== */
+  int chain_idx = 0;
+
+  for (int ii = 1; ii < n_iter; ii++) {
+
+    /* Determine whether to compute alpha transformations */
+    int compute_alpha = (ii >= burnin && ((ii - burnin) % thinning) == 0) ?  1 : 0;
+
+    /* ===== Step 1: Sample State Vector theta_1 and Rates alpha ===== */
+    if (fix_theta_1) {
+      /* Use fixed true values instead of sampling */
+      memcpy(theta_1_current, theta_1_true, n * sizeof(double));
+      if (compute_alpha) {
+        for (int t = 0; t < n; t++) {
+          alpha_current[t] = exp(theta_1_true[t]);
+        }
+      }
+    } else {
+      /* Sample theta_1 | y, theta_01, prec_theta1 using component-wise Metropolis-Hastings */
+      generate_alpha_log_poisson_locallevel(
+        theta_1_previous,              /* theta_1_previous:  level states from previous iteration */
+      theta_1_current,               /* theta_1_current: output level states for current iteration */
+      compute_alpha ?  alpha_current : NULL,  /* alpha_current: output rates */
+      theta_01_previous,             /* theta_01_previous: initial level state from previous */
+      prec_theta1_previous,          /* prec_theta1_previous: level precision from previous */
+      theta_1_updated,               /* theta_1_updated: sliding window acceptance indicators */
+      y_ptr,                         /* y:  observed counts */
+      accept_prop,                   /* accept_prop: acceptance proportions */
+      log_sigma,                     /* log_sigma: proposal log standard deviations */
+      hat_theta_1,                   /* hat_theta_1: conditional means */
+      theta_1_new,                   /* theta_1_new: proposal buffer */
+      log_accept_prob,               /* log_accept_prob: log acceptance storage */
+      lag_update,                    /* lag_update: adaptation window length */
+      n,                             /* n: number of observations */
+      ii,                            /* iter: current iteration */
+      max_step_size,                 /* max_step_size: adaptation step cap */
+      base_adaptation_rate,          /* base_adaptation_rate: initial adaptation rate */
+      decay_exponent,                /* decay_exponent: diminishing schedule */
+      target_acceptance,             /* target_acceptance: desired acceptance proportion */
+      min_deviation_threshold,       /* min_deviation_threshold: deviation trigger */
+      compute_alpha                  /* compute_alpha: flag to compute alpha (1 = compute) */
+      );
+    }
+
+    /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
+    if (fix_prec_theta1) {
+      /* Use fixed true value instead of sampling */
+      prec_theta1_current = prec_theta1_true;
+    } else {
+      /* Sample 1/W_1 | theta_1, theta_01 from Gamma posterior */
+      prec_theta1_current = generate_precision_theta_p(
+        theta_01_previous,         /* theta_0p: initial level from previous iteration */
+      theta_1_current,           /* theta_p_current: current level trajectory [n] */
+      nu_01,                     /* nu_0p: prior shape parameter */
+      eta_01,                    /* eta_0p:  prior rate parameter */
+      n                          /* n: number of time points */
+      );
+    }
+
+    /* ===== Step 3: Sample Initial State theta_{0,1} ===== */
+    if (fix_theta_01) {
+      /* Use fixed true value instead of sampling */
+      theta_01_current = theta_01_true;
+    } else {
+      /* Sample theta_{0,1} | theta_1, prec_theta1 from Normal posterior */
+      theta_01_current = generate_theta_01_locallevel(
+        theta_1_current,           /* theta_1_current: current level trajectory [n] */
+      prec_theta1_current,       /* prec_theta1: current level precision */
+      mean_theta01,              /* mean_theta01: prior mean */
+      prec_theta01,              /* prec_theta01: prior precision */
+      n                          /* n: number of time points */
+      );
+    }
+
+    /* ===== Store Post-Burn-in Samples with Thinning ===== */
+    if (compute_alpha) {
+      int idx = chain_idx++;
+
+      /* Copy current theta_1 and alpha to output matrices (column-major) */
+      for (int t = 0; t < n; t++) {
+        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
+        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
+
+        /* Store diagnostics if requested */
+        if (return_log_sigma) {
+          REAL(log_sigma_samples)[idx + t * n_chain] = log_sigma[t];
+        }
+        if (return_accept_prop) {
+          REAL(accept_prop_samples)[idx + t * n_chain] = accept_prop[t];
+        }
+      }
+
+      /* Copy scalar parameters to output vectors */
+      REAL(theta_01_samples)[idx] = theta_01_current;
+      REAL(prec_theta1_samples)[idx] = prec_theta1_current;
+    }
+
+    /* ===== Update Previous Values for Next Iteration ===== */
+    memcpy(theta_1_previous, theta_1_current, n * sizeof(double));
+    theta_01_previous = theta_01_current;
+    prec_theta1_previous = prec_theta1_current;
+  }
+
+  /* ========== Restore RNG State ========== */
+  PutRNGstate();
+
+  /* ========== Free Temporary Buffers ========== */
+  R_Free(theta_1_current);
+  R_Free(theta_1_previous);
+  R_Free(alpha_current);
+  R_Free(theta_1_updated);
+  R_Free(accept_prop);
+  R_Free(log_sigma);
+  R_Free(hat_theta_1);
+  R_Free(theta_1_new);
+  R_Free(log_accept_prob);
+
+  /* ========== Package Results into Named List ========== */
+  SEXP out = PROTECT(allocVector(VECSXP, n_outputs));
+  protect_count++;
+  SEXP names = PROTECT(allocVector(STRSXP, n_outputs));
+  protect_count++;
+
+  int out_idx = 0;
+  SET_VECTOR_ELT(out, out_idx, theta_1_samples);
+  SET_STRING_ELT(names, out_idx++, mkChar("theta_1"));
+
+  SET_VECTOR_ELT(out, out_idx, theta_01_samples);
+  SET_STRING_ELT(names, out_idx++, mkChar("theta_01"));
+
+  SET_VECTOR_ELT(out, out_idx, prec_theta1_samples);
+  SET_STRING_ELT(names, out_idx++, mkChar("prec_theta1"));
+
+  SET_VECTOR_ELT(out, out_idx, alpha_samples);
+  SET_STRING_ELT(names, out_idx++, mkChar("alpha"));
+
+  if (return_log_sigma) {
+    SET_VECTOR_ELT(out, out_idx, log_sigma_samples);
+    SET_STRING_ELT(names, out_idx++, mkChar("log_sigma"));
+  }
+
+  if (return_accept_prop) {
+    SET_VECTOR_ELT(out, out_idx, accept_prop_samples);
+    SET_STRING_ELT(names, out_idx++, mkChar("accept_prop"));
+  }
+
+  setAttrib(out, R_NamesSymbol, names);
+
+  UNPROTECT(protect_count);
+  return out;
 }
 
 //==============================================================================

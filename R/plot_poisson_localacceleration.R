@@ -1,9 +1,9 @@
 #' Plot method for poisson_localacceleration objects
 #'
 #' @description Produces diagnostic plots for MCMC output from Poisson
-#'   local acceleration models with log link. 
+#'   local acceleration models with log link.
 #'
-#' @param x An object of class \code{poisson_localacceleration}. 
+#' @param x An object of class \code{poisson_localacceleration}.
 #' @param type Character string specifying the type of plot.  One of:
 #'   \describe{
 #'     \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
@@ -12,7 +12,7 @@
 #'     \item{\code{"alpha"}}{Poisson rates over time (alpha_t)}
 #'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 #'   }
-#' @param which Integer vector specifying which diagnostic plots to display. 
+#' @param which Integer vector specifying which diagnostic plots to display.
 #'   For \code{type = "mcmc"}:
 #'   \describe{
 #'     \item{1}{theta_01 (initial level)}
@@ -22,7 +22,7 @@
 #'     \item{5}{W_2^{-1} (trend innovation precision)}
 #'     \item{6}{W_3^{-1} (acceleration innovation precision)}
 #'   }
-#'   For \code{type = "states"}: indices of subplots. 
+#'   For \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
 #'   If \code{NULL} (default), all available plots are shown.
 #' @param ask Logical; if \code{TRUE}, the user is asked before each plot when
@@ -31,7 +31,7 @@
 #' @param ci Logical; whether to display credible intervals in plots that
 #'   support them. Default is \code{TRUE}.
 #' @param ci_level Numeric; Bayesian confidence level for credible intervals
-#'   (between 0 and 1). Default is \code{0.95}. 
+#'   (between 0 and 1). Default is \code{0.95}.
 #' @param show_obs Logical; whether to display observed counts on the
 #'   Poisson rates plot (\code{type = "alpha"}). When \code{TRUE}
 #'   (default), observed counts \eqn{y_t} are overlaid as
@@ -44,7 +44,7 @@
 #'   \strong{Important: } All parameter names in \code{true_values} must match exactly
 #'   the component names returned by \code{\link{mcmc_poisson_localacceleration}}.
 #'
-#'   Accepted elements: 
+#'   Accepted elements:
 #'   \describe{
 #'     \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
 #'       \itemize{
@@ -76,7 +76,7 @@
 #'   alone and must come from your simulation data.
 #'
 #'   You can provide any subset of these elements.  For example, to compare only
-#'   initial states and alpha: 
+#'   initial states and alpha:
 #'   \preformatted{
 #'   true_values = list(
 #'     theta_01 = 0.5,
@@ -87,10 +87,10 @@
 #'   }
 #' @param ... Additional arguments passed to plotting functions.
 #'
-#' @return Invisibly returns the input object \code{x}. 
+#' @return Invisibly returns the input object \code{x}.
 #'
 #' @details
-#' This function provides comprehensive visual diagnostics for Bayesian MCMC output: 
+#' This function provides comprehensive visual diagnostics for Bayesian MCMC output:
 #'
 #' \strong{MCMC Diagnostics} (\code{type = "mcmc"}):
 #'
@@ -147,7 +147,7 @@
 #' @section Controlling Observed Data Display:
 #'
 #' The \code{show_obs} parameter provides control over the display of observed
-#' counts in the Poisson rates plot: 
+#' counts in the Poisson rates plot:
 #'
 #' \itemize{
 #'   \item When \code{show_obs = TRUE} (default): Observed counts are shown
@@ -260,9 +260,9 @@
 #' theta01_true     <- 0        # True initial level (on log scale)
 #' theta02_true     <- 0        # True initial trend
 #' theta03_true     <- 0        # True initial acceleration
-#' prec_theta1_true <- 1000     # True level innovation precision (high = smooth)
-#' prec_theta2_true <- 10000    # True trend innovation precision (very smooth)
-#' prec_theta3_true <- 100000   # True acceleration precision (nearly constant)
+#' prec_theta1_true <- 500      # True level innovation precision (high = smooth)
+#' prec_theta2_true <- 5000     # True trend innovation precision (very smooth)
+#' prec_theta3_true <- 50000    # True acceleration precision (nearly constant)
 #'
 #' # --- Step 2: Simulate latent states following the state-space model ---
 #' # Generate innovation sequences (random shocks to states)
@@ -306,7 +306,7 @@
 #' plot(theta3_true, type = "l", main = "True Acceleration State",
 #'      xlab = "Time", ylab = expression(theta["t,3"]))
 #' plot(alpha_true, type = "l", main = "True Poisson Rates",
-#'      xlab = "Time", ylab = expression(alpha[t]))
+#'      xlab = "Time", ylab = expression(alpha[t]), ylim = range(alpha_true, y))
 #' points(y, col = "red", pch = 16, cex = 0.5)
 #' par(mfrow = c(1, 1))
 #'
@@ -315,23 +315,23 @@
 #' # priors centered near truth to demonstrate parameter recovery
 #' out <- mcmc_poisson_localacceleration(
 #'   y,
-#'   burnin                  = 1000,
-#'   thinning                = 50,
+#'   burnin                  = 10000,
+#'   thinning                = 100,
 #'   n_chain                 = 1000,
 #'   # Priors centered at true initial values
 #'   prior_theta01_mean      = 0,
-#'   prior_theta01_prec      = 1,
+#'   prior_theta01_prec      = 10,
 #'   prior_theta02_mean      = 0,
-#'   prior_theta02_prec      = 1,
+#'   prior_theta02_prec      = 10,
 #'   prior_theta03_mean      = 0,
-#'   prior_theta03_prec      = 1,
+#'   prior_theta03_prec      = 10,
 #'   # Informative priors for innovation precisions
 #'   # (centered near true values with moderate uncertainty)
-#'   prior_prec1_shape       = 100,
+#'   prior_prec1_shape       = 500,
 #'   prior_prec1_rate        = 1,
-#'   prior_prec2_shape       = 400,
+#'   prior_prec2_shape       = 5000,
 #'   prior_prec2_rate        = 1,
-#'   prior_prec3_shape       = 1600,
+#'   prior_prec3_shape       = 50000,
 #'   prior_prec3_rate        = 1,
 #'   target_acceptance       = 0.44,
 #'   return_accept_prop      = TRUE,

@@ -33,7 +33,7 @@ NULL
 #'
 #' @return A list with three components:
 #'   \describe{
-#'     \item{model_class}{Character: "mixture", "binomial", or "normal"}
+#'     \item{model_class}{Character: "mixture", "binomial", "poisson", or "normal"}
 #'     \item{model_order}{Integer: 1, 2, or 3 (polynomial order)}
 #'     \item{has_mixture}{Logical: TRUE if model has mixture components}
 #'   }
@@ -43,6 +43,7 @@ NULL
 #'     \item \code{"mixture"}: Classes containing "mixture" (Gaussian mixture models)
 #'     \item \code{"binomial"}: Classes containing "binomial" or "bernoulli"
 #'       (binomial/Bernoulli models with logit or probit link)
+#'     \item \code{"poisson"}: Classes containing "poisson" (Poisson models with log link)
 #'     \item \code{"normal"}: Classes containing "normal" (Gaussian observation models)
 #'   }
 #'
@@ -53,6 +54,7 @@ NULL
 #'   \itemize{
 #'     \item Normal models have observation precision parameter (\code{prec_y})
 #'     \item Binomial models do NOT have \code{prec_y} (use link functions)
+#'     \item Poisson models do NOT have \code{prec_y} (use log link function)
 #'     \item Mixture models have 4 mixture parameters instead of \code{prec_y}
 #'   }
 #'
@@ -75,12 +77,15 @@ detect_model_type <- function(x) {
              any(grepl("bernoulli", classes, fixed = TRUE))) {
     model_class <- "binomial"
     has_mixture <- FALSE
+  } else if (any(grepl("poisson", classes, fixed = TRUE))) {
+    model_class <- "poisson"
+    has_mixture <- FALSE
   } else if (any(grepl("normal", classes, fixed = TRUE))) {
     model_class <- "normal"
     has_mixture <- FALSE
   } else {
     stop("Unknown model class in object. Expected 'mixture', 'binomial', ",
-         "'bernoulli', or 'normal' in class hierarchy.")
+         "'bernoulli', 'poisson', or 'normal' in class hierarchy.")
   }
 
   # 3. Extract polynomial order from model_type attribute
@@ -111,7 +116,7 @@ detect_model_type <- function(x) {
 #' @description Calculates the total number of scalar parameters for a given
 #'   model configuration based on its observation family and polynomial order.
 #'
-#' @param model_class Character: "mixture", "binomial", or "normal".
+#' @param model_class Character: "mixture", "binomial", "poisson", or "normal".
 #' @param model_order Integer: 1, 2, or 3.
 #'
 #' @return Integer count of expected parameters.
@@ -124,6 +129,8 @@ detect_model_type <- function(x) {
 #'       model_order initial states + model_order innovation precisions
 #'     \item \strong{Binomial models}: 0 observation precision (uses link function) +
 #'       model_order initial states + model_order innovation precisions
+#'     \item \strong{Poisson models}: 0 observation precision (uses log link function) +
+#'       model_order initial states + model_order innovation precisions
 #'   }
 #'
 #'   Examples:
@@ -131,6 +138,7 @@ detect_model_type <- function(x) {
 #'     \item mixture order 1 = 4 + 1 + 1 = 6
 #'     \item normal order 2 = 1 + 2 + 2 = 5
 #'     \item binomial order 3 = 0 + 3 + 3 = 6
+#'     \item poisson order 1 = 0 + 1 + 1 = 2
 #'   }
 #'
 #' @keywords internal
@@ -138,8 +146,8 @@ detect_model_type <- function(x) {
 get_n_params <- function(model_class, model_order) {
 
   # Validate inputs
-  if (!model_class %in% c("mixture", "binomial", "normal")) {
-    stop("`model_class` must be 'mixture', 'binomial', or 'normal'")
+  if (!model_class %in% c("mixture", "binomial", "poisson", "normal")) {
+    stop("`model_class` must be 'mixture', 'binomial', 'poisson', or 'normal'")
   }
   if (!model_order %in% c(1L, 2L, 3L)) {
     stop("`model_order` must be 1, 2, or 3")
@@ -152,7 +160,7 @@ get_n_params <- function(model_class, model_order) {
   } else if (model_class == "normal") {
     # 1 observation precision + initial states + innovation precisions
     1L + model_order + model_order
-  } else {  # binomial
+  } else {  # binomial or poisson
     # No observation precision + initial states + innovation precisions
     0L + model_order + model_order
   }
@@ -170,8 +178,8 @@ get_n_params <- function(model_class, model_order) {
 #'   specifications for base R graphics.
 #'
 #' @param x An object inheriting from "pdm_mcmc".
-#' @param model_class Character: "mixture", "binomial", or "normal". If NULL,
-#'   will be auto-detected from x.
+#' @param model_class Character: "mixture", "binomial", "poisson", or "normal".
+#'   If NULL, will be auto-detected from x.
 #' @param model_order Integer: 1, 2, or 3. If NULL, will be auto-detected
 #'   from x.
 #'
@@ -213,12 +221,12 @@ get_n_params <- function(model_class, model_order) {
 #'       }
 #'     \item \strong{Observation precision:}
 #'       \itemize{
-#'         \item "purple" for V^{-1} (normal models)
+#'         \item "purple" for V^{-1} (normal models only)
 #'       }
 #'   }
 #'
-#'   Note: Binomial models (binomial/Bernoulli with logit/probit link) do NOT
-#'   have observation precision parameter.
+#'   Note: Binomial models (binomial/Bernoulli with logit/probit link) and
+#'   Poisson models (with log link) do NOT have observation precision parameter.
 #'
 #' @keywords internal
 #' @noRd
@@ -234,8 +242,8 @@ get_param_config <- function(x,
   }
 
   # 2. Validate inputs
-  if (!model_class %in% c("mixture", "binomial", "normal")) {
-    stop("`model_class` must be 'mixture', 'binomial', or 'normal'")
+  if (!model_class %in% c("mixture", "binomial", "poisson", "normal")) {
+    stop("`model_class` must be 'mixture', 'binomial', 'poisson', or 'normal'")
   }
   if (!model_order %in% c(1L, 2L, 3L)) {
     stop("`model_order` must be 1, 2, or 3")
@@ -284,6 +292,7 @@ get_param_config <- function(x,
   }
 
   # 5. Add observation precision (normal models only)
+  # Note: Binomial and Poisson models do NOT have observation precision
   if (model_class == "normal") {
     config$V_inv <- list(
       samples = x$prec_y,

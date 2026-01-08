@@ -2,73 +2,73 @@
  * @file mcmc_normal_mixture_localacceleration.c
  * @brief MCMC sampling for Gaussian mixture models with local-acceleration weights
  * @author Michel H. Montoril
- * @date 2025-10-25
+ * @date 2025-01-07
  * @version 1.0
  *
  * @details Implements the full Gibbs sampler for Bayesian estimation of two-component
- *          Gaussian mixture models with time-varying mixture weights that follow a
- *          local-acceleration dynamic structure (level + trend + acceleration).
+ * Gaussian mixture models with time-varying mixture weights that follow a
+ * local-acceleration dynamic structure (level + trend + acceleration).
  *
- *          Supports two link functions:
- *          - Logit: Component-wise Metropolis-Hastings with adaptive tuning
- *          - Probit: Gibbs sampling via Albert-Chib data augmentation
+ * Supports two link functions:
+ * - Logit: Component-wise Metropolis-Hastings with adaptive tuning
+ * - Probit: Gibbs sampling via Albert-Chib data augmentation
  *
- *          All implementations utilize memory-efficient current/previous iteration buffers
- *          requiring only O(n) temporary storage regardless of chain length.
+ * All implementations utilize memory-efficient current/previous iteration buffers
+ * requiring only O(n) temporary storage regardless of chain length.
  *
- *          **Key features:**
- *          - Memory-efficient O(n) temporary storage using current/previous buffers
- *          - Conditional alpha computation for performance optimization
- *          - Configurable adaptive threshold for Metropolis-Hastings (logit only)
- *          - Conjugate posterior updates for all parameters
- *          - Flexible burn-in and thinning controls
- *          - Label switching constraint enforcement (μ₁ < μ₂)
+ * **Key features:**
+ * - Memory-efficient O(n) temporary storage using current/previous buffers
+ * - Conditional alpha computation for performance optimization
+ * - Configurable adaptive threshold for Metropolis-Hastings (logit only)
+ * - Conjugate posterior updates for all parameters
+ * - Flexible burn-in and thinning controls
+ * - Label switching constraint enforcement (mu_1 < mu_2)
  *
- *          **Gaussian mixture model with dynamic weights:**
- *          Observation: y_t | z_t, μ, φ ~ N(z_t·μ₂ + (1-z_t)·μ₁, [z_t·φ₂ + (1-z_t)·φ₁]⁻¹)
- *          Indicators: z_t | α_t ~ Bernoulli(α_t)
+ * **Gaussian mixture model with dynamic weights:**
+ * Observation: y_t | z_t, mu, phi ~ N(z_t*mu_2 + (1-z_t)*mu_1, [z_t*phi_2 + (1-z_t)*phi_1]^{-1})
+ * Indicators: z_t | alpha_t ~ Bernoulli(alpha_t)
  *
- *          **Dynamic weight models:**
- *          Logit:  α_t = logit⁻¹(θ_{t,1}), z_t ~ Bernoulli(α_t)
- *          Probit: α_t = Φ(θ_{t,1}), z_t ~ Bernoulli(α_t)
+ * **Dynamic weight models:**
+ * Logit:  alpha_t = logit^{-1}(theta_{t,1}), z_t ~ Bernoulli(alpha_t)
+ * Probit: alpha_t = Phi(theta_{t,1}), z_t ~ Bernoulli(alpha_t)
  *
- *          **State equations (local acceleration):**
- *          θ_{t,1} = θ_{t-1,1} + θ_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W₁)
- *          θ_{t,2} = θ_{t-1,2} + θ_{t-1,3} + u_{t,2},  u_{t,2} ~ N(0, W₂)
- *          θ_{t,3} = θ_{t-1,3} + u_{t,3},              u_{t,3} ~ N(0, W₃)
+ * **State equations (local acceleration):**
+ * theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
+ * theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2},  u_{t,2} ~ N(0, W_2)
+ * theta_{t,3} = theta_{t-1,3} + u_{t,3},                  u_{t,3} ~ N(0, W_3)
  *
- *          **Prior distributions:**
- *          - μₖ ~ N(μ₀ₖ, σ²₀ₖ), k=1,2
- *          - φₖ ~ Gamma(ν₀ₖ, η₀ₖ), k=1,2
- *          - θ_{0,1} ~ N(μ_{0,1}, σ²_{0,1})
- *          - θ_{0,2} ~ N(μ_{0,2}, σ²_{0,2})
- *          - θ_{0,3} ~ N(μ_{0,3}, σ²_{0,3})
- *          - 1/W₁ ~ Gamma(ν₁, η₁)
- *          - 1/W₂ ~ Gamma(ν₂, η₂)
- *          - 1/W₃ ~ Gamma(ν₃, η₃)
+ * **Prior distributions:**
+ * - mu_k ~ N(mu_0k, sigma^2_0k), k=1,2
+ * - phi_k ~ Gamma(nu_0k, eta_0k), k=1,2
+ * - theta_{0,1} ~ N(mu_{0,1}, sigma^2_{0,1})
+ * - theta_{0,2} ~ N(mu_{0,2}, sigma^2_{0,2})
+ * - theta_{0,3} ~ N(mu_{0,3}, sigma^2_{0,3})
+ * - 1/W_1 ~ Gamma(nu_1, eta_1)
+ * - 1/W_2 ~ Gamma(nu_2, eta_2)
+ * - 1/W_3 ~ Gamma(nu_3, eta_3)
  *
- *          **Sampling sequence per iteration:**
- *          1. (μ₁, φ₁, μ₂, φ₂) | y, z → Conjugate Normal-Gamma posteriors
- *          2. z | y, α, μ, φ → Bernoulli with weighted densities
- *          3. θ₃ | θ₂, θ_{0,3}, W₂, W₃ → Gaussian posterior (tridiagonal)
- *          4. 1/W₃ | θ₃, θ_{0,3} → Gamma posterior
- *          5. θ_{0,3} | θ₂, θ₃, θ_{0,2}, W₂, W₃ → Gaussian posterior
- *          6. θ₂ | θ₁, θ₃, θ_{0,2}, θ_{0,3}, W₁, W₂ → Gaussian posterior (tridiagonal)
- *          7. 1/W₂ | θ₂, θ₃, θ_{0,2}, θ_{0,3} → Gamma posterior
- *          8. θ_{0,2} | θ₁, θ₂, θ_{0,1}, θ_{0,3}, W₁, W₂ → Gaussian posterior
- *          9. θ₁, α | z, θ₂, θ_{0,1}, θ_{0,2}, W₁ → Link-specific sampling
- *             - Logit: Component-wise MH with adaptive tuning
- *             - Probit: Gibbs via latent utilities
- *          10. 1/W₁ | θ₁, θ_{0,1}, θ_{0,2} → Gamma posterior
- *          11. θ_{0,1} | θ₁, θ_{0,2}, W₁ → Gaussian posterior
+ * **Sampling sequence per iteration:**
+ * 1. (mu_1, phi_1, mu_2, phi_2) | y, z -> Conjugate Normal-Gamma posteriors
+ * 2. z | y, alpha, mu, phi -> Bernoulli with weighted densities
+ * 3. theta_3 | theta_2, theta_{0,3}, W_2, W_3 -> Gaussian posterior (tridiagonal)
+ * 4. 1/W_3 | theta_3, theta_{0,3} -> Gamma posterior
+ * 5. theta_{0,3} | theta_2, theta_3, theta_{0,2}, W_2, W_3 -> Gaussian posterior
+ * 6. theta_2 | theta_1, theta_3, theta_{0,2}, theta_{0,3}, W_1, W_2 -> Gaussian posterior (tridiagonal)
+ * 7. 1/W_2 | theta_2, theta_3, theta_{0,2}, theta_{0,3} -> Gamma posterior
+ * 8. theta_{0,2} | theta_1, theta_2, theta_{0,1}, theta_{0,3}, W_1, W_2 -> Gaussian posterior
+ * 9. theta_1, alpha | z, theta_2, theta_{0,1}, theta_{0,2}, W_1 -> Link-specific sampling
+ * - Logit: Component-wise MH with adaptive tuning
+ * - Probit: Gibbs via latent utilities
+ * 10. 1/W_1 | theta_1, theta_{0,1}, theta_{0,2} -> Gamma posterior
+ * 11. theta_{0,1} | theta_1, theta_{0,2}, W_1 -> Gaussian posterior
  *
- *          Total iterations: burnin + (n_chain - 1) × thinning + 1
+ * Total iterations: burnin + (n_chain - 1) * thinning + 1
  *
- *          **Performance note:**
- *          The computational overhead of supporting both link functions via conditional
- *          branching is negligible (<0.001% of total execution time). The branch
- *          prediction in modern CPUs makes the if-statement essentially "free" after
- *          the first iteration.
+ * **Performance note:**
+ * The computational overhead of supporting both link functions via conditional
+ * branching is negligible (<0.001% of total execution time). The branch
+ * prediction in modern CPUs makes the if-statement essentially "free" after
+ * the first iteration.
  */
 
 #include <R.h>
@@ -89,69 +89,69 @@
  * @brief Unified Gibbs sampler for Gaussian mixture model with local-acceleration weights
  *
  * @details Implements a complete Gibbs MCMC algorithm for the two-component Gaussian
- *          mixture model with time-varying mixture weights following local-acceleration
- *          dynamics. Supports both logit and probit link functions via the `link` argument.
+ * mixture model with time-varying mixture weights following local-acceleration
+ * dynamics. Supports both logit and probit link functions via the `link` argument.
  *
- *          **Observation equation:**
- *          y_t | z_t, μ, φ ~ N(z_t·μ₂ + (1-z_t)·μ₁, [z_t·φ₂ + (1-z_t)·φ₁]⁻¹)
- *          z_t | α_t ~ Bernoulli(α_t)
- *          α_t = T⁻¹(θ_{t,1}) where T = logit or probit
+ * **Observation equation:**
+ * y_t | z_t, mu, phi ~ N(z_t*mu_2 + (1-z_t)*mu_1, [z_t*phi_2 + (1-z_t)*phi_1]^{-1})
+ * z_t | alpha_t ~ Bernoulli(alpha_t)
+ * alpha_t = T^{-1}(theta_{t,1}) where T = logit or probit
  *
- *          **State equations:**
- *          θ_{t,1} = θ_{t-1,1} + θ_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W₁)
- *          θ_{t,2} = θ_{t-1,2} + θ_{t-1,3} + u_{t,2},  u_{t,2} ~ N(0, W₂)
- *          θ_{t,3} = θ_{t-1,3} + u_{t,3},              u_{t,3} ~ N(0, W₃)
+ * **State equations:**
+ * theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)
+ * theta_{t,2} = theta_{t-1,2} + theta_{t-1,3} + u_{t,2},  u_{t,2} ~ N(0, W_2)
+ * theta_{t,3} = theta_{t-1,3} + u_{t,3},                  u_{t,3} ~ N(0, W_3)
  *
- *          **Link functions:**
- *          - "logit": α_t = exp(θ_{t,1}) / [1 + exp(θ_{t,1})]
- *                     Uses component-wise Metropolis-Hastings with adaptive tuning
- *                     Returns optional diagnostics: log_sigma, accept_prop
+ * **Link functions:**
+ * - "logit": alpha_t = exp(theta_{t,1}) / [1 + exp(theta_{t,1})]
+ * Uses component-wise Metropolis-Hastings with adaptive tuning
+ * Returns optional diagnostics: log_sigma, accept_prop
  *
- *          - "probit": α_t = Φ(θ_{t,1}) where Φ is the standard normal CDF
- *                      Uses Albert-Chib data augmentation (always accepts)
- *                      No adaptation parameters needed
+ * - "probit": alpha_t = Phi(theta_{t,1}) where Phi is the standard normal CDF
+ * Uses Albert-Chib data augmentation (always accepts)
+ * No adaptation parameters needed
  *
- *          **Prior distributions:**
- *          - μₖ ~ N(μ₀ₖ, σ²₀ₖ), φₖ ~ Gamma(ν₀ₖ, η₀ₖ), k=1,2
- *          - θ_{0,j} ~ N(μ_{0,j}, σ²_{0,j}), j = 1,2,3
- *          - 1/Wⱼ ~ Gamma(νⱼ, ηⱼ), j = 1,2,3
+ * **Prior distributions:**
+ * - mu_k ~ N(mu_0k, sigma^2_0k), phi_k ~ Gamma(nu_0k, eta_0k), k=1,2
+ * - theta_{0,j} ~ N(mu_{0,j}, sigma^2_{0,j}),                  j = 1,2,3
+ * - 1/W_j ~ Gamma(nu_j, eta_j),                                j = 1,2,3
  *
- *          **Optimizations implemented:**
- *          - Memory-efficient current/previous iteration buffers (O(n) storage)
- *          - Conditional alpha computation (skip during burn-in/thinning)
- *          - Link-specific buffer allocation (only allocate what's needed)
- *          - Scalar parameter passing to avoid array indexing
- *          - Efficient initialization with neutral starting values
+ * **Optimizations implemented:**
+ * - Memory-efficient current/previous iteration buffers (O(n) storage)
+ * - Conditional alpha computation (skip during burn-in/thinning)
+ * - Link-specific buffer allocation (only allocate what's needed)
+ * - Scalar parameter passing to avoid array indexing
+ * - Efficient initialization with neutral starting values
  *
- *          **Label switching:**
- *          Enforces μ₁ < μ₂ constraint via component swapping in parameter sampling
+ * **Label switching:**
+ * Enforces mu_1 < mu_2 constraint via component swapping in parameter sampling
  *
  * @param y_                          Numeric vector [n] of observations.
  * @param link_                       Character string: "logit" or "probit".
- *                                    Specifies link function for mixture weights.
+ * Specifies link function for mixture weights.
  * @param burnin_                     Number of burn-in iterations (discarded).
  * @param thinning_                   Thinning interval for autocorrelation reduction.
  * @param n_chain_                    Number of retained posterior samples.
- * @param prior_mu01_mean_            Prior mean for μ₁.
- * @param prior_mu01_prec_            Prior precision for μ₁.
- * @param prior_prec01_shape_         Gamma shape for φ₁.
- * @param prior_prec01_rate_          Gamma rate for φ₁.
- * @param prior_mu02_mean_            Prior mean for μ₂.
- * @param prior_mu02_prec_            Prior precision for μ₂.
- * @param prior_prec02_shape_         Gamma shape for φ₂.
- * @param prior_prec02_rate_          Gamma rate for φ₂.
- * @param prior_theta01_mean_         Prior mean for θ_{0,1}.
- * @param prior_theta01_prec_         Prior precision for θ_{0,1}.
- * @param prior_theta02_mean_         Prior mean for θ_{0,2}.
- * @param prior_theta02_prec_         Prior precision for θ_{0,2}.
- * @param prior_theta03_mean_         Prior mean for θ_{0,3}.
- * @param prior_theta03_prec_         Prior precision for θ_{0,3}.
- * @param prior_prec1_shape_          Gamma shape for 1/W₁.
- * @param prior_prec1_rate_           Gamma rate for 1/W₁.
- * @param prior_prec2_shape_          Gamma shape for 1/W₂.
- * @param prior_prec2_rate_           Gamma rate for 1/W₂.
- * @param prior_prec3_shape_          Gamma shape for 1/W₃.
- * @param prior_prec3_rate_           Gamma rate for 1/W₃.
+ * @param prior_mu01_mean_            Prior mean for mu_1.
+ * @param prior_mu01_prec_            Prior precision for mu_1.
+ * @param prior_prec01_shape_         Gamma shape for phi_1.
+ * @param prior_prec01_rate_          Gamma rate for phi_1.
+ * @param prior_mu02_mean_            Prior mean for mu_2.
+ * @param prior_mu02_prec_            Prior precision for mu_2.
+ * @param prior_prec02_shape_         Gamma shape for phi_2.
+ * @param prior_prec02_rate_          Gamma rate for phi_2.
+ * @param prior_theta01_mean_         Prior mean for theta_{0,1}.
+ * @param prior_theta01_prec_         Prior precision for theta_{0,1}.
+ * @param prior_theta02_mean_         Prior mean for theta_{0,2}.
+ * @param prior_theta02_prec_         Prior precision for theta_{0,2}.
+ * @param prior_theta03_mean_         Prior mean for theta_{0,3}.
+ * @param prior_theta03_prec_         Prior precision for theta_{0,3}.
+ * @param prior_prec1_shape_          Gamma shape for 1/W_1.
+ * @param prior_prec1_rate_           Gamma rate for 1/W_1.
+ * @param prior_prec2_shape_          Gamma shape for 1/W_2.
+ * @param prior_prec2_rate_           Gamma rate for 1/W_2.
+ * @param prior_prec3_shape_          Gamma shape for 1/W_3.
+ * @param prior_prec3_rate_           Gamma rate for 1/W_3.
  * @param lag_update_                 Adaptation frequency (logit only, ignored for probit).
  * @param max_step_size_              Maximum proposal step size (logit only).
  * @param base_adaptation_rate_       Base adaptation rate (logit only).
@@ -164,28 +164,28 @@
  * @param bar_width_                  Integer: width of progress bar in characters (10-120).
  *
  * @return R list with components:
- *         **Always returned:**
- *         - mu_1:        Vector [n_chain] of component 1 mean samples
- *         - prec_1:      Vector [n_chain] of component 1 precision samples
- *         - mu_2:        Vector [n_chain] of component 2 mean samples
- *         - prec_2:      Vector [n_chain] of component 2 precision samples
- *         - theta_1:     Matrix [n_chain × n] of level state trajectory samples
- *         - theta_2:     Matrix [n_chain × n] of trend state trajectory samples
- *         - theta_3:     Matrix [n_chain × n] of acceleration state trajectory samples
- *         - theta_01:    Vector [n_chain] of initial level state samples
- *         - theta_02:    Vector [n_chain] of initial trend state samples
- *         - theta_03:    Vector [n_chain] of initial acceleration state samples
- *         - prec_theta1: Vector [n_chain] of level innovation precision samples
- *         - prec_theta2: Vector [n_chain] of trend innovation precision samples
- *         - prec_theta3: Vector [n_chain] of acceleration innovation precision samples
- *         - alpha:       Matrix [n_chain × n] of mixture weight samples
- *         - z:           Matrix [n_chain × n] of latent indicator samples
+ * **Always returned:**
+ * - mu_1:        Vector [n_chain] of component 1 mean samples
+ * - prec_1:      Vector [n_chain] of component 1 precision samples
+ * - mu_2:        Vector [n_chain] of component 2 mean samples
+ * - prec_2:      Vector [n_chain] of component 2 precision samples
+ * - theta_1:     Matrix [n_chain * n] of level state trajectory samples
+ * - theta_2:     Matrix [n_chain * n] of trend state trajectory samples
+ * - theta_3:     Matrix [n_chain * n] of acceleration state trajectory samples
+ * - theta_01:    Vector [n_chain] of initial level state samples
+ * - theta_02:    Vector [n_chain] of initial trend state samples
+ * - theta_03:    Vector [n_chain] of initial acceleration state samples
+ * - prec_theta1: Vector [n_chain] of level innovation precision samples
+ * - prec_theta2: Vector [n_chain] of trend innovation precision samples
+ * - prec_theta3: Vector [n_chain] of acceleration innovation precision samples
+ * - alpha:       Matrix [n_chain * n] of mixture weight samples
+ * - z:           Matrix [n_chain * n] of latent indicator samples
  *
- *         **Conditionally returned (logit only, if requested):**
- *         - log_sigma:   Matrix [n_chain × n] of proposal scales
- *         - accept_prop: Matrix [n_chain × n] of acceptance proportions
+ * **Conditionally returned (logit only, if requested):**
+ * - log_sigma:   Matrix [n_chain * n] of proposal scales
+ * - accept_prop: Matrix [n_chain * n] of acceptance proportions
  *
- * @note Complexity: O(n_iter × n) time, O(n) space
+ * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
  * @note Proper RNG state management via GetRNGstate()/PutRNGstate()
  * @note Adaptation threshold default: 1.0/lag_update
@@ -205,56 +205,6 @@
  * @see generate_theta_0p
  * @see generate_precision_theta_k
  * @see generate_theta_01
- *
- * @example
- * @code
- * # R usage example
- *
- * # Logit link with adaptation diagnostics
- * fit_logit <- mcmc_normal_mixture_localacceleration(
- *   y = data,
- *   link = "logit",
- *   burnin = 1000,
- *   thinning = 5,
- *   n_chain = 1000,
- *   prior_mu01_mean = 0, prior_mu01_prec = 0.01,
- *   prior_prec01_shape = 0.01, prior_prec01_rate = 0.01,
- *   prior_mu02_mean = 2, prior_mu02_prec = 0.01,
- *   prior_prec02_shape = 0.01, prior_prec02_rate = 0.01,
- *   prior_theta01_mean = 0, prior_theta01_prec = 0.01,
- *   prior_theta02_mean = 0, prior_theta02_prec = 0.01,
- *   prior_theta03_mean = 0, prior_theta03_prec = 0.01,
- *   prior_prec1_shape = 0.01, prior_prec1_rate = 0.01,
- *   prior_prec2_shape = 0.01, prior_prec2_rate = 0.01,
- *   prior_prec3_shape = 0.01, prior_prec3_rate = 0.01,
- *   lag_update = 50,
- *   max_step_size = 10,
- *   base_adaptation_rate = 0.01,
- *   decay_exponent = 0.6,
- *   target_acceptance = 0.44,
- *   min_deviation_threshold = 0.02,
- *   return_log_sigma = TRUE,
- *   return_accept_prop = TRUE,
- *   verbose = TRUE,
- *   bar_width = 50
- * )
- *
- * # Probit link (simpler, no adaptation parameters)
- * fit_probit <- mcmc_normal_mixture_localacceleration(
- *   y = data,
- *   link = "probit",
- *   burnin = 1000,
- *   thinning = 5,
- *   n_chain = 1000,
- *   # ... same prior specifications ...
- *   verbose = TRUE,
- *   bar_width = 50
- * )
- *
- * # Compare models
- * plot(fit_logit$alpha[1, ], type = "l", col = "blue")
- * lines(fit_probit$alpha[1, ], col = "red")
- * @endcode
  */
 SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
                                              SEXP link_,
@@ -514,33 +464,33 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
 
   for (int ii = 1; ii < n_iter; ii++) {
 
-    /* Determine whether to compute alpha transformations and store samples */
+    /* Determine whether to store samples */
     int compute_alpha = (ii >= burnin && ((ii - burnin) % thinning) == 0) ? 1 : 0;
 
-    /* ===== Step 1: Sample Mixture Component Parameters (μ, φ) ===== */
-    /* Draw (μ₁, φ₁, μ₂, φ₂) | y, z from conjugate Normal-Gamma posteriors.
-     * Enforces label switching constraint μ₁ < μ₂ via component swapping.
+    /* ===== Step 1: Sample Mixture Component Parameters (mu, phi) ===== */
+    /* Draw (mu_1, phi_1, mu_2, phi_2) | y, z from conjugate Normal-Gamma posteriors.
+     * Enforces label switching constraint mu_1 < mu_2 via component swapping.
      * Uses z from previous iteration and updates parameters. */
     conditional_mixture_normal_parameters_k2(
       y,                  /* observed data [n] */
       z_current,          /* latent indicators [n] from previous iteration */
       params_previous,    /* previous [mu_1, prec_1, mu_2, prec_2] */
       params_current,     /* output: current [mu_1, prec_1, mu_2, prec_2] */
-      mu_01_mean,         /* prior mean for μ₁ */
-      mu_01_prec,         /* prior precision for μ₁ */
-      prec_01_shape,      /* prior shape for φ₁ */
-      prec_01_rate,       /* prior rate for φ₁ */
-      mu_02_mean,         /* prior mean for μ₂ */
-      mu_02_prec,         /* prior precision for μ₂ */
-      prec_02_shape,      /* prior shape for φ₂ */
-      prec_02_rate,       /* prior rate for φ₂ */
+      mu_01_mean,         /* prior mean for mu_1 */
+      mu_01_prec,         /* prior precision for mu_1 */
+      prec_01_shape,      /* prior shape for phi_1 */
+      prec_01_rate,       /* prior rate for phi_1 */
+      mu_02_mean,         /* prior mean for mu_2 */
+      mu_02_prec,         /* prior precision for mu_2 */
+      prec_02_shape,      /* prior shape for phi_2 */
+      prec_02_rate,       /* prior rate for phi_2 */
       n                   /* sample size */
     );
 
     /* ===== Step 2: Sample Latent Indicators z ===== */
-    /* Draw z_t | y, α, μ, φ ~ Bernoulli(α*_t) where
-     * α*_t = [α_t · N(y_t|μ₂,φ₂⁻¹)] / [(1-α_t)·N(y_t|μ₁,φ₁⁻¹) + α_t·N(y_t|μ₂,φ₂⁻¹)]
-     * Uses current (μ, φ) just sampled and α from previous iteration.
+    /* Draw z_t | y, alpha, mu, phi ~ Bernoulli(alpha*_t) where
+     * alpha*_t = [alpha_t * N(y_t|mu_2,phi_2^{-1})] / [(1-alpha_t)*N(y_t|mu_1,phi_1^{-1}) + alpha_t*N(y_t|mu_2,phi_2^{-1})]
+     * Uses current (mu, phi) just sampled and alpha from previous iteration.
      * This creates better mixing by using most recent component parameters. */
     conditional_mixture_normal_indicators_k2(
       y,              /* observed data [n] */
@@ -550,47 +500,47 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
       n               /* sample size */
     );
 
-    /* ===== Step 3: Sample Acceleration State Vector θ₃ ===== */
-    /* Draw θ₃ | θ₂, θ_{0,3}, W₂, W₃ from multivariate Normal with tridiagonal precision.
-     * Uses θ₂ from previous iteration for state differences. */
+    /* ===== Step 3: Sample Acceleration State Vector theta_3 ===== */
+    /* Draw theta_3 | theta_2, theta_{0,3}, W_2, W_3 from multivariate Normal with tridiagonal precision.
+     * Uses theta_2 from previous iteration for state differences. */
     generate_theta_p(
-      theta_2_previous,     /* θ_{p-1}: trend from previous iteration [n] */
-      theta_3_current,      /* output: current iteration θ₃ [n] */
+      theta_2_previous,     /* theta_{p-1}: trend from previous iteration [n] */
+      theta_3_current,      /* output: current iteration theta_3 [n] */
       prec_theta2_previous, /* scalar: trend precision from previous iteration */
       prec_theta3_previous, /* scalar: acceleration precision from previous iteration */
       theta_03_previous,    /* scalar: initial acceleration from previous iteration */
       n                     /* sample size */
     );
 
-    /* ===== Step 4: Sample Acceleration Innovation Precision 1/W₃ ===== */
-    /* Draw 1/W₃ | θ₃, θ_{0,3} from Gamma posterior using newly sampled θ₃. */
+    /* ===== Step 4: Sample Acceleration Innovation Precision 1/W_3 ===== */
+    /* Draw 1/W_3 | theta_3, theta_{0,3} from Gamma posterior using newly sampled theta_3. */
     prec_theta3_current = generate_precision_theta_p(
       theta_03_previous,  /* scalar: initial acceleration from previous iteration */
-      theta_3_current,    /* vector: current θ₃ [n] */
+      theta_3_current,    /* vector: current theta_3 [n] */
       nu_03,              /* prior shape */
       eta_03,             /* prior rate */
       n                   /* sample size */
     );
 
-    /* ===== Step 5: Sample Initial Acceleration State θ_{0,3} ===== */
-    /* Draw θ_{0,3} | θ₂, θ₃, θ_{0,2}, W₂, W₃ from Normal posterior. */
+    /* ===== Step 5: Sample Initial Acceleration State theta_{0,3} ===== */
+    /* Draw theta_{0,3} | theta_2, theta_3, theta_{0,2}, W_2, W_3 from Normal posterior. */
     theta_03_current = generate_theta_0p(
-      theta_2_previous,     /* θ_{p-1}: trend from previous iteration [n] */
-      theta_3_current,      /* θ_p: current acceleration [n] */
-      theta_02_previous,    /* θ_{0,p-1}: initial trend from previous iteration */
-      prec_theta2_previous, /* W_{p-1}⁻¹: trend precision from previous iteration */
-      prec_theta3_current,  /* W_p⁻¹: current acceleration precision */
+      theta_2_previous,     /* theta_{p-1}: trend from previous iteration [n] */
+      theta_3_current,      /* theta_p: current acceleration [n] */
+      theta_02_previous,    /* theta_{0,p-1}: initial trend from previous iteration */
+      prec_theta2_previous, /* W_{p-1}^{-1}: trend precision from previous iteration */
+      prec_theta3_current,  /* W_p^{-1}: current acceleration precision */
       mean_theta03,         /* prior mean */
       prec_theta03,         /* prior precision */
       n                     /* sample size */
     );
 
-    /* ===== Step 6: Sample Trend State Vector θ₂ ===== */
-    /* Draw θ₂ | θ₁, θ₃, θ_{0,2}, θ_{0,3}, W₁, W₂ from multivariate Normal. */
+    /* ===== Step 6: Sample Trend State Vector theta_2 ===== */
+    /* Draw theta_2 | theta_1, theta_3, theta_{0,2}, theta_{0,3}, W_1, W_2 from multivariate Normal. */
     generate_theta_k(
-      theta_1_previous,     /* θ_{k-1}: level from previous iteration [n] */
-      theta_2_current,      /* output: current iteration θ₂ [n] */
-      theta_3_current,      /* θ_{k+1}: current acceleration [n] */
+      theta_1_previous,     /* theta_{k-1}: level from previous iteration [n] */
+      theta_2_current,      /* output: current iteration theta_2 [n] */
+      theta_3_current,      /* theta_{k+1}: current acceleration [n] */
       prec_theta1_previous, /* scalar: level precision from previous iteration */
       prec_theta2_previous, /* scalar: trend precision from previous iteration */
       theta_02_previous,    /* scalar: initial trend from previous iteration */
@@ -598,25 +548,25 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
       n                     /* sample size */
     );
 
-    /* ===== Step 7: Sample Trend Innovation Precision 1/W₂ ===== */
-    /* Draw 1/W₂ | θ₂, θ₃, θ_{0,2}, θ_{0,3} from Gamma posterior. */
+    /* ===== Step 7: Sample Trend Innovation Precision 1/W_2 ===== */
+    /* Draw 1/W_2 | theta_2, theta_3, theta_{0,2}, theta_{0,3} from Gamma posterior. */
     prec_theta2_current = generate_precision_theta_k(
       theta_02_previous,  /* scalar: initial trend from previous iteration */
       theta_03_current,   /* scalar: current initial acceleration */
-      theta_2_current,    /* vector: current θ₂ [n] */
-      theta_3_current,    /* vector: current θ₃ [n] */
+      theta_2_current,    /* vector: current theta_2 [n] */
+      theta_3_current,    /* vector: current theta_3 [n] */
       nu_02,              /* prior shape */
       eta_02,             /* prior rate */
       n                   /* sample size */
     );
 
-    /* ===== Step 8: Sample Initial Trend State θ_{0,2} ===== */
-    /* Draw θ_{0,2} | θ₁, θ₂, θ_{0,1}, θ_{0,3}, W₁, W₂ from Normal posterior. */
+    /* ===== Step 8: Sample Initial Trend State theta_{0,2} ===== */
+    /* Draw theta_{0,2} | theta_1, theta_2, theta_{0,1}, theta_{0,3}, W_1, W_2 from Normal posterior. */
     theta_02_current = generate_theta_0k(
-      theta_1_previous,     /* θ_{k-1}: level from previous iteration [n] */
-      theta_2_current,      /* θ_k: current trend [n] */
-      theta_01_previous,    /* θ_{0,k-1}: initial level from previous iteration */
-      theta_03_current,     /* θ_{0,k+1}: current initial acceleration */
+      theta_1_previous,     /* theta_{k-1}: level from previous iteration [n] */
+      theta_2_current,      /* theta_k: current trend [n] */
+      theta_01_previous,    /* theta_{0,k-1}: initial level from previous iteration */
+      theta_03_current,     /* theta_{0,k+1}: current initial acceleration */
       prec_theta1_previous, /* prec_{k-1}: level precision from previous iteration */
       prec_theta2_current,  /* prec_k: current trend precision */
       mean_theta02,         /* prior mean */
@@ -624,29 +574,29 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
       n                     /* sample size */
     );
 
-    /* ===== Step 9: Sample Level State Vector θ₁ and Mixture Weights α ===== */
-    /* Draw θ₁, α | z, θ₂, θ_{0,1}, θ_{0,2}, W₁ using link-specific method.
+    /* ===== Step 9: Sample Level State Vector theta_1 and Mixture Weights alpha ===== */
+    /* Draw theta_1, alpha | z, theta_2, theta_{0,1}, theta_{0,2}, W_1 using link-specific method.
      * The latent indicators z are treated as "pseudo-observations" for a binomial
      * model with n_trials=1 (Bernoulli). This allows using the binomial samplers
      * designed for dynamic GLMs.
      *
      * Logit link: Uses component-wise Metropolis-Hastings with adaptive tuning
-     *             to sample θ₁, then transforms to α = logit⁻¹(θ₁)
+     * to sample theta_1, then transforms to alpha = logit^{-1}(theta_1)
      *
      * Probit link: Uses Albert-Chib data augmentation with latent utilities
-     *              to sample θ₁, then transforms to α = Φ(θ₁)
+     * to sample theta_1, then transforms to alpha = Phi(theta_1)
      */
     if (use_logit) {
       /* Logit link: Component-wise MH with adaptive tuning */
       generate_alpha_logit_binomial(
-        theta_1_previous,          /* θ₁: level from previous iteration [n] */
-        theta_1_current,           /* output: current iteration θ₁ [n] */
-        compute_alpha ? alpha_current : NULL,  /* α: NULL if not retained */
-        theta_2_current,           /* θ₂: trend from current iteration [n] */
-        theta_01_previous,         /* θ_{0,1}: initial level from previous iteration */
-        theta_02_current,          /* θ_{0,2}: initial trend from current iteration */
-        prec_theta1_previous,      /* W₁⁻¹: level precision from previous iteration */
-        theta_1_updated,           /* sliding window workspace [lag_update × n] */
+        theta_1_previous,          /* theta_1: level from previous iteration [n] */
+        theta_1_current,           /* output: current iteration theta_1 [n] */
+        alpha_current,             /* alpha: always computed for next iteration's z sampling */
+        theta_2_current,           /* theta_2: trend from current iteration [n] */
+        theta_01_previous,         /* theta_{0,1}: initial level from previous iteration */
+        theta_02_current,          /* theta_{0,2}: initial trend from current iteration */
+        prec_theta1_previous,      /* W_1^{-1}: level precision from previous iteration */
+        theta_1_updated,           /* sliding window workspace [lag_update * n] */
         z_current,                 /* z: latent indicators as "observations" [n] */
         accept_prop,               /* acceptance proportions workspace [n] */
         log_sigma,                 /* proposal scale parameters [n] */
@@ -654,7 +604,7 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
         theta_1_new,               /* proposal states workspace [n] */
         log_accept_prob,           /* MH log-acceptance ratios [n] */
         lag_update,                /* adaptation lag */
-        1.0,                       /* n_trials: 1 for Bernoulli (z ∈ {0,1}) */
+        1.0,                       /* n_trials: 1 for Bernoulli (z in {0,1}) */
         n,                         /* series length */
         ii,                        /* current iteration */
         max_step_size,             /* proposal cap */
@@ -662,27 +612,27 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
         decay_exponent,            /* adaptation decay */
         target_acceptance,         /* desired acceptance rate */
         min_deviation_threshold,   /* adaptation trigger */
-        compute_alpha              /* flag for alpha computation */
+        1                          /* compute_alpha: force true */
       );
     } else {
       /* Probit link: Gibbs sampling via Albert-Chib augmentation */
       generate_alpha_probit_bernoulli(
-        theta_1_previous,          /* θ₁: level from previous iteration [n] */
-        theta_1_current,           /* output: current iteration θ₁ [n] */
-        compute_alpha ? alpha_current : NULL,  /* α: NULL if not retained */
-        theta_2_current,           /* θ₂: trend from current iteration [n] */
-        theta_01_previous,         /* θ_{0,1}: initial level from previous iteration */
-        theta_02_current,          /* θ_{0,2}: initial trend from current iteration */
-        prec_theta1_previous,      /* W₁⁻¹: level precision from previous iteration */
+        theta_1_previous,          /* theta_1: level from previous iteration [n] */
+        theta_1_current,           /* output: current iteration theta_1 [n] */
+        alpha_current,             /* alpha: always computed for next iteration's z sampling */
+        theta_2_current,           /* theta_2: trend from current iteration [n] */
+        theta_01_previous,         /* theta_{0,1}: initial level from previous iteration */
+        theta_02_current,          /* theta_{0,2}: initial trend from current iteration */
+        prec_theta1_previous,      /* W_1^{-1}: level precision from previous iteration */
         z_current,                 /* z: latent indicators [n] */
         rhs_vector,                /* workspace: solver right-hand side [n] */
         n,                         /* series length */
-        compute_alpha              /* flag for alpha computation */
+        1                          /* compute_alpha: force true */
       );
     }
 
-    /* ===== Step 10: Sample Level Innovation Precision 1/W₁ ===== */
-    /* Draw 1/W₁ | θ₁, θ₂, θ_{0,1}, θ_{0,2} from Gamma posterior.
+    /* ===== Step 10: Sample Level Innovation Precision 1/W_1 ===== */
+    /* Draw 1/W_1 | theta_1, theta_2, theta_{0,1}, theta_{0,2} from Gamma posterior.
      * Uses both level and trend information to compute innovations. */
     prec_theta1_current = generate_precision_theta_k(
       theta_01_previous,  /* scalar: initial level from previous iteration */
@@ -694,8 +644,8 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
       n                   /* sample size */
     );
 
-    /* ===== Step 11: Sample Initial Level State θ_{0,1} ===== */
-    /* Draw θ_{0,1} | θ₁, θ_{0,2}, W₁ from Normal posterior.
+    /* ===== Step 11: Sample Initial Level State theta_{0,1} ===== */
+    /* Draw theta_{0,1} | theta_1, theta_{0,2}, W_1 from Normal posterior.
      * Uses current level and trend information. */
     theta_01_current = generate_theta_01(
       theta_1_current,     /* vector: current level [n] */

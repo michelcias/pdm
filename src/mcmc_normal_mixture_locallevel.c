@@ -1,51 +1,51 @@
 /**
  * @file mcmc_normal_mixture_locallevel.c
  * @brief MCMC sampling for Gaussian mixture models with dynamic mixture weights
- *        under a local-level evolution
+ * under a local-level evolution
  * @author Michel H. Montoril
- * @date 2025-10-24
+ * @date 2025-01-07
  * @version 1.0
  *
  * @details Implements the complete Gibbs sampler for Bayesian estimation of
- *          two-component Gaussian mixture models with time-varying mixture
- *          weights that follow a local-level stochastic process. The
- *          implementation mirrors the local-trend variant while omitting the
- *          trend component, making it suitable for applications where a single
- *          random-walk latent process governs the mixture weights.
+ * two-component Gaussian mixture models with time-varying mixture
+ * weights that follow a local-level stochastic process. The
+ * implementation mirrors the local-trend variant while omitting the
+ * trend component, making it suitable for applications where a single
+ * random-walk latent process governs the mixture weights.
  *
- *          **Supported link functions:**
- *          - Logit:  Component-wise Metropolis-Hastings with adaptive tuning
- *          - Probit: Gibbs sampling via Albert-Chib data augmentation
+ * **Supported link functions:**
+ * - Logit:  Component-wise Metropolis-Hastings with adaptive tuning
+ * - Probit: Gibbs sampling via Albert-Chib data augmentation
  *
- *          **Key features inherited from the local-trend sampler:**
- *          - Memory-efficient O(n) temporary storage using current/previous buffers
- *          - Conditional alpha computation for performance optimization
- *          - Configurable adaptive tuning for Metropolis-Hastings (logit only)
- *          - Conjugate posterior updates for all parameters
- *          - Label switching constraint enforcement (mu_1 < mu_2)
+ * **Key features inherited from the local-trend sampler:**
+ * - Memory-efficient O(n) temporary storage using current/previous buffers
+ * - Conditional alpha computation for performance optimization
+ * - Configurable adaptive tuning for Metropolis-Hastings (logit only)
+ * - Conjugate posterior updates for all parameters
+ * - Label switching constraint enforcement (mu_1 < mu_2)
  *
- *          **Gaussian mixture model with dynamic weights:**
- *          Observation: y_t | z_t, mu, phi ~ N(z_t·mu_2 + (1-z_t)·mu_1, [z_t·phi_2 + (1-z_t)·phi_1]^{-1})
- *          Indicators:  z_t | alpha_t ~ Bernoulli(alpha_t)
+ * **Gaussian mixture model with dynamic weights:**
+ * Observation: y_t | z_t, mu, phi ~ N(z_t*mu_2 + (1-z_t)*mu_1, [z_t*phi_2 + (1-z_t)*phi_1]^{-1})
+ * Indicators:  z_t | alpha_t ~ Bernoulli(alpha_t)
  *
- *          **Dynamic weight model (local level):**
- *          theta_{t,1} = theta_{t-1,1} + u_{t,1},  u_{t,1} ~ N(0, W_1)
- *          alpha_t = T^{-1}(theta_{t,1}),  T ∈ {logit, probit}
+ * **Dynamic weight model (local level):**
+ * theta_{t,1} = theta_{t-1,1} + u_{t,1},  u_{t,1} ~ N(0, W_1)
+ * alpha_t = T^{-1}(theta_{t,1}),  T in {logit, probit}
  *
- *          **Prior distributions:**
- *          - mu_k ~ N(mu_0k, sigma^2_0k),          k = 1, 2
- *          - phi_k ~ Gamma(nu_0k, eta_0k),         k = 1, 2
- *          - theta_{0,1} ~ N(mu_{0,1}, sigma^2_{0,1})
- *          - 1/W_1 ~ Gamma(nu_1, eta_1)
+ * **Prior distributions:**
+ * - mu_k ~ N(mu_0k, sigma^2_0k),          k = 1, 2
+ * - phi_k ~ Gamma(nu_0k, eta_0k),         k = 1, 2
+ * - theta_{0,1} ~ N(mu_{0,1}, sigma^2_{0,1})
+ * - 1/W_1 ~ Gamma(nu_1, eta_1)
  *
- *          **Sampling sequence per iteration:**
- *          1. (mu_1, phi_1, mu_2, phi_2) | y, z → Conjugate Normal-Gamma updates
- *          2. z | y, alpha, mu, phi → Bernoulli with weighted densities
- *          3. theta_1, alpha | z, theta_{0,1}, W_1 → Link-specific sampling
- *             - Logit: Component-wise MH with adaptive tuning
- *             - Probit: Gibbs via latent utilities
- *          4. 1/W_1 | theta_1, theta_{0,1} → Gamma posterior
- *          5. theta_{0,1} | theta_1, W_1 → Normal posterior
+ * **Sampling sequence per iteration:**
+ * 1. (mu_1, phi_1, mu_2, phi_2) | y, z -> Conjugate Normal-Gamma updates
+ * 2. z | y, alpha, mu, phi -> Bernoulli with weighted densities
+ * 3. theta_1, alpha | z, theta_{0,1}, W_1 -> Link-specific sampling
+ * - Logit: Component-wise MH with adaptive tuning
+ * - Probit: Gibbs via latent utilities
+ * 4. 1/W_1 | theta_1, theta_{0,1} -> Gamma posterior
+ * 5. theta_{0,1} | theta_1, W_1 -> Normal posterior
  */
 
 #include <R.h>
@@ -65,9 +65,9 @@
  * @brief Unified Gibbs sampler for Gaussian mixture model with local-level weights
  *
  * @details Executes the full Gibbs sampling cycle for a two-component Gaussian
- *          mixture model whose mixture weights evolve as a local-level random
- *          walk. Supports both logit and probit link functions via the `link`
- *          argument.
+ * mixture model whose mixture weights evolve as a local-level random
+ * walk. Supports both logit and probit link functions via the `link`
+ * argument.
  *
  * @param y_                       Numeric vector [n] of observations.
  * @param link_                    Character string: "logit" or "probit".
@@ -98,6 +98,24 @@
  * @param bar_width_               Integer: width of progress bar (10-120 recommended).
  *
  * @return R list with posterior samples and optional diagnostics.
+ *
+ * @note Complexity: O(n_iter * n) time, O(n) space
+ * @note Requires n >= 3 for numerical stability
+ * @note Proper RNG state management via GetRNGstate()/PutRNGstate()
+ * @note Adaptation threshold default: 1.0/lag_update
+ * @note Logit-specific parameters are ignored when link="probit"
+ * @note Diagnostic outputs (log_sigma, accept_prop) are NULL when link="probit"
+ *
+ * @warning n must not exceed INT_MAX
+ * @warning Memory allocation failures terminate R session
+ * @warning link must be exactly "logit" or "probit" (case-sensitive)
+ *
+ * @see conditional_mixture_normal_parameters_k2
+ * @see conditional_mixture_normal_indicators_k2
+ * @see generate_alpha_logit_binomial_locallevel
+ * @see generate_alpha_probit_bernoulli_locallevel
+ * @see generate_precision_theta_p
+ * @see generate_theta_01_locallevel
  */
 SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
                                       SEXP link_,
@@ -343,7 +361,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
       generate_alpha_logit_binomial_locallevel(
         theta_1_previous,             /* theta_1_previous: level states from previous iter [n] */
         theta_1_current,              /* theta_1_current: output level states for current iter [n] */
-        compute_alpha ? alpha_current : NULL,  /* alpha_current: mixture weights (NULL if not stored) */
+        alpha_current,                /* alpha_current: mixture weights (always computed) */
         theta_01_previous,            /* theta_01_previous: initial level from previous iter */
         prec_theta1_previous,         /* prec_theta1_previous: level precision from previous iter */
         theta_1_updated,              /* theta_1_updated: workspace for lagged updates */
@@ -362,7 +380,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
         decay_exponent,               /* decay_exponent: adaptation decay */
         target_acceptance,            /* target_acceptance: desired acceptance rate */
         min_deviation_threshold,      /* min_deviation_threshold: adaptation trigger */
-        compute_alpha                 /* compute_alpha: flag for alpha computation */
+        1                             /* compute_alpha: force true */
       );
     } else {
       /* Draw theta_1 via Gibbs sampling with probit link using Albert-Chib
@@ -370,13 +388,13 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
       generate_alpha_probit_bernoulli_locallevel(
         theta_1_previous,             /* theta_1_previous: level states from previous iter [n] */
         theta_1_current,              /* theta_1_current: output level states for current iter [n] */
-        compute_alpha ? alpha_current : NULL,  /* alpha_current: mixture weights (NULL if not stored) */
+        alpha_current,                /* alpha_current: mixture weights (always computed) */
         theta_01_previous,            /* theta_01_previous: initial level from previous iter */
         prec_theta1_previous,         /* prec_theta1_previous: level precision from previous iter */
         z_current,                    /* z_current: Bernoulli indicators */
         rhs_vector,                   /* rhs_vector: workspace for tridiagonal solver */
         n,                            /* n: sample size */
-        compute_alpha                 /* compute_alpha: flag for alpha computation */
+        1                             /* compute_alpha: force true */
       );
     }
 

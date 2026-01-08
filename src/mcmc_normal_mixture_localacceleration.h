@@ -18,7 +18,7 @@
  *                                              [z_t * phi_2 + (1 - z_t) * phi_1]^{-1})
  *          Indicators:    z_t | alpha_t ~ Bernoulli(alpha_t)
  *          Link options:  alpha_t = logit^{-1}(theta_{t,1})  ("logit")
- *                        alpha_t = Phi(theta_{t,1})          ("probit")
+ *                         alpha_t = Phi(theta_{t,1})          ("probit")
  *
  *          **State equations (local acceleration):**
  *          theta_{t,1} = theta_{t-1,1} + theta_{t-1,2} + u_{t,1},  u_{t,1} ~ N(0, W_1)

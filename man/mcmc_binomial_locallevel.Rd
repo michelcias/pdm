@@ -61,7 +61,7 @@ per adaptation step. Default is 0.1.}
 \item{base_adaptation_rate}{Numeric > 0, base rate controlling adaptation speed.
 Default is 1.0.}
 
-\item{decay_exponent}{Numeric in (0.5, 1], exponent controlling diminishing adaptation
+\item{decay_exponent}{Numeric > 0, exponent controlling diminishing adaptation
 rate. Default is 0.6.}
 
 \item{target_acceptance}{Numeric in (0,1), target acceptance proportion for

@@ -6,7 +6,7 @@
 \usage{
 \method{plot}{normal_mixture_localtrend}(
   x,
-  type = c("all", "mcmc", "params", "states", "alpha"),
+  type = c("all", "mcmc", "params", "states", "alpha", "acceptance"),
   which = NULL,
   ask = NULL,
   overlay_data = TRUE,
@@ -26,6 +26,7 @@
   \item{\code{"params"}}{Mixture component parameters (mu, phi)}
   \item{\code{"states"}}{Dynamic states (theta_1, theta_2 trajectories)}
   \item{\code{"alpha"}}{Mixture weights over time (alpha_t and z_t)}
+  \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 }}
 
 \item{which}{Integer vector specifying which diagnostic plots to display.
@@ -41,7 +42,7 @@ For \code{type = "mcmc"}:
   \item{8}{W_2^{-1} (trend innovation precision)}
 }
 For \code{type = "params"}, \code{type = "states"}: indices of subplots.
-For \code{type = "alpha"}: not used (both alpha_t and z_t are shown).
+For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
 If \code{NULL} (default), all available plots are shown.}
 
 \item{ask}{Logical; if \code{TRUE}, the user is asked before each plot when
@@ -152,17 +153,37 @@ Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, theta_02, W_1^{-1}, W_
   \item Page 2: Posterior probabilities of component membership (z_t) with optional true indicators
 }
 
+\strong{Acceptance Proportions} (\code{type = "acceptance"}):
+\itemize{
+  \item Metropolis-Hastings acceptance proportions over time
+  \item Min-Max range across MCMC iterations
+  \item Target acceptance proportion reference line (uses the \code{target_acceptance}
+    value specified in \code{mcmc_normal_mixture_localtrend})
+  \item Only available if the model was run with \code{return_accept_prop = TRUE}
+}
+
 \strong{Complete Dashboard (\code{type = "all"}):}
 
-Generates 13 pages in total:
+Generates up to 14 pages in total:
 \itemize{
   \item Pages 1-8: Individual parameter diagnostics (4 panels each)
   \item Page 9: Mixture parameters (bivariate relationships)
   \item Pages 10-11: Dynamic state trajectories and diagnostics
   \item Page 12: Mixture weight alpha_t
   \item Page 13: Component membership P(z_t = 1 | data)
+  \item Page 14: Acceptance proportions (only if available)
 }
 }
+\section{Target Acceptance Proportion}{
+
+
+The acceptance proportion plot displays a reference line showing the target acceptance
+proportion that was specified when running \code{mcmc_normal_mixture_localtrend}.
+This allows visual assessment of whether the adaptive Metropolis-Hastings algorithm
+successfully achieved the desired acceptance proportion. The target value is automatically
+extracted from the model object and displayed in the plot legend.
+}
+
 \section{Controlling Data Display}{
 
 
@@ -213,15 +234,15 @@ y <- rnorm(n, mean = mu_y, sd = sigma_y)
 out_logit <- mcmc_normal_mixture_localtrend(
   y,
   link               = "logit",
-  burnin             = 10000,      # Discard first 2000 iterations
-  thinning           = 100,        # Keep every 10th iteration
-  n_chain            = 1000,      # Retain 1000 posterior samples
+  burnin             = 10000,      # Discard first 10000 iterations
+  thinning           = 100,        # Keep every 100th iteration
+  n_chain            = 1000,       # Retain 1000 posterior samples
   # Weakly informative priors for mixture components
-  prior_mu01_mean    = NULL,      # Use default (25th percentile)
+  prior_mu01_mean    = NULL,       # Use default (25th percentile)
   prior_mu01_prec    = 1 / 100,
   prior_prec01_shape = 1 / 100,
   prior_prec01_rate  = 1 / 100,
-  prior_mu02_mean    = NULL,      # Use default (75th percentile)
+  prior_mu02_mean    = NULL,       # Use default (75th percentile)
   prior_mu02_prec    = 1 / 100,
   prior_prec02_shape = 1 / 100,
   prior_prec02_rate  = 1 / 100,
@@ -235,14 +256,16 @@ out_logit <- mcmc_normal_mixture_localtrend(
   prior_prec1_rate   = 1,
   prior_prec2_shape  = 400,
   prior_prec2_rate   = 1,
-  verbose            = TRUE,      # Show progress bar
-  seed               = 456        # For reproducibility
+  target_acceptance  = 0.44,       # Optimal acceptance rate for RWMH
+  return_accept_prop = TRUE,       # Track acceptance rates for diagnostics
+  verbose            = TRUE,       # Show progress bar
+  seed               = 456         # For reproducibility
 )
 
 # --- Visualization Options ---
 
-# 1. Complete diagnostic dashboard (13 pages)
-#    Includes: MCMC diagnostics, mixture parameters, state trajectories, weights
+# 1. Complete diagnostic dashboard (14 pages)
+#    Includes: MCMC diagnostics, mixture parameters, state trajectories, weights, acceptance rates
 plot(out_logit, type = "all")
 
 # 2. MCMC convergence diagnostics for all parameters
@@ -273,10 +296,14 @@ plot(out_logit, type = "alpha")
 # 9. Mixture weights without data overlay (cleaner for presentations)
 plot(out_logit, type = "alpha", overlay_data = FALSE)
 
-# 10. Adjust credible interval level (default is 95\%)
+# 10. Metropolis-Hastings acceptance rates diagnostic
+#     Check if adaptive tuning achieved target acceptance proportion
+plot(out_logit, type = "acceptance")
+
+# 11. Adjust credible interval level (default is 95\%)
 plot(out_logit, type = "alpha", ci_level = 0.90)  # 90\% credible intervals
 
-# 11. Save all diagnostics to a multi-page PDF
+# 12. Save all diagnostics to a multi-page PDF
 pdf("mixture_diagnostics.pdf", width = 10, height = 8)
 plot(out_logit, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 dev.off()
@@ -382,6 +409,8 @@ out <- mcmc_normal_mixture_localtrend(
   prior_prec1_rate   = 1,
   prior_prec2_shape  = 1000,
   prior_prec2_rate   = 1,
+  target_acceptance  = 0.44,
+  return_accept_prop = TRUE,
   verbose            = TRUE,
   seed               = 456
 )
@@ -437,7 +466,11 @@ plot(out, type = "states", true_values = true_vals)
 #    Compare estimated alpha_t and z_t with true values
 plot(out, type = "alpha", true_values = true_vals)
 
-# 8. Partial validation: only compare specific components
+# 8. Metropolis-Hastings acceptance rates diagnostic
+#    Check if adaptive tuning achieved target acceptance proportion
+plot(out, type = "acceptance")
+
+# 9. Partial validation: only compare specific components
 
 #    Example 1: Only mixture parameters
 plot(out, type = "mcmc", which = 1:4, true_values = list(

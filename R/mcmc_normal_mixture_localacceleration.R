@@ -255,7 +255,7 @@
 #'   before decay is applied (logit link only). Higher values lead to faster but
 #'   potentially less stable adaptation. Common choices: 0.1-10.0. Default is 0.01.
 #'   Ignored when `link = "probit"`.
-#' @param decay_exponent Numeric in (0.5, 1], controls how quickly the adaptation
+#' @param decay_exponent Numeric > 0, controls how quickly the adaptation
 #'   step size diminishes over MCMC iterations (logit link only). As the algorithm
 #'   runs, the step size decreases according to \eqn{m^{-\xi}} where \eqn{\xi} is
 #'   the decay exponent and \eqn{m} is the MCMC iteration. Must be in (0.5, 1] for
@@ -1481,7 +1481,9 @@
 #' \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
 #' https://doi.org/10.1198/jcgs.2009.06134
 #'
-#' @seealso \code{\link{mcmc_normal_mixture_locallevel}},
+#' @seealso \code{\link{mcmc_probit_bernoulli_localacceleration}},
+#'  \code{\link{mcmc_binomial_localacceleration}},
+#'  \code{\link{mcmc_normal_mixture_locallevel}},
 #'  \code{\link{mcmc_normal_mixture_localtrend}}
 #'
 #' @export
@@ -1632,8 +1634,9 @@ mcmc_normal_mixture_localacceleration <- function(y,
   if (!is.numeric(base_adaptation_rate) || length(base_adaptation_rate) != 1 || base_adaptation_rate <= 0) {
     stop("`base_adaptation_rate` must be a single positive numeric value")
   }
-  if (!is.numeric(decay_exponent) || length(decay_exponent) != 1 || decay_exponent <= 0.5 || decay_exponent >= 1) {
-    stop("`decay_exponent` must be a single numeric value in (0.5, 1)")
+  if (!is.numeric(decay_exponent) || length(decay_exponent) != 1 ||
+      decay_exponent <= 0) {
+    stop("`decay_exponent` must be a single positive numeric value")
   }
   if (!is.numeric(target_acceptance) || length(target_acceptance) != 1 || target_acceptance <= 0 || target_acceptance >= 1) {
     stop("`target_acceptance` must be a single numeric value in (0, 1)")

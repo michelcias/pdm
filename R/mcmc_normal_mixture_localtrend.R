@@ -1362,8 +1362,8 @@ mcmc_normal_mixture_localtrend <- function(y,
     stop("`base_adaptation_rate` must be a single positive numeric value")
   }
   if (!is.numeric(decay_exponent) || length(decay_exponent) != 1 ||
-      decay_exponent <= 0.5 || decay_exponent >= 1) {
-    stop("`decay_exponent` must be a single numeric value in (0.5, 1)")
+      decay_exponent <= 0) {
+    stop("`decay_exponent` must be a single positive numeric value")
   }
   if (!is.numeric(target_acceptance) || length(target_acceptance) != 1 ||
       target_acceptance <= 0 || target_acceptance >= 1) {

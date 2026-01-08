@@ -29,14 +29,14 @@
 }}
 
 \item{which}{Integer vector specifying which diagnostic plots to display.
-For \code{type = "mcmc"}: 
+For \code{type = "mcmc"}:
 \describe{
   \item{1}{theta_01 (initial level)}
   \item{2}{theta_02 (initial trend)}
   \item{3}{W_1^{-1} (level innovation precision)}
   \item{4}{W_2^{-1} (trend innovation precision)}
 }
-For \code{type = "states"}:  indices of subplots. 
+For \code{type = "states"}:  indices of subplots.
 For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
 If \code{NULL} (default), all available plots are shown.}
 
@@ -63,7 +63,7 @@ affects \code{type = "alpha"} and \code{type = "all"}.}
   \strong{Important:} All parameter names in \code{true_values} must match exactly
   the component names returned by \code{\link{mcmc_poisson_localtrend}}.
 
-  Accepted elements: 
+  Accepted elements:
   \describe{
     \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
       \itemize{
@@ -92,7 +92,7 @@ affects \code{type = "alpha"} and \code{type = "all"}.}
   simulation data.
 
   You can provide any subset of these elements.  For example, to compare only
-  initial states and alpha: 
+  initial states and alpha:
   \preformatted{
   true_values = list(
     theta_01 = 0.5,
@@ -111,7 +111,7 @@ Produces diagnostic plots for MCMC output from Poisson
   local trend models with log link.
 }
 \details{
-This function provides comprehensive visual diagnostics for Bayesian MCMC output: 
+This function provides comprehensive visual diagnostics for Bayesian MCMC output:
 
 \strong{MCMC Diagnostics} (\code{type = "mcmc"}):
 
@@ -161,7 +161,7 @@ Generates up to 8 pages in total:
 
 
 The acceptance proportion plot displays a reference line showing the target acceptance
-proportion that was specified when running \code{mcmc_poisson_localtrend}. 
+proportion that was specified when running \code{mcmc_poisson_localtrend}.
 This allows visual assessment of whether the adaptive Metropolis-Hastings algorithm
 successfully achieved the desired acceptance proportion.  The target value is automatically
 extracted from the model object and displayed in the plot legend.
@@ -171,7 +171,7 @@ extracted from the model object and displayed in the plot legend.
 
 
 The \code{show_obs} parameter provides control over the display of observed
-counts in the Poisson rates plot: 
+counts in the Poisson rates plot:
 
 \itemize{
   \item When \code{show_obs = TRUE} (default): Observed counts are shown
@@ -280,8 +280,8 @@ n <- 100           # Number of time points
 # True parameter values (these would be unknown in real applications)
 theta01_true     <- 0        # True initial level (on log scale)
 theta02_true     <- 0        # True initial trend
-prec_theta1_true <- 1000     # True level innovation precision (high = smooth)
-prec_theta2_true <- 10000    # True trend innovation precision (very smooth)
+prec_theta1_true <- 10       # True level innovation precision (high = smooth)
+prec_theta2_true <- 100      # True trend innovation precision (very smooth)
 
 # --- Step 2: Simulate latent states following the state-space model ---
 # Generate innovation sequences (random shocks to states)
@@ -318,7 +318,7 @@ plot(theta1_true, type = "l", main = "True Level State (log scale)",
 plot(theta2_true, type = "l", main = "True Trend State",
      xlab = "Time", ylab = expression(theta["t,2"]))
 plot(alpha_true, type = "l", main = "True Poisson Rates",
-     xlab = "Time", ylab = expression(alpha[t]))
+     xlab = "Time", ylab = expression(alpha[t]), ylim = range(alpha_true, y))
 points(y, col = "red", pch = 16, cex = 0.5)
 par(mfrow = c(1, 1))
 

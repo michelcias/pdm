@@ -28,7 +28,7 @@
   \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 }}
 
-\item{which}{Integer vector specifying which diagnostic plots to display. 
+\item{which}{Integer vector specifying which diagnostic plots to display.
 For \code{type = "mcmc"}:
 \describe{
   \item{1}{theta_01 (initial level)}
@@ -38,7 +38,7 @@ For \code{type = "mcmc"}:
   \item{5}{W_2^{-1} (trend innovation precision)}
   \item{6}{W_3^{-1} (acceleration innovation precision)}
 }
-For \code{type = "states"}: indices of subplots. 
+For \code{type = "states"}: indices of subplots.
 For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
 If \code{NULL} (default), all available plots are shown.}
 
@@ -65,7 +65,7 @@ affects \code{type = "alpha"} and \code{type = "all"}.}
   \strong{Important: } All parameter names in \code{true_values} must match exactly
   the component names returned by \code{\link{mcmc_poisson_localacceleration}}.
 
-  Accepted elements: 
+  Accepted elements:
   \describe{
     \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
       \itemize{
@@ -97,7 +97,7 @@ affects \code{type = "alpha"} and \code{type = "all"}.}
   alone and must come from your simulation data.
 
   You can provide any subset of these elements.  For example, to compare only
-  initial states and alpha: 
+  initial states and alpha:
   \preformatted{
   true_values = list(
     theta_01 = 0.5,
@@ -117,7 +117,7 @@ Produces diagnostic plots for MCMC output from Poisson
   local acceleration models with log link.
 }
 \details{
-This function provides comprehensive visual diagnostics for Bayesian MCMC output: 
+This function provides comprehensive visual diagnostics for Bayesian MCMC output:
 
 \strong{MCMC Diagnostics} (\code{type = "mcmc"}):
 
@@ -177,7 +177,7 @@ extracted from the model object and displayed in the plot legend.
 
 
 The \code{show_obs} parameter provides control over the display of observed
-counts in the Poisson rates plot: 
+counts in the Poisson rates plot:
 
 \itemize{
   \item When \code{show_obs = TRUE} (default): Observed counts are shown
@@ -291,9 +291,9 @@ n <- 100           # Number of time points
 theta01_true     <- 0        # True initial level (on log scale)
 theta02_true     <- 0        # True initial trend
 theta03_true     <- 0        # True initial acceleration
-prec_theta1_true <- 1000     # True level innovation precision (high = smooth)
-prec_theta2_true <- 10000    # True trend innovation precision (very smooth)
-prec_theta3_true <- 100000   # True acceleration precision (nearly constant)
+prec_theta1_true <- 500      # True level innovation precision (high = smooth)
+prec_theta2_true <- 5000     # True trend innovation precision (very smooth)
+prec_theta3_true <- 50000    # True acceleration precision (nearly constant)
 
 # --- Step 2: Simulate latent states following the state-space model ---
 # Generate innovation sequences (random shocks to states)
@@ -337,7 +337,7 @@ plot(theta2_true, type = "l", main = "True Trend State",
 plot(theta3_true, type = "l", main = "True Acceleration State",
      xlab = "Time", ylab = expression(theta["t,3"]))
 plot(alpha_true, type = "l", main = "True Poisson Rates",
-     xlab = "Time", ylab = expression(alpha[t]))
+     xlab = "Time", ylab = expression(alpha[t]), ylim = range(alpha_true, y))
 points(y, col = "red", pch = 16, cex = 0.5)
 par(mfrow = c(1, 1))
 
@@ -346,23 +346,23 @@ par(mfrow = c(1, 1))
 # priors centered near truth to demonstrate parameter recovery
 out <- mcmc_poisson_localacceleration(
   y,
-  burnin                  = 1000,
-  thinning                = 50,
+  burnin                  = 10000,
+  thinning                = 100,
   n_chain                 = 1000,
   # Priors centered at true initial values
   prior_theta01_mean      = 0,
-  prior_theta01_prec      = 1,
+  prior_theta01_prec      = 10,
   prior_theta02_mean      = 0,
-  prior_theta02_prec      = 1,
+  prior_theta02_prec      = 10,
   prior_theta03_mean      = 0,
-  prior_theta03_prec      = 1,
+  prior_theta03_prec      = 10,
   # Informative priors for innovation precisions
   # (centered near true values with moderate uncertainty)
-  prior_prec1_shape       = 100,
+  prior_prec1_shape       = 500,
   prior_prec1_rate        = 1,
-  prior_prec2_shape       = 400,
+  prior_prec2_shape       = 5000,
   prior_prec2_rate        = 1,
-  prior_prec3_shape       = 1600,
+  prior_prec3_shape       = 50000,
   prior_prec3_rate        = 1,
   target_acceptance       = 0.44,
   return_accept_prop      = TRUE,

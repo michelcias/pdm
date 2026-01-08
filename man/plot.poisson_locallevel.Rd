@@ -28,13 +28,13 @@
   \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 }}
 
-\item{which}{Integer vector specifying which diagnostic plots to display. 
-For \code{type = "mcmc"}: 
+\item{which}{Integer vector specifying which diagnostic plots to display.
+For \code{type = "mcmc"}:
 \describe{
   \item{1}{theta_01 (initial level)}
   \item{2}{W_1^{-1} (level innovation precision)}
 }
-For \code{type = "states"}:  indices of subplots. 
+For \code{type = "states"}:  indices of subplots.
 For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
 If \code{NULL} (default), all available plots are shown.}
 
@@ -85,7 +85,7 @@ affects \code{type = "alpha"} and \code{type = "all"}.}
   you can obtain \code{theta_1} using \code{log(alpha)}.
 
   You can provide any subset of these elements.  For example, to compare only
-  the initial state and alpha: 
+  the initial state and alpha:
   \preformatted{
   true_values = list(
     theta_01 = 0.5,
@@ -103,7 +103,7 @@ Produces diagnostic plots for MCMC output from Poisson
   local level models with log link.
 }
 \details{
-This function provides comprehensive visual diagnostics for Bayesian MCMC output: 
+This function provides comprehensive visual diagnostics for Bayesian MCMC output:
 
 \strong{MCMC Diagnostics} (\code{type = "mcmc"}):
 
@@ -152,7 +152,7 @@ Generates up to 5 pages in total:
 
 
 The acceptance proportion plot displays a reference line showing the target acceptance
-proportion that was specified when running \code{mcmc_poisson_locallevel}. 
+proportion that was specified when running \code{mcmc_poisson_locallevel}.
 This allows visual assessment of whether the adaptive Metropolis-Hastings algorithm
 successfully achieved the desired acceptance proportion.  The target value is automatically
 extracted from the model object and displayed in the plot legend.
@@ -162,7 +162,7 @@ extracted from the model object and displayed in the plot legend.
 
 
 The \code{show_obs} parameter provides control over the display of observed
-counts in the Poisson rates plot: 
+counts in the Poisson rates plot:
 
 \itemize{
   \item When \code{show_obs = TRUE} (default): Observed counts are shown
@@ -295,7 +295,7 @@ par(mfrow = c(1, 2))
 plot(theta1_true, type = "l", main = "True Level State (log scale)",
      xlab = "Time", ylab = expression(theta["t,1"]))
 plot(alpha_true, type = "l", main = "True Poisson Rates",
-     xlab = "Time", ylab = expression(alpha[t]))
+     xlab = "Time", ylab = expression(alpha[t]), ylim = range(alpha_true, y))
 points(y, col = "red", pch = 16, cex = 0.5)
 par(mfrow = c(1, 1))
 

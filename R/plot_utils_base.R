@@ -1023,7 +1023,7 @@ plot_component_probabilities_base <- function(z,
        lwd = 2,
        col = ifelse(z_prob > threshold, color_above, color_below),
        xlab = "Time",
-       ylab = expression(paste("P(", z[t], " = 1 | data)")),
+       ylab = expression(paste("p(", z[t], " = 1 | data)")),
        ylim = c(0, 1.1),
        axes = FALSE)
 
@@ -1065,8 +1065,8 @@ plot_component_probabilities_base <- function(z,
 
   # Build legend with component-based interpretation
   legend_items <- c(
-    paste0("P(z_t = 1) > ", threshold),
-    paste0("P(z_t = 1) ≤ ", threshold),
+    paste0("p(z = 1 | data) > ", threshold, "   "),
+    paste0("p(z = 1 | data) ≤ ", threshold, "   "),
     "Threshold"
   )
   legend_cols <- c(color_above, color_below, "darkgray")
@@ -1097,7 +1097,7 @@ plot_component_probabilities_base <- function(z,
   # OVERALL TITLE
   # ===========================================================================
 
-  mtext(expression(paste("Posterior Probability: P(", z[t], " = 1 | data)")),
+  mtext(expression(paste("Posterior Probability: p(", z[t], " = 1 | data)")),
         outer = TRUE,
         cex = 1.3,
         font = 2)

@@ -61,7 +61,7 @@ out_logit_level <- mcmc_normal_mixture_locallevel(
   bar_width               = 60,
   seed                    = 456
 )
-plot(out_logit_level)
+plot(out_logit_level, type = "alpha")
 
 ## 1.2 Local Level with Probit Link
 cat("\n=== Running Local Level Model with Probit Link ===\n")
@@ -87,7 +87,7 @@ out_probit_level <- mcmc_normal_mixture_locallevel(
   bar_width          = 60,
   seed               = 789
 )
-plot(out_probit_level)
+plot(out_probit_level, type = "alpha")
 
 ################################################################################
 # 2. LOCAL TREND MODEL
@@ -140,14 +140,14 @@ out_logit_trend <- mcmc_normal_mixture_localtrend(
   bar_width               = 60,
   seed                    = 456
 )
-plot(out_logit_trend)
+plot(out_logit_trend, type = "alpha")
 
 ## 2.2 Local Trend with Probit Link
 cat("\n=== Running Local Trend Model with Probit Link ===\n")
 out_probit_trend <- mcmc_normal_mixture_localtrend(
   y,
   link               = "probit",
-  burnin             = 50000,
+  burnin             = 150000,
   thinning           = 250,
   n_chain            = 1000,
   prior_mu01_mean    = NULL,
@@ -170,7 +170,7 @@ out_probit_trend <- mcmc_normal_mixture_localtrend(
   bar_width          = 60,
   seed               = 789
 )
-plot(out_probit_trend)
+plot(out_probit_trend, type = "alpha", which = 1)
 
 ################################################################################
 # 3. LOCAL ACCELERATION MODEL
@@ -184,8 +184,8 @@ cat("\n=== Running Local Acceleration Model with Logit Link ===\n")
 out_logit_accel <- mcmc_normal_mixture_localacceleration(
   y,
   link                    = "logit",
-  burnin                  = 500000,       # Increased burn-in for most complex model
-  thinning                = 1,
+  burnin                  = 100000,       # Increased burn-in for most complex model
+  thinning                = 250,
   n_chain                 = 1000,
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile
@@ -207,19 +207,19 @@ out_logit_accel <- mcmc_normal_mixture_localacceleration(
   prior_theta03_mean      = 0,
   prior_theta03_prec      = 1,
   # Prior for state precision - level
-  prior_prec1_shape       = 0.01,
-  prior_prec1_rate        = 0.01,
+  prior_prec1_shape       = 0.1,
+  prior_prec1_rate        = 0.1,
   # Prior for state precision - slope
-  prior_prec2_shape       = 0.01,
-  prior_prec2_rate        = 0.01,
+  prior_prec2_shape       = 0.1,
+  prior_prec2_rate        = 0.1,
   # Prior for state precision - acceleration
-  prior_prec3_shape       = 0.01,
-  prior_prec3_rate        = 0.01,
+  prior_prec3_shape       = 0.1,
+  prior_prec3_rate        = 0.1,
   # Adaptive MALA parameters
   lag_update              = 50,
   max_step_size           = 0.1,
   base_adaptation_rate    = 10,
-  decay_exponent          = 0.4,          # Slightly lower for better adaptation
+  decay_exponent          = 0.5,          # Slightly lower for better adaptation
   target_acceptance       = 0.44,
   min_deviation_threshold = NULL,         # Default: 1/lag_update
   # Output options
@@ -236,7 +236,7 @@ cat("\n=== Running Local Acceleration Model with Probit Link ===\n")
 out_probit_accel <- mcmc_normal_mixture_localacceleration(
   y,
   link               = "probit",
-  burnin             = 50000,
+  burnin             = 150000,
   thinning           = 250,
   n_chain            = 1000,
   prior_mu01_mean    = NULL,
@@ -255,15 +255,15 @@ out_probit_accel <- mcmc_normal_mixture_localacceleration(
   prior_theta03_prec = 1,
   prior_prec1_shape  = 0.01,
   prior_prec1_rate   = 0.01,
-  prior_prec2_shape  = 0.01,
-  prior_prec2_rate   = 0.01,
-  prior_prec3_shape  = 0.01,
-  prior_prec3_rate   = 0.01,
+  prior_prec2_shape  = 1,
+  prior_prec2_rate   = 0.1,
+  prior_prec3_shape  = 100,
+  prior_prec3_rate   = 1,
   verbose            = TRUE,
   bar_width          = 60,
   seed               = 123
 )
-plot(out_probit_accel)
+plot(out_probit_accel, ask = FALSE)
 
 ################################################################################
 # 4. RESULTS SUMMARY

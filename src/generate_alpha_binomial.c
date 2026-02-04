@@ -709,22 +709,23 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
    * rhs = v + prec_theta_1 * [(theta_01 + theta_02) * e_1 + H'B * theta_2]
    *
    * The term H'B * theta_2 accounts for the trend contribution:
-   * (H'B * theta_2)[0] = theta_2[0] - theta_02  (boundary condition)
-   * (H'B * theta_2)[t] = theta_2[t] - theta_2[t-1] for t = 1,...,n-1 */
+   * (H'B * theta_2)[0]   = theta_02 - theta_2[0]  (boundary condition)
+   * (H'B * theta_2)[t]   = theta_2[t] - theta_2[t-1] for t = 1,...,n-2
+   * (H'B * theta_2)[n-1] = theta_2[n-2] (boundary condition) */
 
   /* First time point with boundary condition */
-  double v_0;
+  double v_b;
   if (y[0] == 1.0) {
-    v_0 = rtruncnorm(theta_1_previous[0], 1.0, 0.0, R_PosInf);
+    v_b = rtruncnorm(theta_1_previous[0], 1.0, 0.0, R_PosInf);
   } else {
-    v_0 = rtruncnorm(theta_1_previous[0], 1.0, R_NegInf, 0.0);
+    v_b = rtruncnorm(theta_1_previous[0], 1.0, R_NegInf, 0.0);
   }
 
-  rhs_vector[0] = v_0 + prec_theta1_previous * (theta_01_previous + theta_02_previous +
-    theta_2_current[0] - theta_02_previous);
+  rhs_vector[0] = v_b + prec_theta1_previous * (theta_01_previous + theta_02_previous - //+
+    theta_2_current[0]);//theta_2_current[0] - theta_02_previous);
 
-  /* Remaining time points */
-  for (int t = 1; t < n; t++) {
+  /* Intermediate time points */
+  for (int t = 1; t < n - 1; t++) {
     double v_t;
 
     if (y[t] == 1.0) {
@@ -733,9 +734,18 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
       v_t = rtruncnorm(theta_1_previous[t], 1.0, R_NegInf, 0.0);
     }
 
-    double theta_2_diff = theta_2_current[t] - theta_2_current[t - 1];
+    double theta_2_diff = theta_2_current[t - 1] - theta_2_current[t];//theta_2_current[t] - theta_2_current[t - 1];
     rhs_vector[t] = v_t + prec_theta1_previous * theta_2_diff;
   }
+
+  /* Last time point with boundary condition */
+  if (y[n - 1] == 1.0) {
+    v_b = rtruncnorm(theta_1_previous[n - 1], 1.0, 0.0, R_PosInf);
+  } else {
+    v_b = rtruncnorm(theta_1_previous[n - 1], 1.0, R_NegInf, 0.0);
+  }
+
+  rhs_vector[n - 1] = v_b + prec_theta1_previous * theta_2_current[n - 2];
 
   /* ========== Sample theta_1 from Multivariate Normal ========== */
   /* Sample from: theta_1 | v, theta_2, [...] ~ N(mu_posterior, Sigma_posterior)

@@ -8,7 +8,7 @@ test_that("ilogit C function works correctly", {
 
   # R wrapper for the C test function
   test_ilogit_C <- function(x) {
-    .Call("_pdm_test_ilogit", as.numeric(x))
+    .Call("_bdm_test_ilogit", as.numeric(x))
   }
 
   # Compare against the standard R implementation (plogis)
@@ -25,7 +25,7 @@ test_that("generate_normal_vector C function generates a vector of correct lengt
 
   # R wrapper for the C test function
   test_gen_norm_C <- function(y, a, b, add_a) {
-    .Call("_pdm_test_generate_normal_vector", y, a, b, add_a)
+    .Call("_bdm_test_generate_normal_vector", y, a, b, add_a)
   }
 
   # Define input parameters

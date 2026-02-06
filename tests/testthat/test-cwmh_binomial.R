@@ -7,7 +7,7 @@ test_that("cwmh_alpha_logit_binomial_locallevel runs and is reproducible", {
 
   # R wrapper for the C test function
   test_C <- function(theta_1_in, theta_01_in, prec_theta1_in, y, n_trials) {
-    .Call("_pdm_test_cwmh_alpha_logit_binomial_locallevel",
+    .Call("_bdm_test_cwmh_alpha_logit_binomial_locallevel",
           theta_1_in, theta_01_in, prec_theta1_in, y, n_trials,
           rep(log(0.1), length(y)))
   }
@@ -46,7 +46,7 @@ test_that("cwmh_alpha_logit_binomial (local trend) runs and is reproducible", {
 
   # R wrapper
   test_C <- function(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y, n_trials) {
-    .Call("_pdm_test_cwmh_alpha_logit_binomial",
+    .Call("_bdm_test_cwmh_alpha_logit_binomial",
           theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y, n_trials)
   }
 

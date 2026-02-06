@@ -73,13 +73,13 @@ create_mock_object <- function(model_class = "mixture", model_order = 1) {
   if (model_class == "mixture") {
     class(obj) <- c(
       paste0("normal_mixture_", model_type),
-      "pdm_mcmc",
+      "bdm_mcmc",
       "list"
     )
   } else {
     class(obj) <- c(
       paste0("normal_", model_type),
-      "pdm_mcmc",
+      "bdm_mcmc",
       "list"
     )
   }
@@ -383,7 +383,7 @@ tryCatch({
 })
 cat("\n")
 
-# Teste 7.2: objeto sem classe pdm_mcmc
+# Teste 7.2: objeto sem classe bdm_mcmc
 cat("Teste 7.2 - Objeto inválido:\n")
 invalid_obj <- list(mu_1 = rnorm(100))
 tryCatch({

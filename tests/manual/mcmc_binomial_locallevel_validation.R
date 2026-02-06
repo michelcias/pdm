@@ -4,10 +4,10 @@
 # Objective:
 # - Validate and replicate the Gibbs/CWMH sampler loop in R for the
 #   binomial local level model using the C helpers:
-#     * _pdm_test_cwmh_alpha_logit_binomial_locallevel (state update)
-#     * _pdm_test_generate_precision_theta_p          (precision update)
-#     * _pdm_test_generate_theta_01_locallevel        (initial state update)
-#     * _pdm_test_adapt_cwmh_parameters               (proposal adaptation)
+#     * _bdm_test_cwmh_alpha_logit_binomial_locallevel (state update)
+#     * _bdm_test_generate_precision_theta_p          (precision update)
+#     * _bdm_test_generate_theta_01_locallevel        (initial state update)
+#     * _bdm_test_adapt_cwmh_parameters               (proposal adaptation)
 #
 # - Standardize outputs using helper functions from tests/manual/helpers:
 #     * summary_tables.R
@@ -38,7 +38,7 @@ suppressPackageStartupMessages({
     devtools::load_all(".", quiet = TRUE)
   } else {
     # Fallback to installed package
-    library(pdm)
+    library(bdm)
   }
 })
 
@@ -153,9 +153,9 @@ chain_idx <- 0  # Counter for saved samples
 for (ii in 2:n_iter) {
 
   # 1) CWMH state update (logit scale) + alpha
-  #    _pdm_test_cwmh_alpha_logit_binomial_locallevel(theta_1_in, theta_01_in, prec_theta1_in, y, n_trials)
+  #    _bdm_test_cwmh_alpha_logit_binomial_locallevel(theta_1_in, theta_01_in, prec_theta1_in, y, n_trials)
   upd <- .Call(
-    "_pdm_test_cwmh_alpha_logit_binomial_locallevel",
+    "_bdm_test_cwmh_alpha_logit_binomial_locallevel",
     as.numeric(theta_1_post[ii-1, ]),
     as.numeric(theta_01_post[ii-1]),
     as.numeric(prec_theta1_post[ii-1]),
@@ -168,9 +168,9 @@ for (ii in 2:n_iter) {
   theta_1_updated[ii, ] <- as.numeric(upd$updated)  # 1 if accepted, 0 otherwise
 
   # 2) Innovation precision 1/W_1
-  #    _pdm_test_generate_precision_theta_p(theta_0p_, theta_p_, nu_0p_, eta_0p_)
+  #    _bdm_test_generate_precision_theta_p(theta_0p_, theta_p_, nu_0p_, eta_0p_)
   prec_theta1_post[ii] <- .Call(
-    "_pdm_test_generate_precision_theta_p",
+    "_bdm_test_generate_precision_theta_p",
     as.numeric(theta_01_post[ii-1]),    # theta_0p (previous iteration)
     as.numeric(theta_1_post[ii, ]),     # theta_p (current)
     as.numeric(nu_01),
@@ -178,9 +178,9 @@ for (ii in 2:n_iter) {
   )
 
   # 3) Initial state theta_01
-  #    _pdm_test_generate_theta_01_locallevel(theta_1_, prec_theta_1_, mean_theta_01_, prec_theta_01_)
+  #    _bdm_test_generate_theta_01_locallevel(theta_1_, prec_theta_1_, mean_theta_01_, prec_theta_01_)
   theta_01_post[ii] <- .Call(
-    "_pdm_test_generate_theta_01_locallevel",
+    "_bdm_test_generate_theta_01_locallevel",
     as.numeric(theta_1_post[ii, ]),     # current
     as.numeric(prec_theta1_post[ii]),        # current
     as.numeric(mean_theta01),
@@ -197,7 +197,7 @@ for (ii in 2:n_iter) {
     window_len <- ii - row_start + 1L
 
     adapt_res <- .Call(
-      "_pdm_test_adapt_cwmh_parameters",
+      "_bdm_test_adapt_cwmh_parameters",
       as.double(t(theta_1_updated[row_start:ii, , drop = FALSE])),
       as.numeric(log_sigma),
       as.integer(lag_update),

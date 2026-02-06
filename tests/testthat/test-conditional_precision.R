@@ -8,7 +8,7 @@ test_that("generate_precision_data samples from the correct posterior", {
 
   # R wrapper for the C test function
   test_C_precision_data <- function(y, theta_1, nu_y, eta_y) {
-    .Call("_pdm_test_generate_precision_data", y, theta_1, nu_y, eta_y)
+    .Call("_bdm_test_generate_precision_data", y, theta_1, nu_y, eta_y)
   }
 
   # Define inputs
@@ -40,7 +40,7 @@ test_that("generate_precision_theta_k samples from the correct posterior", {
 
   # R wrapper for the C test function
   test_C_precision_theta_k <- function(theta_0k, theta_0kp1, theta_k, theta_kp1, nu_0k, eta_0k) {
-    .Call("_pdm_test_generate_precision_theta_k",
+    .Call("_bdm_test_generate_precision_theta_k",
           theta_0k, theta_0kp1, theta_k, theta_kp1, nu_0k, eta_0k)
   }
 
@@ -78,7 +78,7 @@ test_that("generate_precision_theta_p samples from the correct posterior", {
 
   # R wrapper for the C test function
   test_C_precision_theta_p <- function(theta_0p, theta_p, nu_0p, eta_0p) {
-    .Call("_pdm_test_generate_precision_theta_p",
+    .Call("_bdm_test_generate_precision_theta_p",
           theta_0p, theta_p, nu_0p, eta_0p)
   }
 

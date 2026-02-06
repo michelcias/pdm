@@ -13,7 +13,7 @@
 #' @param y Numeric vector of original observed data.
 #' @param target_acceptance Numeric, target acceptance proportion for Metropolis-Hastings.
 #'
-#' @return An object of class \code{c("poisson_localacceleration", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("poisson_localacceleration", "bdm_mcmc", "list")}
 #'   with the following structure:
 #'   \describe{
 #'     \item{Data components}{All elements from \code{result} (theta_1, theta_2,
@@ -40,7 +40,7 @@
 #'   The class hierarchy is:
 #'   \itemize{
 #'     \item \code{poisson_localacceleration}:  Specific model class
-#'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
+#'     \item \code{bdm_mcmc}: General MCMC class for the bdm package
 #'     \item \code{list}: Base R list class
 #'   }
 #'
@@ -81,7 +81,7 @@ new_poisson_localacceleration <- function(result,
   }
 
   # Add class hierarchy
-  class(result) <- c("poisson_localacceleration", "pdm_mcmc", "list")
+  class(result) <- c("poisson_localacceleration", "bdm_mcmc", "list")
 
   # Add metadata as attributes
   attr(result, "n_obs") <- as.integer(n_obs)

@@ -569,7 +569,7 @@
 #' Response Data. \emph{Journal of the American Statistical Association}, 88(422), 669-679.
 #' https://doi.org/10.1080/01621459.1993.10476321
 #'
-#' @seealso \link[pdm]{mcmc_binomial_localtrend}, \link[pdm]{mcmc_probit_bernoulli_locallevel}
+#' @seealso \link[bdm]{mcmc_binomial_localtrend}, \link[bdm]{mcmc_probit_bernoulli_locallevel}
 #' @export
 mcmc_probit_bernoulli_localtrend <- function(y,
                                              burnin,
@@ -664,7 +664,7 @@ mcmc_probit_bernoulli_localtrend <- function(y,
 
   # Call the C function
   result <- .Call(
-    "_pdm_C_MCMC_probit_bernoulli_localtrend",
+    "_bdm_C_MCMC_probit_bernoulli_localtrend",
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),

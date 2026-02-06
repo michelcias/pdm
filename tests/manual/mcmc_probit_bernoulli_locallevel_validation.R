@@ -4,9 +4,9 @@
 # Objective:
 # - Validate and replicate the Gibbs sampler loop in R for the
 #   Bernoulli local level model with probit link using the C helpers:
-#     * _pdm_test_generate_alpha_probit_bernoulli_locallevel (state update)
-#     * _pdm_test_generate_precision_theta_p               (precision update)
-#     * _pdm_test_generate_theta_01_locallevel             (initial state update)
+#     * _bdm_test_generate_alpha_probit_bernoulli_locallevel (state update)
+#     * _bdm_test_generate_precision_theta_p               (precision update)
+#     * _bdm_test_generate_theta_01_locallevel             (initial state update)
 #
 # - Standardize outputs using helper functions from tests/manual/helpers:
 #     * summary_tables.R
@@ -36,7 +36,7 @@ suppressPackageStartupMessages({
     devtools::load_all(".", quiet = TRUE)
   } else {
     # Fallback to installed package
-    library(pdm)
+    library(bdm)
   }
 })
 
@@ -144,9 +144,9 @@ chain_idx <- 0  # Counter for saved samples
 for (ii in 2:n_iter) {
 
   # 1) Gibbs state update (probit link) + alpha
-  #    _pdm_test_generate_alpha_probit_bernoulli_locallevel(theta_1_in, theta_01_in, prec_theta1_in, y)
+  #    _bdm_test_generate_alpha_probit_bernoulli_locallevel(theta_1_in, theta_01_in, prec_theta1_in, y)
   upd <- .Call(
-    "_pdm_test_generate_alpha_probit_bernoulli_locallevel",
+    "_bdm_test_generate_alpha_probit_bernoulli_locallevel",
     as.numeric(theta_1_post[ii-1, ]),
     as.numeric(theta_01_post[ii-1]),
     as.numeric(prec_theta1_post[ii-1]),
@@ -156,9 +156,9 @@ for (ii in 2:n_iter) {
   alpha_post[ii, ]   <- as.numeric(upd$alpha)
 
   # 2) Innovation precision 1/W_1
-  #    _pdm_test_generate_precision_theta_p(theta_0p_, theta_p_, nu_0p_, eta_0p_)
+  #    _bdm_test_generate_precision_theta_p(theta_0p_, theta_p_, nu_0p_, eta_0p_)
   prec_theta1_post[ii] <- .Call(
-    "_pdm_test_generate_precision_theta_p",
+    "_bdm_test_generate_precision_theta_p",
     as.numeric(theta_01_post[ii-1]),    # theta_0p (previous iteration)
     as.numeric(theta_1_post[ii, ]),     # theta_p (current)
     as.numeric(nu_01),
@@ -166,9 +166,9 @@ for (ii in 2:n_iter) {
   )
 
   # 3) Initial state theta_01
-  #    _pdm_test_generate_theta_01_locallevel(theta_1_, prec_theta_1_, mean_theta_01_, prec_theta_01_)
+  #    _bdm_test_generate_theta_01_locallevel(theta_1_, prec_theta_1_, mean_theta_01_, prec_theta_01_)
   theta_01_post[ii] <- .Call(
-    "_pdm_test_generate_theta_01_locallevel",
+    "_bdm_test_generate_theta_01_locallevel",
     as.numeric(theta_1_post[ii, ]),     # current
     as.numeric(prec_theta1_post[ii]),        # current
     as.numeric(mean_theta01),

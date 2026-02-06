@@ -171,7 +171,7 @@
 #' @param seed Optional integer used to set the random number generator seed for
 #'   reproducibility. Default is `NULL` (no seed set).
 #'
-#' @return An object of class \code{c("poisson_locallevel", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("poisson_locallevel", "bdm_mcmc", "list")}
 #'   with components:
 #' \describe{
 #'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
@@ -254,7 +254,7 @@
 #'
 #' @seealso \code{\link{plot.poisson_locallevel}},
 #'   \code{\link{print.poisson_locallevel}},
-#'   \link[pdm]{mcmc_normal_locallevel}
+#'   \link[bdm]{mcmc_normal_locallevel}
 #' @export
 mcmc_poisson_locallevel <- function(y,
                                     burnin,
@@ -375,7 +375,7 @@ mcmc_poisson_locallevel <- function(y,
 
   # Call the C function
   result <- .Call(
-    "_pdm_C_MCMC_log_poisson_locallevel",
+    "_bdm_C_MCMC_log_poisson_locallevel",
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),

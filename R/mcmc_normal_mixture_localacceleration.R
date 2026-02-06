@@ -1,7 +1,7 @@
 #' @title Gibbs Sampler for a Gaussian Mixture Model with Local-Acceleration Mixture Weights
 #'
 #' @description Runs a Gibbs sampler for a two-component Gaussian mixture model
-#'   with time-varying mixture weights following a local-acceleration polynomial
+#'   with time-varying mixture weights following a local-acceleration Bayesian
 #'   dynamic structure. Supports both logit and probit link functions.
 #'
 #' @details The model is defined as:
@@ -1687,7 +1687,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
   # --- End Input Validation ---
 
   result <- .Call(
-    "_pdm_C_MCMC_normal_mixture_localacceleration",
+    "_bdm_C_MCMC_normal_mixture_localacceleration",
     as.numeric(y),
     as.character(link),
     as.integer(burnin),

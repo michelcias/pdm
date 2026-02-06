@@ -6,7 +6,7 @@ library(testthat)
 # Helper function to reset cache between tests
 reset_cache <- function() {
   tryCatch({
-    invisible(.Call("_pdm_reset_adaptation_cache"))
+    invisible(.Call("_bdm_reset_adaptation_cache"))
   }, error = function(e) {
     # Cache reset is optional for test isolation but not critical
     # since v1.2 includes automatic cache validation
@@ -25,7 +25,7 @@ test_that("adapt_cwmh_parameters C function correctly adapts parameters", {
                            max_step_size, base_adaptation_rate,
                            decay_exponent, target_acceptance,
                            min_deviation_threshold) {
-    .Call("_pdm_test_adapt_cwmh_parameters",
+    .Call("_bdm_test_adapt_cwmh_parameters",
           theta_updated, log_sigma, lag_update, n, iter,
           max_step_size, base_adaptation_rate,
           decay_exponent, target_acceptance, min_deviation_threshold)
@@ -103,7 +103,7 @@ test_that("adapt_cwmh_parameters respects min_deviation_threshold", {
                            max_step_size, base_adaptation_rate,
                            decay_exponent, target_acceptance,
                            min_deviation_threshold) {
-    .Call("_pdm_test_adapt_cwmh_parameters",
+    .Call("_bdm_test_adapt_cwmh_parameters",
           theta_updated, log_sigma, lag_update, n, iter,
           max_step_size, base_adaptation_rate,
           decay_exponent, target_acceptance, min_deviation_threshold)
@@ -187,7 +187,7 @@ test_that("adapt_cwmh_parameters with conservative threshold", {
                            max_step_size, base_adaptation_rate,
                            decay_exponent, target_acceptance,
                            min_deviation_threshold) {
-    .Call("_pdm_test_adapt_cwmh_parameters",
+    .Call("_bdm_test_adapt_cwmh_parameters",
           theta_updated, log_sigma, lag_update, n, iter,
           max_step_size, base_adaptation_rate,
           decay_exponent, target_acceptance, min_deviation_threshold)
@@ -247,7 +247,7 @@ test_that("cache validation handles lag_update changes correctly", {
                            max_step_size, base_adaptation_rate,
                            decay_exponent, target_acceptance,
                            min_deviation_threshold) {
-    .Call("_pdm_test_adapt_cwmh_parameters",
+    .Call("_bdm_test_adapt_cwmh_parameters",
           theta_updated, log_sigma, lag_update, n, iter,
           max_step_size, base_adaptation_rate,
           decay_exponent, target_acceptance, min_deviation_threshold)

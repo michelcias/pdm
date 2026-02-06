@@ -12,7 +12,7 @@
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
 #'
-#' @return An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("normal_locallevel", "bdm_mcmc", "list")}
 #'   with the following structure:
 #'   \describe{
 #'     \item{Data components}{All elements from \code{result} (theta_1, theta_01,
@@ -36,7 +36,7 @@
 #'   The class hierarchy is:
 #'   \itemize{
 #'     \item \code{normal_locallevel}: Specific model class
-#'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
+#'     \item \code{bdm_mcmc}: General MCMC class for the bdm package
 #'     \item \code{list}: Base R list class
 #'   }
 #'
@@ -72,7 +72,7 @@ new_normal_locallevel <- function(result,
   }
 
   # Add class hierarchy
-  class(result) <- c("normal_locallevel", "pdm_mcmc", "list")
+  class(result) <- c("normal_locallevel", "bdm_mcmc", "list")
 
   # Add metadata as attributes
   attr(result, "n_obs") <- as.integer(n_obs)

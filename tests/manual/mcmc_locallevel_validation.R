@@ -4,10 +4,10 @@
 # Objective:
 # - Validate and replicate the Gibbs sampler loop in R for the Gaussian
 #   local level model using the C helpers:
-#     * _pdm_test_generate_theta_1_locallevel      (state update)
-#     * _pdm_test_generate_precision_theta_p       (precision update for W_1)
-#     * _pdm_test_generate_theta_01_locallevel     (initial state update)
-#     * _pdm_test_generate_precision_data          (precision update for V)
+#     * _bdm_test_generate_theta_1_locallevel      (state update)
+#     * _bdm_test_generate_precision_theta_p       (precision update for W_1)
+#     * _bdm_test_generate_theta_01_locallevel     (initial state update)
+#     * _bdm_test_generate_precision_data          (precision update for V)
 #
 # - Standardize outputs using helper functions from tests/manual/helpers:
 #     * summary_tables.R
@@ -34,7 +34,7 @@ suppressPackageStartupMessages({
     devtools::load_all(".", quiet = TRUE)
   } else {
     # Fallback to installed package
-    library(pdm)
+    library(bdm)
   }
 })
 
@@ -134,7 +134,7 @@ for (ii in 2:n_iter) {
   # 1) State vector theta_1
   # theta_1_new <- theta1_true
   theta_1_new <- .Call(
-    "_pdm_test_generate_theta_1_locallevel",
+    "_bdm_test_generate_theta_1_locallevel",
     as.numeric(y),
     as.numeric(prec_y_post[ii-1]),
     as.numeric(prec_theta1_post[ii-1]),
@@ -150,7 +150,7 @@ for (ii in 2:n_iter) {
   # 2) Innovation precision 1/W_1
   # prec_theta1_post[ii] <- prec1_true
   prec_theta1_post[ii] <- .Call(
-    "_pdm_test_generate_precision_theta_p",
+    "_bdm_test_generate_precision_theta_p",
     as.numeric(theta_01_post[ii-1]),
     as.numeric(theta_1_post[ii, ]),
     as.numeric(nu_01),
@@ -160,7 +160,7 @@ for (ii in 2:n_iter) {
   # 3) Initial state theta_01
   # theta_01_post[ii] <- theta0_true
   theta_01_post[ii] <- .Call(
-    "_pdm_test_generate_theta_01_locallevel",
+    "_bdm_test_generate_theta_01_locallevel",
     as.numeric(theta_1_post[ii, ]),
     as.numeric(prec_theta1_post[ii]),
     as.numeric(mean_theta01),
@@ -170,7 +170,7 @@ for (ii in 2:n_iter) {
   # 4) Data precision 1/V
   # prec_y_post[ii] <- prec_y_true
   prec_y_post[ii] <- .Call(
-    "_pdm_test_generate_precision_data",
+    "_bdm_test_generate_precision_data",
     as.numeric(y),
     as.numeric(theta_1_post[ii, ]),
     as.numeric(nu_y),

@@ -11,11 +11,11 @@ library(testthat)
 test_that("cwmh_alpha_log_poisson_locallevel runs and is reproducible", {
 
   # Reset adaptation cache
-  .Call("_pdm_reset_adaptation_cache")
+  .Call("_bdm_reset_adaptation_cache")
 
   # R wrapper for the C test function
   test_C <- function(theta_1_in, theta_01_in, prec_theta1_in, y, log_sigma_in) {
-    .Call("_pdm_test_cwmh_alpha_log_poisson_locallevel",
+    .Call("_bdm_test_cwmh_alpha_log_poisson_locallevel",
           theta_1_in, theta_01_in, prec_theta1_in, y, log_sigma_in)
   }
 
@@ -39,11 +39,11 @@ test_that("cwmh_alpha_log_poisson_locallevel runs and is reproducible", {
   expect_equal(length(result$alpha), n)
 
   # Test 2: Verify reproducibility
-  .Call("_pdm_reset_adaptation_cache")  # Reset before reproducibility test
+  .Call("_bdm_reset_adaptation_cache")  # Reset before reproducibility test
   set.seed(601)
   result1 <- test_C(theta_1_in, theta_01_in, prec_theta1_in, y, log_sigma_in)
 
-  .Call("_pdm_reset_adaptation_cache")  # Reset before reproducibility test
+  .Call("_bdm_reset_adaptation_cache")  # Reset before reproducibility test
   set.seed(601)
   result2 <- test_C(theta_1_in, theta_01_in, prec_theta1_in, y, log_sigma_in)
   expect_equal(result1, result2)
@@ -56,11 +56,11 @@ test_that("cwmh_alpha_log_poisson_locallevel runs and is reproducible", {
 test_that("cwmh_alpha_log_poisson (local trend) runs and is reproducible", {
 
   # Reset adaptation cache
-  .Call("_pdm_reset_adaptation_cache")
+  .Call("_bdm_reset_adaptation_cache")
 
   # R wrapper
   test_C <- function(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y) {
-    .Call("_pdm_test_cwmh_alpha_log_poisson",
+    .Call("_bdm_test_cwmh_alpha_log_poisson",
           as.numeric(theta_1_in),
           as.numeric(theta_2_in),
           as.numeric(theta_01_in),
@@ -91,12 +91,12 @@ test_that("cwmh_alpha_log_poisson (local trend) runs and is reproducible", {
   expect_equal(length(result$alpha), n)
 
   # Test 2: Verify reproducibility
-  .Call("_pdm_reset_adaptation_cache")
+  .Call("_bdm_reset_adaptation_cache")
   set.seed(602)
   result1 <- test_C(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y)
 
   # Test 2: Verify reproducibility
-  .Call("_pdm_reset_adaptation_cache")
+  .Call("_bdm_reset_adaptation_cache")
   set.seed(602)
   result2 <- test_C(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y)
   expect_equal(result1, result2, tolerance = 1e-12)
@@ -114,7 +114,7 @@ test_that("generate_alpha_log_poisson_locallevel runs and is reproducible", {
 
   # R wrapper for the C test function
   test_C <- function(theta_1_in, theta_01_in, prec_theta1_in, y) {
-    .Call("_pdm_test_generate_alpha_log_poisson_locallevel",
+    .Call("_bdm_test_generate_alpha_log_poisson_locallevel",
           theta_1_in, theta_01_in, prec_theta1_in, y)
   }
 
@@ -151,7 +151,7 @@ test_that("generate_alpha_log_poisson (local trend) runs and is reproducible", {
 
   # R wrapper
   test_C <- function(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y) {
-    .Call("_pdm_test_generate_alpha_log_poisson",
+    .Call("_bdm_test_generate_alpha_log_poisson",
           as.numeric(theta_1_in),
           as.numeric(theta_2_in),
           as.numeric(theta_01_in),
@@ -181,11 +181,11 @@ test_that("generate_alpha_log_poisson (local trend) runs and is reproducible", {
   expect_equal(length(result$theta_1), n)
 
   # Test 2: Verify reproducibility
-  .Call("_pdm_reset_adaptation_cache")
+  .Call("_bdm_reset_adaptation_cache")
   set.seed(604)
   result1 <- test_C(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y)
 
-  .Call("_pdm_reset_adaptation_cache")
+  .Call("_bdm_reset_adaptation_cache")
   set.seed(604)
   result2 <- test_C(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y)
   expect_equal(result1, result2, tolerance = 1e-12)
@@ -226,7 +226,7 @@ test_that("mcmc_log_poisson_locallevel sampler is conditionally correct", {
                            base_adaptation_rate = 1.0, decay_exponent = 0.5,
                            target_acceptance = 0.44) {
 
-    .Call("_pdm_test_mcmc_log_poisson_locallevel_fixed_params",
+    .Call("_bdm_test_mcmc_log_poisson_locallevel_fixed_params",
            as.numeric(y),
            as.integer(burnin),
            as.integer(1L),

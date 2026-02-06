@@ -30,7 +30,7 @@ create_mock_object <- function(n_chain = 100, n_obs = 50, seed = 123) {
   attr(mock_obj, "model_type") <- "localtrend"
   attr(mock_obj, "y") <- rnorm(n_obs)
 
-  class(mock_obj) <- c("normal_mixture_localtrend", "pdm_mcmc", "list")
+  class(mock_obj) <- c("normal_mixture_localtrend", "bdm_mcmc", "list")
 
   return(mock_obj)
 }

@@ -64,7 +64,7 @@ create_mock_mixture <- function(model_order = 1) {
 
   class(obj) <- c(
     paste0("normal_mixture_", model_type),
-    "pdm_mcmc",
+    "bdm_mcmc",
     "list"
   )
 

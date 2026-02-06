@@ -1,7 +1,7 @@
 #' Generic MCMC Diagnostic Utilities
 #'
 #' @description Internal utility functions for creating MCMC diagnostic plots
-#'   across different model types in the pdm package. These functions provide
+#'   across different model types in the bdm package. These functions provide
 #'   a unified interface for plotting trace plots, autocorrelation functions,
 #'   posterior densities, and convergence diagnostics.
 #'
@@ -26,10 +26,10 @@ NULL
 #' Detect model type from MCMC object
 #'
 #' @description Extracts model characteristics (observation family and
-#'   polynomial order) from a pdm_mcmc object by examining its class names
+#'   polynomial order) from a bdm_mcmc object by examining its class names
 #'   and attributes.
 #'
-#' @param x An object inheriting from "pdm_mcmc".
+#' @param x An object inheriting from "bdm_mcmc".
 #'
 #' @return A list with three components:
 #'   \describe{
@@ -63,8 +63,8 @@ NULL
 detect_model_type <- function(x) {
 
   # 1. Validate input
-  if (!inherits(x, "pdm_mcmc")) {
-    stop("Input must inherit from 'pdm_mcmc' class")
+  if (!inherits(x, "bdm_mcmc")) {
+    stop("Input must inherit from 'bdm_mcmc' class")
   }
 
   # 2. Detect model class from class names
@@ -177,7 +177,7 @@ get_n_params <- function(model_class, model_order) {
 #'   scalar parameters in a model, including MCMC samples and plotting
 #'   specifications for base R graphics.
 #'
-#' @param x An object inheriting from "pdm_mcmc".
+#' @param x An object inheriting from "bdm_mcmc".
 #' @param model_class Character: "mixture", "binomial", "poisson", or "normal".
 #'   If NULL, will be auto-detected from x.
 #' @param model_order Integer: 1, 2, or 3. If NULL, will be auto-detected
@@ -440,7 +440,7 @@ validate_param_config <- function(config) {
 #' @description Dispatches MCMC diagnostic plots using base graphics for one
 #'   or more parameters.
 #'
-#' @param x An object inheriting from "pdm_mcmc".
+#' @param x An object inheriting from "bdm_mcmc".
 #' @param which Integer vector specifying which parameters to plot. If NULL,
 #'   all parameters are plotted.
 #' @param param_config Pre-computed parameter configuration list. If NULL,

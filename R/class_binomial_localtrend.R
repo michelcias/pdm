@@ -14,7 +14,7 @@
 #' @param n_trials Numeric scalar, number of trials for each binomial observation.
 #' @param target_acceptance Numeric, target acceptance proportion for Metropolis-Hastings.
 #'
-#' @return An object of class \code{c("binomial_localtrend", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("binomial_localtrend", "bdm_mcmc", "list")}
 #'   with the following structure:
 #'   \describe{
 #'     \item{Data components}{All elements from \code{result} (theta_1, theta_2,
@@ -42,7 +42,7 @@
 #'   The class hierarchy is:
 #'   \itemize{
 #'     \item \code{binomial_localtrend}: Specific model class
-#'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
+#'     \item \code{bdm_mcmc}: General MCMC class for the bdm package
 #'     \item \code{list}: Base R list class
 #'   }
 #'
@@ -87,7 +87,7 @@ new_binomial_localtrend <- function(result,
   }
 
   # Add class hierarchy
-  class(result) <- c("binomial_localtrend", "pdm_mcmc", "list")
+  class(result) <- c("binomial_localtrend", "bdm_mcmc", "list")
 
   # Add metadata as attributes
   attr(result, "n_obs") <- as.integer(n_obs)

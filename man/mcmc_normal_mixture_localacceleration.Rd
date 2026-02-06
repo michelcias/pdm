@@ -217,7 +217,7 @@ A list with components:
 }
 \description{
 Runs a Gibbs sampler for a two-component Gaussian mixture model
-  with time-varying mixture weights following a local-acceleration polynomial
+  with time-varying mixture weights following a local-acceleration Bayesian
   dynamic structure. Supports both logit and probit link functions.
 }
 \details{

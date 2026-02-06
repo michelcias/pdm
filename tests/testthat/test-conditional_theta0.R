@@ -7,7 +7,7 @@ library(testthat)
 test_that("generate_theta_01_locallevel is reproducible", {
   # R wrapper
   test_C <- function(theta_1, prec_theta_1, mean_theta_01, prec_theta_01) {
-    .Call("_pdm_test_generate_theta_01_locallevel", theta_1, prec_theta_1, mean_theta_01, prec_theta_01)
+    .Call("_bdm_test_generate_theta_01_locallevel", theta_1, prec_theta_1, mean_theta_01, prec_theta_01)
   }
 
   # Inputs
@@ -29,7 +29,7 @@ test_that("generate_theta_01_locallevel is reproducible", {
 test_that("generate_theta_01 is reproducible", {
   # R wrapper
   test_C <- function(theta_1, theta_02, prec_theta_1, mean_theta_01, prec_theta_01) {
-    .Call("_pdm_test_generate_theta_01", theta_1, theta_02, prec_theta_1, mean_theta_01, prec_theta_01)
+    .Call("_bdm_test_generate_theta_01", theta_1, theta_02, prec_theta_1, mean_theta_01, prec_theta_01)
   }
 
   # Inputs
@@ -52,7 +52,7 @@ test_that("generate_theta_01 is reproducible", {
 test_that("generate_theta_0k is reproducible", {
   # R wrapper
   test_C <- function(theta_km1, theta_k, theta_0km1, theta_0kp1, prec_km1, prec_k, mean_0k, prec_0k) {
-    .Call("_pdm_test_generate_theta_0k", theta_km1, theta_k, theta_0km1, theta_0kp1, prec_km1, prec_k, mean_0k, prec_0k)
+    .Call("_bdm_test_generate_theta_0k", theta_km1, theta_k, theta_0km1, theta_0kp1, prec_km1, prec_k, mean_0k, prec_0k)
   }
 
   # Inputs
@@ -78,7 +78,7 @@ test_that("generate_theta_0k is reproducible", {
 test_that("generate_theta_0p is reproducible", {
   # R wrapper
   test_C <- function(theta_pm1, theta_p, theta_0pm1, prec_pm1, prec_p, mean_0p, prec_0p) {
-    .Call("_pdm_test_generate_theta_0p", theta_pm1, theta_p, theta_0pm1, prec_pm1, prec_p, mean_0p, prec_0p)
+    .Call("_bdm_test_generate_theta_0p", theta_pm1, theta_p, theta_0pm1, prec_pm1, prec_p, mean_0p, prec_0p)
   }
 
   # Inputs

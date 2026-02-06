@@ -67,7 +67,7 @@
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is \code{NULL}, which does not set the seed.
 #'
-#' @return An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("normal_locallevel", "bdm_mcmc", "list")}
 #'   containing the following components:
 #'   \describe{
 #'     \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
@@ -335,7 +335,7 @@
 #'   )
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_normal_localtrend}
+#' @seealso \link[bdm]{mcmc_normal_localtrend}
 #' @export
 mcmc_normal_locallevel <- function(y,
                                    burnin,
@@ -404,7 +404,7 @@ mcmc_normal_locallevel <- function(y,
 
   # Call the C function
   result <- .Call(
-    "_pdm_C_MCMC_normal_locallevel",
+    "_bdm_C_MCMC_normal_locallevel",
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),

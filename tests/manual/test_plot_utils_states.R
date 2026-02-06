@@ -72,13 +72,13 @@ create_mock_object <- function(model_class = "mixture", model_order = 1) {
   if (model_class == "mixture") {
     class(obj) <- c(
       paste0("normal_mixture_", model_type),
-      "pdm_mcmc",
+      "bdm_mcmc",
       "list"
     )
   } else {
     class(obj) <- c(
       paste0("normal_", model_type),
-      "pdm_mcmc",
+      "bdm_mcmc",
       "list"
     )
   }
@@ -561,7 +561,7 @@ cat("\n")
 # Teste 10.3: objeto sem model_type
 cat("Teste 10.3 - Objeto sem model_type:\n")
 invalid_obj <- list(theta_1 = matrix(rnorm(100), 10, 10))
-class(invalid_obj) <- c("test_class", "pdm_mcmc", "list")
+class(invalid_obj) <- c("test_class", "bdm_mcmc", "list")
 
 tryCatch({
   get_state_matrices(invalid_obj)

@@ -1,7 +1,7 @@
 #' @title Gibbs Sampler for a Gaussian Mixture Model with Dynamic Mixture Weights
 #'
 #' @description Runs a Gibbs sampler for a two-component Gaussian mixture model
-#'   with time-varying mixture weights following a local-trend polynomial dynamic
+#'   with time-varying mixture weights following a local-trend Bayesian dynamic
 #'   structure. Supports both logit and probit link functions.
 #'
 #' @details The model is defined as:
@@ -1514,7 +1514,7 @@ mcmc_normal_mixture_localtrend <- function(y,
   # Call the C function
   # Call the C function
   result <- .Call(
-    "_pdm_C_MCMC_normal_mixture_localtrend",
+    "_bdm_C_MCMC_normal_mixture_localtrend",
     as.numeric(y),
     as.character(link),
     as.integer(burnin),

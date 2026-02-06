@@ -179,7 +179,7 @@
 #' @param seed Optional integer used to set the random number generator seed for
 #'   reproducibility. Default is `NULL` (no seed set).
 #'
-#' @return An object of class \code{c("binomial_localtrend", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("binomial_localtrend", "bdm_mcmc", "list")}
 #'   with components:
 #' \describe{
 #'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
@@ -272,7 +272,7 @@
 #'
 #' @seealso \code{\link{plot.binomial_localtrend}},
 #'   \code{\link{print.binomial_localtrend}},
-#'   \link[pdm]{mcmc_normal_localtrend}
+#'   \link[bdm]{mcmc_normal_localtrend}
 #' @export
 mcmc_binomial_localtrend <- function(y,
                                      n_trials,
@@ -399,7 +399,7 @@ mcmc_binomial_localtrend <- function(y,
 
   # Call the C function with new parameters
   result <- .Call(
-    "_pdm_C_MCMC_logit_binomial_localtrend",
+    "_bdm_C_MCMC_logit_binomial_localtrend",
     as.numeric(y),
     as.numeric(n_trials),
     as.integer(burnin),

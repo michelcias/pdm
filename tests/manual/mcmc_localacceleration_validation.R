@@ -4,12 +4,12 @@
 # Objective:
 # - Validate and replicate the Gibbs sampler loop in R for the Gaussian
 #   local acceleration model using the C helpers:
-#     * _pdm_test_generate_theta_p / _theta_k         (state updates for theta_3/theta_2)
-#     * _pdm_test_generate_precision_theta_p / _theta_k (precision updates)
-#     * _pdm_test_generate_theta_0p / _theta_0k       (initial state updates)
-#     * _pdm_test_generate_theta_1                     (state updates for theta_1)
-#     * _pdm_test_generate_theta_01                    (initial level)
-#     * _pdm_test_generate_precision_data              (data precision)
+#     * _bdm_test_generate_theta_p / _theta_k         (state updates for theta_3/theta_2)
+#     * _bdm_test_generate_precision_theta_p / _theta_k (precision updates)
+#     * _bdm_test_generate_theta_0p / _theta_0k       (initial state updates)
+#     * _bdm_test_generate_theta_1                     (state updates for theta_1)
+#     * _bdm_test_generate_theta_01                    (initial level)
+#     * _bdm_test_generate_precision_data              (data precision)
 #
 # - Standardize outputs using helper functions from tests/manual/helpers:
 #     * summary_tables.R
@@ -33,7 +33,7 @@ suppressPackageStartupMessages({
     devtools::load_all(".", quiet = TRUE)
   } else {
     # Fallback to installed package
-    library(pdm)
+    library(bdm)
   }
 })
 
@@ -174,7 +174,7 @@ for (ii in 2:n_iter) {
 
   # 1) theta_3 (acceleration states)
   theta_3_new <- .Call(
-    "_pdm_test_generate_theta_p",
+    "_bdm_test_generate_theta_p",
     as.numeric(theta_2_post[ii-1, ]),
     as.numeric(prec_theta2_post[ii-1]),
     as.numeric(prec_theta3_post[ii-1]),
@@ -189,7 +189,7 @@ for (ii in 2:n_iter) {
 
   # 2) precision 1/W_3
   prec_theta3_post[ii] <- .Call(
-    "_pdm_test_generate_precision_theta_p",
+    "_bdm_test_generate_precision_theta_p",
     as.numeric(theta_03_post[ii-1]),
     as.numeric(theta_3_post[ii, ]),
     as.numeric(nu_03),
@@ -198,7 +198,7 @@ for (ii in 2:n_iter) {
 
   # 3) initial acceleration theta_03
   theta_03_post[ii] <- .Call(
-    "_pdm_test_generate_theta_0p",
+    "_bdm_test_generate_theta_0p",
     as.numeric(theta_2_post[ii-1, ]),
     as.numeric(theta_3_post[ii, ]),
     as.numeric(theta_02_post[ii-1]),
@@ -210,7 +210,7 @@ for (ii in 2:n_iter) {
 
   # 4) theta_2 (trend states)
   theta_2_new <- .Call(
-    "_pdm_test_generate_theta_k",
+    "_bdm_test_generate_theta_k",
     as.numeric(theta_1_post[ii-1, ]),
     as.numeric(theta_3_post[ii, ]),
     as.numeric(prec_theta1_post[ii-1]),
@@ -227,7 +227,7 @@ for (ii in 2:n_iter) {
 
   # 5) precision 1/W_2
   prec_theta2_post[ii] <- .Call(
-    "_pdm_test_generate_precision_theta_k",
+    "_bdm_test_generate_precision_theta_k",
     as.numeric(theta_02_post[ii-1]),
     as.numeric(theta_03_post[ii]),
     as.numeric(theta_2_post[ii, ]),
@@ -238,7 +238,7 @@ for (ii in 2:n_iter) {
 
   # 6) initial trend theta_02
   theta_02_post[ii] <- .Call(
-    "_pdm_test_generate_theta_0k",
+    "_bdm_test_generate_theta_0k",
     as.numeric(theta_1_post[ii-1, ]),
     as.numeric(theta_2_post[ii, ]),
     as.numeric(theta_01_post[ii-1]),
@@ -251,7 +251,7 @@ for (ii in 2:n_iter) {
 
   # 7) theta_1 (level states)
   theta_1_new <- .Call(
-    "_pdm_test_generate_theta_1",
+    "_bdm_test_generate_theta_1",
     as.numeric(y),
     as.numeric(theta_2_post[ii, ]),
     as.numeric(prec_y_post[ii-1]),
@@ -268,7 +268,7 @@ for (ii in 2:n_iter) {
 
   # 8) precision 1/W_1
   prec_theta1_post[ii] <- .Call(
-    "_pdm_test_generate_precision_theta_k",
+    "_bdm_test_generate_precision_theta_k",
     as.numeric(theta_01_post[ii-1]),
     as.numeric(theta_02_post[ii]),
     as.numeric(theta_1_post[ii, ]),
@@ -279,7 +279,7 @@ for (ii in 2:n_iter) {
 
   # 9) initial level theta_01
   theta_01_post[ii] <- .Call(
-    "_pdm_test_generate_theta_01",
+    "_bdm_test_generate_theta_01",
     as.numeric(theta_1_post[ii, ]),
     as.numeric(theta_02_post[ii]),
     as.numeric(prec_theta1_post[ii]),
@@ -289,7 +289,7 @@ for (ii in 2:n_iter) {
 
   # 10) data precision 1/V
   prec_y_post[ii] <- .Call(
-    "_pdm_test_generate_precision_data",
+    "_bdm_test_generate_precision_data",
     as.numeric(y),
     as.numeric(theta_1_post[ii, ]),
     as.numeric(nu_y),

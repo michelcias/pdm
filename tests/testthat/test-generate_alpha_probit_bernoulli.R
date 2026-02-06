@@ -7,7 +7,7 @@ library(testthat)
 test_that("generate_alpha_probit_bernoulli_locallevel runs and is reproducible", {
 
   test_C <- function(theta_1_in, theta_01_in, prec_theta1_in, y) {
-    .Call("_pdm_test_generate_alpha_probit_bernoulli_locallevel",
+    .Call("_bdm_test_generate_alpha_probit_bernoulli_locallevel",
           as.numeric(theta_1_in), as.numeric(theta_01_in),
           as.numeric(prec_theta1_in), as.numeric(y))
   }
@@ -40,7 +40,7 @@ test_that("generate_alpha_probit_bernoulli_locallevel runs and is reproducible",
 test_that("generate_alpha_probit_bernoulli (local trend) runs and is reproducible", {
 
   test_C <- function(theta_1_in, theta_2_in, theta_01_in, theta_02_in, prec_theta1_in, y) {
-    .Call("_pdm_test_generate_alpha_probit_bernoulli",
+    .Call("_bdm_test_generate_alpha_probit_bernoulli",
           as.numeric(theta_1_in), as.numeric(theta_2_in),
           as.numeric(theta_01_in), as.numeric(theta_02_in),
           as.numeric(prec_theta1_in), as.numeric(y))

@@ -13,7 +13,7 @@
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
 #'
-#' @return An object of class \code{c("normal_mixture_localtrend", "pdm_mcmc", "list")}
+#' @return An object of class \code{c("normal_mixture_localtrend", "bdm_mcmc", "list")}
 #'   with the following structure:
 #'   \describe{
 #'     \item{Data components}{All elements from \code{result} (mu_1, mu_2, prec_1,
@@ -39,7 +39,7 @@
 #'   The class hierarchy is:
 #'   \itemize{
 #'     \item \code{normal_mixture_localtrend}: Specific model class
-#'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
+#'     \item \code{bdm_mcmc}: General MCMC class for the bdm package
 #'     \item \code{list}: Base R list class
 #'   }
 #'
@@ -81,7 +81,7 @@ new_normal_mixture_localtrend <- function(result,
   }
 
   # Add class hierarchy
-  class(result) <- c("normal_mixture_localtrend", "pdm_mcmc", "list")
+  class(result) <- c("normal_mixture_localtrend", "bdm_mcmc", "list")
 
   # Add metadata as attributes
   attr(result, "link") <- link

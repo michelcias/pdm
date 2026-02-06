@@ -1303,7 +1303,7 @@ mcmc_normal_mixture_locallevel <- function(y,
   # --- End Input Validation ---
 
   result <- .Call(
-    "_pdm_C_MCMC_normal_mixture_locallevel",
+    "_bdm_C_MCMC_normal_mixture_locallevel",
     as.numeric(y),
     as.character(link),
     as.integer(burnin),

@@ -1,13 +1,13 @@
-Package: pdm
+Package: bdm
 Type: Package
-Title: Polynomial dynamic models
+Title: Bayesian dynamic models
 Version: 0.1-0
 Date: 2022-05-05
 Authors@R: c(person("Michel H. Montoril", role = c("aut", "cre"),
 	email = "michel@ufscar.br"))
 Author: Michel H. Montoril [aut, cre]
 Maintainer: Michel H. Montoril <michel@ufscar.br>
-Description: Provides tools for estimating polynomial dynamic models, which are
+Description: Provides tools for estimating Bayesian dynamic models, which are
   formulated as Bayesian regressions with a specific prior. The package leverages
   the Markovian structure of these models, enabling efficient treatment of
   higher-orderstates as hyperparameters.

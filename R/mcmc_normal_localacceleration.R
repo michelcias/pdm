@@ -624,7 +624,7 @@
 #'   )
 #' }
 #'
-#' @seealso \link[pdm]{mcmc_normal_locallevel}, \link[pdm]{mcmc_normal_localtrend}
+#' @seealso \link[bdm]{mcmc_normal_locallevel}, \link[bdm]{mcmc_normal_localtrend}
 #' @export
 #'
 mcmc_normal_localacceleration <- function(y,
@@ -733,7 +733,7 @@ mcmc_normal_localacceleration <- function(y,
 
   # Call the C function
   result <- .Call(
-    "_pdm_C_MCMC_normal_localacceleration",
+    "_bdm_C_MCMC_normal_localacceleration",
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),

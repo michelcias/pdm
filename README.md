@@ -1,4 +1,4 @@
-# pdm: Polynomial dynamic models
+# bdm: Bayesian dynamic models
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
@@ -6,7 +6,7 @@
 
 ## Overview
 
-`pdm` is an R package that provides tools for estimating polynomial dynamic
+`bdm` is an R package that provides tools for estimating Bayesian dynamic
 models, which are formulated as Bayesian regressions with a specific prior.
 The package leverages the Markovian structure of these models, enabling
 efficient treatment of higher-orderstates as hyperparameters.
@@ -28,5 +28,5 @@ development version directly from GitHub:
 ```r
 # Install devtools package if necessary
 # install.packages("devtools")
-devtools::install_github("michelcias/pdm")
+devtools::install_github("michelcias/bdm")
 ```

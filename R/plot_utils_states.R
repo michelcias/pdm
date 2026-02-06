@@ -2,7 +2,7 @@
 #'
 #' @description Internal utility functions for plotting dynamic state
 #'   trajectories, innovations, and state-space relationships across
-#'   different polynomial orders in the pdm package.
+#'   different polynomial orders in the bdm package.
 #'
 #' @details This file contains shared logic for:
 #'   \itemize{
@@ -30,7 +30,7 @@ NULL
 #' @description Retrieves all dynamic state matrices (theta_*) from a MCMC
 #'   object based on its polynomial order.
 #'
-#' @param x An object inheriting from "pdm_mcmc".
+#' @param x An object inheriting from "bdm_mcmc".
 #' @param model_order Integer: 1, 2, or 3. If NULL, will be auto-detected
 #'   from x.
 #'
@@ -151,7 +151,7 @@ summarise_state <- function(state_matrix, ci = TRUE, ci_level = 0.95) {
 #'
 #' @description Computes summaries for all dynamic states based on model order.
 #'
-#' @param x An object inheriting from "pdm_mcmc".
+#' @param x An object inheriting from "bdm_mcmc".
 #' @param model_order Integer: 1, 2, or 3. If NULL, auto-detected.
 #' @param ci Logical; whether to compute credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
@@ -183,7 +183,7 @@ summarise_all_states <- function(x, model_order = NULL, ci = TRUE,
 #' @description Calculates innovation sequences (u_t) for all dynamic states
 #'   based on the state-space model structure.
 #'
-#' @param x An object inheriting from "pdm_mcmc".
+#' @param x An object inheriting from "bdm_mcmc".
 #' @param model_order Integer: 1, 2, or 3. If NULL, auto-detected.
 #'
 #' @return A named list of innovation matrices (n_chain x n_obs):

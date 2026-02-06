@@ -1,7 +1,7 @@
 #' Internal plotting utilities for base R graphics
 #'
 #' @description This file contains shared plotting functions used by all
-#'   plot methods in the pdm package. These functions implement base R
+#'   plot methods in the bdm package. These functions implement base R
 #'   graphics for MCMC diagnostic plots, mixture parameter visualizations,
 #'   and credible interval displays.
 #'
@@ -1626,7 +1626,7 @@ validate_ci_level <- function(ci_level) {
 #'   for any mixture model type, automatically adapting to the model's
 #'   polynomial order.
 #'
-#' @param x An object inheriting from "pdm_mcmc".
+#' @param x An object inheriting from "bdm_mcmc".
 #' @param ask Logical; if TRUE, prompts user before each new page.
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
@@ -1757,7 +1757,7 @@ plot_all_mixture_generic_base <- function(x,
 #' @description Orchestrates dynamic state plotting for any model order,
 #'   creating appropriate pages for trajectories, innovations, and diagnostics.
 #'
-#' @param x An object inheriting from "pdm_mcmc".
+#' @param x An object inheriting from "bdm_mcmc".
 #' @param which Integer vector specifying which state plot pages to display.
 #'   If NULL, all pages are shown.
 #' @param model_order Integer: 1, 2, or 3. If NULL, auto-detected.

@@ -501,7 +501,7 @@ enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
 
   # Call C function with ALL 19 ARGUMENTS
   tryCatch({
-    result <- .Call("_pdm_test_mcmc_binomial_locallevel_fixed_params",
+    result <- .Call("_bdm_test_mcmc_binomial_locallevel_fixed_params",
                     y,                          # 1
                     n_trials,                   # 2
                     as.integer(burnin),         # 3

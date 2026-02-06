@@ -31,7 +31,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
                            prior_theta01_mean = 0.0, prior_theta01_prec = 1.0,
                            prior_prec1_shape = 1.0, prior_prec1_rate = 1.0) {
 
-    .Call("_pdm_test_mcmc_probit_bernoulli_locallevel_fixed_params",
+    .Call("_bdm_test_mcmc_probit_bernoulli_locallevel_fixed_params",
           y, burnin, 1L, n_chain,
           theta_1_true, theta_01_true, prec_theta1_true,
           prior_theta01_mean, prior_theta01_prec,
@@ -97,7 +97,7 @@ test_that("mcmc_probit_bernoulli_locallevel handles edge cases correctly", {
   # Case 1: All zeros (should handle gracefully)
   y_zeros <- rep(0, n_small)
   expect_no_error({
-    result_zeros <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
+    result_zeros <- .Call("_bdm_C_MCMC_probit_bernoulli_locallevel",
                           y_zeros, 50L, 1L, 100L,
                           0.0, 1.0, 1.0, 1.0,
                           FALSE, 60L)
@@ -106,7 +106,7 @@ test_that("mcmc_probit_bernoulli_locallevel handles edge cases correctly", {
   # Case 2: All ones (should handle gracefully)
   y_ones <- rep(1, n_small)
   expect_no_error({
-    result_ones <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
+    result_ones <- .Call("_bdm_C_MCMC_probit_bernoulli_locallevel",
                          y_ones, 50L, 1L, 100L,
                          0.0, 1.0, 1.0, 1.0,
                          FALSE, 60L)

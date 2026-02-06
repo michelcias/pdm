@@ -523,7 +523,7 @@ enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
                     return_accrate)             # 19 ← AGORA INCLUÍDO!
   }, error = function(e) {
     stop("C function call failed: ", e$message,
-         "\nCheck that the pdm package is properly installed and loaded.")
+         "\nCheck that the bdm package is properly installed and loaded.")
   })
 
   if (CONFIG$test$verbose) {

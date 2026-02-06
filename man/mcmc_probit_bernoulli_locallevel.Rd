@@ -422,5 +422,5 @@ Response Data. \emph{Journal of the American Statistical Association}, 88(422), 
 https://doi.org/10.1080/01621459.1993.10476321
 }
 \seealso{
-\link[pdm]{mcmc_binomial_locallevel}
+\link[bdm]{mcmc_binomial_locallevel}
 }

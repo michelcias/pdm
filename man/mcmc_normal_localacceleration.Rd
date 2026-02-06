@@ -678,5 +678,5 @@ out <- mcmc_normal_localacceleration(
 
 }
 \seealso{
-\link[pdm]{mcmc_normal_locallevel}, \link[pdm]{mcmc_normal_localtrend}
+\link[bdm]{mcmc_normal_locallevel}, \link[bdm]{mcmc_normal_localtrend}
 }

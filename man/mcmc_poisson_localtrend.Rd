@@ -91,7 +91,7 @@ Default is `60`.}
 reproducibility. Default is `NULL` (no seed set).}
 }
 \value{
-An object of class \code{c("poisson_localtrend", "pdm_mcmc", "list")}
+An object of class \code{c("poisson_localtrend", "bdm_mcmc", "list")}
   with components:
 \describe{
   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
@@ -327,5 +327,5 @@ Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
 \seealso{
 \code{\link{plot.poisson_localtrend}},
   \code{\link{print.poisson_localtrend}},
-  \link[pdm]{mcmc_normal_localtrend}
+  \link[bdm]{mcmc_normal_localtrend}
 }

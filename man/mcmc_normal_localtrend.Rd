@@ -521,5 +521,5 @@ out <- mcmc_normal_localtrend(
 
 }
 \seealso{
-\link[pdm]{mcmc_normal_locallevel}
+\link[bdm]{mcmc_normal_locallevel}
 }

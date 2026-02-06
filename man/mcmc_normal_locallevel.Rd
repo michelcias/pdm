@@ -49,7 +49,7 @@ mcmc_normal_locallevel(
 Default is \code{NULL}, which does not set the seed.}
 }
 \value{
-An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
+An object of class \code{c("normal_locallevel", "bdm_mcmc", "list")}
   containing the following components:
   \describe{
     \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
@@ -373,5 +373,5 @@ out <- mcmc_normal_locallevel(
 
 }
 \seealso{
-\link[pdm]{mcmc_normal_localtrend}
+\link[bdm]{mcmc_normal_localtrend}
 }

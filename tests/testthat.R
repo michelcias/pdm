@@ -9,4 +9,4 @@
 library(testthat)
 library(bdm)
 
-test_check("pdm")
+test_check("bdm")

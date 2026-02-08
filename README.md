@@ -112,15 +112,10 @@ where $\alpha_t = \Phi(\theta_{t,1})$ uses the standard normal CDF.
 Modeling data from two switching regimes. The observation $y_t$ is drawn from one of two Gaussian components depending on a latent indicator $z_t \in \{0, 1\}$:
 
 $$
-y_t \mid z_t \sim \left\{
-\begin{array}{ll}
-\mathcal{N}(\mu_1, \phi_1^{-1}), & \text{if } z_t = 0, \\
-\mathcal{N}(\mu_2, \phi_2^{-1}), & \text{if } z_t = 1.
-\end{array}
-\right.
+y_t \mid z_t \sim \mathcal{N}(\mu_{z_t+1}, \phi_{z_t+1}^{-1}), \quad z_t \in \{0, 1\}.
 $$
 
-The probability of selecting Component 2 evolves dynamically:
+The success probability of $z_t$ evolves dynamically:
 
 $$P(z_t = 1) = \alpha_t = g(\theta_{t,1}), \quad g \in \{\text{logit}^{-1}, \Phi\}.$$
 

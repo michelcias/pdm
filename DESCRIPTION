@@ -12,7 +12,7 @@ Description: Provides tools for estimating polynomial dynamic models, which are
   the Markovian structure of these models, enabling efficient treatment of
   higher-orderstates as hyperparameters.
 NeedsCompilation: yes
-License: GPL (>= 2)
+License: GPL (>= 3)
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 LazyData: true

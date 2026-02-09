@@ -103,7 +103,7 @@ double generate_precision_data(const double *y,
    * Higher SSE leads to lower sampled precision (higher variance). */
   return rgamma(
     nu_y_post,       /* shape: posterior Gamma shape parameter */
-  1.0 / eta_y_post /* scale: inverse of posterior rate parameter */
+    1.0 / eta_y_post /* scale: inverse of posterior rate parameter */
   );
 }
 
@@ -205,8 +205,8 @@ double generate_precision_theta_k(double        theta_0k,
   /* Draw 1/W_k ~ Gamma(nu_post, eta_post)
    * R's rgamma uses scale parameterization (inverse of rate). */
   return rgamma(
-    nu_0k_post,      /* shape: posterior Gamma shape parameter */
-  1.0 / eta_0k_post /* scale: inverse of posterior rate parameter */
+    nu_0k_post,       /* shape: posterior Gamma shape parameter */
+    1.0 / eta_0k_post /* scale: inverse of posterior rate parameter */
   );
 }
 
@@ -305,7 +305,7 @@ double generate_precision_theta_p(double        theta_0p,
   /* Draw 1/W_p ~ Gamma(nu_post, eta_post)
    * R's rgamma uses scale parameterization (inverse of rate). */
   return rgamma(
-    nu_0p_post,      /* shape: posterior Gamma shape parameter */
-  1.0 / eta_0p_post /* scale: inverse of posterior rate parameter */
+    nu_0p_post,       /* shape: posterior Gamma shape parameter */
+    1.0 / eta_0p_post /* scale: inverse of posterior rate parameter */
   );
 }

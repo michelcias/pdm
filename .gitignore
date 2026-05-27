@@ -11,3 +11,4 @@
 *.Rcheck/
 ..Rcheck/
 src/symbols.rds
+.positai

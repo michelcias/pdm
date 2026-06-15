@@ -11,5 +11,10 @@ Provides tools for estimating polynomial dynamic models, which are formulated as
 \author{
 \strong{Maintainer}: Michel H. Montoril \email{michel@ufscar.br}
 
+Authors:
+\itemize{
+  \item Michel H. Montoril \email{michel@ufscar.br}
+}
+
 }
 \keyword{internal}

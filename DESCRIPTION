@@ -16,7 +16,8 @@ License: GPL (>= 3)
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 LazyData: true
-Suggests: 
+Suggests:
+    coda,
     ggplot2 (>= 3.4.0),
     hexbin,
     patchwork (>= 1.1.0),

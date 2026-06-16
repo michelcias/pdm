@@ -46,27 +46,27 @@
 #' y <- cumsum(rnorm(200)) + rnorm(200, sd = 0.5)
 #' fit <- mcmc_normal_locallevel(y, n_chain = 1000, burnin = 500)
 #'
-#' conv <- convergence(fit)
+#' conv <- mcmc_convergence(fit)
 #' print(conv)
 #' }
 #'
 #' @seealso \code{\link{mcmc_normal_locallevel}}, \code{\link{summary.normal_locallevel}}
 #'
 #' @export
-convergence <- function(object, ...) {
-  UseMethod("convergence")
+mcmc_convergence <- function(object, ...) {
+  UseMethod("mcmc_convergence")
 }
 
 
-#' @rdname convergence
+#' @rdname mcmc_convergence
 #' @export
-convergence.pdm_mcmc <- function(object, ...) {
+mcmc_convergence.pdm_mcmc <- function(object, ...) {
 
   if (!inherits(object, "pdm_mcmc")) {
     stop("'object' must inherit from 'pdm_mcmc'")
   }
 
-  n_chain   <- as.integer(attr(object, "n_chain"))
+  n_chain    <- as.integer(attr(object, "n_chain"))
   model_type <- attr(object, "model_type")
 
   # Extract scalar parameter chains via the shared utility
@@ -89,10 +89,10 @@ convergence.pdm_mcmc <- function(object, ...) {
                   if (efficiency > 10) "ACCEPTABLE" else "POOR"
 
     row <- data.frame(
-      Parameter    = label,
-      ESS          = round(ess, 1),
-      Efficiency   = round(efficiency, 1),
-      ESS_status   = ess_status,
+      Parameter  = label,
+      ESS        = round(ess, 1),
+      Efficiency = round(efficiency, 1),
+      ESS_status = ess_status,
       stringsAsFactors = FALSE
     )
 
@@ -118,8 +118,8 @@ convergence.pdm_mcmc <- function(object, ...) {
 
       # Overall: count passing tests
       tests_pass <- sum(c(geweke_pass, heidel_pass))
-      overall <- if (tests_pass == 2L)        "EXCELLENT"  else
-                 if (tests_pass == 1L)        "ACCEPTABLE" else "POOR"
+      overall <- if (tests_pass == 2L) "EXCELLENT"  else
+                 if (tests_pass == 1L) "ACCEPTABLE" else "POOR"
 
       row$Geweke_z    <- round(gz, 4)
       row$Geweke_pass <- ifelse(geweke_pass, "PASS", "FAIL")

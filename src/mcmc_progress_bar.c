@@ -10,6 +10,7 @@
 #include <R.h>
 #include <Rmath.h>
 #include <stdio.h>
+#include <string.h>
 
 /**
  * @brief Compute maximum of two integers
@@ -32,9 +33,16 @@ ProgressBar progress_bar_init(int total_iterations,
                               int verbose) {
   ProgressBar pb;
 
+  /* Zero-initialize all fields so that no member is ever read uninitialized.
+   * This matters because the sampler loops evaluate "ii % pb.update_step"
+   * unconditionally; an uninitialized update_step of 0 would raise SIGFPE
+   * (integer division by zero). */
+  memset(&pb, 0, sizeof(ProgressBar));
+
   /* Early exit if verbose disabled */
   if (!verbose) {
     pb.total_iterations = 0;
+    pb.update_step      = 1;  /* Safe divisor; progress_bar_update() no-ops anyway */
     return pb;
   }
 

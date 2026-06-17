@@ -89,7 +89,8 @@ repeatedly with different seeds if such a comparison is desired.
   test then checks whether the chain is long enough to estimate the posterior
   mean to a prescribed relative accuracy. Both are computed with
   \code{\link[coda]{heidel.diag}}; a parameter is considered well-behaved
-  only when it passes both.
+  only when it passes both. The results are read from the named columns
+  \code{stest} and \code{htest} of the returned matrix.
 }
 
 \subsection{Overall classification}{

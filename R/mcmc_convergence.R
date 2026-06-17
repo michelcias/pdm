@@ -229,9 +229,9 @@ mcmc_convergence.pdm_mcmc <- function(object, ...) {
       # Heidelberger-Welch
       hw <- tryCatch(coda::heidel.diag(mcmc_obj), error = function(e) NULL)
       if (!is.null(hw) && is.matrix(hw) && nrow(hw) >= 1L) {
-        heidel_stat <- ifelse(hw[1L, 1L], "PASS", "FAIL")
-        heidel_hw   <- ifelse(hw[1L, 3L], "PASS", "FAIL")
-        heidel_pass <- hw[1L, 1L] && hw[1L, 3L]
+        heidel_stat <- ifelse(hw[1L, "stest"], "PASS", "FAIL")
+        heidel_hw   <- ifelse(hw[1L, "htest"], "PASS", "FAIL")
+        heidel_pass <- hw[1L, "stest"] && hw[1L, "htest"]
       } else {
         heidel_stat <- "ERROR"
         heidel_hw   <- "ERROR"

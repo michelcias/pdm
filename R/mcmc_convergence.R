@@ -8,41 +8,68 @@
 #'   stationarity and halfwidth tests. The individual verdicts are combined into
 #'   a single \code{Overall} classification per parameter.
 #'
+#'   Optionally, selected time points of the latent state chains
+#'   (\eqn{\theta_{t,j}}) can also be assessed, one row per state per time
+#'   point.
+#'
 #' @param object An object inheriting from \code{"pdm_mcmc"}, typically the
 #'   result of one of the \code{mcmc_*()} fitting functions (for example
 #'   \code{\link{mcmc_normal_localtrend}}).
+#' @param theta_timepoints Numeric vector of fractions in \eqn{(0, 1)} that
+#'   determine which time points of the latent state chains are included in the
+#'   diagnostics. Each fraction is rounded to the nearest integer index. The
+#'   default \code{c(0.25, 0.5, 0.75)} evaluates the states at the first
+#'   quartile, median and third quartile of the series. Set to \code{NULL} to
+#'   exclude all latent states (scalar parameters only).
+#' @param ess_thresholds Numeric vector of length 3 giving the efficiency
+#'   cut-offs (in percent) for the \code{ESS_status} labels \code{EXCELLENT},
+#'   \code{GOOD} and \code{ACCEPTABLE}. Default is \code{c(50, 25, 10)},
+#'   meaning efficiency > 50\% is \code{EXCELLENT}, > 25\% is \code{GOOD},
+#'   > 10\% is \code{ACCEPTABLE}, and \eqn{\leq} 10\% is \code{POOR}.
+#'   Values must be strictly decreasing and in the range \eqn{(0, 100)}.
+#' @param geweke_level Numeric value in \eqn{(0, 1)}, the significance level
+#'   used for the Geweke test. A parameter passes when
+#'   \eqn{|z| < z_{1-\alpha/2}}, where \eqn{\alpha} is \code{geweke_level}.
+#'   Default is \code{0.05} (5\%, corresponding to \eqn{|z| < 1.96}).
+#' @param show_ess_status Logical. Whether to include the \code{ESS_status}
+#'   column in the output table. Default \code{TRUE}.
+#' @param show_geweke Logical. Whether to include the \code{Geweke_z} and
+#'   \code{Geweke_pass} columns. Default \code{TRUE}.
+#' @param show_heidel Logical. Whether to include the \code{Heidel_stat} and
+#'   \code{Heidel_hw} columns. Default \code{TRUE}.
+#' @param show_overall Logical. Whether to include the \code{Overall} column.
+#'   Default \code{TRUE}.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return An object of class \code{"pdm_convergence"}, which is a list with:
 #'   \describe{
-#'     \item{\code{table}}{Data frame with one row per scalar parameter. Columns
-#'       always present: \code{Parameter}, \code{ESS}, \code{Efficiency} (the
-#'       ratio \eqn{100 \times \mathrm{ESS} / N}, in percent), and
-#'       \code{ESS_status}. When \pkg{coda} is available, the additional columns
-#'       \code{Geweke_z}, \code{Geweke_pass}, \code{Heidel_stat},
-#'       \code{Heidel_hw} and \code{Overall} are appended.}
+#'     \item{\code{table}}{Data frame with one row per assessed parameter or
+#'       state time point. Columns always present: \code{Parameter}, \code{ESS},
+#'       \code{Efficiency} (in percent). Optional columns, controlled by the
+#'       \code{show_*} arguments: \code{ESS_status}, \code{Geweke_z},
+#'       \code{Geweke_pass}, \code{Heidel_stat}, \code{Heidel_hw},
+#'       \code{Overall}.}
 #'     \item{\code{n_chain}}{Number of retained MCMC samples (\eqn{N}).}
 #'     \item{\code{model_type}}{Character string, e.g. \code{"locallevel"},
 #'       \code{"localtrend"} or \code{"localacceleration"}.}
 #'     \item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
 #'       included.}
+#'     \item{\code{ess_thresholds}}{The ESS efficiency thresholds used.}
+#'     \item{\code{geweke_level}}{The significance level used for Geweke.}
 #'   }
 #'
 #' @details
-#' Only the scalar parameters of the model are assessed, namely the initial
-#' states \eqn{\theta_{0,j}}, the innovation precisions \eqn{W_j^{-1}} and, for
-#' Gaussian models, the observation precision \eqn{V^{-1}} (plus the mixture
-#' components for mixture models). These are extracted automatically, so a
-#' single call works for every model family in the package. The time-varying
-#' latent states (\code{theta_1}, \code{theta_2}, \ldots), being matrices with
-#' one column per time point, are \emph{not} summarised here; inspect their
-#' trajectories with \code{plot()} instead.
+#' Only scalar parameters (initial states \eqn{\theta_{0,j}}, innovation
+#' precisions \eqn{W_j^{-1}}, and for Gaussian models the observation
+#' precision \eqn{V^{-1}}) are always included. When \code{theta_timepoints}
+#' is not \code{NULL}, selected time points of every latent state matrix
+#' (\code{theta_1}, \code{theta_2}, \ldots) are also assessed — one row per
+#' state per selected time point, labelled as e.g. \code{theta_1[t=25]}.
 #'
-#' Because the \code{mcmc_*()} samplers return a single chain, the diagnostics
-#' below are all \emph{within-chain} criteria. Multi-chain diagnostics such as
-#' the Gelman–Rubin potential scale reduction factor \eqn{\hat{R}} require
-#' several independent chains and are therefore not computed; run the sampler
-#' repeatedly with different seeds if such a comparison is desired.
+#' Because the \code{mcmc_*()} samplers return a single chain, all diagnostics
+#' are \emph{within-chain} criteria. Multi-chain diagnostics such as the
+#' Gelman–Rubin \eqn{\hat{R}} require several independent runs and are not
+#' computed here.
 #'
 #' \subsection{Effective Sample Size (ESS)}{
 #'   Autocorrelation inflates the variance of MCMC estimators relative to an
@@ -53,9 +80,8 @@
 #'   lag-\eqn{k} sample autocorrelation. Following the truncated-sum approach of
 #'   Geyer (1992), the sum is taken over the positive sample autocorrelations up
 #'   to a maximum lag. This estimate requires no external package. The reported
-#'   efficiency is \eqn{100 \times \mathrm{ESS}/N} and is classified as
-#'   \code{EXCELLENT} (> 50\%), \code{GOOD} (> 25\%), \code{ACCEPTABLE} (> 10\%)
-#'   or \code{POOR} otherwise.
+#'   efficiency is \eqn{100 \times \mathrm{ESS}/N} and is classified according
+#'   to \code{ess_thresholds}.
 #' }
 #'
 #' \subsection{Geweke diagnostic}{
@@ -63,9 +89,8 @@
 #'   first portion of the chain (the first 10\% by default) with that computed
 #'   from the last portion (the last 50\%). Under convergence the two means
 #'   agree and the standardised difference follows a standard normal
-#'   distribution; the test therefore reports a z-score, and \eqn{|z| < 1.96}
-#'   (the 5\% level) is taken as evidence of convergence. Computed with
-#'   \code{\link[coda]{geweke.diag}}.
+#'   distribution. The test passes when \eqn{|z| < z_{1-\alpha/2}} for the
+#'   level \code{geweke_level}. Computed with \code{\link[coda]{geweke.diag}}.
 #' }
 #'
 #' \subsection{Heidelberger–Welch tests}{
@@ -73,18 +98,18 @@
 #'   \emph{stationarity} test uses a Cramér–von Mises statistic on the
 #'   Brownian-bridge representation of the chain to decide whether the retained
 #'   draws are consistent with a stationary distribution. The \emph{halfwidth}
-#'   test then checks whether the chain is long enough to estimate the posterior
+#'   test checks whether the chain is long enough to estimate the posterior
 #'   mean to a prescribed relative accuracy. Both are computed with
-#'   \code{\link[coda]{heidel.diag}}; a parameter is considered well-behaved
-#'   only when it passes both.
+#'   \code{\link[coda]{heidel.diag}} via the named columns \code{stest} and
+#'   \code{htest}; a parameter is considered well-behaved only when it passes
+#'   both.
 #' }
 #'
 #' \subsection{Overall classification}{
 #'   When \pkg{coda} is available the Geweke and Heidelberger–Welch verdicts are
 #'   pooled into the \code{Overall} column: \code{EXCELLENT} when both tests
 #'   pass, \code{ACCEPTABLE} when exactly one passes, and \code{POOR} when
-#'   neither does. The ESS efficiency is reported alongside as an independent,
-#'   always-available indicator.
+#'   neither does.
 #' }
 #'
 #' @references
@@ -157,14 +182,36 @@
 #'   seed               = 456
 #' )
 #'
-#' ## 3. Convergence diagnostics -------------------------------------------
+#' ## 3. Default diagnostics (scalars + states at 25\%, 50\%, 75\%) ---------
 #' conv <- mcmc_convergence(fit)
 #' print(conv)
 #'
-#' # The diagnostics table can be inspected or post-processed directly:
-#' conv$table
+#' ## 4. Scalar parameters only --------------------------------------------
+#' conv_scalar <- mcmc_convergence(fit, theta_timepoints = NULL)
+#' print(conv_scalar)
 #'
-#' # Flag any parameter whose ESS efficiency falls below 25\%:
+#' ## 5. Custom time points and stricter Geweke level ----------------------
+#' conv_custom <- mcmc_convergence(
+#'   fit,
+#'   theta_timepoints = c(0.1, 0.5, 0.9),
+#'   geweke_level     = 0.01
+#' )
+#' print(conv_custom)
+#'
+#' ## 6. Compact table: only ESS columns -----------------------------------
+#' conv_ess <- mcmc_convergence(
+#'   fit,
+#'   show_geweke  = FALSE,
+#'   show_heidel  = FALSE,
+#'   show_overall = FALSE
+#' )
+#' print(conv_ess)
+#'
+#' ## 7. Stricter ESS thresholds -------------------------------------------
+#' conv_strict <- mcmc_convergence(fit, ess_thresholds = c(75, 50, 25))
+#' print(conv_strict)
+#'
+#' # Post-process: flag parameters with ESS efficiency below 25\%:
 #' conv$table[conv$table$Efficiency < 25, ]
 #' }
 #'
@@ -182,49 +229,84 @@ mcmc_convergence <- function(object, ...) {
 
 #' @rdname mcmc_convergence
 #' @export
-mcmc_convergence.pdm_mcmc <- function(object, ...) {
+mcmc_convergence.pdm_mcmc <- function(object,
+                                      theta_timepoints = c(0.25, 0.5, 0.75),
+                                      ess_thresholds   = c(50, 25, 10),
+                                      geweke_level     = 0.05,
+                                      show_ess_status  = TRUE,
+                                      show_geweke      = TRUE,
+                                      show_heidel      = TRUE,
+                                      show_overall     = TRUE,
+                                      ...) {
 
+  # --- Input validation ---------------------------------------------------
   if (!inherits(object, "pdm_mcmc")) {
     stop("'object' must inherit from 'pdm_mcmc'")
   }
 
+  if (!is.null(theta_timepoints)) {
+    if (!is.numeric(theta_timepoints) ||
+        any(theta_timepoints <= 0) || any(theta_timepoints >= 1)) {
+      stop("'theta_timepoints' must be a numeric vector with values in (0, 1), or NULL")
+    }
+    theta_timepoints <- sort(unique(theta_timepoints))
+  }
+
+  if (!is.numeric(ess_thresholds) || length(ess_thresholds) != 3L ||
+      any(ess_thresholds <= 0) || any(ess_thresholds >= 100) ||
+      !all(diff(ess_thresholds) < 0)) {
+    stop("'ess_thresholds' must be a strictly decreasing numeric vector of length 3 with values in (0, 100)")
+  }
+
+  if (!is.numeric(geweke_level) || length(geweke_level) != 1L ||
+      geweke_level <= 0 || geweke_level >= 1) {
+    stop("'geweke_level' must be a single numeric value in (0, 1)")
+  }
+
+  for (flag in list(show_ess_status, show_geweke, show_heidel, show_overall)) {
+    if (!is.logical(flag) || length(flag) != 1L) {
+      stop("'show_*' arguments must be single logical values")
+    }
+  }
+  # ------------------------------------------------------------------------
+
   n_chain    <- as.integer(attr(object, "n_chain"))
+  n_obs      <- as.integer(attr(object, "n_obs"))
   model_type <- attr(object, "model_type")
+  has_coda   <- requireNamespace("coda", quietly = TRUE)
 
-  # Extract scalar parameter chains via the shared utility
-  param_config <- get_param_config(object)
+  # Critical z value for Geweke
+  geweke_z_crit <- qnorm(1 - geweke_level / 2)
 
-  # Build result table row by row
-  has_coda <- requireNamespace("coda", quietly = TRUE)
+  # Helper: compute diagnostics row for a single samples vector
+  compute_row <- function(samples, label) {
 
-  rows <- lapply(names(param_config), function(nm) {
-    samples <- param_config[[nm]]$samples
-    label   <- param_config[[nm]]$name_str
-
-    # --- ESS (no coda needed) ---
+    # ESS
     acf_vals <- acf(samples, plot = FALSE,
                     lag.max = min(100L, floor(n_chain / 4L)))$acf[-1L]
-    ess <- max(1, n_chain / (1 + 2 * sum(acf_vals[acf_vals > 0])))
+    ess        <- max(1, n_chain / (1 + 2 * sum(acf_vals[acf_vals > 0])))
     efficiency <- 100 * ess / n_chain
-    ess_status <- if (efficiency > 50) "EXCELLENT" else
-                  if (efficiency > 25) "GOOD"      else
-                  if (efficiency > 10) "ACCEPTABLE" else "POOR"
+    ess_status <- if (efficiency > ess_thresholds[1]) "EXCELLENT" else
+                  if (efficiency > ess_thresholds[2]) "GOOD"      else
+                  if (efficiency > ess_thresholds[3]) "ACCEPTABLE" else "POOR"
 
     row <- data.frame(
       Parameter  = label,
       ESS        = round(ess, 1),
       Efficiency = round(efficiency, 1),
-      ESS_status = ess_status,
       stringsAsFactors = FALSE
     )
 
-    # --- coda diagnostics ---
+    if (show_ess_status) row$ESS_status <- ess_status
+
+    # coda diagnostics
     if (has_coda) {
       mcmc_obj <- coda::mcmc(samples)
 
       # Geweke
-      gz <- tryCatch(coda::geweke.diag(mcmc_obj)$z, error = function(e) NA_real_)
-      geweke_pass <- !is.na(gz) && is.finite(gz) && abs(gz) < 1.96
+      gz          <- tryCatch(coda::geweke.diag(mcmc_obj)$z,
+                               error = function(e) NA_real_)
+      geweke_pass <- !is.na(gz) && is.finite(gz) && abs(gz) < geweke_z_crit
 
       # Heidelberger-Welch
       hw <- tryCatch(coda::heidel.diag(mcmc_obj), error = function(e) NULL)
@@ -238,29 +320,70 @@ mcmc_convergence.pdm_mcmc <- function(object, ...) {
         heidel_pass <- FALSE
       }
 
-      # Overall: count passing tests
+      # Overall
       tests_pass <- sum(c(geweke_pass, heidel_pass))
-      overall <- if (tests_pass == 2L) "EXCELLENT"  else
-                 if (tests_pass == 1L) "ACCEPTABLE" else "POOR"
+      overall    <- if (tests_pass == 2L) "EXCELLENT"  else
+                    if (tests_pass == 1L) "ACCEPTABLE" else "POOR"
 
-      row$Geweke_z    <- round(gz, 4)
-      row$Geweke_pass <- ifelse(geweke_pass, "PASS", "FAIL")
-      row$Heidel_stat <- heidel_stat
-      row$Heidel_hw   <- heidel_hw
-      row$Overall     <- overall
+      if (show_geweke) {
+        row$Geweke_z    <- round(gz, 4)
+        row$Geweke_pass <- ifelse(geweke_pass, "PASS", "FAIL")
+      }
+      if (show_heidel) {
+        row$Heidel_stat <- heidel_stat
+        row$Heidel_hw   <- heidel_hw
+      }
+      if (show_overall) {
+        row$Overall <- overall
+      }
     }
 
     row
+  }
+
+  # --- Scalar parameters --------------------------------------------------
+  param_config <- get_param_config(object)
+  rows_scalar  <- lapply(names(param_config), function(nm) {
+    compute_row(param_config[[nm]]$samples, param_config[[nm]]$name_str)
   })
 
-  table <- do.call(rbind, rows)
+  # --- Latent state time points -------------------------------------------
+  rows_theta <- list()
+
+  if (!is.null(theta_timepoints)) {
+
+    # Detect which state matrices exist in the object
+    state_names <- grep("^theta_[0-9]+$", names(object), value = TRUE)
+    # Sort by the numeric suffix (theta_1 < theta_2 < theta_3)
+    state_names <- state_names[order(as.integer(sub("theta_", "", state_names)))]
+
+    if (length(state_names) > 0L) {
+      time_indices <- pmax(1L, pmin(n_obs, round(theta_timepoints * n_obs)))
+
+      for (sname in state_names) {
+        mat    <- object[[sname]]          # n_chain x n_obs
+        j      <- sub("theta_", "", sname) # "1", "2", ...
+        for (tidx in time_indices) {
+          label   <- sprintf("theta_%s[t=%d]", j, tidx)
+          samples <- mat[, tidx]
+          rows_theta[[length(rows_theta) + 1L]] <- compute_row(samples, label)
+        }
+      }
+    }
+  }
+
+  # --- Combine ------------------------------------------------------------
+  all_rows <- c(rows_scalar, rows_theta)
+  table    <- do.call(rbind, all_rows)
   rownames(table) <- NULL
 
   result <- list(
-    table      = table,
-    n_chain    = n_chain,
-    model_type = model_type,
-    has_coda   = has_coda
+    table          = table,
+    n_chain        = n_chain,
+    model_type     = model_type,
+    has_coda       = has_coda,
+    ess_thresholds = ess_thresholds,
+    geweke_level   = geweke_level
   )
   class(result) <- "pdm_convergence"
   result
@@ -281,7 +404,19 @@ print.pdm_convergence <- function(x, digits = 3L, ...) {
   cat("MCMC Convergence Diagnostics\n")
   cat(strrep("=", 70), "\n\n", sep = "")
   cat("Model:         ", x$model_type, "\n", sep = "")
-  cat("Chain samples: ", x$n_chain, "\n\n", sep = "")
+  cat("Chain samples: ", x$n_chain, "\n", sep = "")
+
+  # Show active settings only when non-default
+  thr <- x$ess_thresholds
+  if (!identical(thr, c(50, 25, 10))) {
+    cat(sprintf("ESS thresholds: EXCELLENT >%g%%, GOOD >%g%%, ACCEPTABLE >%g%%\n",
+                thr[1], thr[2], thr[3]))
+  }
+  if (!is.null(x$geweke_level) && !identical(x$geweke_level, 0.05)) {
+    cat(sprintf("Geweke level:   alpha = %g (|z| < %.4f)\n",
+                x$geweke_level, qnorm(1 - x$geweke_level / 2)))
+  }
+  cat("\n")
 
   df <- x$table
 
@@ -298,7 +433,9 @@ print.pdm_convergence <- function(x, digits = 3L, ...) {
   if (!x$has_coda) {
     cat("Install the 'coda' package for Geweke and Heidelberger-Welch diagnostics.\n")
   }
-  cat("ESS status: >50% EXCELLENT, >25% GOOD, >10% ACCEPTABLE, else POOR\n")
+  thr <- x$ess_thresholds
+  cat(sprintf("ESS status: >%g%% EXCELLENT, >%g%% GOOD, >%g%% ACCEPTABLE, else POOR\n",
+              thr[1], thr[2], thr[3]))
   cat(strrep("-", 70), "\n\n", sep = "")
 
   invisible(x)

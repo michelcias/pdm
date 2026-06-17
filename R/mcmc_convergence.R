@@ -351,16 +351,22 @@ mcmc_convergence.pdm_mcmc <- function(object,
 
   if (!is.null(theta_timepoints)) {
 
-    # Detect which state matrices exist in the object
-    state_names <- grep("^theta_[0-9]+$", names(object), value = TRUE)
+    # Detect the latent-state trajectory matrices in the object. These are
+    # named theta_1, theta_2, theta_3 (no leading zero) and stored as
+    # n_chain x n_obs matrices. The initial-state scalars theta_01, theta_02,
+    # theta_03 must NOT be captured here: they are vectors, already reported as
+    # scalar parameters, and a leading-zero name would otherwise match.
+    state_names <- grep("^theta_[1-9][0-9]*$", names(object), value = TRUE)
+    state_names <- state_names[vapply(state_names,
+                                      function(nm) is.matrix(object[[nm]]),
+                                      logical(1L))]
     # Sort by the numeric suffix (theta_1 < theta_2 < theta_3)
     state_names <- state_names[order(as.integer(sub("theta_", "", state_names)))]
 
     if (length(state_names) > 0L) {
       for (sname in state_names) {
-        mat    <- object[[sname]]          # n_chain x n_obs matrix (or vector if n_obs==1)
+        mat    <- object[[sname]]          # n_chain x n_obs matrix
         j      <- sub("theta_", "", sname) # "1", "2", ...
-        if (!is.matrix(mat)) mat <- matrix(mat, ncol = 1L)
 
         # Use the actual number of time points stored in this matrix so the
         # column index can never fall outside its bounds.

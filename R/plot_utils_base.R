@@ -943,7 +943,7 @@ plot_alpha_trajectory_base <- function(alpha,
 #'
 #'   \strong{Interpretation:}
 #'   \itemize{
-#'     \item \strong{Orange bars} (P(z_t = 1) ≤ 0.5): Observation more likely
+#'     \item \strong{Orange bars} (P(z_t = 1) <= 0.5): Observation more likely
 #'       from Component 1 (lower mean component in the constraint mu_1 < mu_2)
 #'     \item \strong{Violet bars} (P(z_t = 1) > 0.5): Observation more likely
 #'       from Component 2 (higher mean component)
@@ -1016,7 +1016,7 @@ plot_component_probabilities_base <- function(z,
   # ===========================================================================
 
   # Create bar plot with threshold-based coloring using component colors
-  # color_below (darkorange) = Component 1 (z_t = 0, or P(z_t = 1) ≤ 0.5)
+  # color_below (darkorange) = Component 1 (z_t = 0, or P(z_t = 1) <= 0.5)
   # color_above (darkviolet) = Component 2 (z_t = 1, or P(z_t = 1) > 0.5)
   plot(z_prob,
        type = "h",
@@ -1066,7 +1066,7 @@ plot_component_probabilities_base <- function(z,
   # Build legend with component-based interpretation
   legend_items <- c(
     paste0("p(z = 1 | data) > ", threshold, "   "),
-    paste0("p(z = 1 | data) ≤ ", threshold, "   "),
+    paste0("p(z = 1 | data) \u2264 ", threshold, "   "),
     "Threshold"
   )
   legend_cols <- c(color_above, color_below, "darkgray")
@@ -1461,7 +1461,7 @@ plot_poisson_alpha_base <- function(x,
 #'   \deqn{y_{scaled} = \frac{y - \min(y)}{\max(y) - \min(y)}}
 #'
 #'   This rescaling improves visibility by mapping the data to the same scale
-#'   as the mixture weights (alpha_t ∈ [0, 1]). The rescaled data helps identify
+#'   as the mixture weights (alpha_t in [0, 1]). The rescaled data helps identify
 #'   temporal patterns and potential relationships between observed values and
 #'   component membership probabilities.
 #'
@@ -1472,7 +1472,7 @@ plot_poisson_alpha_base <- function(x,
 #'   \strong{Color Scheme for Component Probabilities (Page 2):}
 #'   Page 2 uses the mixture component colors to visualize membership probabilities:
 #'   \itemize{
-#'     \item \strong{darkorange} (Component 1): P(z_t = 1) ≤ 0.5 (more likely Component 1)
+#'     \item \strong{darkorange} (Component 1): P(z_t = 1) <= 0.5 (more likely Component 1)
 #'     \item \strong{darkviolet} (Component 2): P(z_t = 1) > 0.5 (more likely Component 2)
 #'   }
 #'

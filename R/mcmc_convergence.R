@@ -271,8 +271,20 @@ mcmc_convergence.pdm_mcmc <- function(object,
   # ------------------------------------------------------------------------
 
   n_chain    <- as.integer(attr(object, "n_chain"))
-  n_obs      <- as.integer(attr(object, "n_obs"))
   model_type <- attr(object, "model_type")
+
+  n_obs_attr <- attr(object, "n_obs")
+  if (!is.null(n_obs_attr) && length(n_obs_attr) == 1L && !is.na(n_obs_attr)) {
+    n_obs <- as.integer(n_obs_attr)
+  } else {
+    state_names_tmp <- grep("^theta_[0-9]+$", names(object), value = TRUE)
+    if (length(state_names_tmp) > 0L) {
+      mat_tmp <- object[[state_names_tmp[1L]]]
+      n_obs <- if (is.matrix(mat_tmp)) ncol(mat_tmp) else length(mat_tmp)
+    } else {
+      n_obs <- 0L
+    }
+  }
   has_coda   <- requireNamespace("coda", quietly = TRUE)
 
   # Critical z value for Geweke
@@ -361,8 +373,9 @@ mcmc_convergence.pdm_mcmc <- function(object,
       time_indices <- pmax(1L, pmin(n_obs, round(theta_timepoints * n_obs)))
 
       for (sname in state_names) {
-        mat    <- object[[sname]]          # n_chain x n_obs
+        mat    <- object[[sname]]          # n_chain x n_obs matrix (or vector if n_obs==1)
         j      <- sub("theta_", "", sname) # "1", "2", ...
+        if (!is.matrix(mat)) mat <- matrix(mat, ncol = 1L)
         for (tidx in time_indices) {
           label   <- sprintf("theta_%s[t=%d]", j, tidx)
           samples <- mat[, tidx]

@@ -121,7 +121,7 @@
 #' @references
 #' Geyer, C. J. (1992). Practical Markov chain Monte Carlo.
 #'   \emph{Statistical Science}, \strong{7}(4), 473--483.
-#'   \doi{10.1214/ss/1177011137}
+#'   \url{https://doi.org/10.1214/ss/1177011137}
 #'
 #' Geweke, J. (1992). Evaluating the accuracy of sampling-based approaches to
 #'   the calculation of posterior moments. In J. M. Bernardo, J. O. Berger,
@@ -130,12 +130,12 @@
 #'
 #' Heidelberger, P., & Welch, P. D. (1983). Simulation run length control in the
 #'   presence of an initial transient. \emph{Operations Research},
-#'   \strong{31}(6), 1109--1144. \doi{10.1287/opre.31.6.1109}
+#'   \strong{31}(6), 1109--1144. \url{https://doi.org/10.1287/opre.31.6.1109}
 #'
 #' Kass, R. E., Carlin, B. P., Gelman, A., & Neal, R. M. (1998). Markov chain
 #'   Monte Carlo in practice: A roundtable discussion.
 #'   \emph{The American Statistician}, \strong{52}(2), 93--100.
-#'   \doi{10.1080/00031305.1998.10480547}
+#'   \url{https://doi.org/10.1080/00031305.1998.10480547}
 #'
 #' Plummer, M., Best, N., Cowles, K., & Vines, K. (2006). CODA: Convergence
 #'   diagnosis and output analysis for MCMC. \emph{R News}, \strong{6}(1),

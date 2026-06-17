@@ -77,23 +77,23 @@ An object of class \code{"pdm_convergence"}, which is a list with:
 }
 \description{
 Assesses the convergence of the Markov chains produced by the
-\code{mcmc_*()} fitting functions. For every scalar parameter of a fitted
-\code{pdm_mcmc} model the function reports the Effective Sample Size (ESS)
-and the associated sampling efficiency and, when the \pkg{coda} package is
-available, the Geweke convergence diagnostic and the Heidelberger--Welch
-stationarity and halfwidth tests. The individual verdicts are combined into
-a single \code{Overall} classification per parameter.
+  \code{mcmc_*()} fitting functions. For every scalar parameter of a fitted
+  \code{pdm_mcmc} model the function reports the Effective Sample Size (ESS)
+  and the associated sampling efficiency and, when the \pkg{coda} package is
+  available, the Geweke convergence diagnostic and the Heidelberger–Welch
+  stationarity and halfwidth tests. The individual verdicts are combined into
+  a single \code{Overall} classification per parameter.
 
-Optionally, selected time points of the latent state chains
-(\eqn{\theta_{t,j}}) can also be assessed, one row per state per time
-point.
+  Optionally, selected time points of the latent state chains
+  (\eqn{\theta_{t,j}}) can also be assessed, one row per state per time
+  point.
 }
 \details{
 Only scalar parameters (initial states \eqn{\theta_{0,j}}, innovation
 precisions \eqn{W_j^{-1}}, and for Gaussian models the observation
 precision \eqn{V^{-1}}) are always included. When \code{theta_timepoints}
 is not \code{NULL}, selected time points of every latent state matrix
-(\code{theta_1}, \code{theta_2}, \ldots) are also assessed -- one row per
+(\code{theta_1}, \code{theta_2}, \ldots) are also assessed — one row per
 state per selected time point, labelled as e.g. \code{theta_1[t=25]}.
 
 Note the distinction between the initial states and the state trajectories.
@@ -104,7 +104,7 @@ point, are evaluated at the time points given by \code{theta_timepoints}.
 
 Because the \code{mcmc_*()} samplers return a single chain, all diagnostics
 are \emph{within-chain} criteria. Multi-chain diagnostics such as the
-Gelman--Rubin \eqn{\hat{R}} require several independent runs and are not
+Gelman–Rubin \eqn{\hat{R}} require several independent runs and are not
 computed here.
 
 \subsection{Effective Sample Size (ESS)}{
@@ -129,9 +129,9 @@ computed here.
   level \code{geweke_level}. Computed with \code{\link[coda]{geweke.diag}}.
 }
 
-\subsection{Heidelberger--Welch tests}{
+\subsection{Heidelberger–Welch tests}{
   Heidelberger and Welch (1983) propose two complementary tests. The
-  \emph{stationarity} test uses a Cramer--von Mises statistic on the
+  \emph{stationarity} test uses a Cramér–von Mises statistic on the
   Brownian-bridge representation of the chain to decide whether the retained
   draws are consistent with a stationary distribution. The \emph{halfwidth}
   test checks whether the chain is long enough to estimate the posterior
@@ -142,7 +142,7 @@ computed here.
 }
 
 \subsection{Overall classification}{
-  When \pkg{coda} is available the Geweke and Heidelberger--Welch verdicts are
+  When \pkg{coda} is available the Geweke and Heidelberger–Welch verdicts are
   pooled into the \code{Overall} column: \code{EXCELLENT} when both tests
   pass, \code{ACCEPTABLE} when exactly one passes, and \code{POOR} when
   neither does.
@@ -195,7 +195,7 @@ fit <- mcmc_normal_localtrend(
   seed               = 456
 )
 
-## 3. Default diagnostics (scalars + states at 25\%, 50\%, 75\%) ---------
+## 3. Default diagnostics (scalars + states at 25\\%, 50\\%, 75\\%) ---------
 conv <- mcmc_convergence(fit)
 print(conv)
 
@@ -224,7 +224,7 @@ print(conv_ess)
 conv_strict <- mcmc_convergence(fit, ess_thresholds = c(75, 50, 25))
 print(conv_strict)
 
-# Post-process: flag parameters with ESS efficiency below 25\%:
+# Post-process: flag parameters with ESS efficiency below 25\\%:
 conv$table[conv$table$Efficiency < 25, ]
 }
 

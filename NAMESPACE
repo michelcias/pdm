@@ -63,12 +63,18 @@ S3method(summary,probit_bernoulli_localacceleration)
 S3method(summary,probit_bernoulli_locallevel)
 S3method(summary,probit_bernoulli_localtrend)
 <<<<<<< HEAD
+<<<<<<< HEAD
 export(convergence)
 =======
 S3method(mcmc_convergence,pdm_mcmc)
 S3method(print,pdm_convergence)
 export(mcmc_convergence)
 >>>>>>> e441a46 (Rename convergence() to mcmc_convergence() for naming consistency)
+=======
+S3method(mcmc_convergence,pdm_mcmc)
+S3method(print,pdm_convergence)
+export(mcmc_convergence)
+>>>>>>> b1699d1bd8b4436a33c0dd43818e02f462b5dcca
 export(is.binomial_localacceleration)
 export(is.binomial_locallevel)
 export(is.binomial_localtrend)

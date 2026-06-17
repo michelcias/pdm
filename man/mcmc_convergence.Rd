@@ -96,6 +96,12 @@ is not \code{NULL}, selected time points of every latent state matrix
 (\code{theta_1}, \code{theta_2}, \ldots) are also assessed -- one row per
 state per selected time point, labelled as e.g. \code{theta_1[t=25]}.
 
+Note the distinction between the initial states and the state trajectories.
+The initial states (\code{theta_01}, \code{theta_02}, \ldots) are scalars
+and are reported among the scalar parameters. Only the trajectory matrices
+(\code{theta_1}, \code{theta_2}, \ldots), which hold one column per time
+point, are evaluated at the time points given by \code{theta_timepoints}.
+
 Because the \code{mcmc_*()} samplers return a single chain, all diagnostics
 are \emph{within-chain} criteria. Multi-chain diagnostics such as the
 Gelman--Rubin \eqn{\hat{R}} require several independent runs and are not

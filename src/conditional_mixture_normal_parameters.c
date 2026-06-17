@@ -256,10 +256,10 @@ void conditional_mixture_normal_parameters_k2(const double *y,
   double v_0, v_1;
   double diff;
 
-  /* Extract previous iteration parameters for readability */
-  double mu_1_prev = params_previous[0];
+  /* Extract previous iteration precisions for readability and validation.
+   * The previous means (params_previous[0], params_previous[2]) are not
+   * needed here: the full-conditional means are recomputed from the data. */
   double prec_1_prev = params_previous[1];
-  double mu_2_prev = params_previous[2];
   double prec_2_prev = params_previous[3];
 
   /* ========== Input Validation ========== */

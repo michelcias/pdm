@@ -17,7 +17,7 @@ Logical value: \code{TRUE} if \code{x} inherits from
 Test whether an object is of class \code{probit_bernoulli_locallevel}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ?mcmc_probit_bernoulli_locallevel)
 n <- 500
 

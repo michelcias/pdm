@@ -17,7 +17,7 @@ Logical value: \code{TRUE} if \code{x} inherits from
 Test whether an object is of class \code{normal_mixture_localacceleration}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 400  # Number of observations to simulate
 

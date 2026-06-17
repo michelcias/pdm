@@ -25,7 +25,7 @@ This method provides a quick overview using posterior medians,
   which are robust to outliers and skewness in the posterior distribution.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ?mcmc_normal_localacceleration)
 n <- 1000
 

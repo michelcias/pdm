@@ -264,7 +264,7 @@ validate_normal_localacceleration <- function(x) {
 #'   \code{normal_localacceleration}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_normal_localacceleration)
 #' n <- 1000
 #'
@@ -345,7 +345,7 @@ is.normal_localacceleration <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_normal_localacceleration)
 #' n <- 1000
 #'

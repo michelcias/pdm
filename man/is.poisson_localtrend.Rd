@@ -17,7 +17,7 @@ Logical value:   \code{TRUE} if \code{x} inherits from
 Test whether an object is of class \code{poisson_localtrend}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ? mcmc_poisson_localtrend)
 set.seed(123)
 n <- 500

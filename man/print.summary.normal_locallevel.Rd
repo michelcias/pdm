@@ -21,7 +21,7 @@ Invisibly returns the input object \code{x}.
 Prints comprehensive posterior statistics in a readable format.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data (see ?mcmc_normal_locallevel for full details)
 n <- 1000
 theta0_true <- 10

@@ -17,7 +17,7 @@ Logical value: \code{TRUE} if \code{x} inherits from
 Test whether an object is of class \code{binomial_locallevel}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ?mcmc_binomial_locallevel)
 set.seed(123)
 n <- 500

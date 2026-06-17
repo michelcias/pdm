@@ -256,7 +256,7 @@ validate_normal_locallevel <- function(x) {
 #'   \code{normal_locallevel}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_normal_locallevel)
 #' n <- 1000
 #'
@@ -312,7 +312,7 @@ is.normal_locallevel <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_normal_locallevel)
 #' n <- 1000
 #'

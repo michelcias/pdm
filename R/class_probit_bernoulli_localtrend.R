@@ -291,7 +291,7 @@ validate_probit_bernoulli_localtrend <- function(x) {
 #'   \code{probit_bernoulli_localtrend}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_probit_bernoulli_localtrend)
 #' n <- 500
 #'
@@ -343,7 +343,7 @@ is.probit_bernoulli_localtrend <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_probit_bernoulli_localtrend)
 #' n <- 500
 #'

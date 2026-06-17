@@ -42,7 +42,7 @@
 #' time are reported. Use \code{plot()} to visualize the full trajectories.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 400  # Number of observations to simulate
 #'
@@ -162,7 +162,7 @@ summary.normal_mixture_locallevel <- function(object,
 #' @return Invisibly returns the input object \code{x}.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 400  # Number of observations to simulate
 #'

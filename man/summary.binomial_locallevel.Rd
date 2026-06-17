@@ -53,7 +53,7 @@ only summary statistics across time are reported. Use \code{plot()} to
 visualize the full trajectories.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 500        # Number of observations to simulate
 n_trials <- 20  # Number of binomial trials

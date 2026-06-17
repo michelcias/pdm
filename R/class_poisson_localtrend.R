@@ -369,7 +369,7 @@ validate_poisson_localtrend <- function(x) {
 #'   \code{poisson_localtrend}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ? mcmc_poisson_localtrend)
 #' set.seed(123)
 #' n <- 500
@@ -432,7 +432,7 @@ is.poisson_localtrend <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_poisson_localtrend)
 #' set.seed(123)
 #' n <- 500

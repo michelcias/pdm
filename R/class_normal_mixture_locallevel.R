@@ -359,7 +359,7 @@ validate_normal_mixture_locallevel <- function(x) {
 #'   \code{normal_mixture_locallevel}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 400  # Number of observations to simulate
 #'
@@ -451,7 +451,7 @@ is.normal_mixture_locallevel <- function(x) {
 #'   }
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 400  # Number of observations to simulate
 #'

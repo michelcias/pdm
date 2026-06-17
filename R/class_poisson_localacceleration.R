@@ -369,7 +369,7 @@ validate_poisson_localacceleration <- function(x) {
 #'   \code{poisson_localacceleration}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ? mcmc_poisson_localacceleration)
 #' set.seed(123)
 #' n <- 500
@@ -436,7 +436,7 @@ is.poisson_localacceleration <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_poisson_localacceleration)
 #' set.seed(123)
 #' n <- 500

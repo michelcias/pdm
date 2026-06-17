@@ -367,7 +367,7 @@ validate_normal_mixture_localacceleration <- function(x) {
 #'   \code{normal_mixture_localacceleration}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 400  # Number of observations to simulate
 #'
@@ -467,7 +467,7 @@ is.normal_mixture_localacceleration <- function(x) {
 #'   }
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 400  # Number of observations to simulate
 #'

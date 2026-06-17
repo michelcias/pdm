@@ -42,7 +42,7 @@
 #' visualize the full trajectories.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 500        # Number of observations to simulate
 #'
@@ -152,7 +152,7 @@ summary.poisson_locallevel <- function(object,
 #' @return Invisibly returns the input object \code{x}.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 500
 #' theta0_true <- 0.5

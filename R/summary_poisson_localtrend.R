@@ -44,7 +44,7 @@
 #' Use \code{plot()} to visualize the full trajectories.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 500        # Number of observations to simulate
 #'
@@ -174,7 +174,7 @@ summary.poisson_localtrend <- function(object,
 #' @return Invisibly returns the input object \code{x}.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 500
 #' theta01_true <- 0.5

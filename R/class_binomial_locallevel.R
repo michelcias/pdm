@@ -376,7 +376,7 @@ validate_binomial_locallevel <- function(x) {
 #'   \code{binomial_locallevel}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_binomial_locallevel)
 #' set.seed(123)
 #' n <- 500
@@ -436,7 +436,7 @@ is.binomial_locallevel <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_binomial_locallevel)
 #' set.seed(123)
 #' n <- 500

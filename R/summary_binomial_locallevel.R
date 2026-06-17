@@ -42,7 +42,7 @@
 #' visualize the full trajectories.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 500        # Number of observations to simulate
 #' n_trials <- 20  # Number of binomial trials
@@ -154,7 +154,7 @@ summary.binomial_locallevel <- function(object,
 #' @return Invisibly returns the input object \code{x}.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data
 #' n <- 500
 #' n_trials <- 20

@@ -55,7 +55,7 @@ For time-varying parameters like \eqn{\theta_{t,1}}, \eqn{\theta_{t,2}}, and
 \code{plot()} to visualize the full trajectories.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 1000 # Number of observations to simulate
 

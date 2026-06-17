@@ -381,7 +381,7 @@ validate_binomial_localacceleration <- function(x) {
 #'   \code{binomial_localacceleration}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_binomial_localacceleration)
 #' n <- 500
 #' n_trials <- 20
@@ -468,7 +468,7 @@ is.binomial_localacceleration <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_binomial_localacceleration)
 #' n <- 500
 #' n_trials <- 20

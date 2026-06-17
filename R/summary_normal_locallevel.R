@@ -41,7 +41,7 @@
 #' trajectories.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Description
 #' # This example demonstrates how to:
 #' # 1. Simulate data from a local-level dynamic model
@@ -142,7 +142,7 @@ summary.normal_locallevel <- function(object,
 #' @return Invisibly returns the input object \code{x}.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulation of data (see ?mcmc_normal_locallevel for full details)
 #' n <- 1000
 #' theta0_true <- 10

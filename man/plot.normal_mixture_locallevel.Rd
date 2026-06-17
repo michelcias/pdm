@@ -195,7 +195,7 @@ mixture weight plots:
 }
 
 \examples{
-\dontrun{
+\donttest{
 # =============================================================================
 # Example 1: Practical Data Analysis (No True Parameters Known)
 # =============================================================================

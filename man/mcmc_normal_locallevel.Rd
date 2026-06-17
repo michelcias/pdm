@@ -163,7 +163,7 @@ out <- mcmc_normal_locallevel(
 ## Posterior analysis and visualization
 # The following plots show how to analyze the posterior distributions.
 # Point estimates are based on the median of posterior samples.
-\dontrun{
+\donttest{
   # --- 0. Plot the simulated data ---
   plot.ts(
     y,

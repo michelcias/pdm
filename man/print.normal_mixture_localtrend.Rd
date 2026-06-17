@@ -36,7 +36,7 @@ This method provides a quick overview using posterior medians,
   }
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 400  # Number of observations to simulate
 

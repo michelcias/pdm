@@ -52,7 +52,7 @@ across time are reported. Use \code{plot()} to visualize the full
 trajectories.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Description
 # This example demonstrates how to:
 # 1. Simulate data from a local-level dynamic model

@@ -319,7 +319,7 @@ plot_param_diagnostics_base <- function(param_samples,
 #'   }
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Example 1: Basic usage without true values
 #' plot_mixture_params_base(
 #'   mu_1 = mcmc_output$mu_1,

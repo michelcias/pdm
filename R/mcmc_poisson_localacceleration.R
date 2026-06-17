@@ -271,7 +271,7 @@
 #'
 #' ## Posterior analysis and visualization
 #' # Use the plot method for comprehensive diagnostics
-#' \dontrun{
+#' \donttest{
 #'   # Complete dashboard with all diagnostics
 #'   plot(out, type = "all")
 #'

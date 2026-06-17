@@ -114,7 +114,7 @@ Generates 4 pages in total:
 }
 }
 \examples{
-\dontrun{
+\donttest{
 # =============================================================================
 # Example 1: Practical Data Analysis (No True Parameters Known)
 # =============================================================================

@@ -53,7 +53,7 @@ For time-varying parameters like alpha_t, only summary statistics across
 time are reported. Use \code{plot()} to visualize the full trajectories.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 400  # Number of observations to simulate
 

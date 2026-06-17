@@ -17,7 +17,7 @@ Logical value: \code{TRUE} if \code{x} inherits from
 Test whether an object is of class \code{normal_localtrend}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ?mcmc_normal_localtrend)
 n <- 1000
 

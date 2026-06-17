@@ -175,7 +175,7 @@ proportions in the success probabilities plot:
 }
 
 \examples{
-\dontrun{
+\donttest{
 # =============================================================================
 # Example 1: Practical Data Analysis (No True Parameters Known)
 # =============================================================================

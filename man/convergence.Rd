@@ -54,7 +54,7 @@ Time-varying state matrices (\code{theta_1}, \code{theta_2}, etc.) are
 excluded; use \code{plot()} to inspect their trajectories.
 }
 \examples{
-\dontrun{
+\donttest{
 set.seed(1)
 y <- cumsum(rnorm(200)) + rnorm(200, sd = 0.5)
 fit <- mcmc_normal_locallevel(y, n_chain = 1000, burnin = 500)

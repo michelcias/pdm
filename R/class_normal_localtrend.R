@@ -261,7 +261,7 @@ validate_normal_localtrend <- function(x) {
 #'   \code{normal_localtrend}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_normal_localtrend)
 #' n <- 1000
 #'
@@ -332,7 +332,7 @@ is.normal_localtrend <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_normal_localtrend)
 #' n <- 1000
 #'

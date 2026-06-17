@@ -364,7 +364,7 @@ validate_poisson_locallevel <- function(x) {
 #'   \code{poisson_locallevel}, \code{FALSE} otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ? mcmc_poisson_locallevel)
 #' set.seed(123)
 #' n <- 500
@@ -422,7 +422,7 @@ is.poisson_locallevel <- function(x) {
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_poisson_locallevel)
 #' set.seed(123)
 #' n <- 500

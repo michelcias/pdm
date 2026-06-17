@@ -70,7 +70,8 @@
 #'   theta2_true[t] <- theta2_true[t-1] + u2[t]
 #'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
 #' }
-#' alpha_true <- exp(theta1_true)         # Poisson rates
+#' alpha_true <- exp(pmin(theta1_true, 10))  # cap to prevent Inf
+
 #' y <- rpois(n, lambda = alpha_true)     # Observed Poisson counts
 #'
 #' ## Running the Gibbs sampler
@@ -194,7 +195,7 @@ summary.poisson_localtrend <- function(object,
 #'   theta2_true[t] <- theta2_true[t-1] + u2[t]
 #'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
 #' }
-#' alpha_true <- exp(theta1_true)
+#' alpha_true <- exp(pmin(theta1_true, 10))  # cap to prevent Inf
 #' y <- rpois(n, lambda = alpha_true)
 #'
 #' out <- mcmc_poisson_localtrend(

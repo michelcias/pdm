@@ -285,7 +285,7 @@ for (t in 2:n) {
 
 # --- Step 3: Generate observations ---
 # Transform level state to rate using exponential
-alpha_true <- exp(theta1_true)  # Poisson rates (positive)
+alpha_true <- exp(pmin(theta1_true, 10))  # cap to prevent Inf
 
 # Generate Poisson observations
 y <- rpois(n = n, lambda = alpha_true)

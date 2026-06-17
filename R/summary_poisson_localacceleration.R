@@ -78,8 +78,8 @@
 #'   theta2_true[t] <- theta2_true[t-1] + theta3_true[t-1] + u2[t]
 #'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
 #' }
-#' alpha_true <- exp(theta1_true)         # Poisson rates
-#' y <- rpois(n, lambda = alpha_true)     # Observed Poisson counts
+#' alpha_true <- exp(pmin(theta1_true, 10))  # Poisson rates (capped to prevent Inf)
+#' y <- rpois(n, lambda = alpha_true)        # Observed Poisson counts
 #'
 #' ## Running the Gibbs sampler
 #' # Run the Gibbs sampler with specified priors and a seed
@@ -221,7 +221,7 @@ summary.poisson_localacceleration <- function(object,
 #'   theta2_true[t] <- theta2_true[t-1] + theta3_true[t-1] + u2[t]
 #'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
 #' }
-#' alpha_true <- exp(theta1_true)
+#' alpha_true <- exp(pmin(theta1_true, 10))  # cap to prevent Inf
 #' y <- rpois(n, lambda = alpha_true)
 #'
 #' out <- mcmc_poisson_localacceleration(

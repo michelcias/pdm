@@ -32,7 +32,7 @@ set.seed(123)
 u1 <- rnorm(n, sd = sqrt(1/prec1_true))
 
 theta1_true <- cumsum(c(theta0_true, u1))[-1]
-alpha_true <- exp(theta1_true)
+alpha_true <- exp(pmin(theta1_true, 10))  # cap to prevent Inf
 y <- rpois(n, lambda = alpha_true)
 
 out <- mcmc_poisson_locallevel(

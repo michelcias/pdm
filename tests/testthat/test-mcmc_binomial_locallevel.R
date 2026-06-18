@@ -33,7 +33,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
                            target_acceptance = 0.44) {
 
     .Call("_pdm_test_mcmc_binomial_locallevel_fixed_params",
-          y, n_trials, burnin, 1L, n_chain,
+          y, n_trials, as.integer(burnin), 1L, as.integer(n_chain),
           theta_1_true, theta_01_true, prec_theta1_true,
           prior_theta01_mean, prior_theta01_prec,
           prior_prec1_shape, prior_prec1_rate,

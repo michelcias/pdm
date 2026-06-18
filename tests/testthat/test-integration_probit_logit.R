@@ -77,7 +77,7 @@ test_that("probit sampler is more efficient than logit (acceptance rate)", {
   # --- Generate test data ---
   set.seed(703)
   n <- 60
-  y <- rbinom(n, 1, 0.3)
+  y <- as.numeric(rbinom(n, 1, 0.3))
   
   # --- Run logit sampler with acceptance tracking ---
   set.seed(704)

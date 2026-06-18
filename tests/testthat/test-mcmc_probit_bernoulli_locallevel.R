@@ -32,7 +32,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
                            prior_prec1_shape = 1.0, prior_prec1_rate = 1.0) {
 
     .Call("_pdm_test_mcmc_probit_bernoulli_locallevel_fixed_params",
-          y, burnin, 1L, n_chain,
+          y, as.integer(burnin), 1L, as.integer(n_chain),
           theta_1_true, theta_01_true, prec_theta1_true,
           prior_theta01_mean, prior_theta01_prec,
           prior_prec1_shape, prior_prec1_rate)

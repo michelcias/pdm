@@ -5,8 +5,10 @@
 #'
 #' @param object An object of class \code{normal_locallevel}, typically the
 #'   result of calling \code{\link{mcmc_normal_locallevel}}.
-#' @param probs Numeric vector of probabilities for credible intervals.
-#'   Default is \code{c(0.025, 0.975)} for 95\% credible intervals.
+#' @param ci_level Credible interval level; a single numeric value strictly
+#'   between 0 and 1. Defaults to \code{0.95}. The reported interval is the
+#'   Highest Posterior Density Interval (HPDI), i.e. the shortest contiguous
+#'   interval containing that probability mass of the posterior.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return An object of class \code{summary.normal_locallevel}, which is a list
@@ -17,7 +19,7 @@
 #'     \item{\code{n_chain}}{Number of MCMC samples}
 #'     \item{\code{burnin}}{Number of burn-in iterations}
 #'     \item{\code{thinning}}{Thinning interval}
-#'     \item{\code{probs}}{Probabilities used for credible intervals}
+#'     \item{\code{ci_level}}{Credible interval level used (HPDI)}
 #'     \item{\code{scalar_params}}{Data frame with summary statistics for
 #'       scalar parameters (theta_01, W_1^-1, V^-1)}
 #'     \item{\code{theta_summary}}{Summary statistics for the latent level
@@ -92,8 +94,8 @@
 #' summary(out)
 #'
 #' # Custom credible intervals
-#' summary(out, probs = c(0.05, 0.95))  # 90% CI
-#' summary(out, probs = c(0.10, 0.90))  # 80% CI
+#' summary(out, ci_level = 0.90)  # 90% HPD interval
+#' summary(out, ci_level = 0.80)  # 80% HPD interval
 #' }
 #'
 #' @seealso \code{\link{mcmc_normal_locallevel}},
@@ -101,17 +103,17 @@
 #'
 #' @export
 summary.normal_locallevel <- function(object,
-                                      probs = c(0.025, 0.975),
+                                      ci_level = 0.95,
                                       ...) {
 
   # Validate input
-  validate_summary_input(object, probs, "normal_locallevel")
+  validate_summary_input(object, ci_level, "normal_locallevel")
 
   # Scalar parameters (initial state and precisions)
-  scalar_params <- format_scalar_params_locallevel(object, probs)
+  scalar_params <- format_scalar_params_locallevel(object, ci_level)
 
   # Latent level summary aggregated across time (detailed version)
-  theta_summary <- format_timevarying_summary(object$theta_1, probs, "detailed")
+  theta_summary <- format_timevarying_summary(object$theta_1, ci_level, "detailed")
 
   # Create summary object
   result <- list(
@@ -120,7 +122,7 @@ summary.normal_locallevel <- function(object,
     n_chain = attr(object, "n_chain"),
     burnin = attr(object, "burnin"),
     thinning = attr(object, "thinning"),
-    probs = probs,
+    ci_level = ci_level,
     scalar_params = scalar_params,
     theta_summary = theta_summary
   )

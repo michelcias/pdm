@@ -721,10 +721,9 @@ plot_alpha_trajectory_base <- function(alpha,
   alpha_median <- apply(alpha, 2, stats::median)
 
   if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    alpha_lower <- apply(alpha, 2, stats:: quantile, probs = ci_lower_prob)
-    alpha_upper <- apply(alpha, 2, stats::quantile, probs = ci_upper_prob)
+    ci_mat <- hpdi(alpha, ci_level)
+    alpha_lower <- ci_mat[, "lower"]
+    alpha_upper <- ci_mat[, "upper"]
     ci_label <- paste0(round(ci_level * 100), "% CI")
   }
 
@@ -1817,8 +1816,6 @@ plot_dynamic_states_generic_base <- function(x,
 
   # Prepare credible interval parameters
   if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
     ci_label <- paste0(round(ci_level * 100), "% CI")
   }
 

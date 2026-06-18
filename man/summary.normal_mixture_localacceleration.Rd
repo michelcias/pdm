@@ -4,14 +4,16 @@
 \alias{summary.normal_mixture_localacceleration}
 \title{Summary method for normal_mixture_localacceleration objects}
 \usage{
-\method{summary}{normal_mixture_localacceleration}(object, probs = c(0.025, 0.975), ...)
+\method{summary}{normal_mixture_localacceleration}(object, ci_level = 0.95, ...)
 }
 \arguments{
 \item{object}{An object of class \code{normal_mixture_localacceleration}, typically
 the result of calling \code{\link{mcmc_normal_mixture_localacceleration}}.}
 
-\item{probs}{Numeric vector of probabilities for credible intervals.
-Default is \code{c(0.025, 0.975)} for 95\% credible intervals.}
+\item{ci_level}{Credible interval level; a single numeric value strictly
+between 0 and 1. Defaults to \code{0.95}. The reported interval is the
+Highest Posterior Density Interval (HPDI), i.e. the shortest contiguous
+interval containing that probability mass of the posterior.}
 
 \item{...}{Additional arguments (currently unused).}
 }
@@ -25,7 +27,7 @@ An object of class \code{summary.normal_mixture_localacceleration}, which is
     \item{\code{n_chain}}{Number of MCMC samples}
     \item{\code{burnin}}{Number of burn-in iterations}
     \item{\code{thinning}}{Thinning interval}
-    \item{\code{probs}}{Probabilities used for credible intervals}
+    \item{\code{ci_level}}{Credible interval level used (HPDI)}
     \item{\code{mixture_params}}{Data frame with summary statistics for
       mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
     \item{\code{state_params}}{Data frame with summary statistics for
@@ -124,8 +126,8 @@ print(out_logit)
 summary(out_logit)
 
 # Custom credible intervals
-summary(out_logit, probs = c(0.05, 0.95))  # 90\% CI
-summary(out_logit, probs = c(0.10, 0.90))  # 80\% CI
+summary(out_logit, ci_level = 0.90)  # 90\% HPD interval
+summary(out_logit, ci_level = 0.80)  # 80\% HPD interval
 }
 
 }

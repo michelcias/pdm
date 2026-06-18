@@ -19,8 +19,8 @@ strictly between 0 and 1. Defaults to \code{0.9}.}
 }
 \value{
 For a vector input, a named numeric vector of length 2 with elements
-\code{lower} and \code{upper}. For a matrix input, a numeric matrix with one
-row per column of \code{data} and columns \code{lower} and \code{upper}.
+  \code{lower} and \code{upper}. For a matrix input, a numeric matrix with one
+  row per column of \code{data} and columns \code{lower} and \code{upper}.
 }
 \description{
 Computes the Highest Posterior Density Interval (HPDI) of MCMC samples: the

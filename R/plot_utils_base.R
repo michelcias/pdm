@@ -670,7 +670,7 @@ plot_mixture_params_base <- function(mu_1,
 #'   \strong{Y-axis scaling:}
 #'   \itemize{
 #'     \item For probability models (binomial/Bernoulli/mixture weights):
-#'       Set `ylim_auto = FALSE` to use fixed [0, 1.1] range
+#'       Set `ylim_auto = FALSE` to use fixed \[0, 1.1\] range
 #'     \item For rate models (Poisson): Set `ylim_auto = TRUE` to
 #'       compute range dynamically from data
 #'   }
@@ -1434,7 +1434,7 @@ plot_poisson_alpha_base <- function(x,
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param overlay_data Logical; whether to overlay observed data on alpha plot.
 #'   Default is TRUE. If TRUE and observed data is available, the data is
-#'   rescaled to [0, 1] and plotted on Page 1 for visual context.
+#'   rescaled to \[0, 1\] and plotted on Page 1 for visual context.
 #' @param obs_data Numeric vector of observed data values (length n_obs).
 #'   If NULL, attempts to extract from attributes. If not available and
 #'   overlay_data = TRUE, a warning is issued. Data is automatically rescaled
@@ -1456,11 +1456,11 @@ plot_poisson_alpha_base <- function(x,
 #'
 #'   \strong{Data Overlay and Rescaling (Page 1):}
 #'   When `overlay_data = TRUE` and observed data is available, the original
-#'   data is rescaled to the unit interval [0, 1] using min-max normalization:
+#'   data is rescaled to the unit interval \[0, 1\] using min-max normalization:
 #'   \deqn{y_{scaled} = \frac{y - \min(y)}{\max(y) - \min(y)}}
 #'
 #'   This rescaling improves visibility by mapping the data to the same scale
-#'   as the mixture weights (alpha_t in [0, 1]). The rescaled data helps identify
+#'   as the mixture weights (alpha_t in \[0, 1\]). The rescaled data helps identify
 #'   temporal patterns and potential relationships between observed values and
 #'   component membership probabilities.
 #'
@@ -1631,7 +1631,7 @@ validate_ci_level <- function(ci_level) {
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param overlay_data Logical; whether to overlay observed data on mixture
 #'   weight plots. Default is TRUE. If TRUE and data is available, observed
-#'   values are rescaled to [0, 1] and plotted for visual context.
+#'   values are rescaled to \[0, 1\] and plotted for visual context.
 #' @param true_values Named list containing true values (or NULL).
 #'   Expected elements depend on model type and order. For mixture models:
 #'   \itemize{

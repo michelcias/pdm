@@ -91,7 +91,7 @@
 #' @param prior_prec2_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_2}.
 #' @param prior_prec2_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_2}.
 #' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
-#' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.
+#' @param bar_width Integer in \[10, 120\], width of the progress bar when `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is `NULL`, which does not set the seed.
 #'

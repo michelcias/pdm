@@ -25,7 +25,7 @@
 #'   cut-offs (in percent) for the `ESS_status` labels `EXCELLENT`,
 #'   `GOOD` and `ACCEPTABLE`. Default is `c(50, 25, 10)`,
 #'   meaning efficiency > 50\% is `EXCELLENT`, > 25\% is `GOOD`,
-#'   > 10\% is `ACCEPTABLE`, and \eqn{\leq} 10\% is `POOR`.
+#'   \eqn{>} 10\% is `ACCEPTABLE`, and \eqn{\leq} 10\% is `POOR`.
 #'   Values must be strictly decreasing and in the range \eqn{(0, 100)}.
 #' @param geweke_level Numeric value in \eqn{(0, 1)}, the significance level
 #'   used for the Geweke test. A parameter passes when

@@ -82,5 +82,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.binomial_localtrend}},
-  \code{\link{print.binomial_localtrend}}
+\code{\link{print.binomial_localtrend}}
 }

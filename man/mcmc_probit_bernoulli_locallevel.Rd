@@ -40,29 +40,29 @@ for the innovation precision \eqn{1/W_1}.}
 \item{prior_prec1_rate}{Numeric > 0, rate parameter of the Gamma prior
 for \eqn{1/W_1}.}
 
-\item{verbose}{Logical, whether to display a progress bar during sampling. Default is `FALSE`.}
+\item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{FALSE}.}
 
-\item{bar_width}{Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.}
+\item{bar_width}{Integer in \link{10, 120}, width of the progress bar when \code{verbose = TRUE}. Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
-Default is `NULL`, which does not set the seed.}
+Default is \code{NULL}, which does not set the seed.}
 }
 \value{
 A list with components:
 \describe{
-  \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
-    samples for the latent state \eqn{\theta_{t,1}}.}
-  \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples
-    for the initial state \eqn{\theta_{0,1}}.}
-  \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples
-    for the innovation precision \eqn{1/W_1}.}
-  \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
-    samples for the Bernoulli probabilities \eqn{\alpha_t}.}
+\item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+samples for the latent state \eqn{\theta_{t,1}}.}
+\item{\code{theta_01}}{Numeric vector of length \code{n_chain} of posterior samples
+for the initial state \eqn{\theta_{0,1}}.}
+\item{\code{prec_theta1}}{Numeric vector of length \code{n_chain} of posterior samples
+for the innovation precision \eqn{1/W_1}.}
+\item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+samples for the Bernoulli probabilities \eqn{\alpha_t}.}
 }
 }
 \description{
 Runs a Gibbs sampler for the local-level Bernoulli dynamic model
-  with probit link using Albert-Chib data augmentation.
+with probit link using Albert-Chib data augmentation.
 }
 \details{
 The model is defined as:
@@ -98,11 +98,11 @@ W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1).
 
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
-  \strong{Hyperparameter} \tab \strong{Function Argument} \cr
-  \eqn{\mu_{01}} \tab `prior_theta01_mean` \cr
-  \eqn{\tau_{01}} \tab `prior_theta01_prec` \cr
-  \eqn{\nu_1} \tab `prior_prec1_shape` \cr
-  \eqn{\eta_1} \tab `prior_prec1_rate`
+\strong{Hyperparameter} \tab \strong{Function Argument} \cr
+\eqn{\mu_{01}} \tab \code{prior_theta01_mean} \cr
+\eqn{\tau_{01}} \tab \code{prior_theta01_prec} \cr
+\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
+\eqn{\eta_1} \tab \code{prior_prec1_rate}
 }
 
 The algorithm employs the Albert-Chib (1993) latent variable augmentation
@@ -117,18 +117,18 @@ acceptance rate is always 1.0, eliminating the need for proposal tuning
 parameters.
 
 \strong{Progress Bar:}
-When `verbose = TRUE`, a visual progress bar is displayed showing
+When \code{verbose = TRUE}, a visual progress bar is displayed showing
 \itemize{
-\item{Progress bar with adaptive update frequency (based on `bar_width`)}
+\item{Progress bar with adaptive update frequency (based on \code{bar_width})}
 \item{Elapsed time in HH:MM:SS format}
 \item{Estimated remaining time in HH:MM:SS format}
 }
 
 The progress bar update frequency is automatically calculated as approximately
 one update per bar segment, ensuring smooth visual feedback with minimal
-performance overhead (~0.01\% for typical runs).
+performance overhead (~0.01\\% for typical runs).
 
-Burn-in and thinning are applied so that exactly `n_chain` posterior
+Burn-in and thinning are applied so that exactly \code{n_chain} posterior
 samples are returned.
 }
 \examples{

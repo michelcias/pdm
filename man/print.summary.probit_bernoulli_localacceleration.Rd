@@ -61,5 +61,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.probit_bernoulli_localacceleration}},
-  \code{\link{print.probit_bernoulli_localacceleration}}
+\code{\link{print.probit_bernoulli_localacceleration}}
 }

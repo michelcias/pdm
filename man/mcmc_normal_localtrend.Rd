@@ -53,9 +53,9 @@ mcmc_normal_localtrend(
 
 \item{prior_prec_y_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.}
 
-\item{verbose}{Logical, whether to display a progress bar during sampling. Default is `FALSE`.}
+\item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{FALSE}.}
 
-\item{bar_width}{Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.}
+\item{bar_width}{Integer in \link{10, 120}, width of the progress bar when \code{verbose = TRUE}. Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
 Default is \code{NULL}, which does not set the seed.}
@@ -63,13 +63,13 @@ Default is \code{NULL}, which does not set the seed.}
 \value{
 A list with components:
 \describe{
-  \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
-  \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
-  \item{`theta_01`}{Numeric vector of length `n_chain` for the initial level \eqn{\theta_{0,1}}.}
-  \item{`theta_02`}{Numeric vector of length `n_chain` for the initial trend \eqn{\theta_{0,2}}.}
-  \item{`prec_theta1`}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
-  \item{`prec_theta2`}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
-  \item{`prec_y`}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
+\item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
+\item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
+\item{\code{theta_01}}{Numeric vector of length \code{n_chain} for the initial level \eqn{\theta_{0,1}}.}
+\item{\code{theta_02}}{Numeric vector of length \code{n_chain} for the initial trend \eqn{\theta_{0,2}}.}
+\item{\code{prec_theta1}}{Numeric vector of length \code{n_chain} for the level innovation precision \eqn{1/W_1}.}
+\item{\code{prec_theta2}}{Numeric vector of length \code{n_chain} for the trend innovation precision \eqn{1/W_2}.}
+\item{\code{prec_y}}{Numeric vector of length \code{n_chain} for the data precision \eqn{1/V}.}
 }
 }
 \description{
@@ -85,7 +85,6 @@ y_t &= \theta_{t,1} + \epsilon_t,                          & \epsilon_t  & \sim 
 \end{aligned}
 }
 where \eqn{t = 1, 2, \ldots, n} and \eqn{n} is the number of observations.
-
 
 \strong{Prior Distributions:}
 
@@ -111,17 +110,17 @@ V^{-1} &\sim \text{Gamma}(\nu_V, \eta_V).
 
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
-  \strong{Hyperparameter} \tab \strong{Function Argument} \cr
-  \eqn{\mu_{01}} \tab `prior_theta01_mean` \cr
-  \eqn{\tau_{01}} \tab `prior_theta01_prec` \cr
-  \eqn{\mu_{02}} \tab `prior_theta02_mean` \cr
-  \eqn{\tau_{02}} \tab `prior_theta02_prec` \cr
-  \eqn{\nu_1} \tab `prior_prec1_shape` \cr
-  \eqn{\eta_1} \tab `prior_prec1_rate` \cr
-  \eqn{\nu_2} \tab `prior_prec2_shape` \cr
-  \eqn{\eta_2} \tab `prior_prec2_rate` \cr
-  \eqn{\nu_V} \tab `prior_prec_y_shape` \cr
-  \eqn{\eta_V} \tab `prior_prec_y_rate`
+\strong{Hyperparameter} \tab \strong{Function Argument} \cr
+\eqn{\mu_{01}} \tab \code{prior_theta01_mean} \cr
+\eqn{\tau_{01}} \tab \code{prior_theta01_prec} \cr
+\eqn{\mu_{02}} \tab \code{prior_theta02_mean} \cr
+\eqn{\tau_{02}} \tab \code{prior_theta02_prec} \cr
+\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
+\eqn{\eta_1} \tab \code{prior_prec1_rate} \cr
+\eqn{\nu_2} \tab \code{prior_prec2_shape} \cr
+\eqn{\eta_2} \tab \code{prior_prec2_rate} \cr
+\eqn{\nu_V} \tab \code{prior_prec_y_shape} \cr
+\eqn{\eta_V} \tab \code{prior_prec_y_rate}
 }
 
 These conjugate priors enable efficient Gibbs sampling with closed-form
@@ -130,7 +129,7 @@ variance) to maintain natural conjugacy and ensure numerical stability.
 The Gamma distribution uses shape-rate parameterization, where
 \eqn{E(X) = \nu/\eta} and \eqn{\text{Var}(X) = \nu/\eta^2}.
 
-Burn-in and thinning are applied so that exactly `n_chain` posterior samples
+Burn-in and thinning are applied so that exactly \code{n_chain} posterior samples
 are returned.
 }
 \examples{

@@ -19,34 +19,34 @@ interval containing that probability mass of the posterior.}
 }
 \value{
 An object of class \code{summary.normal_mixture_localtrend}, which is
-  a list containing:
-  \describe{
-    \item{\code{link}}{Character string indicating the link function used}
-    \item{\code{model_type}}{Character string indicating the model type}
-    \item{\code{n_obs}}{Number of observations}
-    \item{\code{n_chain}}{Number of MCMC samples}
-    \item{\code{burnin}}{Number of burn-in iterations}
-    \item{\code{thinning}}{Thinning interval}
-    \item{\code{ci_level}}{Credible interval level used (HPDI)}
-    \item{\code{mixture_params}}{Data frame with summary statistics for
-      mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
-    \item{\code{state_params}}{Data frame with summary statistics for
-      dynamic state parameters (theta_01, theta_02, W_1^-1, W_2^-1)}
-    \item{\code{alpha_summary}}{Summary statistics for the mixture weights
-      alpha_t (min, median, max across time)}
-  }
+a list containing:
+\describe{
+\item{\code{link}}{Character string indicating the link function used}
+\item{\code{model_type}}{Character string indicating the model type}
+\item{\code{n_obs}}{Number of observations}
+\item{\code{n_chain}}{Number of MCMC samples}
+\item{\code{burnin}}{Number of burn-in iterations}
+\item{\code{thinning}}{Thinning interval}
+\item{\code{ci_level}}{Credible interval level used (HPDI)}
+\item{\code{mixture_params}}{Data frame with summary statistics for
+mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
+\item{\code{state_params}}{Data frame with summary statistics for
+dynamic state parameters (theta_01, theta_02, W_1^-1, W_2^-1)}
+\item{\code{alpha_summary}}{Summary statistics for the mixture weights
+alpha_t (min, median, max across time)}
+}
 }
 \description{
 Produces comprehensive posterior statistics including means,
-  standard deviations, medians, and credible intervals.
+standard deviations, medians, and credible intervals.
 }
 \details{
 This method provides complete posterior inference with multiple statistics:
 \describe{
-  \item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
-  \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
-  \item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
-  \item{\strong{CI}}{Credible intervals at specified probabilities}
+\item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
+\item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
+\item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
+\item{\strong{CI}}{Credible intervals at specified probabilities}
 }
 
 For a quick overview showing only medians, use \code{print(x)}.
@@ -129,6 +129,6 @@ summary(out_logit, ci_level = 0.80)  # 80\% HPD interval
 }
 \seealso{
 \code{\link{mcmc_normal_mixture_localtrend}},
-  \code{\link{print.normal_mixture_localtrend}},
-  \code{\link{plot.normal_mixture_localtrend}}
+\code{\link{print.normal_mixture_localtrend}},
+\code{\link{plot.normal_mixture_localtrend}}
 }

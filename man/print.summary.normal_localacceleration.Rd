@@ -84,5 +84,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.normal_localacceleration}},
-  \code{\link{print.normal_localacceleration}}
+\code{\link{print.normal_localacceleration}}
 }

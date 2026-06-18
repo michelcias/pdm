@@ -11,7 +11,7 @@ is.binomial_locallevel(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{binomial_locallevel}, \code{FALSE} otherwise.
+\code{binomial_locallevel}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{binomial_locallevel}.

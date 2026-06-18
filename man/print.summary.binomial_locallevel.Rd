@@ -68,5 +68,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.binomial_locallevel}},
-  \code{\link{print.binomial_locallevel}}
+\code{\link{print.binomial_locallevel}}
 }

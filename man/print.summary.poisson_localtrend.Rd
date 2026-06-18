@@ -80,5 +80,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.poisson_localtrend}},
-  \code{\link{print.poisson_localtrend}}
+\code{\link{print.poisson_localtrend}}
 }

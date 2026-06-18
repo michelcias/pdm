@@ -74,5 +74,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.normal_localtrend}},
-  \code{\link{print.normal_localtrend}}
+\code{\link{print.normal_localtrend}}
 }

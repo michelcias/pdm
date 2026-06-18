@@ -57,5 +57,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.probit_bernoulli_localtrend}},
-  \code{\link{print.probit_bernoulli_localtrend}}
+\code{\link{print.probit_bernoulli_localtrend}}
 }

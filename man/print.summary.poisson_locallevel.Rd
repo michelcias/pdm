@@ -66,5 +66,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.poisson_locallevel}},
-  \code{\link{print.poisson_locallevel}}
+\code{\link{print.poisson_locallevel}}
 }

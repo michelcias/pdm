@@ -52,5 +52,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.probit_bernoulli_locallevel}},
-  \code{\link{print.probit_bernoulli_locallevel}}
+\code{\link{print.probit_bernoulli_locallevel}}
 }

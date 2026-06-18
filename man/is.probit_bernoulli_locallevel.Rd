@@ -11,7 +11,7 @@ is.probit_bernoulli_locallevel(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{probit_bernoulli_locallevel}, \code{FALSE} otherwise.
+\code{probit_bernoulli_locallevel}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{probit_bernoulli_locallevel}.

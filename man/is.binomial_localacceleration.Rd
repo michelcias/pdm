@@ -11,7 +11,7 @@ is.binomial_localacceleration(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{binomial_localacceleration}, \code{FALSE} otherwise.
+\code{binomial_localacceleration}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{binomial_localacceleration}.

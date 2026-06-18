@@ -92,5 +92,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.binomial_localacceleration}},
-  \code{\link{print.binomial_localacceleration}}
+\code{\link{print.binomial_localacceleration}}
 }

@@ -11,7 +11,7 @@ is.normal_localtrend(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{normal_localtrend}, \code{FALSE} otherwise.
+\code{normal_localtrend}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{normal_localtrend}.

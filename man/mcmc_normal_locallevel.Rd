@@ -41,25 +41,25 @@ mcmc_normal_locallevel(
 
 \item{prior_prec_y_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.}
 
-\item{verbose}{Logical, whether to display a progress bar during sampling. Default is `FALSE`.}
+\item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{FALSE}.}
 
-\item{bar_width}{Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.}
+\item{bar_width}{Integer in \link{10, 120}, width of the progress bar when \code{verbose = TRUE}. Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
 Default is \code{NULL}, which does not set the seed.}
 }
 \value{
 An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
-  containing the following components:
-  \describe{
-    \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
-    \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
-    \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
-    \item{`prec_y`}{Numeric vector of length `n_chain` of posterior samples for the data precision \eqn{1/V}.}
-  }
-  Metadata about the MCMC run (burn-in, thinning, number of retained
-  samples, and original data) are stored as attributes to facilitate S3
-  method dispatch.
+containing the following components:
+\describe{
+\item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
+\item{\code{theta_01}}{Numeric vector of length \code{n_chain} of posterior samples for the initial state \eqn{\theta_{0,1}}.}
+\item{\code{prec_theta1}}{Numeric vector of length \code{n_chain} of posterior samples for the innovation precision \eqn{1/W_1}.}
+\item{\code{prec_y}}{Numeric vector of length \code{n_chain} of posterior samples for the data precision \eqn{1/V}.}
+}
+Metadata about the MCMC run (burn-in, thinning, number of retained
+samples, and original data) are stored as attributes to facilitate S3
+method dispatch.
 }
 \description{
 Runs a Gibbs sampler for the local-level dynamic model.
@@ -73,7 +73,6 @@ y_t &= \theta_{t,1} + e_t,                 & e_t     & \sim N(0, V),  \\
 \end{aligned}
 }
 where \eqn{t = 1, 2, \ldots, n} and \eqn{n} is the number of observations.
-
 
 \strong{Prior Distributions:}
 
@@ -97,13 +96,13 @@ V^{-1} &\sim \text{Gamma}(\nu_V, \eta_V).
 
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
-  \strong{Hyperparameter} \tab \strong{Function Argument} \cr
-  \eqn{\mu_{01}} \tab `prior_theta01_mean` \cr
-  \eqn{\tau_{01}} \tab `prior_theta01_prec` \cr
-  \eqn{\nu_1} \tab `prior_prec1_shape` \cr
-  \eqn{\eta_1} \tab `prior_prec1_rate` \cr
-  \eqn{\nu_V} \tab `prior_prec_y_shape` \cr
-  \eqn{\eta_V} \tab `prior_prec_y_rate`
+\strong{Hyperparameter} \tab \strong{Function Argument} \cr
+\eqn{\mu_{01}} \tab \code{prior_theta01_mean} \cr
+\eqn{\tau_{01}} \tab \code{prior_theta01_prec} \cr
+\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
+\eqn{\eta_1} \tab \code{prior_prec1_rate} \cr
+\eqn{\nu_V} \tab \code{prior_prec_y_shape} \cr
+\eqn{\eta_V} \tab \code{prior_prec_y_rate}
 }
 
 These conjugate priors enable efficient Gibbs sampling with closed-form

@@ -39,7 +39,7 @@ mcmc_normal_mixture_locallevel(
 \item{y}{Numeric vector of observed data (length \eqn{n}).}
 
 \item{link}{Character string specifying the link function. Must be either
-`"logit"` or `"probit"`. Default is `"logit"`.}
+\code{"logit"} or \code{"probit"}. Default is \code{"logit"}.}
 
 \item{burnin}{Integer \eqn{\geq 0}, number of burn-in iterations.}
 
@@ -48,7 +48,7 @@ mcmc_normal_mixture_locallevel(
 \item{n_chain}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
 
 \item{prior_mu01_mean}{Numeric, prior mean for the mean of component 1 (\eqn{\mu_1}).
-If `NULL` (default), set to the 25th percentile of `y`.}
+If \code{NULL} (default), set to the 25th percentile of \code{y}.}
 
 \item{prior_mu01_prec}{Numeric > 0, prior precision (inverse variance) for \eqn{\mu_1}.
 Default is 0.01 (vague prior).}
@@ -60,7 +60,7 @@ the precision of component 1 (\eqn{\phi_1}). Default is 0.01 (vague prior).}
 Default is 0.01 (vague prior).}
 
 \item{prior_mu02_mean}{Numeric, prior mean for the mean of component 2 (\eqn{\mu_2}).
-If `NULL` (default), set to the 75th percentile of `y`.}
+If \code{NULL} (default), set to the 75th percentile of \code{y}.}
 
 \item{prior_mu02_prec}{Numeric > 0, prior precision (inverse variance) for \eqn{\mu_2}.
 Default is 0.01 (vague prior).}
@@ -86,81 +86,81 @@ the level innovation precision \eqn{1/W_1}. Default is 0.01 (vague prior).}
 \item{lag_update}{Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
 computing acceptance proportions (logit link only). Adaptation occurs at MCMC iterations
 \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Default is 50.
-Ignored when `link = "probit"`.}
+Ignored when \code{link = "probit"}.}
 
 \item{max_step_size}{Numeric > 0, maximum allowed change in log-scale proposal variance
 per adaptation step (logit link only). Prevents extreme adjustments. Default is 1.0.
-Ignored when `link = "probit"`.}
+Ignored when \code{link = "probit"}.}
 
 \item{base_adaptation_rate}{Numeric > 0, base rate controlling adaptation speed
 (logit link only). Higher values lead to faster but potentially less stable adaptation.
-Default is 0.01. Ignored when `link = "probit"`.}
+Default is 0.01. Ignored when \code{link = "probit"}.}
 
 \item{decay_exponent}{Numeric > 0, exponent controlling diminishing adaptation
 rate (logit link only). The adaptation rate decays as \eqn{m^{-\text{decay\_exponent}}}
 to satisfy diminishing adaptation conditions. Must be in (0.5, 1] for theoretical
-convergence guarantees. Default is 0.6. Ignored when `link = "probit"`.}
+convergence guarantees. Default is 0.6. Ignored when \code{link = "probit"}.}
 
 \item{target_acceptance}{Numeric in (0, 1), target acceptance rate for the
 Metropolis-Hastings algorithm (logit link only). The value 0.44 is theoretically
 optimal for univariate random-walk proposals. Default is 0.44. Ignored when
-`link = "probit"`.}
+\code{link = "probit"}.}
 
-\item{min_deviation_threshold}{Numeric \eqn{\geq 0} or `NULL`, minimum absolute deviation
-from `target_acceptance` required to trigger adaptation (logit link only). If `NULL`
-(default), uses practical threshold of `1.0/lag_update`. Set to `0.0` for maximum
+\item{min_deviation_threshold}{Numeric \eqn{\geq 0} or \code{NULL}, minimum absolute deviation
+from \code{target_acceptance} required to trigger adaptation (logit link only). If \code{NULL}
+(default), uses practical threshold of \code{1.0/lag_update}. Set to \code{0.0} for maximum
 sensitivity (adapt for any deviation). Larger values make adaptation more conservative.
-Ignored when `link = "probit"`.}
+Ignored when \code{link = "probit"}.}
 
 \item{return_log_sigma}{Logical, whether to return proposal scale diagnostics
 (log-scale proposal standard deviations) for logit link only. Useful for diagnosing
-adaptation behavior. Default is `FALSE`. Ignored when `link = "probit"`.}
+adaptation behavior. Default is \code{FALSE}. Ignored when \code{link = "probit"}.}
 
 \item{return_accept_prop}{Logical, whether to return acceptance proportion diagnostics
 over iterations for logit link only. Useful for diagnosing MCMC mixing. Default is
-`FALSE`. Ignored when `link = "probit"`.}
+\code{FALSE}. Ignored when \code{link = "probit"}.}
 
-\item{verbose}{Logical, whether to display a progress bar during sampling. Default is `FALSE`.}
+\item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{FALSE}.}
 
-\item{bar_width}{Integer in [10, 120], width of the progress bar when `verbose = TRUE`.
-Default is `60`.}
+\item{bar_width}{Integer in \link{10, 120}, width of the progress bar when \code{verbose = TRUE}.
+Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed for
-reproducibility. Default is `NULL` (no seed set).}
+reproducibility. Default is \code{NULL} (no seed set).}
 }
 \value{
 A list with components:
 \describe{
-  \item{`mu_1`}{Numeric vector of length `n_chain` of posterior samples for
-    the mean of component 1 (\eqn{\mu_1}). Component 1 is defined as the
-    component with the smaller mean due to the label switching constraint.}
-  \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for
-    the precision of component 1 (\eqn{\phi_1 = 1/\sigma_1^2}).}
-  \item{`mu_2`}{Numeric vector of length `n_chain` of posterior samples for
-    the mean of component 2 (\eqn{\mu_2}). Component 2 is defined as the
-    component with the larger mean.}
-  \item{`prec_2`}{Numeric vector of length `n_chain` of posterior samples for
-    the precision of component 2 (\eqn{\phi_2 = 1/\sigma_2^2}).}
-  \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
-    samples for the latent level state \eqn{\theta_{t,1}}.}
-  \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples
-    for the initial level state \eqn{\theta_{0,1}}.}
-  \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples
-    for the level innovation precision \eqn{1/W_1}.}
-  \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
-    samples for the mixture weights \eqn{\alpha_t}.}
-  \item{`z`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples
-    for the latent component indicators \eqn{z_t}.}
-  \item{`log_sigma`}{(Logit link only, optional) Numeric matrix of proposal
-    log standard deviations used in the adaptive Metropolis-Hastings steps.}
-  \item{`accept_prop`}{(Logit link only, optional) Numeric matrix of proposal
-    acceptance proportions accumulated during adaptive tuning.}
+\item{\code{mu_1}}{Numeric vector of length \code{n_chain} of posterior samples for
+the mean of component 1 (\eqn{\mu_1}). Component 1 is defined as the
+component with the smaller mean due to the label switching constraint.}
+\item{\code{prec_1}}{Numeric vector of length \code{n_chain} of posterior samples for
+the precision of component 1 (\eqn{\phi_1 = 1/\sigma_1^2}).}
+\item{\code{mu_2}}{Numeric vector of length \code{n_chain} of posterior samples for
+the mean of component 2 (\eqn{\mu_2}). Component 2 is defined as the
+component with the larger mean.}
+\item{\code{prec_2}}{Numeric vector of length \code{n_chain} of posterior samples for
+the precision of component 2 (\eqn{\phi_2 = 1/\sigma_2^2}).}
+\item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+samples for the latent level state \eqn{\theta_{t,1}}.}
+\item{\code{theta_01}}{Numeric vector of length \code{n_chain} of posterior samples
+for the initial level state \eqn{\theta_{0,1}}.}
+\item{\code{prec_theta1}}{Numeric vector of length \code{n_chain} of posterior samples
+for the level innovation precision \eqn{1/W_1}.}
+\item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+samples for the mixture weights \eqn{\alpha_t}.}
+\item{\code{z}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples
+for the latent component indicators \eqn{z_t}.}
+\item{\code{log_sigma}}{(Logit link only, optional) Numeric matrix of proposal
+log standard deviations used in the adaptive Metropolis-Hastings steps.}
+\item{\code{accept_prop}}{(Logit link only, optional) Numeric matrix of proposal
+acceptance proportions accumulated during adaptive tuning.}
 }
 }
 \description{
 Runs a Gibbs sampler for a two-component Gaussian mixture model
-  with time-varying mixture weights governed by a local-level dynamic
-  structure. Supports both logit and probit link functions.
+with time-varying mixture weights governed by a local-level dynamic
+structure. Supports both logit and probit link functions.
 }
 \details{
 The model is defined as:
@@ -217,19 +217,19 @@ W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1).
 
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
-  \strong{Hyperparameter} \tab \strong{Function Argument} \cr
-  \eqn{\mu_{01}} \tab `prior_mu01_mean` \cr
-  \eqn{\tau_{01}} \tab `prior_mu01_prec` \cr
-  \eqn{\nu_{01}} \tab `prior_prec01_shape` \cr
-  \eqn{\eta_{01}} \tab `prior_prec01_rate` \cr
-  \eqn{\mu_{02}} \tab `prior_mu02_mean` \cr
-  \eqn{\tau_{02}} \tab `prior_mu02_prec` \cr
-  \eqn{\nu_{02}} \tab `prior_prec02_shape` \cr
-  \eqn{\eta_{02}} \tab `prior_prec02_rate` \cr
-  \eqn{\mu_{\theta_{01}}} \tab `prior_theta01_mean` \cr
-  \eqn{\tau_{\theta_{01}}} \tab `prior_theta01_prec` \cr
-  \eqn{\nu_1} \tab `prior_prec1_shape` \cr
-  \eqn{\eta_1} \tab `prior_prec1_rate`
+\strong{Hyperparameter} \tab \strong{Function Argument} \cr
+\eqn{\mu_{01}} \tab \code{prior_mu01_mean} \cr
+\eqn{\tau_{01}} \tab \code{prior_mu01_prec} \cr
+\eqn{\nu_{01}} \tab \code{prior_prec01_shape} \cr
+\eqn{\eta_{01}} \tab \code{prior_prec01_rate} \cr
+\eqn{\mu_{02}} \tab \code{prior_mu02_mean} \cr
+\eqn{\tau_{02}} \tab \code{prior_mu02_prec} \cr
+\eqn{\nu_{02}} \tab \code{prior_prec02_shape} \cr
+\eqn{\eta_{02}} \tab \code{prior_prec02_rate} \cr
+\eqn{\mu_{\theta_{01}}} \tab \code{prior_theta01_mean} \cr
+\eqn{\tau_{\theta_{01}}} \tab \code{prior_theta01_prec} \cr
+\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
+\eqn{\eta_1} \tab \code{prior_prec1_rate}
 }
 
 \strong{Label Switching:}
@@ -245,9 +245,9 @@ based on acceptance proportions.
 
 The adaptive algorithm uses a diminishing adaptation schedule that ensures
 theoretical convergence guarantees (Roberts and Rosenthal, 2007). Adaptation
-occurs every `lag_update` iterations (e.g., at MCMC iterations 50, 100, 150, ...
-if `lag_update = 50`), and only after sufficient history has been accumulated
-(iteration >= `lag_update`).
+occurs every \code{lag_update} iterations (e.g., at MCMC iterations 50, 100, 150, ...
+if \code{lag_update = 50}), and only after sufficient history has been accumulated
+(iteration >= \code{lag_update}).
 
 At each adaptation point (MCMC iteration \eqn{m}), for each time point \eqn{t},
 the proposal log-scale standard deviation is updated according to:
@@ -256,15 +256,15 @@ the proposal log-scale standard deviation is updated according to:
 
 where:
 \itemize{
-  \item \eqn{\gamma_m} is the diminishing step size at MCMC iteration \eqn{m}, computed as
-    \deqn{\gamma_m = \min\left(\text{max\_step\_size}, \frac{\text{base\_adaptation\_rate}}{m^\xi}\right);}
-  \item \eqn{\xi} is the decay exponent (`decay_exponent`) applied to the MCMC iteration number;
-  \item \eqn{\hat{p}_t} is the empirical acceptance proportion at time point \eqn{t}
-    over the last `lag_update` MCMC iterations;
-  \item \eqn{p^*} is the target acceptance rate (`target_acceptance`);
-  \item \eqn{\tau} is the minimum deviation threshold (`min_deviation_threshold`);
-  \item \eqn{\mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}}} is an indicator function that equals 1 when
-    the condition is true, 0 otherwise.
+\item \eqn{\gamma_m} is the diminishing step size at MCMC iteration \eqn{m}, computed as
+\deqn{\gamma_m = \min\left(\text{max\_step\_size}, \frac{\text{base\_adaptation\_rate}}{m^\xi}\right);}
+\item \eqn{\xi} is the decay exponent (\code{decay_exponent}) applied to the MCMC iteration number;
+\item \eqn{\hat{p}_t} is the empirical acceptance proportion at time point \eqn{t}
+over the last \code{lag_update} MCMC iterations;
+\item \eqn{p^*} is the target acceptance rate (\code{target_acceptance});
+\item \eqn{\tau} is the minimum deviation threshold (\code{min_deviation_threshold});
+\item \eqn{\mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}}} is an indicator function that equals 1 when
+the condition is true, 0 otherwise.
 }
 
 The update only occurs if the absolute deviation exceeds the threshold:
@@ -276,37 +276,37 @@ This threshold-based approach prevents spurious updates due to random fluctuatio
 
 The adaptive tuning parameters interact as follows:
 \itemize{
-  \item \strong{lag_update}: Controls both the sliding window size for computing acceptance
-    proportions AND the frequency of adaptation. Adaptation occurs at MCMC iterations
-    \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Larger values
-    provide more stable estimates but slower adaptation. Common choices: 50-200 iterations.
-  \item \strong{target_acceptance}: Optimal acceptance rate for the Metropolis-Hastings
-    algorithm. The value 0.44 is theoretically optimal for univariate random-walk proposals
-    (Roberts and Rosenthal, 2001). Each time point \eqn{t} has its own acceptance rate
-    \eqn{\hat{p}_t}.
-  \item \strong{min_deviation_threshold}: Minimum deviation \eqn{|\hat{p}_t - p^*|}
-    required to trigger adaptation for time point \eqn{t}. The default `NULL` uses the
-    practical threshold \eqn{1/\text{lag\_update}}, corresponding to one additional
-    acceptance/rejection in the sliding window.
-  \item \strong{max_step_size}: Maximum allowed change in log-scale proposal variance
-    per adaptation step. Prevents extreme adjustments. Common choices: 0.01-0.1.
-  \item \strong{base_adaptation_rate}: Controls the overall speed of adaptation before
-    decay is applied. Higher values lead to faster but potentially less stable adaptation.
-    Common choices: 0.1-10.0.
-  \item \strong{decay_exponent}: Controls how quickly the adaptation step size diminishes
-    over MCMC iterations. As the algorithm runs, \eqn{\gamma_m} decreases according to
-    \eqn{m^{-\xi}}. Must be in (0.5, 1] for theoretical convergence guarantees.
-    Common choices: 0.5-0.8.
+\item \strong{lag_update}: Controls both the sliding window size for computing acceptance
+proportions AND the frequency of adaptation. Adaptation occurs at MCMC iterations
+\eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Larger values
+provide more stable estimates but slower adaptation. Common choices: 50-200 iterations.
+\item \strong{target_acceptance}: Optimal acceptance rate for the Metropolis-Hastings
+algorithm. The value 0.44 is theoretically optimal for univariate random-walk proposals
+(Roberts and Rosenthal, 2001). Each time point \eqn{t} has its own acceptance rate
+\eqn{\hat{p}_t}.
+\item \strong{min_deviation_threshold}: Minimum deviation \eqn{|\hat{p}_t - p^*|}
+required to trigger adaptation for time point \eqn{t}. The default \code{NULL} uses the
+practical threshold \eqn{1/\text{lag\_update}}, corresponding to one additional
+acceptance/rejection in the sliding window.
+\item \strong{max_step_size}: Maximum allowed change in log-scale proposal variance
+per adaptation step. Prevents extreme adjustments. Common choices: 0.01-0.1.
+\item \strong{base_adaptation_rate}: Controls the overall speed of adaptation before
+decay is applied. Higher values lead to faster but potentially less stable adaptation.
+Common choices: 0.1-10.0.
+\item \strong{decay_exponent}: Controls how quickly the adaptation step size diminishes
+over MCMC iterations. As the algorithm runs, \eqn{\gamma_m} decreases according to
+\eqn{m^{-\xi}}. Must be in (0.5, 1] for theoretical convergence guarantees.
+Common choices: 0.5-0.8.
 }
 
 \strong{Example of Adaptation Schedule:}
 
-With `lag_update = 50`, `base_adaptation_rate = 1.0`, `decay_exponent = 0.6`,
-and `max_step_size = 0.1`:
+With \code{lag_update = 50}, \code{base_adaptation_rate = 1.0}, \code{decay_exponent = 0.6},
+and \code{max_step_size = 0.1}:
 \itemize{
-  \item At MCMC iteration 50: \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}.
-  \item At MCMC iteration 100: \eqn{\gamma_{100} = \min(0.1, 1.0/100^{0.6}) \approx 0.0631}.
-  \item At MCMC iteration 1000: \eqn{\gamma_{1000} = \min(0.1, 1.0/1000^{0.6}) \approx 0.0158}.
+\item At MCMC iteration 50: \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}.
+\item At MCMC iteration 100: \eqn{\gamma_{100} = \min(0.1, 1.0/100^{0.6}) \approx 0.0631}.
+\item At MCMC iteration 1000: \eqn{\gamma_{1000} = \min(0.1, 1.0/1000^{0.6}) \approx 0.0158}.
 }
 
 This ensures that adaptation becomes increasingly conservative as the chain progresses,
@@ -316,27 +316,27 @@ satisfying theoretical requirements for ergodicity.
 
 For most applications:
 \itemize{
-  \item `lag_update = 50`: Provides good balance between stability and responsiveness;
-  \item `max_step_size = 0.1`: Conservative adjustment rate;
-  \item `base_adaptation_rate = 1.0`: Moderate adaptation speed;
-  \item `decay_exponent = 0.6`: Standard diminishing adaptation;
-  \item `target_acceptance = 0.44`: Theoretically optimal for univariate proposals;
-  \item `min_deviation_threshold = NULL`: Uses practical default of 1/lag_update.
+\item \code{lag_update = 50}: Provides good balance between stability and responsiveness;
+\item \code{max_step_size = 0.1}: Conservative adjustment rate;
+\item \code{base_adaptation_rate = 1.0}: Moderate adaptation speed;
+\item \code{decay_exponent = 0.6}: Standard diminishing adaptation;
+\item \code{target_acceptance = 0.44}: Theoretically optimal for univariate proposals;
+\item \code{min_deviation_threshold = NULL}: Uses practical default of 1/lag_update.
 }
 
 \strong{Progress Bar:}
-When `verbose = TRUE`, a visual progress bar is displayed showing
+When \code{verbose = TRUE}, a visual progress bar is displayed showing
 \itemize{
-\item{Progress bar with adaptive update frequency (based on `bar_width`)}
+\item{Progress bar with adaptive update frequency (based on \code{bar_width})}
 \item{Elapsed time in HH:MM:SS format}
 \item{Estimated remaining time in HH:MM:SS format}
 }
 
 The progress bar update frequency is automatically calculated as approximately
 one update per bar segment, ensuring smooth visual feedback with minimal
-performance overhead (~0.01\% for typical runs).
+performance overhead (~0.01\\% for typical runs).
 
-Burn-in and thinning are applied so that exactly `n_chain` posterior
+Burn-in and thinning are applied so that exactly \code{n_chain} posterior
 samples are returned.
 }
 \examples{
@@ -1177,7 +1177,7 @@ dynamic weights in Gaussian mixture models. arXiv:2104.03395.
 }
 \seealso{
 \code{\link{mcmc_probit_bernoulli_locallevel}},
- \code{\link{mcmc_binomial_locallevel}},
- \code{\link{mcmc_normal_mixture_localtrend}},
- \code{\link{mcmc_normal_mixture_localacceleration}}
+\code{\link{mcmc_binomial_locallevel}},
+\code{\link{mcmc_normal_mixture_localtrend}},
+\code{\link{mcmc_normal_mixture_localacceleration}}
 }

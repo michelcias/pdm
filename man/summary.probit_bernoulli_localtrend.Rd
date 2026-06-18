@@ -19,35 +19,35 @@ interval containing that probability mass of the posterior.}
 }
 \value{
 An object of class \code{summary.probit_bernoulli_localtrend}, which is
-  a list containing:
-  \describe{
-    \item{\code{model_type}}{Character string indicating the model type}
-    \item{\code{n_obs}}{Number of observations}
-    \item{\code{n_chain}}{Number of MCMC samples}
-    \item{\code{burnin}}{Number of burn-in iterations}
-    \item{\code{thinning}}{Thinning interval}
-    \item{\code{ci_level}}{Credible interval level used (HPDI)}
-    \item{\code{scalar_params}}{Data frame with summary statistics for
-      scalar parameters (theta_01, theta_02, W_1^-1, W_2^-1)}
-    \item{\code{theta1_summary}}{Summary statistics for the latent level
-      \eqn{\theta_{t,1}} aggregated across time}
-    \item{\code{theta2_summary}}{Summary statistics for the latent trend
-      \eqn{\theta_{t,2}} aggregated across time}
-    \item{\code{alpha_summary}}{Summary statistics for the Bernoulli
-      probabilities \eqn{\alpha_t} aggregated across time (min, median, max)}
-  }
+a list containing:
+\describe{
+\item{\code{model_type}}{Character string indicating the model type}
+\item{\code{n_obs}}{Number of observations}
+\item{\code{n_chain}}{Number of MCMC samples}
+\item{\code{burnin}}{Number of burn-in iterations}
+\item{\code{thinning}}{Thinning interval}
+\item{\code{ci_level}}{Credible interval level used (HPDI)}
+\item{\code{scalar_params}}{Data frame with summary statistics for
+scalar parameters (theta_01, theta_02, W_1^-1, W_2^-1)}
+\item{\code{theta1_summary}}{Summary statistics for the latent level
+\eqn{\theta_{t,1}} aggregated across time}
+\item{\code{theta2_summary}}{Summary statistics for the latent trend
+\eqn{\theta_{t,2}} aggregated across time}
+\item{\code{alpha_summary}}{Summary statistics for the Bernoulli
+probabilities \eqn{\alpha_t} aggregated across time (min, median, max)}
+}
 }
 \description{
 Produces comprehensive posterior statistics including means,
-  standard deviations, medians, and credible intervals.
+standard deviations, medians, and credible intervals.
 }
 \details{
 This method provides complete posterior inference with multiple statistics:
 \describe{
-  \item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
-  \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
-  \item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
-  \item{\strong{CI}}{Credible intervals at specified probabilities}
+\item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
+\item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
+\item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
+\item{\strong{CI}}{Credible intervals at specified probabilities}
 }
 
 For a quick overview showing only medians, use \code{print(x)}.
@@ -103,5 +103,5 @@ summary(out, ci_level = 0.80)  # 80\% HPD interval
 }
 \seealso{
 \code{\link{mcmc_probit_bernoulli_localtrend}},
-  \code{\link{print.probit_bernoulli_localtrend}}
+\code{\link{print.probit_bernoulli_localtrend}}
 }

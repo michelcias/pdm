@@ -20,21 +20,21 @@
 
 \item{type}{Character string specifying the type of plot. One of:
 \describe{
-  \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
-  \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
-  \item{\code{"states"}}{Dynamic states (theta_1, theta_2, theta_3 trajectories)}
+\item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
+\item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
+\item{\code{"states"}}{Dynamic states (theta_1, theta_2, theta_3 trajectories)}
 }}
 
 \item{which}{Integer vector specifying which diagnostic plots to display.
 For \code{type = "mcmc"}:
 \describe{
-  \item{1}{V^-1 (observation precision)}
-  \item{2}{theta_01 (initial level)}
-  \item{3}{theta_02 (initial trend)}
-  \item{4}{theta_03 (initial acceleration)}
-  \item{5}{W_1^-1 (level innovation precision)}
-  \item{6}{W_2^-1 (trend innovation precision)}
-  \item{7}{W_3^-1 (acceleration innovation precision)}
+\item{1}{V^-1 (observation precision)}
+\item{2}{theta_01 (initial level)}
+\item{3}{theta_02 (initial trend)}
+\item{4}{theta_03 (initial acceleration)}
+\item{5}{W_1^-1 (level innovation precision)}
+\item{6}{W_2^-1 (trend innovation precision)}
+\item{7}{W_3^-1 (acceleration innovation precision)}
 }
 For \code{type = "states"}: indices of subplots.
 If \code{NULL} (default), all available plots are shown.}
@@ -50,36 +50,36 @@ support them. Default is \code{TRUE}.}
 (between 0 and 1). Default is \code{0.95}.}
 
 \item{true_values}{Named list containing true parameter values and/or state trajectories
-  for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
+for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
 
-  \strong{Important:} All parameter names in \code{true_values} must match exactly
-  the component names returned by \code{\link{mcmc_normal_localacceleration}}.
+\strong{Important:} All parameter names in \code{true_values} must match exactly
+the component names returned by \code{\link{mcmc_normal_localacceleration}}.
 
-  Accepted elements:
-  \describe{
-    \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
-      \itemize{
-        \item \code{prec_y}: Observation precision (V^-1)
-        \item \code{theta_01}: Initial level state
-        \item \code{theta_02}: Initial trend state
-        \item \code{theta_03}: Initial acceleration state
-        \item \code{prec_theta1}: Level innovation precision (W_1^-1)
-        \item \code{prec_theta2}: Trend innovation precision (W_2^-1)
-        \item \code{prec_theta3}: Acceleration innovation precision (W_3^-1)
-      }
-    }
-    \item{\strong{State trajectories} (for \code{type = "states"}):}{
-      \itemize{
-        \item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
-        \item \code{theta_2}: Numeric vector of length \code{n_obs} with true trend state values
-        \item \code{theta_3}: Numeric vector of length \code{n_obs} with true acceleration state values
-      }
-    }
-  }
+Accepted elements:
+\describe{
+\item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
+\itemize{
+\item \code{prec_y}: Observation precision (V^-1)
+\item \code{theta_01}: Initial level state
+\item \code{theta_02}: Initial trend state
+\item \code{theta_03}: Initial acceleration state
+\item \code{prec_theta1}: Level innovation precision (W_1^-1)
+\item \code{prec_theta2}: Trend innovation precision (W_2^-1)
+\item \code{prec_theta3}: Acceleration innovation precision (W_3^-1)
+}
+}
+\item{\strong{State trajectories} (for \code{type = "states"}):}{
+\itemize{
+\item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
+\item \code{theta_2}: Numeric vector of length \code{n_obs} with true trend state values
+\item \code{theta_3}: Numeric vector of length \code{n_obs} with true acceleration state values
+}
+}
+}
 
-  You can provide any subset of these elements. For example, to compare only
-  initial states:
-  \preformatted{
+You can provide any subset of these elements. For example, to compare only
+initial states:
+\preformatted{
   true_values = list(
     theta_01 = 10,
     theta_02 = 0.5,
@@ -94,7 +94,7 @@ Invisibly returns the input object \code{x}.
 }
 \description{
 Produces diagnostic plots for MCMC output from Gaussian
-  local acceleration models.
+local acceleration models.
 }
 \details{
 This function provides comprehensive visual diagnostics for Bayesian MCMC output:
@@ -103,10 +103,10 @@ This function provides comprehensive visual diagnostics for Bayesian MCMC output
 
 Each parameter gets a dedicated page with 4 panels:
 \itemize{
-  \item \strong{Trace Plot:} Shows MCMC chain trajectory to assess mixing
-  \item \strong{Autocorrelation:} ACF plot to detect serial correlation
-  \item \strong{Posterior Density:} Marginal posterior distribution
-  \item \strong{Running Mean:} Cumulative mean to assess convergence
+\item \strong{Trace Plot:} Shows MCMC chain trajectory to assess mixing
+\item \strong{Autocorrelation:} ACF plot to detect serial correlation
+\item \strong{Posterior Density:} Marginal posterior distribution
+\item \strong{Running Mean:} Cumulative mean to assess convergence
 }
 
 Available parameters: V^-1, theta_01, theta_02, theta_03, W_1^-1,
@@ -114,17 +114,17 @@ W_2^-1, W_3^-1
 
 \strong{Dynamic States} (\code{type = "states"}):
 \itemize{
-  \item Time-varying state trajectories with credible bands
-  \item Innovation sequences
-  \item State space relationships
+\item Time-varying state trajectories with credible bands
+\item Innovation sequences
+\item State space relationships
 }
 
 \strong{Complete Dashboard} (\code{type = "all"}):
 
 Generates 10 pages in total:
 \itemize{
-  \item Pages 1-7: Individual parameter diagnostics (4 panels each)
-  \item Pages 8-10: Dynamic state trajectories and diagnostics
+\item Pages 1-7: Individual parameter diagnostics (4 panels each)
+\item Pages 8-10: Dynamic state trajectories and diagnostics
 }
 }
 \examples{
@@ -377,5 +377,5 @@ plot(out, type = "states",
 }
 \seealso{
 \code{\link{mcmc_normal_localacceleration}},
-  \code{\link{summary.normal_localacceleration}}
+\code{\link{summary.normal_localacceleration}}
 }

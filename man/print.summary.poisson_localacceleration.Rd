@@ -90,5 +90,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.poisson_localacceleration}},
-  \code{\link{print.poisson_localacceleration}}
+\code{\link{print.poisson_localacceleration}}
 }

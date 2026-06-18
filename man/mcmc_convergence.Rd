@@ -21,7 +21,7 @@ mcmc_convergence(object, ...)
 }
 \arguments{
 \item{object}{An object inheriting from \code{"pdm_mcmc"}, typically the
-result of one of the \code{mcmc_*()} fitting functions (for example
+result of one of the \verb{mcmc_*()} fitting functions (for example
 \code{\link{mcmc_normal_localtrend}}).}
 
 \item{...}{Additional arguments (currently unused).}
@@ -36,14 +36,12 @@ exclude all latent states (scalar parameters only).}
 \item{ess_thresholds}{Numeric vector of length 3 giving the efficiency
 cut-offs (in percent) for the \code{ESS_status} labels \code{EXCELLENT},
 \code{GOOD} and \code{ACCEPTABLE}. Default is \code{c(50, 25, 10)},
-meaning efficiency > 50\% is \code{EXCELLENT}, > 25\% is \code{GOOD},
-> 10\% is \code{ACCEPTABLE}, and \eqn{\leq} 10\% is \code{POOR}.
-Values must be strictly decreasing and in the range \eqn{(0, 100)}.}
+meaning efficiency > 50\\% is \code{EXCELLENT}, > 25\\% is \code{GOOD},10\\% is ACCEPTABLE, and \eqn{\leq} 10\\% is POOR.Values must be strictly decreasing and in the range \eqn{(0, 100)}.}
 
 \item{geweke_level}{Numeric value in \eqn{(0, 1)}, the significance level
 used for the Geweke test. A parameter passes when
 \eqn{|z| < z_{1-\alpha/2}}, where \eqn{\alpha} is \code{geweke_level}.
-Default is \code{0.05} (5\%, corresponding to \eqn{|z| < 1.96}).}
+Default is \code{0.05} (5\\%, corresponding to \eqn{|z| < 1.96}).}
 
 \item{show_ess_status}{Logical. Whether to include the \code{ESS_status}
 column in the output table. Default \code{TRUE}.}
@@ -59,34 +57,34 @@ Default \code{TRUE}.}
 }
 \value{
 An object of class \code{"pdm_convergence"}, which is a list with:
-  \describe{
-    \item{\code{table}}{Data frame with one row per assessed parameter or
-      state time point. Columns always present: \code{Parameter}, \code{ESS},
-      \code{Efficiency} (in percent). Optional columns, controlled by the
-      \code{show_*} arguments: \code{ESS_status}, \code{Geweke_z},
-      \code{Geweke_pass}, \code{Heidel_stat}, \code{Heidel_hw},
-      \code{Overall}.}
-    \item{\code{n_chain}}{Number of retained MCMC samples (\eqn{N}).}
-    \item{\code{model_type}}{Character string, e.g. \code{"locallevel"},
-      \code{"localtrend"} or \code{"localacceleration"}.}
-    \item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
-      included.}
-    \item{\code{ess_thresholds}}{The ESS efficiency thresholds used.}
-    \item{\code{geweke_level}}{The significance level used for Geweke.}
-  }
+\describe{
+\item{\code{table}}{Data frame with one row per assessed parameter or
+state time point. Columns always present: \code{Parameter}, \code{ESS},
+\code{Efficiency} (in percent). Optional columns, controlled by the
+\verb{show_*} arguments: \code{ESS_status}, \code{Geweke_z},
+\code{Geweke_pass}, \code{Heidel_stat}, \code{Heidel_hw},
+\code{Overall}.}
+\item{\code{n_chain}}{Number of retained MCMC samples (\eqn{N}).}
+\item{\code{model_type}}{Character string, e.g. \code{"locallevel"},
+\code{"localtrend"} or \code{"localacceleration"}.}
+\item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
+included.}
+\item{\code{ess_thresholds}}{The ESS efficiency thresholds used.}
+\item{\code{geweke_level}}{The significance level used for Geweke.}
+}
 }
 \description{
 Assesses the convergence of the Markov chains produced by the
-  \code{mcmc_*()} fitting functions. For every scalar parameter of a fitted
-  \code{pdm_mcmc} model the function reports the Effective Sample Size (ESS)
-  and the associated sampling efficiency and, when the \pkg{coda} package is
-  available, the Geweke convergence diagnostic and the Heidelberger–Welch
-  stationarity and halfwidth tests. The individual verdicts are combined into
-  a single \code{Overall} classification per parameter.
+\verb{mcmc_*()} fitting functions. For every scalar parameter of a fitted
+\code{pdm_mcmc} model the function reports the Effective Sample Size (ESS)
+and the associated sampling efficiency and, when the \pkg{coda} package is
+available, the Geweke convergence diagnostic and the Heidelberger–Welch
+stationarity and halfwidth tests. The individual verdicts are combined into
+a single \code{Overall} classification per parameter.
 
-  Optionally, selected time points of the latent state chains
-  (\eqn{\theta_{t,j}}) can also be assessed, one row per state per time
-  point.
+Optionally, selected time points of the latent state chains
+(\eqn{\theta_{t,j}}) can also be assessed, one row per state per time
+point.
 }
 \details{
 Only scalar parameters (initial states \eqn{\theta_{0,j}}, innovation
@@ -102,50 +100,50 @@ and are reported among the scalar parameters. Only the trajectory matrices
 (\code{theta_1}, \code{theta_2}, \ldots), which hold one column per time
 point, are evaluated at the time points given by \code{theta_timepoints}.
 
-Because the \code{mcmc_*()} samplers return a single chain, all diagnostics
+Because the \verb{mcmc_*()} samplers return a single chain, all diagnostics
 are \emph{within-chain} criteria. Multi-chain diagnostics such as the
 Gelman–Rubin \eqn{\hat{R}} require several independent runs and are not
 computed here.
 
 \subsection{Effective Sample Size (ESS)}{
-  Autocorrelation inflates the variance of MCMC estimators relative to an
-  i.i.d. sample of the same length. The ESS approximates the number of
-  independent draws that would carry the same information,
-  \deqn{\mathrm{ESS} = \frac{N}{1 + 2 \sum_{k \ge 1} \rho_k},}
-  where \eqn{N} is the number of retained samples and \eqn{\rho_k} is the
-  lag-\eqn{k} sample autocorrelation. Following the truncated-sum approach of
-  Geyer (1992), the sum is taken over the positive sample autocorrelations up
-  to a maximum lag. This estimate requires no external package. The reported
-  efficiency is \eqn{100 \times \mathrm{ESS}/N} and is classified according
-  to \code{ess_thresholds}.
+Autocorrelation inflates the variance of MCMC estimators relative to an
+i.i.d. sample of the same length. The ESS approximates the number of
+independent draws that would carry the same information,
+\deqn{\mathrm{ESS} = \frac{N}{1 + 2 \sum_{k \ge 1} \rho_k},}
+where \eqn{N} is the number of retained samples and \eqn{\rho_k} is the
+lag-\eqn{k} sample autocorrelation. Following the truncated-sum approach of
+Geyer (1992), the sum is taken over the positive sample autocorrelations up
+to a maximum lag. This estimate requires no external package. The reported
+efficiency is \eqn{100 \times \mathrm{ESS}/N} and is classified according
+to \code{ess_thresholds}.
 }
 
 \subsection{Geweke diagnostic}{
-  Geweke (1992) compares the posterior mean of a parameter computed from the
-  first portion of the chain (the first 10\% by default) with that computed
-  from the last portion (the last 50\%). Under convergence the two means
-  agree and the standardised difference follows a standard normal
-  distribution. The test passes when \eqn{|z| < z_{1-\alpha/2}} for the
-  level \code{geweke_level}. Computed with \code{\link[coda]{geweke.diag}}.
+Geweke (1992) compares the posterior mean of a parameter computed from the
+first portion of the chain (the first 10\\% by default) with that computed
+from the last portion (the last 50\\%). Under convergence the two means
+agree and the standardised difference follows a standard normal
+distribution. The test passes when \eqn{|z| < z_{1-\alpha/2}} for the
+level \code{geweke_level}. Computed with \code{\link[coda]{geweke.diag}}.
 }
 
 \subsection{Heidelberger–Welch tests}{
-  Heidelberger and Welch (1983) propose two complementary tests. The
-  \emph{stationarity} test uses a Cramér–von Mises statistic on the
-  Brownian-bridge representation of the chain to decide whether the retained
-  draws are consistent with a stationary distribution. The \emph{halfwidth}
-  test checks whether the chain is long enough to estimate the posterior
-  mean to a prescribed relative accuracy. Both are computed with
-  \code{\link[coda]{heidel.diag}} via the named columns \code{stest} and
-  \code{htest}; a parameter is considered well-behaved only when it passes
-  both.
+Heidelberger and Welch (1983) propose two complementary tests. The
+\emph{stationarity} test uses a Cramér–von Mises statistic on the
+Brownian-bridge representation of the chain to decide whether the retained
+draws are consistent with a stationary distribution. The \emph{halfwidth}
+test checks whether the chain is long enough to estimate the posterior
+mean to a prescribed relative accuracy. Both are computed with
+\code{\link[coda]{heidel.diag}} via the named columns \code{stest} and
+\code{htest}; a parameter is considered well-behaved only when it passes
+both.
 }
 
 \subsection{Overall classification}{
-  When \pkg{coda} is available the Geweke and Heidelberger–Welch verdicts are
-  pooled into the \code{Overall} column: \code{EXCELLENT} when both tests
-  pass, \code{ACCEPTABLE} when exactly one passes, and \code{POOR} when
-  neither does.
+When \pkg{coda} is available the Geweke and Heidelberger–Welch verdicts are
+pooled into the \code{Overall} column: \code{EXCELLENT} when both tests
+pass, \code{ACCEPTABLE} when exactly one passes, and \code{POOR} when
+neither does.
 }
 }
 \examples{
@@ -231,31 +229,31 @@ conv$table[conv$table$Efficiency < 25, ]
 }
 \references{
 Geyer, C. J. (1992). Practical Markov chain Monte Carlo.
-  \emph{Statistical Science}, \strong{7}(4), 473--483.
-  \doi{10.1214/ss/1177011137}
+\emph{Statistical Science}, \strong{7}(4), 473--483.
+\doi{10.1214/ss/1177011137}
 
 Geweke, J. (1992). Evaluating the accuracy of sampling-based approaches to
-  the calculation of posterior moments. In J. M. Bernardo, J. O. Berger,
-  A. P. Dawid, & A. F. M. Smith (Eds.), \emph{Bayesian Statistics 4}
-  (pp. 169--193). Oxford University Press.
+the calculation of posterior moments. In J. M. Bernardo, J. O. Berger,
+A. P. Dawid, & A. F. M. Smith (Eds.), \emph{Bayesian Statistics 4}
+(pp. 169--193). Oxford University Press.
 
 Heidelberger, P., & Welch, P. D. (1983). Simulation run length control in the
-  presence of an initial transient. \emph{Operations Research},
-  \strong{31}(6), 1109--1144. \doi{10.1287/opre.31.6.1109}
+presence of an initial transient. \emph{Operations Research},
+\strong{31}(6), 1109--1144. \doi{10.1287/opre.31.6.1109}
 
 Kass, R. E., Carlin, B. P., Gelman, A., & Neal, R. M. (1998). Markov chain
-  Monte Carlo in practice: A roundtable discussion.
-  \emph{The American Statistician}, \strong{52}(2), 93--100.
-  \doi{10.1080/00031305.1998.10480547}
+Monte Carlo in practice: A roundtable discussion.
+\emph{The American Statistician}, \strong{52}(2), 93--100.
+\doi{10.1080/00031305.1998.10480547}
 
 Plummer, M., Best, N., Cowles, K., & Vines, K. (2006). CODA: Convergence
-  diagnosis and output analysis for MCMC. \emph{R News}, \strong{6}(1),
-  7--11.
+diagnosis and output analysis for MCMC. \emph{R News}, \strong{6}(1),
+7--11.
 }
 \seealso{
 \code{\link{mcmc_normal_localtrend}},
-  \code{\link{mcmc_normal_locallevel}},
-  \code{\link{summary.normal_locallevel}};
-  \code{\link[coda]{geweke.diag}} and \code{\link[coda]{heidel.diag}} for the
-  underlying \pkg{coda} implementations.
+\code{\link{mcmc_normal_locallevel}},
+\code{\link{summary.normal_locallevel}};
+\code{\link[coda]{geweke.diag}} and \code{\link[coda]{heidel.diag}} for the
+underlying \pkg{coda} implementations.
 }

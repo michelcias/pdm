@@ -11,7 +11,7 @@ is.normal_mixture_localacceleration(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{normal_mixture_localacceleration}, \code{FALSE} otherwise.
+\code{normal_mixture_localacceleration}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{normal_mixture_localacceleration}.

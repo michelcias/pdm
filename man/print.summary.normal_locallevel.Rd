@@ -58,5 +58,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.normal_locallevel}},
-  \code{\link{print.normal_locallevel}}
+\code{\link{print.normal_locallevel}}
 }

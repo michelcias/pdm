@@ -42,7 +42,7 @@ for \eqn{1/W_1}.}
 
 \item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{FALSE}.}
 
-\item{bar_width}{Integer in \link{10, 120}, width of the progress bar when \code{verbose = TRUE}. Default is \code{60}.}
+\item{bar_width}{Integer in [10, 120], width of the progress bar when \code{verbose = TRUE}. Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
 Default is \code{NULL}, which does not set the seed.}

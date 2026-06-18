@@ -36,7 +36,9 @@ exclude all latent states (scalar parameters only).}
 \item{ess_thresholds}{Numeric vector of length 3 giving the efficiency
 cut-offs (in percent) for the \code{ESS_status} labels \code{EXCELLENT},
 \code{GOOD} and \code{ACCEPTABLE}. Default is \code{c(50, 25, 10)},
-meaning efficiency > 50\\% is \code{EXCELLENT}, > 25\\% is \code{GOOD},10\\% is ACCEPTABLE, and \eqn{\leq} 10\\% is POOR.Values must be strictly decreasing and in the range \eqn{(0, 100)}.}
+meaning efficiency > 50\\% is \code{EXCELLENT}, > 25\\% is \code{GOOD},
+\eqn{>} 10\\% is \code{ACCEPTABLE}, and \eqn{\leq} 10\\% is \code{POOR}.
+Values must be strictly decreasing and in the range \eqn{(0, 100)}.}
 
 \item{geweke_level}{Numeric value in \eqn{(0, 1)}, the significance level
 used for the Geweke test. A parameter passes when

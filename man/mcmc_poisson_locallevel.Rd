@@ -76,7 +76,7 @@ over iterations. Default is \code{FALSE}.}
 
 \item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{TRUE}.}
 
-\item{bar_width}{Integer in \link{10, 120}, width of the progress bar when \code{verbose = TRUE}.
+\item{bar_width}{Integer in [10, 120], width of the progress bar when \code{verbose = TRUE}.
 Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed for

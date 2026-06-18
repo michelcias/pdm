@@ -28,9 +28,9 @@
 #'   \eqn{>} 10\% is `ACCEPTABLE`, and \eqn{\leq} 10\% is `POOR`.
 #'   Values must be strictly decreasing and in the range \eqn{(0, 100)}.
 #' @param geweke_level Numeric value in \eqn{(0, 1)}, the significance level
-#'   used for the Geweke test. A parameter passes when
-#'   \eqn{|z| < z_{1-\alpha/2}}, where \eqn{\alpha} is `geweke_level`.
-#'   Default is `0.05` (5\%, corresponding to \eqn{|z| < 1.96}).
+#'   used for the Geweke test. A parameter passes when the absolute Geweke
+#'   z-score is below the critical value for level `geweke_level`.
+#'   Default is `0.05` (5\%, critical value \eqn{\approx 1.96}).
 #' @param show_ess_status Logical. Whether to include the `ESS_status`
 #'   column in the output table. Default `TRUE`.
 #' @param show_geweke Logical. Whether to include the `Geweke_z` and
@@ -95,8 +95,8 @@
 #'   first portion of the chain (the first 10\% by default) with that computed
 #'   from the last portion (the last 50\%). Under convergence the two means
 #'   agree and the standardised difference follows a standard normal
-#'   distribution. The test passes when \eqn{|z| < z_{1-\alpha/2}} for the
-#'   level `geweke_level`. Computed with \code{\link[coda]{geweke.diag}}.
+#'   distribution. The test passes when the absolute z-score is below the
+#'   critical value at level `geweke_level`. Computed with \code{\link[coda]{geweke.diag}}.
 #' }
 #'
 #' \subsection{Heidelberger–Welch tests}{

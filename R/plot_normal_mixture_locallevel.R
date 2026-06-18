@@ -13,6 +13,8 @@
 #'     \item{\code{"alpha"}}{Mixture weights over time (alpha_t and z_t)}
 #'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 #'   }
+#' @param engine Character string specifying the plotting engine. One of
+#'   \code{"base"} (default) or \code{"ggplot2"}.
 #' @param which Integer vector specifying which diagnostic plots to display.
 #'   For \code{type = "mcmc"}:
 #'   \describe{
@@ -448,6 +450,7 @@
 plot.normal_mixture_locallevel <- function(x,
                                            type = c("all", "mcmc", "params",
                                                     "states", "alpha", "acceptance"),
+                                           engine = c("base", "ggplot2"),
                                            which = NULL,
                                            ask = NULL,
                                            overlay_data = TRUE,
@@ -457,6 +460,7 @@ plot.normal_mixture_locallevel <- function(x,
                                            ...) {
 
   type <- match.arg(type)
+  engine <- match.arg(engine)
 
   # Check if acceptance proportions are available only when specifically requested
   if (type == "acceptance" && is.null(x$accept_prop)) {

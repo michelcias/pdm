@@ -21,7 +21,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
   u1 <- rnorm(n, sd = sqrt(1 / prec_theta1_true))
   theta_1_true <- cumsum(c(theta_01_true, u1))[-1]
   alpha_true <- plogis(theta_1_true)
-  y <- rbinom(n, size = n_trials, prob = alpha_true)
+  y <- as.numeric(rbinom(n, size = n_trials, prob = alpha_true))
 
   # --- 2. R Wrapper for the Test Sampler ---
   test_sampler <- function(y, n_trials, burnin, n_chain,

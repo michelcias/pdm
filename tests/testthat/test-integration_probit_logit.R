@@ -18,7 +18,7 @@ test_that("probit and logit give similar results for theta near zero", {
   
   # Generate Bernoulli data using probit link (for reference)
   alpha_probit <- pnorm(theta_true)
-  y <- rbinom(n, 1, alpha_probit)
+  y <- as.numeric(rbinom(n, 1, alpha_probit))
   
   # --- Run both samplers ---
   
@@ -118,7 +118,7 @@ test_that("probit sampler is more efficient than logit (acceptance rate)", {
 test_that("link function transformations are mathematically correct", {
   
   # --- Test the transformation functions directly ---
-  theta_test <- seq(-3, 3, by = 0.5)
+  theta_test <- seq(-5, 5, by = 0.5)
   
   # Probit: alpha = Phi(theta)
   alpha_probit <- pnorm(theta_test)

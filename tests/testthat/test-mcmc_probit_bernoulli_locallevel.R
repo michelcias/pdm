@@ -23,7 +23,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
   u1 <- rnorm(n, sd = sqrt(1 / prec_theta1_true))
   theta_1_true <- cumsum(c(theta_01_true, u1))[-1]
   alpha_true <- pnorm(theta_1_true)  # probit link: Phi(theta)
-  y <- rbinom(n, size = 1, prob = alpha_true)  # Bernoulli outcomes
+  y <- as.numeric(rbinom(n, size = 1, prob = alpha_true))  # Bernoulli outcomes
 
   # --- 2. R Wrapper for the Test Sampler ---
   test_sampler <- function(y, burnin, n_chain,

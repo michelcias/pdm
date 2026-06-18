@@ -1207,8 +1207,8 @@ SEXP test_generate_alpha_logit_binomial(SEXP theta_1_in_,
   generate_alpha_logit_binomial(
     REAL(theta_1_prev),              /* theta_1_previous: level states from previous iteration */
     theta_1_current,                 /* theta_1_current: output level states for current iteration */
-    REAL(theta_2_curr),              /* theta_2_current: companion state draws */
     alpha_current,                   /* alpha_current: output probabilities */
+    REAL(theta_2_curr),              /* theta_2_current: companion state draws */
     theta_01_prev,                   /* theta_01_previous: initial level state from previous */
     theta_02_prev,                   /* theta_02_previous: second-state prior mean */
     prec_theta1_prev,                     /* prec_theta1_previous: level precision from previous */
@@ -1545,8 +1545,8 @@ SEXP test_cwmh_alpha_log_poisson(SEXP theta_1_in_,
   cwmh_alpha_log_poisson(
     REAL(theta_1_prev),  /* theta_1_previous */
     theta_1_current,     /* theta_1_current */
-    REAL(theta_2_curr),  /* theta_2_current */
     alpha_current,       /* alpha_current */
+    REAL(theta_2_curr),  /* theta_2_current */
     theta_01_prev,       /* theta_01_previous */
     theta_02_prev,       /* theta_02_previous */
     prec_theta1_prev,    /* prec_theta1_previous */
@@ -1746,8 +1746,8 @@ SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
   generate_alpha_log_poisson(
     REAL(theta_1_prev),   /* theta_1_previous */
     theta_1_current,      /* theta_1_current */
-    REAL(theta_2_curr),   /* theta_2_current */
     alpha_current,        /* alpha_current */
+    REAL(theta_2_curr),   /* theta_2_current */
     theta_01_prev,        /* theta_01_previous */
     theta_02_prev,        /* theta_02_previous */
     prec_theta1_prev,     /* prec_theta1_previous */

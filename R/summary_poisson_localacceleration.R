@@ -14,21 +14,21 @@
 #' @return An object of class `summary.poisson_localacceleration`, which is
 #'   a list containing:
 #'   \describe{
-#'     \item{`model_type`}{Character string indicating the model type}
-#'     \item{`n_obs`}{Number of observations}
-#'     \item{`n_chain`}{Number of MCMC samples}
-#'     \item{`burnin`}{Number of burn-in iterations}
-#'     \item{`thinning`}{Thinning interval}
-#'     \item{`ci_level`}{Credible interval level used (HPDI)}
-#'     \item{`scalar_params`}{Data frame with summary statistics for
+#'     \item{\code{model_type}}{Character string indicating the model type}
+#'     \item{\code{n_obs}}{Number of observations}
+#'     \item{\code{n_chain}}{Number of MCMC samples}
+#'     \item{\code{burnin}}{Number of burn-in iterations}
+#'     \item{\code{thinning}}{Thinning interval}
+#'     \item{\code{ci_level}}{Credible interval level used (HPDI)}
+#'     \item{\code{scalar_params}}{Data frame with summary statistics for
 #'       scalar parameters (theta_01, theta_02, theta_03, W_1^-1, W_2^-1, W_3^-1)}
-#'     \item{`theta1_summary`}{Summary statistics for the latent level
+#'     \item{\code{theta1_summary}}{Summary statistics for the latent level
 #'       \eqn{\theta_{t,1}} aggregated across time}
-#'     \item{`theta2_summary`}{Summary statistics for the latent trend
+#'     \item{\code{theta2_summary}}{Summary statistics for the latent trend
 #'       \eqn{\theta_{t,2}} aggregated across time}
-#'     \item{`theta3_summary`}{Summary statistics for the latent acceleration
+#'     \item{\code{theta3_summary}}{Summary statistics for the latent acceleration
 #'       \eqn{\theta_{t,3}} aggregated across time}
-#'     \item{`alpha_summary`}{Summary statistics for the Poisson rates
+#'     \item{\code{alpha_summary}}{Summary statistics for the Poisson rates
 #'       \eqn{\alpha_t} aggregated across time (min, median, max)}
 #'   }
 #'

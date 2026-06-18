@@ -6,12 +6,12 @@
 #' @param x An object of class `normal_mixture_localacceleration`.
 #' @param type Character string specifying the type of plot. One of:
 #'   \describe{
-#'     \item{`"all"`}{Complete dashboard with all diagnostic plots (default)}
-#'     \item{`"mcmc"`}{MCMC convergence diagnostics (trace plots, ACF, running means)}
-#'     \item{`"params"`}{Mixture component parameters (mu, phi)}
-#'     \item{`"states"`}{Dynamic states (theta_1, theta_2, theta_3 trajectories)}
-#'     \item{`"alpha"`}{Mixture weights over time (alpha_t and z_t)}
-#'     \item{`"acceptance"`}{Metropolis-Hastings acceptance proportions (if available)}
+#'     \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
+#'     \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
+#'     \item{\code{"params"}}{Mixture component parameters (mu, phi)}
+#'     \item{\code{"states"}}{Dynamic states (theta_1, theta_2, theta_3 trajectories)}
+#'     \item{\code{"alpha"}}{Mixture weights over time (alpha_t and z_t)}
+#'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 #'   }
 #' @param which Integer vector specifying which diagnostic plots to display.
 #'   For `type = "mcmc"`:

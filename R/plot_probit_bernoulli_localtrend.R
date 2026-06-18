@@ -6,10 +6,10 @@
 #' @param x An object of class `probit_bernoulli_localtrend`.
 #' @param type Character string specifying the type of plot. One of:
 #'   \describe{
-#'     \item{`"all"`}{Complete dashboard with all diagnostic plots (default)}
-#'     \item{`"mcmc"`}{MCMC convergence diagnostics (trace plots, ACF, running means)}
-#'     \item{`"states"`}{Dynamic states (theta_1, theta_2 trajectories)}
-#'     \item{`"alpha"`}{Bernoulli probabilities over time (alpha_t)}
+#'     \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
+#'     \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
+#'     \item{\code{"states"}}{Dynamic states (theta_1, theta_2 trajectories)}
+#'     \item{\code{"alpha"}}{Bernoulli probabilities over time (alpha_t)}
 #'   }
 #' @param which Integer vector specifying which diagnostic plots to display.
 #'   For `type = "mcmc"`:

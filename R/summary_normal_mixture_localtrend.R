@@ -14,18 +14,18 @@
 #' @return An object of class `summary.normal_mixture_localtrend`, which is
 #'   a list containing:
 #'   \describe{
-#'     \item{`link`}{Character string indicating the link function used}
-#'     \item{`model_type`}{Character string indicating the model type}
-#'     \item{`n_obs`}{Number of observations}
-#'     \item{`n_chain`}{Number of MCMC samples}
-#'     \item{`burnin`}{Number of burn-in iterations}
-#'     \item{`thinning`}{Thinning interval}
-#'     \item{`ci_level`}{Credible interval level used (HPDI)}
-#'     \item{`mixture_params`}{Data frame with summary statistics for
+#'     \item{\code{link}}{Character string indicating the link function used}
+#'     \item{\code{model_type}}{Character string indicating the model type}
+#'     \item{\code{n_obs}}{Number of observations}
+#'     \item{\code{n_chain}}{Number of MCMC samples}
+#'     \item{\code{burnin}}{Number of burn-in iterations}
+#'     \item{\code{thinning}}{Thinning interval}
+#'     \item{\code{ci_level}}{Credible interval level used (HPDI)}
+#'     \item{\code{mixture_params}}{Data frame with summary statistics for
 #'       mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
-#'     \item{`state_params`}{Data frame with summary statistics for
+#'     \item{\code{state_params}}{Data frame with summary statistics for
 #'       dynamic state parameters (theta_01, theta_02, W_1^-1, W_2^-1)}
-#'     \item{`alpha_summary`}{Summary statistics for the mixture weights
+#'     \item{\code{alpha_summary}}{Summary statistics for the mixture weights
 #'       alpha_t (min, median, max across time)}
 #'   }
 #'

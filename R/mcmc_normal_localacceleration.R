@@ -91,16 +91,16 @@
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
-#'   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
-#'   \item{`theta_3`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the acceleration state \eqn{\theta_{t,3}}.}
-#'   \item{`theta_01`}{Numeric vector of length `n_chain` for the initial level \eqn{\theta_{0,1}}.}
-#'   \item{`theta_02`}{Numeric vector of length `n_chain` for the initial trend \eqn{\theta_{0,2}}.}
-#'   \item{`theta_03`}{Numeric vector of length `n_chain` for the initial acceleration \eqn{\theta_{0,3}}.}
-#'   \item{`prec_theta1`}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
-#'   \item{`prec_theta2`}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
-#'   \item{`prec_theta3`}{Numeric vector of length `n_chain` for the acceleration innovation precision \eqn{1/W_3}.}
-#'   \item{`prec_y`}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
+#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
+#'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
+#'   \item{\code{theta_3}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the acceleration state \eqn{\theta_{t,3}}.}
+#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` for the initial level \eqn{\theta_{0,1}}.}
+#'   \item{\code{theta_02}}{Numeric vector of length `n_chain` for the initial trend \eqn{\theta_{0,2}}.}
+#'   \item{\code{theta_03}}{Numeric vector of length `n_chain` for the initial acceleration \eqn{\theta_{0,3}}.}
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
+#'   \item{\code{prec_theta2}}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
+#'   \item{\code{prec_theta3}}{Numeric vector of length `n_chain` for the acceleration innovation precision \eqn{1/W_3}.}
+#'   \item{\code{prec_y}}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
 #' }
 #'
 #' @examples

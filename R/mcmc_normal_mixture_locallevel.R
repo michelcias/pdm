@@ -247,29 +247,29 @@
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{`mu_1`}{Numeric vector of length `n_chain` of posterior samples for
+#'   \item{\code{mu_1}}{Numeric vector of length `n_chain` of posterior samples for
 #'     the mean of component 1 (\eqn{\mu_1}). Component 1 is defined as the
 #'     component with the smaller mean due to the label switching constraint.}
-#'   \item{`prec_1`}{Numeric vector of length `n_chain` of posterior samples for
+#'   \item{\code{prec_1}}{Numeric vector of length `n_chain` of posterior samples for
 #'     the precision of component 1 (\eqn{\phi_1 = 1/\sigma_1^2}).}
-#'   \item{`mu_2`}{Numeric vector of length `n_chain` of posterior samples for
+#'   \item{\code{mu_2}}{Numeric vector of length `n_chain` of posterior samples for
 #'     the mean of component 2 (\eqn{\mu_2}). Component 2 is defined as the
 #'     component with the larger mean.}
-#'   \item{`prec_2`}{Numeric vector of length `n_chain` of posterior samples for
+#'   \item{\code{prec_2}}{Numeric vector of length `n_chain` of posterior samples for
 #'     the precision of component 2 (\eqn{\phi_2 = 1/\sigma_2^2}).}
-#'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the latent level state \eqn{\theta_{t,1}}.}
-#'   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the initial level state \eqn{\theta_{0,1}}.}
-#'   \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the level innovation precision \eqn{1/W_1}.}
-#'   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+#'   \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the mixture weights \eqn{\alpha_t}.}
-#'   \item{`z`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples
+#'   \item{\code{z}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples
 #'     for the latent component indicators \eqn{z_t}.}
-#'   \item{`log_sigma`}{(Logit link only, optional) Numeric matrix of proposal
+#'   \item{\code{log_sigma}}{(Logit link only, optional) Numeric matrix of proposal
 #'     log standard deviations used in the adaptive Metropolis-Hastings steps.}
-#'   \item{`accept_prop`}{(Logit link only, optional) Numeric matrix of proposal
+#'   \item{\code{accept_prop}}{(Logit link only, optional) Numeric matrix of proposal
 #'     acceptance proportions accumulated during adaptive tuning.}
 #' }
 #'

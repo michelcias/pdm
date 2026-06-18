@@ -43,19 +43,19 @@
 #'
 #' @return An object of class `"pdm_convergence"`, which is a list with:
 #'   \describe{
-#'     \item{`table`}{Data frame with one row per assessed parameter or
+#'     \item{\code{table}}{Data frame with one row per assessed parameter or
 #'       state time point. Columns always present: `Parameter`, `ESS`,
 #'       `Efficiency` (in percent). Optional columns, controlled by the
 #'       `show_*` arguments: `ESS_status`, `Geweke_z`,
 #'       `Geweke_pass`, `Heidel_stat`, `Heidel_hw`,
 #'       `Overall`.}
-#'     \item{`n_chain`}{Number of retained MCMC samples (\eqn{N}).}
-#'     \item{`model_type`}{Character string, e.g. `"locallevel"`,
+#'     \item{\code{n_chain}}{Number of retained MCMC samples (\eqn{N}).}
+#'     \item{\code{model_type}}{Character string, e.g. `"locallevel"`,
 #'       `"localtrend"` or `"localacceleration"`.}
-#'     \item{`has_coda`}{Logical, whether \pkg{coda}-based diagnostics are
+#'     \item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
 #'       included.}
-#'     \item{`ess_thresholds`}{The ESS efficiency thresholds used.}
-#'     \item{`geweke_level`}{The significance level used for Geweke.}
+#'     \item{\code{ess_thresholds}}{The ESS efficiency thresholds used.}
+#'     \item{\code{geweke_level}}{The significance level used for Geweke.}
 #'   }
 #'
 #' @details

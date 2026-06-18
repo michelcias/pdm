@@ -97,19 +97,19 @@
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the latent level state \eqn{\theta_{t,1}}.}
-#'   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+#'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the latent trend state \eqn{\theta_{t,2}}.}
-#'   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the initial level state \eqn{\theta_{0,1}}.}
-#'   \item{`theta_02`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_02}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the initial trend state \eqn{\theta_{0,2}}.}
-#'   \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the level innovation precision \eqn{1/W_1}.}
-#'   \item{`prec_theta2`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta2}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the trend innovation precision \eqn{1/W_2}.}
-#'   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+#'   \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the Bernoulli probabilities \eqn{\alpha_t}.}
 #' }
 #'

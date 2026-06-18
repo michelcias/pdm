@@ -6,11 +6,11 @@
 #' @param x An object of class `poisson_locallevel`.
 #' @param type Character string specifying the type of plot.  One of:
 #'   \describe{
-#'     \item{`"all"`}{Complete dashboard with all diagnostic plots (default)}
-#'     \item{`"mcmc"`}{MCMC convergence diagnostics (trace plots, ACF, running means)}
-#'     \item{`"states"`}{Dynamic states (theta_1 trajectory)}
-#'     \item{`"alpha"`}{Poisson rates over time (alpha_t)}
-#'     \item{`"acceptance"`}{Metropolis-Hastings acceptance proportions (if available)}
+#'     \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
+#'     \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
+#'     \item{\code{"states"}}{Dynamic states (theta_1 trajectory)}
+#'     \item{\code{"alpha"}}{Poisson rates over time (alpha_t)}
+#'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 #'   }
 #' @param which Integer vector specifying which diagnostic plots to display.
 #'   For `type = "mcmc"`:

@@ -70,10 +70,10 @@
 #' @return An object of class `c("normal_locallevel", "pdm_mcmc", "list")`
 #'   containing the following components:
 #'   \describe{
-#'     \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
-#'     \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
-#'     \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
-#'     \item{`prec_y`}{Numeric vector of length `n_chain` of posterior samples for the data precision \eqn{1/V}.}
+#'     \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
+#'     \item{\code{theta_01}}{Numeric vector of length `n_chain` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
+#'     \item{\code{prec_theta1}}{Numeric vector of length `n_chain` of posterior samples for the innovation precision \eqn{1/W_1}.}
+#'     \item{\code{prec_y}}{Numeric vector of length `n_chain` of posterior samples for the data precision \eqn{1/V}.}
 #'   }
 #'   Metadata about the MCMC run (burn-in, thinning, number of retained
 #'   samples, and original data) are stored as attributes to facilitate S3

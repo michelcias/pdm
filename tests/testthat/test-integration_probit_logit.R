@@ -100,7 +100,7 @@ test_that("probit sampler is more efficient than logit (acceptance rate)", {
   # Logit acceptance rate should be < 1.0
   logit_accept_rate <- mean(result_logit$accept_prop)
   expect_lt(logit_accept_rate, 0.9,
-            info = "Logit sampler should have acceptance rate < 90%.")
+            label = "Logit sampler acceptance rate")
   
   # Probit effectively has 100% acceptance (Gibbs sampling)
   # We can't directly test this, but we can verify that probit produces

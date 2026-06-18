@@ -72,19 +72,40 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
                              theta_01_true = theta_01_true,
                              prec_theta1_true = prec_theta1_true)
 
-  # Validate theta_1 recovery via credible-interval coverage. Pointwise
-  # closeness of the posterior mean to the truth is not achievable here:
-  # single-trial Bernoulli observations carry almost no information about a
-  # continuous latent theta_t, so the posterior is dominated by the random-walk
-  # prior. A correct Bayesian sampler should still have ~95% of the true
-  # trajectory points fall inside their 95% credible intervals (weak data
-  # simply widens the intervals). The 0.8 floor (below the nominal 0.95)
-  # absorbs Monte Carlo noise; a coverage well under 0.8 would signal genuine
-  # sampler bias.
-  ci_C <- apply(mcmc_out_C$theta_1, 2, quantile, probs = c(0.025, 0.975))
-  coverage_C <- mean(theta_1_true >= ci_C[1, ] & theta_1_true <= ci_C[2, ])
-  expect_gt(coverage_C, 0.8,
-            label = "95% credible interval coverage of the true theta_1 trajectory")
+  # Validate theta_1 recovery via credible-interval coverage, averaged over
+  # several independent datasets. Pointwise closeness of the posterior mean to
+  # the truth is not achievable here: single-trial Bernoulli observations carry
+  # almost no information about a continuous latent theta_t, so the posterior is
+  # dominated by the random-walk prior. The statistically correct target is
+  # instead coverage: a correct Bayesian sampler should have ~95% of the true
+  # trajectory points fall inside their 95% credible intervals (weak data simply
+  # widens the intervals).
+  #
+  # Coverage is a frequentist property defined over REPEATED datasets. A single
+  # random-walk realization produces a highly autocorrelated, noisy coverage
+  # estimate (one unlucky drift can push a whole contiguous block outside the
+  # intervals), so we average coverage across several independent simulations.
+  # The 0.8 floor (below the nominal 0.95) absorbs Monte Carlo noise; a mean
+  # coverage well under 0.8 would signal genuine sampler bias such as credible
+  # intervals that are systematically too narrow.
+  n_datasets <- 8
+  coverage_vals <- numeric(n_datasets)
+  for (k in seq_len(n_datasets)) {
+    set.seed(600 + k)
+    u1_k <- rnorm(n, sd = sqrt(1 / prec_theta1_true))
+    theta_1_true_k <- cumsum(c(theta_01_true, u1_k))[-1]
+    y_k <- as.numeric(rbinom(n, size = 1, prob = pnorm(theta_1_true_k)))
+
+    out_k <- test_sampler(y_k, burnin = 4000, n_chain = 1500,
+                          theta_01_true = theta_01_true,
+                          prec_theta1_true = prec_theta1_true)
+    ci_k <- apply(out_k$theta_1, 2, quantile, probs = c(0.025, 0.975))
+    coverage_vals[k] <- mean(theta_1_true_k >= ci_k[1, ] &
+                             theta_1_true_k <= ci_k[2, ])
+  }
+  mean_coverage <- mean(coverage_vals)
+  expect_gt(mean_coverage, 0.8,
+            label = "Mean 95% credible interval coverage of theta_1 across datasets")
 
   # Test D: Verify alpha transformation is correct
   expect_true(all(mcmc_out_C$alpha >= 0 & mcmc_out_C$alpha <= 1),

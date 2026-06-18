@@ -29,9 +29,9 @@ NULL
 #' @param color Character; color for the main diagnostic lines. Default is
 #'   "steelblue". This should match the parameter type:
 #'   \itemize{
-#'     \item "steelblue" for level-related parameters (theta_1, theta_01, W_1^{-1})
-#'     \item "firebrick" for trend-related parameters (theta_2, theta_02, W_2^{-1})
-#'     \item "darkgreen" for acceleration-related parameters (theta_3, theta_03, W_3^{-1})
+#'     \item "steelblue" for level-related parameters (theta_1, theta_01, W_1^-1)
+#'     \item "firebrick" for trend-related parameters (theta_2, theta_02, W_2^-1)
+#'     \item "darkgreen" for acceleration-related parameters (theta_3, theta_03, W_3^-1)
 #'     \item "gray30" or other neutral colors for observation/mixture parameters
 #'   }
 #' @param ... Additional arguments (currently unused, for future extensibility).

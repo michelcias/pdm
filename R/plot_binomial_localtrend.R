@@ -17,8 +17,8 @@
 #'   \describe{
 #'     \item{1}{theta_01 (initial level)}
 #'     \item{2}{theta_02 (initial trend)}
-#'     \item{3}{W_1^{-1} (level innovation precision)}
-#'     \item{4}{W_2^{-1} (trend innovation precision)}
+#'     \item{3}{W_1^-1 (level innovation precision)}
+#'     \item{4}{W_2^-1 (trend innovation precision)}
 #'   }
 #'   For \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
@@ -48,8 +48,8 @@
 #'       \itemize{
 #'         \item \code{theta_01}: Initial level state
 #'         \item \code{theta_02}: Initial trend state
-#'         \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
-#'         \item \code{prec_theta2}: Trend innovation precision (W_2^{-1})
+#'         \item \code{prec_theta1}: Level innovation precision (W_1^-1)
+#'         \item \code{prec_theta2}: Trend innovation precision (W_2^-1)
 #'       }
 #'     }
 #'     \item{\strong{State trajectories} (for \code{type = "states"}):}{
@@ -96,7 +96,7 @@
 #'   \item \strong{Running Mean:} Cumulative mean to assess convergence
 #' }
 #'
-#' Available parameters: theta_01, theta_02, W_1^{-1}, W_2^{-1}
+#' Available parameters: theta_01, theta_02, W_1^-1, W_2^-1
 #'
 #' \strong{Dynamic States} (\code{type = "states"}):
 #' \itemize{
@@ -211,7 +211,7 @@
 #' plot(out, type = "mcmc", which = 1:2)  # theta_01, theta_02
 #'
 #' # 4. Focus on innovation precision parameters
-#' plot(out, type = "mcmc", which = 3:4)  # W_1^{-1}, W_2^{-1}
+#' plot(out, type = "mcmc", which = 3:4)  # W_1^-1, W_2^-1
 #'
 #' # 5. Dynamic state trajectories (theta_1, theta_2 on logit scale)
 #' #    Shows level and trend components over time
@@ -232,7 +232,7 @@
 #' plot(out, type = "alpha", ci_level = 0.90)  # 90% credible intervals
 #'
 #' # 10. Save all diagnostics to a multi-page PDF
-#' pdf("model_diagnostics.pdf", width = 10, height = 8)
+#' pdf(file.path(tempdir(), "model_diagnostics.pdf"), width = 10, height = 8)
 #' plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 #' dev.off()
 #'

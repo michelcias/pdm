@@ -22,8 +22,8 @@
 #'     \item{4}{phi_2 (component 2 precision)}
 #'     \item{5}{theta_01 (initial level)}
 #'     \item{6}{theta_02 (initial trend)}
-#'     \item{7}{W_1^{-1} (level innovation precision)}
-#'     \item{8}{W_2^{-1} (trend innovation precision)}
+#'     \item{7}{W_1^-1 (level innovation precision)}
+#'     \item{8}{W_2^-1 (trend innovation precision)}
 #'   }
 #'   For \code{type = "params"}, \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
@@ -53,8 +53,8 @@
 #'         \item \code{prec_2}: Precision of mixture component 2 (phi_2)
 #'         \item \code{theta_01}: Initial level state
 #'         \item \code{theta_02}: Initial trend state
-#'         \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
-#'         \item \code{prec_theta2}: Trend innovation precision (W_2^{-1})
+#'         \item \code{prec_theta1}: Level innovation precision (W_1^-1)
+#'         \item \code{prec_theta2}: Trend innovation precision (W_2^-1)
 #'       }
 #'     }
 #'     \item{\strong{State trajectories} (for \code{type = "states"}):}{
@@ -103,7 +103,7 @@
 #'   \item \strong{Running Mean:} Cumulative mean to assess convergence
 #' }
 #'
-#' Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, theta_02, W_1^{-1}, W_2^{-1}
+#' Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, theta_02, W_1^-1, W_2^-1
 #'
 #' \strong{Mixture Parameters (\code{type = "params"}):}
 #' \itemize{
@@ -245,7 +245,7 @@
 #' plot(out_logit, type = "mcmc", which = 1:4)  # mu_1, mu_2, phi_1, phi_2
 #'
 #' # 4. Focus on dynamic state parameters
-#' plot(out_logit, type = "mcmc", which = 5:8)  # theta_01, theta_02, W_1^{-1}, W_2^{-1}
+#' plot(out_logit, type = "mcmc", which = 5:8)  # theta_01, theta_02, W_1^-1, W_2^-1
 #'
 #' # 5. Mixture parameter relationships (bivariate plots)
 #' #    Shows joint posterior of component means and precisions
@@ -273,7 +273,7 @@
 #' plot(out_logit, type = "alpha", ci_level = 0.90)  # 90% credible intervals
 #'
 #' # 12. Save all diagnostics to a multi-page PDF
-#' pdf("mixture_diagnostics.pdf", width = 10, height = 8)
+#' pdf(file.path(tempdir(), "mixture_diagnostics.pdf"), width = 10, height = 8)
 #' plot(out_logit, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 #' dev.off()
 #'

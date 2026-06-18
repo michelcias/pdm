@@ -15,7 +15,7 @@
 #'   \describe{
 #'     \item{1}{phi_y (observation precision)}
 #'     \item{2}{theta_01 (initial level)}
-#'     \item{3}{W_1^{-1} (level innovation precision)}
+#'     \item{3}{W_1^-1 (level innovation precision)}
 #'   }
 #'   For \code{type = "states"}: indices of subplots.
 #'   If \code{NULL} (default), all available plots are shown.
@@ -38,7 +38,7 @@
 #'       \itemize{
 #'         \item \code{prec_y}: Observation precision (phi_y)
 #'         \item \code{theta_01}: Initial level state
-#'         \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
+#'         \item \code{prec_theta1}: Level innovation precision (W_1^-1)
 #'       }
 #'     }
 #'     \item{\strong{State trajectories} (for \code{type = "states"}):}{
@@ -72,7 +72,7 @@
 #'   \item \strong{Running Mean:} Cumulative mean to assess convergence
 #' }
 #'
-#' Available parameters: phi_y, theta_01, W_1^{-1}
+#' Available parameters: phi_y, theta_01, W_1^-1
 #'
 #' \strong{Dynamic States} (\code{type = "states"}):
 #' \itemize{
@@ -142,7 +142,7 @@
 #' plot(out, type = "mcmc", which = 2)  # theta_01
 #'
 #' # 5. Focus on innovation precision parameter
-#' plot(out, type = "mcmc", which = 3)  # W_1^{-1}
+#' plot(out, type = "mcmc", which = 3)  # W_1^-1
 #'
 #' # 6. Dynamic state trajectory (theta_1)
 #' #    Shows level component over time
@@ -155,7 +155,7 @@
 #' plot(out, type = "states", ci_level = 0.90)  # 90% credible intervals
 #'
 #' # 9. Save all diagnostics to a multi-page PDF
-#' pdf("model_diagnostics.pdf", width = 10, height = 8)
+#' pdf(file.path(tempdir(), "model_diagnostics.pdf"), width = 10, height = 8)
 #' plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 #' dev.off()
 #'

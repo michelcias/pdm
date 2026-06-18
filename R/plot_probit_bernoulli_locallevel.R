@@ -15,7 +15,7 @@
 #'   For \code{type = "mcmc"}:
 #'   \describe{
 #'     \item{1}{theta_01 (initial level)}
-#'     \item{2}{W_1^{-1} (level innovation precision)}
+#'     \item{2}{W_1^-1 (level innovation precision)}
 #'   }
 #'   For \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"}: not used.
@@ -44,7 +44,7 @@
 #'     \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
 #'       \itemize{
 #'         \item \code{theta_01}: Initial level state
-#'         \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
+#'         \item \code{prec_theta1}: Level innovation precision (W_1^-1)
 #'       }
 #'     }
 #'     \item{\strong{State trajectories} (for \code{type = "states"}):}{
@@ -87,7 +87,7 @@
 #'   \item \strong{Running Mean:} Cumulative mean to assess convergence
 #' }
 #'
-#' Available parameters: theta_01, W_1^{-1}
+#' Available parameters: theta_01, W_1^-1
 #'
 #' \strong{Dynamic States} (\code{type = "states"}):
 #' \itemize{
@@ -174,7 +174,7 @@
 #' plot(out, type = "mcmc", which = 1)  # theta_01
 #'
 #' # 4. Focus on innovation precision parameter
-#' plot(out, type = "mcmc", which = 2)  # W_1^{-1}
+#' plot(out, type = "mcmc", which = 2)  # W_1^-1
 #'
 #' # 5. Dynamic state trajectory (theta_1 on probit scale)
 #' #    Shows level component over time
@@ -191,7 +191,7 @@
 #' plot(out, type = "alpha", ci_level = 0.90)  # 90% credible intervals
 #'
 #' # 9. Save all diagnostics to a multi-page PDF
-#' pdf("model_diagnostics.pdf", width = 10, height = 8)
+#' pdf(file.path(tempdir(), "model_diagnostics.pdf"), width = 10, height = 8)
 #' plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 #' dev.off()
 #'

@@ -28,13 +28,13 @@
 \item{which}{Integer vector specifying which diagnostic plots to display.
 For \code{type = "mcmc"}:
 \describe{
-  \item{1}{V^{-1} (observation precision)}
+  \item{1}{V^-1 (observation precision)}
   \item{2}{theta_01 (initial level)}
   \item{3}{theta_02 (initial trend)}
   \item{4}{theta_03 (initial acceleration)}
-  \item{5}{W_1^{-1} (level innovation precision)}
-  \item{6}{W_2^{-1} (trend innovation precision)}
-  \item{7}{W_3^{-1} (acceleration innovation precision)}
+  \item{5}{W_1^-1 (level innovation precision)}
+  \item{6}{W_2^-1 (trend innovation precision)}
+  \item{7}{W_3^-1 (acceleration innovation precision)}
 }
 For \code{type = "states"}: indices of subplots.
 If \code{NULL} (default), all available plots are shown.}
@@ -59,13 +59,13 @@ support them. Default is \code{TRUE}.}
   \describe{
     \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
       \itemize{
-        \item \code{prec_y}: Observation precision (V^{-1})
+        \item \code{prec_y}: Observation precision (V^-1)
         \item \code{theta_01}: Initial level state
         \item \code{theta_02}: Initial trend state
         \item \code{theta_03}: Initial acceleration state
-        \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
-        \item \code{prec_theta2}: Trend innovation precision (W_2^{-1})
-        \item \code{prec_theta3}: Acceleration innovation precision (W_3^{-1})
+        \item \code{prec_theta1}: Level innovation precision (W_1^-1)
+        \item \code{prec_theta2}: Trend innovation precision (W_2^-1)
+        \item \code{prec_theta3}: Acceleration innovation precision (W_3^-1)
       }
     }
     \item{\strong{State trajectories} (for \code{type = "states"}):}{
@@ -109,8 +109,8 @@ Each parameter gets a dedicated page with 4 panels:
   \item \strong{Running Mean:} Cumulative mean to assess convergence
 }
 
-Available parameters: V^{-1}, theta_01, theta_02, theta_03, W_1^{-1},
-W_2^{-1}, W_3^{-1}
+Available parameters: V^-1, theta_01, theta_02, theta_03, W_1^-1,
+W_2^-1, W_3^-1
 
 \strong{Dynamic States} (\code{type = "states"}):
 \itemize{
@@ -184,13 +184,13 @@ plot(out, type = "all")
 plot(out, type = "mcmc")
 
 # 3. Focus on observation precision only
-plot(out, type = "mcmc", which = 1)  # V^{-1}
+plot(out, type = "mcmc", which = 1)  # V^-1
 
 # 4. Focus on initial state parameters
 plot(out, type = "mcmc", which = 2:4)  # theta_01, theta_02, theta_03
 
 # 5. Focus on innovation precision parameters
-plot(out, type = "mcmc", which = 5:7)  # W_1^{-1}, W_2^{-1}, W_3^{-1}
+plot(out, type = "mcmc", which = 5:7)  # W_1^-1, W_2^-1, W_3^-1
 
 # 6. Dynamic state trajectories (theta_1, theta_2, theta_3)
 #    Shows level, trend, and acceleration components over time
@@ -203,7 +203,7 @@ plot(out, type = "states", ci = FALSE)
 plot(out, type = "states", ci_level = 0.90)  # 90\% credible intervals
 
 # 9. Save all diagnostics to a multi-page PDF
-pdf("model_diagnostics.pdf", width = 10, height = 8)
+pdf(file.path(tempdir(), "model_diagnostics.pdf"), width = 10, height = 8)
 plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 dev.off()
 

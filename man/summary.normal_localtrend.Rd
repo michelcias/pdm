@@ -26,7 +26,7 @@ An object of class \code{summary.normal_localtrend}, which is a list
     \item{\code{thinning}}{Thinning interval}
     \item{\code{probs}}{Probabilities used for credible intervals}
     \item{\code{scalar_params}}{Data frame with summary statistics for
-      scalar parameters (theta_01, theta_02, W_1^{-1}, W_2^{-1}, V^{-1})}
+      scalar parameters (theta_01, theta_02, W_1^-1, W_2^-1, V^-1)}
     \item{\code{theta1_summary}}{Summary statistics for the latent level
       \eqn{\theta_{t,1}} aggregated across time}
     \item{\code{theta2_summary}}{Summary statistics for the latent trend

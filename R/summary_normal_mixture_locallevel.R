@@ -22,7 +22,7 @@
 #'     \item{\code{mixture_params}}{Data frame with summary statistics for
 #'       mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
 #'     \item{\code{state_params}}{Data frame with summary statistics for
-#'       dynamic state parameters (theta_01, W_1^{-1})}
+#'       dynamic state parameters (theta_01, W_1^-1)}
 #'     \item{\code{alpha_summary}}{Summary statistics for the mixture weights
 #'       alpha_t (min, median, max across time)}
 #'   }

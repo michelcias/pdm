@@ -26,7 +26,7 @@ An object of class \code{summary.binomial_locallevel}, which is
     \item{\code{thinning}}{Thinning interval}
     \item{\code{probs}}{Probabilities used for credible intervals}
     \item{\code{scalar_params}}{Data frame with summary statistics for
-      scalar parameters (theta_01, W_1^{-1})}
+      scalar parameters (theta_01, W_1^-1)}
     \item{\code{theta1_summary}}{Summary statistics for the latent level
       \eqn{\theta_{t,1}} aggregated across time}
     \item{\code{alpha_summary}}{Summary statistics for the binomial success

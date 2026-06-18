@@ -18,9 +18,9 @@
 #'     \item{1}{theta_01 (initial level)}
 #'     \item{2}{theta_02 (initial trend)}
 #'     \item{3}{theta_03 (initial acceleration)}
-#'     \item{4}{W_1^{-1} (level innovation precision)}
-#'     \item{5}{W_2^{-1} (trend innovation precision)}
-#'     \item{6}{W_3^{-1} (acceleration innovation precision)}
+#'     \item{4}{W_1^-1 (level innovation precision)}
+#'     \item{5}{W_2^-1 (trend innovation precision)}
+#'     \item{6}{W_3^-1 (acceleration innovation precision)}
 #'   }
 #'   For \code{type = "states"}: indices of subplots.
 #'   For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
@@ -51,9 +51,9 @@
 #'         \item \code{theta_01}:  Initial level state
 #'         \item \code{theta_02}: Initial trend state
 #'         \item \code{theta_03}: Initial acceleration state
-#'         \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
-#'         \item \code{prec_theta2}: Trend innovation precision (W_2^{-1})
-#'         \item \code{prec_theta3}: Acceleration innovation precision (W_3^{-1})
+#'         \item \code{prec_theta1}: Level innovation precision (W_1^-1)
+#'         \item \code{prec_theta2}: Trend innovation precision (W_2^-1)
+#'         \item \code{prec_theta3}: Acceleration innovation precision (W_3^-1)
 #'       }
 #'     }
 #'     \item{\strong{State trajectories} (for \code{type = "states"}):}{
@@ -102,7 +102,7 @@
 #'   \item \strong{Running Mean:} Cumulative mean to assess convergence
 #' }
 #'
-#' Available parameters:  theta_01, theta_02, theta_03, W_1^{-1}, W_2^{-1}, W_3^{-1}
+#' Available parameters:  theta_01, theta_02, theta_03, W_1^-1, W_2^-1, W_3^-1
 #'
 #' \strong{Dynamic States} (\code{type = "states"}):
 #' \itemize{
@@ -219,7 +219,7 @@
 #' plot(out, type = "mcmc", which = 1:3)  # theta_01, theta_02, theta_03
 #'
 #' # 4. Focus on innovation precision parameters
-#' plot(out, type = "mcmc", which = 4:6)  # W_1^{-1}, W_2^{-1}, W_3^{-1}
+#' plot(out, type = "mcmc", which = 4:6)  # W_1^-1, W_2^-1, W_3^-1
 #'
 #' # 5. Dynamic state trajectories (theta_1, theta_2, theta_3 on log scale)
 #' #    Shows level, trend, and acceleration components over time
@@ -240,7 +240,7 @@
 #' plot(out, type = "alpha", ci_level = 0.90)  # 90% credible intervals
 #'
 #' # 10. Save all diagnostics to a multi-page PDF
-#' pdf("model_diagnostics.pdf", width = 10, height = 8)
+#' pdf(file.path(tempdir(), "model_diagnostics.pdf"), width = 10, height = 8)
 #' plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 #' dev.off()
 #'

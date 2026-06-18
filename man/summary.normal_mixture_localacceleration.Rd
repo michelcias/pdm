@@ -29,7 +29,7 @@ An object of class \code{summary.normal_mixture_localacceleration}, which is
     \item{\code{mixture_params}}{Data frame with summary statistics for
       mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
     \item{\code{state_params}}{Data frame with summary statistics for
-      dynamic state parameters (theta_01, theta_02, theta_03, W_1^{-1}, W_2^{-1}, W_3^{-1})}
+      dynamic state parameters (theta_01, theta_02, theta_03, W_1^-1, W_2^-1, W_3^-1)}
     \item{\code{alpha_summary}}{Summary statistics for the mixture weights
       alpha_t (min, median, max across time)}
   }

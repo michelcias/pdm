@@ -125,7 +125,7 @@ detect_model_type <- function(x) {
 #'   \itemize{
 #'     \item \strong{Mixture models}: 4 mixture params (mu_1, mu_2, phi_1, phi_2) +
 #'       model_order initial states + model_order innovation precisions
-#'     \item \strong{Normal models}: 1 observation precision (V^{-1}) +
+#'     \item \strong{Normal models}: 1 observation precision (V^-1) +
 #'       model_order initial states + model_order innovation precisions
 #'     \item \strong{Binomial models}: 0 observation precision (uses link function) +
 #'       model_order initial states + model_order innovation precisions
@@ -196,9 +196,9 @@ get_n_params <- function(model_class, model_order) {
 #' @details Parameters are ordered as:
 #'   \enumerate{
 #'     \item Mixture components (if \code{model_class = "mixture"}): mu_1, mu_2, phi_1, phi_2
-#'     \item Observation precision (if \code{model_class = "normal"}): V^{-1}
+#'     \item Observation precision (if \code{model_class = "normal"}): V^-1
 #'     \item Initial states (all models): theta_01, theta_02, theta_03
-#'     \item Innovation precisions (all models): W_1^{-1}, W_2^{-1}, W_3^{-1}
+#'     \item Innovation precisions (all models): W_1^-1, W_2^-1, W_3^-1
 #'   }
 #'
 #'   This ordering matches the convention in existing plot files.
@@ -215,13 +215,13 @@ get_n_params <- function(model_class, model_order) {
 #'       }
 #'     \item \strong{Dynamic states:}
 #'       \itemize{
-#'         \item "steelblue" for level-related (theta_01, W_1^{-1})
-#'         \item "firebrick" for trend-related (theta_02, W_2^{-1})
-#'         \item "darkgreen" for acceleration-related (theta_03, W_3^{-1})
+#'         \item "steelblue" for level-related (theta_01, W_1^-1)
+#'         \item "firebrick" for trend-related (theta_02, W_2^-1)
+#'         \item "darkgreen" for acceleration-related (theta_03, W_3^-1)
 #'       }
 #'     \item \strong{Observation precision:}
 #'       \itemize{
-#'         \item "purple" for V^{-1} (normal models only)
+#'         \item "purple" for V^-1 (normal models only)
 #'       }
 #'   }
 #'

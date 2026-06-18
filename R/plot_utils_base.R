@@ -22,8 +22,8 @@ NULL
 #'
 #' @param param_samples Numeric vector of MCMC samples for the parameter.
 #' @param param_name Expression or quoted expression for the parameter name
-#'   (used in plot title), e.g., \code{quote(mu[1])}.
-#' @param param_label Expression for axis labels, e.g., \code{expression(mu[1])}.
+#'   (used in plot title), e.g., `quote(mu[1])`.
+#' @param param_label Expression for axis labels, e.g., `expression(mu[1])`.
 #' @param true_value Numeric or NULL. If provided, adds a reference line at
 #'   the true parameter value (useful for simulation studies).
 #' @param color Character; color for the main diagnostic lines. Default is
@@ -295,7 +295,7 @@ plot_param_diagnostics_base <- function(param_samples,
 #'   }
 #'
 #'   \strong{True Value Display:}
-#'   When \code{true_values} is provided, true parameter values are marked
+#'   When `true_values` is provided, true parameter values are marked
 #'   with red "X" symbols (pch = 4) on each panel. This allows visual assessment
 #'   of whether the posterior distribution correctly covers the true values,
 #'   which is essential for validating model performance in simulation studies.
@@ -670,8 +670,8 @@ plot_mixture_params_base <- function(mu_1,
 #'   \strong{Y-axis scaling:}
 #'   \itemize{
 #'     \item For probability models (binomial/Bernoulli/mixture weights):
-#'       Set \code{ylim_auto = FALSE} to use fixed [0, 1.1] range
-#'     \item For rate models (Poisson): Set \code{ylim_auto = TRUE} to
+#'       Set `ylim_auto = FALSE` to use fixed [0, 1.1] range
+#'     \item For rate models (Poisson): Set `ylim_auto = TRUE` to
 #'       compute range dynamically from data
 #'   }
 #'
@@ -1128,14 +1128,14 @@ plot_component_probabilities_base <- function(z,
 #'
 #' @details This function extracts alpha samples and observed data from
 #'   binomial model objects and delegates to the generic
-#'   \code{plot_alpha_trajectory_base()} function. It automatically computes
+#'   `plot_alpha_trajectory_base()` function. It automatically computes
 #'   observed proportions from y/n_trials.
 #'
 #'   Used by:
 #'   \itemize{
-#'     \item \code{plot.binomial_locallevel}
-#'     \item \code{plot.binomial_localtrend}
-#'     \item \code{plot.binomial_localacceleration}
+#'     \item `plot.binomial_locallevel`
+#'     \item `plot.binomial_localtrend`
+#'     \item `plot.binomial_localacceleration`
 #'   }
 #'
 #' @keywords internal
@@ -1291,9 +1291,9 @@ plot_acceptance_proportions_base <- function(accept_prop,
 #'
 #'   Used by:
 #'   \itemize{
-#'     \item \code{plot.probit_bernoulli_locallevel}
-#'     \item \code{plot.probit_bernoulli_localtrend}
-#'     \item \code{plot.probit_bernoulli_localacceleration}
+#'     \item `plot.probit_bernoulli_locallevel`
+#'     \item `plot.probit_bernoulli_localtrend`
+#'     \item `plot.probit_bernoulli_localacceleration`
 #'   }
 #'
 #' @keywords internal
@@ -1362,15 +1362,15 @@ plot_bernoulli_alpha_base <- function(x,
 #'
 #' @details This function extracts alpha samples and observed data from
 #'   Poisson model objects and delegates to the generic
-#'   \code{plot_alpha_trajectory_base()} function. Unlike binomial models,
+#'   `plot_alpha_trajectory_base()` function. Unlike binomial models,
 #'   observed counts are plotted directly without proportion calculations,
 #'   and the y-axis is automatically scaled to accommodate count data.
 #'
 #'   Used by:
 #'   \itemize{
-#'     \item \code{plot.poisson_locallevel}
-#'     \item \code{plot.poisson_localtrend}
-#'     \item \code{plot.poisson_localacceleration}
+#'     \item `plot.poisson_locallevel`
+#'     \item `plot.poisson_localtrend`
+#'     \item `plot.poisson_localacceleration`
 #'   }
 #'
 #' @keywords internal
@@ -1450,12 +1450,12 @@ plot_poisson_alpha_base <- function(x,
 #' @details
 #'   This function delegates to two specialized functions:
 #'   \itemize{
-#'     \item \code{plot_alpha_trajectory_base()}: Page 1 (alpha_t trajectory)
-#'     \item \code{plot_component_probabilities_base()}: Page 2 (z_t probabilities)
+#'     \item `plot_alpha_trajectory_base()`: Page 1 (alpha_t trajectory)
+#'     \item `plot_component_probabilities_base()`: Page 2 (z_t probabilities)
 #'   }
 #'
 #'   \strong{Data Overlay and Rescaling (Page 1):}
-#'   When \code{overlay_data = TRUE} and observed data is available, the original
+#'   When `overlay_data = TRUE` and observed data is available, the original
 #'   data is rescaled to the unit interval [0, 1] using min-max normalization:
 #'   \deqn{y_{scaled} = \frac{y - \min(y)}{\max(y) - \min(y)}}
 #'

@@ -156,7 +156,7 @@ summarise_state <- function(state_matrix, ci = TRUE, ci_level = 0.95) {
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #'
 #' @return A named list where each element is the output of
-#'   \code{summarise_state()} for the corresponding state.
+#'   `summarise_state()` for the corresponding state.
 #'
 #' @keywords internal
 #' @noRd

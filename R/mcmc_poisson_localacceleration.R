@@ -189,7 +189,7 @@
 #' @param seed Optional integer used to set the random number generator seed for
 #'   reproducibility. Default is `NULL` (no seed set).
 #'
-#' @return An object of class \code{c("poisson_localacceleration", "pdm_mcmc", "list")}
+#' @return An object of class `c("poisson_localacceleration", "pdm_mcmc", "list")`
 #'   with components:
 #' \describe{
 #'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}

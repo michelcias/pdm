@@ -3,26 +3,26 @@
 #' @description Produces comprehensive posterior statistics including means,
 #'   standard deviations, medians, and credible intervals.
 #'
-#' @param object An object of class \code{normal_locallevel}, typically the
+#' @param object An object of class `normal_locallevel`, typically the
 #'   result of calling \code{\link{mcmc_normal_locallevel}}.
 #' @param ci_level Credible interval level; a single numeric value strictly
-#'   between 0 and 1. Defaults to \code{0.95}. The reported interval is the
+#'   between 0 and 1. Defaults to `0.95`. The reported interval is the
 #'   Highest Posterior Density Interval (HPDI), i.e. the shortest contiguous
 #'   interval containing that probability mass of the posterior.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return An object of class \code{summary.normal_locallevel}, which is a list
+#' @return An object of class `summary.normal_locallevel`, which is a list
 #'   containing:
 #'   \describe{
-#'     \item{\code{model_type}}{Character string indicating the model type}
-#'     \item{\code{n_obs}}{Number of observations}
-#'     \item{\code{n_chain}}{Number of MCMC samples}
-#'     \item{\code{burnin}}{Number of burn-in iterations}
-#'     \item{\code{thinning}}{Thinning interval}
-#'     \item{\code{ci_level}}{Credible interval level used (HPDI)}
-#'     \item{\code{scalar_params}}{Data frame with summary statistics for
+#'     \item{`model_type`}{Character string indicating the model type}
+#'     \item{`n_obs`}{Number of observations}
+#'     \item{`n_chain`}{Number of MCMC samples}
+#'     \item{`burnin`}{Number of burn-in iterations}
+#'     \item{`thinning`}{Thinning interval}
+#'     \item{`ci_level`}{Credible interval level used (HPDI)}
+#'     \item{`scalar_params`}{Data frame with summary statistics for
 #'       scalar parameters (theta_01, W_1^-1, V^-1)}
-#'     \item{\code{theta_summary}}{Summary statistics for the latent level
+#'     \item{`theta_summary`}{Summary statistics for the latent level
 #'       \eqn{\theta_{t,1}} aggregated across time (min, median, max, and final
 #'       time point)}
 #'   }
@@ -31,15 +31,15 @@
 #' This method provides complete posterior inference with multiple statistics:
 #' \describe{
 #'   \item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
-#'   \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
+#'   \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in `print()`)}
 #'   \item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
 #'   \item{\strong{CI}}{Credible intervals at specified probabilities}
 #' }
 #'
-#' For a quick overview showing only medians, use \code{print(x)}.
+#' For a quick overview showing only medians, use `print(x)`.
 #'
 #' For time-varying parameters like \eqn{\theta_{t,1}}, only summary statistics
-#' across time are reported. Use \code{plot()} to visualize the full
+#' across time are reported. Use `plot()` to visualize the full
 #' trajectories.
 #'
 #' @examples
@@ -136,12 +136,12 @@ summary.normal_locallevel <- function(object,
 #'
 #' @description Prints comprehensive posterior statistics in a readable format.
 #'
-#' @param x An object of class \code{summary.normal_locallevel}, typically the
-#'   result of calling \code{summary()} on a \code{normal_locallevel} object.
+#' @param x An object of class `summary.normal_locallevel`, typically the
+#'   result of calling `summary()` on a `normal_locallevel` object.
 #' @param digits Integer, number of significant digits to display. Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return Invisibly returns the input object \code{x}.
+#' @return Invisibly returns the input object `x`.
 #'
 #' @examples
 #' \donttest{

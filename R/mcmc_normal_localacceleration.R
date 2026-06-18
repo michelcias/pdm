@@ -87,7 +87,7 @@
 #' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
 #' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
-#'   Default is \code{NULL}, which does not set the seed.
+#'   Default is `NULL`, which does not set the seed.
 #'
 #' @return A list with components:
 #' \describe{

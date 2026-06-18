@@ -1,78 +1,78 @@
 #' MCMC convergence diagnostics for pdm models
 #'
 #' @description Assesses the convergence of the Markov chains produced by the
-#'   \code{mcmc_*()} fitting functions. For every scalar parameter of a fitted
-#'   \code{pdm_mcmc} model the function reports the Effective Sample Size (ESS)
+#'   `mcmc_*()` fitting functions. For every scalar parameter of a fitted
+#'   `pdm_mcmc` model the function reports the Effective Sample Size (ESS)
 #'   and the associated sampling efficiency and, when the \pkg{coda} package is
 #'   available, the Geweke convergence diagnostic and the Heidelberger–Welch
 #'   stationarity and halfwidth tests. The individual verdicts are combined into
-#'   a single \code{Overall} classification per parameter.
+#'   a single `Overall` classification per parameter.
 #'
 #'   Optionally, selected time points of the latent state chains
 #'   (\eqn{\theta_{t,j}}) can also be assessed, one row per state per time
 #'   point.
 #'
-#' @param object An object inheriting from \code{"pdm_mcmc"}, typically the
-#'   result of one of the \code{mcmc_*()} fitting functions (for example
+#' @param object An object inheriting from `"pdm_mcmc"`, typically the
+#'   result of one of the `mcmc_*()` fitting functions (for example
 #'   \code{\link{mcmc_normal_localtrend}}).
 #' @param theta_timepoints Numeric vector of fractions in \eqn{(0, 1)} that
 #'   determine which time points of the latent state chains are included in the
 #'   diagnostics. Each fraction is rounded to the nearest integer index. The
-#'   default \code{c(0.25, 0.5, 0.75)} evaluates the states at the first
-#'   quartile, median and third quartile of the series. Set to \code{NULL} to
+#'   default `c(0.25, 0.5, 0.75)` evaluates the states at the first
+#'   quartile, median and third quartile of the series. Set to `NULL` to
 #'   exclude all latent states (scalar parameters only).
 #' @param ess_thresholds Numeric vector of length 3 giving the efficiency
-#'   cut-offs (in percent) for the \code{ESS_status} labels \code{EXCELLENT},
-#'   \code{GOOD} and \code{ACCEPTABLE}. Default is \code{c(50, 25, 10)},
-#'   meaning efficiency > 50\% is \code{EXCELLENT}, > 25\% is \code{GOOD},
-#'   > 10\% is \code{ACCEPTABLE}, and \eqn{\leq} 10\% is \code{POOR}.
+#'   cut-offs (in percent) for the `ESS_status` labels `EXCELLENT`,
+#'   `GOOD` and `ACCEPTABLE`. Default is `c(50, 25, 10)`,
+#'   meaning efficiency > 50\% is `EXCELLENT`, > 25\% is `GOOD`,
+#'   > 10\% is `ACCEPTABLE`, and \eqn{\leq} 10\% is `POOR`.
 #'   Values must be strictly decreasing and in the range \eqn{(0, 100)}.
 #' @param geweke_level Numeric value in \eqn{(0, 1)}, the significance level
 #'   used for the Geweke test. A parameter passes when
-#'   \eqn{|z| < z_{1-\alpha/2}}, where \eqn{\alpha} is \code{geweke_level}.
-#'   Default is \code{0.05} (5\%, corresponding to \eqn{|z| < 1.96}).
-#' @param show_ess_status Logical. Whether to include the \code{ESS_status}
-#'   column in the output table. Default \code{TRUE}.
-#' @param show_geweke Logical. Whether to include the \code{Geweke_z} and
-#'   \code{Geweke_pass} columns. Default \code{TRUE}.
-#' @param show_heidel Logical. Whether to include the \code{Heidel_stat} and
-#'   \code{Heidel_hw} columns. Default \code{TRUE}.
-#' @param show_overall Logical. Whether to include the \code{Overall} column.
-#'   Default \code{TRUE}.
+#'   \eqn{|z| < z_{1-\alpha/2}}, where \eqn{\alpha} is `geweke_level`.
+#'   Default is `0.05` (5\%, corresponding to \eqn{|z| < 1.96}).
+#' @param show_ess_status Logical. Whether to include the `ESS_status`
+#'   column in the output table. Default `TRUE`.
+#' @param show_geweke Logical. Whether to include the `Geweke_z` and
+#'   `Geweke_pass` columns. Default `TRUE`.
+#' @param show_heidel Logical. Whether to include the `Heidel_stat` and
+#'   `Heidel_hw` columns. Default `TRUE`.
+#' @param show_overall Logical. Whether to include the `Overall` column.
+#'   Default `TRUE`.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return An object of class \code{"pdm_convergence"}, which is a list with:
+#' @return An object of class `"pdm_convergence"`, which is a list with:
 #'   \describe{
-#'     \item{\code{table}}{Data frame with one row per assessed parameter or
-#'       state time point. Columns always present: \code{Parameter}, \code{ESS},
-#'       \code{Efficiency} (in percent). Optional columns, controlled by the
-#'       \code{show_*} arguments: \code{ESS_status}, \code{Geweke_z},
-#'       \code{Geweke_pass}, \code{Heidel_stat}, \code{Heidel_hw},
-#'       \code{Overall}.}
-#'     \item{\code{n_chain}}{Number of retained MCMC samples (\eqn{N}).}
-#'     \item{\code{model_type}}{Character string, e.g. \code{"locallevel"},
-#'       \code{"localtrend"} or \code{"localacceleration"}.}
-#'     \item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
+#'     \item{`table`}{Data frame with one row per assessed parameter or
+#'       state time point. Columns always present: `Parameter`, `ESS`,
+#'       `Efficiency` (in percent). Optional columns, controlled by the
+#'       `show_*` arguments: `ESS_status`, `Geweke_z`,
+#'       `Geweke_pass`, `Heidel_stat`, `Heidel_hw`,
+#'       `Overall`.}
+#'     \item{`n_chain`}{Number of retained MCMC samples (\eqn{N}).}
+#'     \item{`model_type`}{Character string, e.g. `"locallevel"`,
+#'       `"localtrend"` or `"localacceleration"`.}
+#'     \item{`has_coda`}{Logical, whether \pkg{coda}-based diagnostics are
 #'       included.}
-#'     \item{\code{ess_thresholds}}{The ESS efficiency thresholds used.}
-#'     \item{\code{geweke_level}}{The significance level used for Geweke.}
+#'     \item{`ess_thresholds`}{The ESS efficiency thresholds used.}
+#'     \item{`geweke_level`}{The significance level used for Geweke.}
 #'   }
 #'
 #' @details
 #' Only scalar parameters (initial states \eqn{\theta_{0,j}}, innovation
 #' precisions \eqn{W_j^{-1}}, and for Gaussian models the observation
-#' precision \eqn{V^{-1}}) are always included. When \code{theta_timepoints}
-#' is not \code{NULL}, selected time points of every latent state matrix
-#' (\code{theta_1}, \code{theta_2}, \ldots) are also assessed — one row per
-#' state per selected time point, labelled as e.g. \code{theta_1[t=25]}.
+#' precision \eqn{V^{-1}}) are always included. When `theta_timepoints`
+#' is not `NULL`, selected time points of every latent state matrix
+#' (`theta_1`, `theta_2`, \ldots) are also assessed — one row per
+#' state per selected time point, labelled as e.g. `theta_1[t=25]`.
 #'
 #' Note the distinction between the initial states and the state trajectories.
-#' The initial states (\code{theta_01}, \code{theta_02}, \ldots) are scalars
+#' The initial states (`theta_01`, `theta_02`, \ldots) are scalars
 #' and are reported among the scalar parameters. Only the trajectory matrices
-#' (\code{theta_1}, \code{theta_2}, \ldots), which hold one column per time
-#' point, are evaluated at the time points given by \code{theta_timepoints}.
+#' (`theta_1`, `theta_2`, \ldots), which hold one column per time
+#' point, are evaluated at the time points given by `theta_timepoints`.
 #'
-#' Because the \code{mcmc_*()} samplers return a single chain, all diagnostics
+#' Because the `mcmc_*()` samplers return a single chain, all diagnostics
 #' are \emph{within-chain} criteria. Multi-chain diagnostics such as the
 #' Gelman–Rubin \eqn{\hat{R}} require several independent runs and are not
 #' computed here.
@@ -87,7 +87,7 @@
 #'   Geyer (1992), the sum is taken over the positive sample autocorrelations up
 #'   to a maximum lag. This estimate requires no external package. The reported
 #'   efficiency is \eqn{100 \times \mathrm{ESS}/N} and is classified according
-#'   to \code{ess_thresholds}.
+#'   to `ess_thresholds`.
 #' }
 #'
 #' \subsection{Geweke diagnostic}{
@@ -96,7 +96,7 @@
 #'   from the last portion (the last 50\%). Under convergence the two means
 #'   agree and the standardised difference follows a standard normal
 #'   distribution. The test passes when \eqn{|z| < z_{1-\alpha/2}} for the
-#'   level \code{geweke_level}. Computed with \code{\link[coda]{geweke.diag}}.
+#'   level `geweke_level`. Computed with \code{\link[coda]{geweke.diag}}.
 #' }
 #'
 #' \subsection{Heidelberger–Welch tests}{
@@ -106,15 +106,15 @@
 #'   draws are consistent with a stationary distribution. The \emph{halfwidth}
 #'   test checks whether the chain is long enough to estimate the posterior
 #'   mean to a prescribed relative accuracy. Both are computed with
-#'   \code{\link[coda]{heidel.diag}} via the named columns \code{stest} and
-#'   \code{htest}; a parameter is considered well-behaved only when it passes
+#'   \code{\link[coda]{heidel.diag}} via the named columns `stest` and
+#'   `htest`; a parameter is considered well-behaved only when it passes
 #'   both.
 #' }
 #'
 #' \subsection{Overall classification}{
 #'   When \pkg{coda} is available the Geweke and Heidelberger–Welch verdicts are
-#'   pooled into the \code{Overall} column: \code{EXCELLENT} when both tests
-#'   pass, \code{ACCEPTABLE} when exactly one passes, and \code{POOR} when
+#'   pooled into the `Overall` column: `EXCELLENT` when both tests
+#'   pass, `ACCEPTABLE` when exactly one passes, and `POOR` when
 #'   neither does.
 #' }
 #'
@@ -409,11 +409,11 @@ mcmc_convergence.pdm_mcmc <- function(object,
 
 #' Print method for pdm_convergence objects
 #'
-#' @param x An object of class \code{"pdm_convergence"}.
+#' @param x An object of class `"pdm_convergence"`.
 #' @param digits Integer, significant digits for numeric columns. Default 3.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return Invisibly returns \code{x}.
+#' @return Invisibly returns `x`.
 #' @export
 print.pdm_convergence <- function(x, digits = 3L, ...) {
 

@@ -1,7 +1,7 @@
 #' Highest Posterior Density Interval (HPDI)
 #'
 #' Computes the Highest Posterior Density Interval (HPDI) of MCMC samples: the
-#' shortest contiguous interval that contains a proportion \code{prob} of the
+#' shortest contiguous interval that contains a proportion `prob` of the
 #' draws. Unlike an equal-tailed (quantile) interval, the HPDI is the shortest
 #' such interval and may be asymmetric for skewed posteriors.
 #'
@@ -9,18 +9,18 @@
 #' windows of fixed span \eqn{m = \lfloor prob \cdot n \rfloor}, the window with
 #' the smallest width \eqn{x_{(i + m)} - x_{(i)}} is selected.
 #'
-#' @param data A numeric vector (a single chain of length \code{n}) or a numeric
+#' @param data A numeric vector (a single chain of length `n`) or a numeric
 #'   matrix in which each row is one MCMC sample and each column an independent
 #'   chain (for example, one column per time point of a latent state
-#'   trajectory). This matches the orientation of the \code{theta_1} component
-#'   returned by the \code{mcmc_*} samplers. Values must be finite (no
-#'   \code{NA}/\code{NaN}).
+#'   trajectory). This matches the orientation of the `theta_1` component
+#'   returned by the `mcmc_*` samplers. Values must be finite (no
+#'   `NA`/`NaN`).
 #' @param prob Probability mass contained in the interval; a single value
-#'   strictly between 0 and 1. Defaults to \code{0.9}.
+#'   strictly between 0 and 1. Defaults to `0.9`.
 #'
 #' @return For a vector input, a named numeric vector of length 2 with elements
-#'   \code{lower} and \code{upper}. For a matrix input, a numeric matrix with one
-#'   row per column of \code{data} and columns \code{lower} and \code{upper}.
+#'   `lower` and `upper`. For a matrix input, a numeric matrix with one
+#'   row per column of `data` and columns `lower` and `upper`.
 #'
 #' @examples
 #' set.seed(1)

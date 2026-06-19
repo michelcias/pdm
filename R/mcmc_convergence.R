@@ -24,13 +24,13 @@
 #' @param ess_thresholds Numeric vector of length 3 giving the efficiency
 #'   cut-offs (in percent) for the `ESS_status` labels `EXCELLENT`,
 #'   `GOOD` and `ACCEPTABLE`. Default is `c(50, 25, 10)`,
-#'   meaning efficiency > 50\% is `EXCELLENT`, > 25\% is `GOOD`,
-#'   \eqn{>} 10\% is `ACCEPTABLE`, and \eqn{\leq} 10\% is `POOR`.
+#'   meaning efficiency > 50% is `EXCELLENT`, > 25% is `GOOD`,
+#'   \eqn{>} 10% is `ACCEPTABLE`, and \eqn{\leq} 10% is `POOR`.
 #'   Values must be strictly decreasing and in the range \eqn{(0, 100)}.
 #' @param geweke_level Numeric value in \eqn{(0, 1)}, the significance level
 #'   used for the Geweke test. A parameter passes when the absolute Geweke
 #'   z-score is below the critical value for level `geweke_level`.
-#'   Default is `0.05` (5\%, critical value \eqn{\approx 1.96}).
+#'   Default is `0.05` (5%, critical value \eqn{\approx 1.96}).
 #' @param show_ess_status Logical. Whether to include the `ESS_status`
 #'   column in the output table. Default `TRUE`.
 #' @param show_geweke Logical. Whether to include the `Geweke_z` and
@@ -92,8 +92,8 @@
 #'
 #' \subsection{Geweke diagnostic}{
 #'   Geweke (1992) compares the posterior mean of a parameter computed from the
-#'   first portion of the chain (the first 10\% by default) with that computed
-#'   from the last portion (the last 50\%). Under convergence the two means
+#'   first portion of the chain (the first 10% by default) with that computed
+#'   from the last portion (the last 50%). Under convergence the two means
 #'   agree and the standardised difference follows a standard normal
 #'   distribution. The test passes when the absolute z-score is below the
 #'   critical value at level `geweke_level`. Computed with \code{\link[coda]{geweke.diag}}.

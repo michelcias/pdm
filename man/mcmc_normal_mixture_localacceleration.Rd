@@ -407,7 +407,7 @@ When \code{verbose = TRUE}, a visual progress bar is displayed showing
 
 The progress bar update frequency is automatically calculated as approximately
 one update per bar segment, ensuring smooth visual feedback with minimal
-performance overhead (~0.01\\% for typical runs).
+performance overhead (~0.01\% for typical runs).
 
 Burn-in and thinning are applied so that exactly \code{n_chain} posterior
 samples are returned.

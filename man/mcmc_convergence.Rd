@@ -36,14 +36,14 @@ exclude all latent states (scalar parameters only).}
 \item{ess_thresholds}{Numeric vector of length 3 giving the efficiency
 cut-offs (in percent) for the \code{ESS_status} labels \code{EXCELLENT},
 \code{GOOD} and \code{ACCEPTABLE}. Default is \code{c(50, 25, 10)},
-meaning efficiency > 50\\% is \code{EXCELLENT}, > 25\\% is \code{GOOD},
-\eqn{>} 10\\% is \code{ACCEPTABLE}, and \eqn{\leq} 10\\% is \code{POOR}.
+meaning efficiency > 50\% is \code{EXCELLENT}, > 25\% is \code{GOOD},
+\eqn{>} 10\% is \code{ACCEPTABLE}, and \eqn{\leq} 10\% is \code{POOR}.
 Values must be strictly decreasing and in the range \eqn{(0, 100)}.}
 
 \item{geweke_level}{Numeric value in \eqn{(0, 1)}, the significance level
-used for the Geweke test. A parameter passes when
-\eqn{|z| < z_{1-\alpha/2}}, where \eqn{\alpha} is \code{geweke_level}.
-Default is \code{0.05} (5\\%, corresponding to \eqn{|z| < 1.96}).}
+used for the Geweke test. A parameter passes when the absolute Geweke
+z-score is below the critical value for level \code{geweke_level}.
+Default is \code{0.05} (5\%, critical value \eqn{\approx 1.96}).}
 
 \item{show_ess_status}{Logical. Whether to include the \code{ESS_status}
 column in the output table. Default \code{TRUE}.}
@@ -122,11 +122,11 @@ to \code{ess_thresholds}.
 
 \subsection{Geweke diagnostic}{
 Geweke (1992) compares the posterior mean of a parameter computed from the
-first portion of the chain (the first 10\\% by default) with that computed
-from the last portion (the last 50\\%). Under convergence the two means
+first portion of the chain (the first 10\% by default) with that computed
+from the last portion (the last 50\%). Under convergence the two means
 agree and the standardised difference follows a standard normal
-distribution. The test passes when \eqn{|z| < z_{1-\alpha/2}} for the
-level \code{geweke_level}. Computed with \code{\link[coda]{geweke.diag}}.
+distribution. The test passes when the absolute z-score is below the
+critical value at level \code{geweke_level}. Computed with \code{\link[coda]{geweke.diag}}.
 }
 
 \subsection{Heidelberger–Welch tests}{

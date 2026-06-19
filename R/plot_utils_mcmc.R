@@ -40,11 +40,11 @@ NULL
 #'
 #' @details The function determines model_class by examining the class hierarchy:
 #'   \itemize{
-#'     \item \code{"mixture"}: Classes containing "mixture" (Gaussian mixture models)
-#'     \item \code{"binomial"}: Classes containing "binomial" or "bernoulli"
+#'     \item `"mixture"`: Classes containing "mixture" (Gaussian mixture models)
+#'     \item `"binomial"`: Classes containing "binomial" or "bernoulli"
 #'       (binomial/Bernoulli models with logit or probit link)
-#'     \item \code{"poisson"}: Classes containing "poisson" (Poisson models with log link)
-#'     \item \code{"normal"}: Classes containing "normal" (Gaussian observation models)
+#'     \item `"poisson"`: Classes containing "poisson" (Poisson models with log link)
+#'     \item `"normal"`: Classes containing "normal" (Gaussian observation models)
 #'   }
 #'
 #'   The model_order is extracted from the "model_type" attribute, which must
@@ -52,10 +52,10 @@ NULL
 #'
 #'   Key differences between model classes:
 #'   \itemize{
-#'     \item Normal models have observation precision parameter (\code{prec_y})
-#'     \item Binomial models do NOT have \code{prec_y} (use link functions)
-#'     \item Poisson models do NOT have \code{prec_y} (use log link function)
-#'     \item Mixture models have 4 mixture parameters instead of \code{prec_y}
+#'     \item Normal models have observation precision parameter (`prec_y`)
+#'     \item Binomial models do NOT have `prec_y` (use link functions)
+#'     \item Poisson models do NOT have `prec_y` (use log link function)
+#'     \item Mixture models have 4 mixture parameters instead of `prec_y`
 #'   }
 #'
 #' @keywords internal
@@ -125,7 +125,7 @@ detect_model_type <- function(x) {
 #'   \itemize{
 #'     \item \strong{Mixture models}: 4 mixture params (mu_1, mu_2, phi_1, phi_2) +
 #'       model_order initial states + model_order innovation precisions
-#'     \item \strong{Normal models}: 1 observation precision (V^{-1}) +
+#'     \item \strong{Normal models}: 1 observation precision (V^-1) +
 #'       model_order initial states + model_order innovation precisions
 #'     \item \strong{Binomial models}: 0 observation precision (uses link function) +
 #'       model_order initial states + model_order innovation precisions
@@ -195,10 +195,10 @@ get_n_params <- function(model_class, model_order) {
 #'
 #' @details Parameters are ordered as:
 #'   \enumerate{
-#'     \item Mixture components (if \code{model_class = "mixture"}): mu_1, mu_2, phi_1, phi_2
-#'     \item Observation precision (if \code{model_class = "normal"}): V^{-1}
+#'     \item Mixture components (if `model_class = "mixture"`): mu_1, mu_2, phi_1, phi_2
+#'     \item Observation precision (if `model_class = "normal"`): V^-1
 #'     \item Initial states (all models): theta_01, theta_02, theta_03
-#'     \item Innovation precisions (all models): W_1^{-1}, W_2^{-1}, W_3^{-1}
+#'     \item Innovation precisions (all models): W_1^-1, W_2^-1, W_3^-1
 #'   }
 #'
 #'   This ordering matches the convention in existing plot files.
@@ -215,13 +215,13 @@ get_n_params <- function(model_class, model_order) {
 #'       }
 #'     \item \strong{Dynamic states:}
 #'       \itemize{
-#'         \item "steelblue" for level-related (theta_01, W_1^{-1})
-#'         \item "firebrick" for trend-related (theta_02, W_2^{-1})
-#'         \item "darkgreen" for acceleration-related (theta_03, W_3^{-1})
+#'         \item "steelblue" for level-related (theta_01, W_1^-1)
+#'         \item "firebrick" for trend-related (theta_02, W_2^-1)
+#'         \item "darkgreen" for acceleration-related (theta_03, W_3^-1)
 #'       }
 #'     \item \strong{Observation precision:}
 #'       \itemize{
-#'         \item "purple" for V^{-1} (normal models only)
+#'         \item "purple" for V^-1 (normal models only)
 #'       }
 #'   }
 #'
@@ -444,7 +444,7 @@ validate_param_config <- function(config) {
 #' @param which Integer vector specifying which parameters to plot. If NULL,
 #'   all parameters are plotted.
 #' @param param_config Pre-computed parameter configuration list. If NULL,
-#'   will be auto-generated from x using \code{get_param_config()}.
+#'   will be auto-generated from x using `get_param_config()`.
 #' @param true_values Named list containing true parameter values for comparison.
 #'   If NULL (default), no true values are displayed. Expected elements depend
 #'   on model type:
@@ -460,7 +460,7 @@ validate_param_config <- function(config) {
 #'
 #' @details For each selected parameter, creates a 4-panel diagnostic plot:
 #'   trace plot, autocorrelation function, posterior density, and running mean.
-#'   The actual plotting is delegated to \code{plot_param_diagnostics_base()}
+#'   The actual plotting is delegated to `plot_param_diagnostics_base()`
 #'   from plot_utils_base.R.
 #'
 #'   True values (when provided) are overlaid as dashed black lines on all

@@ -1,7 +1,7 @@
 #' Constructor for poisson_localacceleration class
 #'
 #' @description Internal constructor function for creating objects of class
-#'   \code{poisson_localacceleration}. This function is called by
+#'   `poisson_localacceleration`. This function is called by
 #'   \code{\link{mcmc_poisson_localacceleration}} and should not be called directly by
 #'   users.
 #'
@@ -13,35 +13,35 @@
 #' @param y Numeric vector of original observed data.
 #' @param target_acceptance Numeric, target acceptance proportion for Metropolis-Hastings.
 #'
-#' @return An object of class \code{c("poisson_localacceleration", "pdm_mcmc", "list")}
+#' @return An object of class `c("poisson_localacceleration", "pdm_mcmc", "list")`
 #'   with the following structure:
 #'   \describe{
-#'     \item{Data components}{All elements from \code{result} (theta_1, theta_2,
+#'     \item{Data components}{All elements from `result` (theta_1, theta_2,
 #'       theta_3, theta_01, theta_02, theta_03, prec_theta1, prec_theta2,
 #'       prec_theta3, alpha, and optionally log_sigma and accept_prop)}
 #'     \item{Attributes}{
 #'       \itemize{
-#'         \item \code{n_obs}: Number of observations
-#'         \item \code{n_chain}: Number of MCMC samples
-#'         \item \code{burnin}:  Burn-in iterations
-#'         \item \code{thinning}: Thinning interval
-#'         \item \code{model_type}: \code{"localacceleration"} (polynomial order 3)
-#'         \item \code{link}:  \code{"log"} (link function)
-#'         \item \code{y}: Original observed data
-#'         \item \code{target_acceptance}: Target acceptance proportion
+#'         \item `n_obs`: Number of observations
+#'         \item `n_chain`: Number of MCMC samples
+#'         \item `burnin`:  Burn-in iterations
+#'         \item `thinning`: Thinning interval
+#'         \item `model_type`: `"localacceleration"` (polynomial order 3)
+#'         \item `link`:  `"log"` (link function)
+#'         \item `y`: Original observed data
+#'         \item `target_acceptance`: Target acceptance proportion
 #'       }
 #'     }
 #'   }
 #'
 #' @details This constructor adds class attributes and metadata to the raw MCMC
-#'   output, enabling the use of S3 methods like \code{summary()}, \code{plot()},
-#'   and \code{print()}.
+#'   output, enabling the use of S3 methods like `summary()`, `plot()`,
+#'   and `print()`.
 #'
 #'   The class hierarchy is:
 #'   \itemize{
-#'     \item \code{poisson_localacceleration}:  Specific model class
-#'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
-#'     \item \code{list}: Base R list class
+#'     \item `poisson_localacceleration`:  Specific model class
+#'     \item `pdm_mcmc`: General MCMC class for the pdm package
+#'     \item `list`: Base R list class
 #'   }
 #'
 #' @keywords internal
@@ -100,12 +100,12 @@ new_poisson_localacceleration <- function(result,
 #' Validator for poisson_localacceleration class
 #'
 #' @description Internal function to validate objects of class
-#'   \code{poisson_localacceleration}.  Checks that all required components are present
+#'   `poisson_localacceleration`.  Checks that all required components are present
 #'   and have correct dimensions.
 #'
 #' @param x An object to validate.
 #'
-#' @return The input object \code{x} if validation succeeds.
+#' @return The input object `x` if validation succeeds.
 #' @keywords internal
 #' @noRd
 validate_poisson_localacceleration <- function(x) {
@@ -361,15 +361,15 @@ validate_poisson_localacceleration <- function(x) {
 
 #' Check if object is of class poisson_localacceleration
 #'
-#' @description Test whether an object is of class \code{poisson_localacceleration}.
+#' @description Test whether an object is of class `poisson_localacceleration`.
 #'
 #' @param x An object to test.
 #'
-#' @return Logical value:  \code{TRUE} if \code{x} inherits from
-#'   \code{poisson_localacceleration}, \code{FALSE} otherwise.
+#' @return Logical value:  `TRUE` if `x` inherits from
+#'   `poisson_localacceleration`, `FALSE` otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ? mcmc_poisson_localacceleration)
 #' set.seed(123)
 #' n <- 500
@@ -424,19 +424,19 @@ is.poisson_localacceleration <- function(x) {
 #' Print method for poisson_localacceleration objects
 #'
 #' @description Prints a concise summary showing posterior medians.
-#'   Use \code{summary()} for comprehensive statistics when available.
+#'   Use `summary()` for comprehensive statistics when available.
 #'
-#' @param x An object of class \code{poisson_localacceleration}.
+#' @param x An object of class `poisson_localacceleration`.
 #' @param digits Integer, number of decimal places to display.  Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return Invisibly returns the input object \code{x}.
+#' @return Invisibly returns the input object `x`.
 #'
 #' @details This method provides a quick overview using posterior medians,
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_poisson_localacceleration)
 #' set.seed(123)
 #' n <- 500

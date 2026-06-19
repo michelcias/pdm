@@ -22,7 +22,7 @@ Invisibly returns the input object \code{x}.
 Prints comprehensive posterior statistics in a readable format.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 500
 n_trials <- 20
@@ -82,5 +82,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.binomial_localtrend}},
-  \code{\link{print.binomial_localtrend}}
+\code{\link{print.binomial_localtrend}}
 }

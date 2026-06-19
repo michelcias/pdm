@@ -185,27 +185,27 @@
 #' @param return_accept_prop Logical, whether to return acceptance proportion diagnostics
 #'   over iterations. Default is `FALSE`.
 #' @param verbose Logical, whether to display a progress bar during sampling. Default is `TRUE`.
-#' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`.
+#' @param bar_width Integer in \[10, 120\], width of the progress bar when `verbose = TRUE`.
 #'   Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed for
 #'   reproducibility. Default is `NULL` (no seed set).
 #'
-#' @return An object of class \code{c("binomial_localacceleration", "pdm_mcmc", "list")}
+#' @return An object of class `c("binomial_localacceleration", "pdm_mcmc", "list")`
 #'   with components:
 #' \describe{
-#'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
-#'   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,2}}.}
-#'   \item{`theta_3`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,3}}.}
-#'   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,1}}.}
-#'   \item{`theta_02`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,2}}.}
-#'   \item{`theta_03`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,3}}.}
-#'   \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_1}.}
-#'   \item{`prec_theta2`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_2}.}
-#'   \item{`prec_theta3`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_3}.}
-#'   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
-#'   \item{`log_sigma`}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics
+#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
+#'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,2}}.}
+#'   \item{\code{theta_3}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,3}}.}
+#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,1}}.}
+#'   \item{\code{theta_02}}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,2}}.}
+#'   \item{\code{theta_03}}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,3}}.}
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_1}.}
+#'   \item{\code{prec_theta2}}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_2}.}
+#'   \item{\code{prec_theta3}}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_3}.}
+#'   \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
+#'   \item{\code{log_sigma}}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics
 #'     (if `return_log_sigma = TRUE`).}
-#'   \item{`accept_prop`}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion
+#'   \item{\code{accept_prop}}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion
 #'     diagnostics (if `return_accept_prop = TRUE`).}
 #' }
 #'
@@ -274,7 +274,7 @@
 #'
 #' ## Posterior analysis and visualization
 #' # Use the plot method for comprehensive diagnostics
-#' \dontrun{
+#' \donttest{
 #'   # Complete dashboard with all diagnostics
 #'   plot(out, type = "all")
 #'

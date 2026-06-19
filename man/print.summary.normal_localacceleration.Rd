@@ -21,7 +21,7 @@ Invisibly returns the input object \code{x}.
 Prints comprehensive posterior statistics in a readable format.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 1000
 theta01_true <- 10
@@ -84,5 +84,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.normal_localacceleration}},
-  \code{\link{print.normal_localacceleration}}
+\code{\link{print.normal_localacceleration}}
 }

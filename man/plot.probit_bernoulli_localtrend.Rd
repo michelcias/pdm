@@ -21,19 +21,19 @@
 
 \item{type}{Character string specifying the type of plot. One of:
 \describe{
-  \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
-  \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
-  \item{\code{"states"}}{Dynamic states (theta_1, theta_2 trajectories)}
-  \item{\code{"alpha"}}{Bernoulli probabilities over time (alpha_t)}
+\item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
+\item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
+\item{\code{"states"}}{Dynamic states (theta_1, theta_2 trajectories)}
+\item{\code{"alpha"}}{Bernoulli probabilities over time (alpha_t)}
 }}
 
 \item{which}{Integer vector specifying which diagnostic plots to display.
 For \code{type = "mcmc"}:
 \describe{
-  \item{1}{theta_01 (initial level)}
-  \item{2}{theta_02 (initial trend)}
-  \item{3}{W_1^{-1} (level innovation precision)}
-  \item{4}{W_2^{-1} (trend innovation precision)}
+\item{1}{theta_01 (initial level)}
+\item{2}{theta_02 (initial trend)}
+\item{3}{W_1^-1 (level innovation precision)}
+\item{4}{W_2^-1 (trend innovation precision)}
 }
 For \code{type = "states"}: indices of subplots.
 For \code{type = "alpha"}: not used.
@@ -57,42 +57,42 @@ trajectory without observations. This parameter only affects \code{type = "alpha
 and \code{type = "all"}.}
 
 \item{true_values}{Named list containing true parameter values and/or state trajectories
-  for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
+for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
 
-  \strong{Important:} All parameter names in \code{true_values} must match exactly
-  the component names returned by \code{\link{mcmc_probit_bernoulli_localtrend}}.
+\strong{Important:} All parameter names in \code{true_values} must match exactly
+the component names returned by \code{\link{mcmc_probit_bernoulli_localtrend}}.
 
-  Accepted elements:
-  \describe{
-    \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
-      \itemize{
-        \item \code{theta_01}: Initial level state
-        \item \code{theta_02}: Initial trend state
-        \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
-        \item \code{prec_theta2}: Trend innovation precision (W_2^{-1})
-      }
-    }
-    \item{\strong{State trajectories} (for \code{type = "states"}):}{
-      \itemize{
-        \item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
-        \item \code{theta_2}: Numeric vector of length \code{n_obs} with true trend state values
-      }
-    }
-    \item{\strong{Bernoulli probabilities} (for \code{type = "alpha"}):}{
-      \itemize{
-        \item \code{alpha}: Numeric vector of length \code{n_obs} with true alpha_t probabilities
-      }
-    }
-  }
+Accepted elements:
+\describe{
+\item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
+\itemize{
+\item \code{theta_01}: Initial level state
+\item \code{theta_02}: Initial trend state
+\item \code{prec_theta1}: Level innovation precision (W_1^-1)
+\item \code{prec_theta2}: Trend innovation precision (W_2^-1)
+}
+}
+\item{\strong{State trajectories} (for \code{type = "states"}):}{
+\itemize{
+\item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
+\item \code{theta_2}: Numeric vector of length \code{n_obs} with true trend state values
+}
+}
+\item{\strong{Bernoulli probabilities} (for \code{type = "alpha"}):}{
+\itemize{
+\item \code{alpha}: Numeric vector of length \code{n_obs} with true alpha_t probabilities
+}
+}
+}
 
-  \strong{Note on state trajectories:} If you only have the true \code{alpha},
-  you can obtain \code{theta_1} using \code{qnorm(alpha)} (probit link). However,
-  \code{theta_2} (trend) cannot be recovered from \code{alpha} alone and must
-  come from your simulation data.
+\strong{Note on state trajectories:} If you only have the true \code{alpha},
+you can obtain \code{theta_1} using \code{qnorm(alpha)} (probit link). However,
+\code{theta_2} (trend) cannot be recovered from \code{alpha} alone and must
+come from your simulation data.
 
-  You can provide any subset of these elements. For example, to compare only
-  initial states and alpha:
-  \preformatted{
+You can provide any subset of these elements. For example, to compare only
+initial states and alpha:
+\preformatted{
   true_values = list(
     theta_01 = 0,
     theta_02 = 0,
@@ -107,7 +107,7 @@ Invisibly returns the input object \code{x}.
 }
 \description{
 Produces diagnostic plots for MCMC output from Bernoulli
-  local trend models with probit link.
+local trend models with probit link.
 }
 \details{
 This function provides comprehensive visual diagnostics for Bayesian MCMC output:
@@ -116,34 +116,34 @@ This function provides comprehensive visual diagnostics for Bayesian MCMC output
 
 Each parameter gets a dedicated page with 4 panels:
 \itemize{
-  \item \strong{Trace Plot:} Shows MCMC chain trajectory to assess mixing
-  \item \strong{Autocorrelation:} ACF plot to detect serial correlation
-  \item \strong{Posterior Density:} Marginal posterior distribution
-  \item \strong{Running Mean:} Cumulative mean to assess convergence
+\item \strong{Trace Plot:} Shows MCMC chain trajectory to assess mixing
+\item \strong{Autocorrelation:} ACF plot to detect serial correlation
+\item \strong{Posterior Density:} Marginal posterior distribution
+\item \strong{Running Mean:} Cumulative mean to assess convergence
 }
 
-Available parameters: theta_01, theta_02, W_1^{-1}, W_2^{-1}
+Available parameters: theta_01, theta_02, W_1^-1, W_2^-1
 
 \strong{Dynamic States} (\code{type = "states"}):
 \itemize{
-  \item Time-varying state trajectories with credible bands (on probit scale)
-  \item Innovation sequences
-  \item State space relationships
+\item Time-varying state trajectories with credible bands (on probit scale)
+\item Innovation sequences
+\item State space relationships
 }
 
 \strong{Bernoulli Probabilities} (\code{type = "alpha"}):
 \itemize{
-  \item alpha_t trajectory with credible bands
-  \item Optional observed binary outcomes overlay (controlled by \code{show_obs})
+\item alpha_t trajectory with credible bands
+\item Optional observed binary outcomes overlay (controlled by \code{show_obs})
 }
 
 \strong{Complete Dashboard} (\code{type = "all"}):
 
 Generates 7 pages in total:
 \itemize{
-  \item Pages 1-4: Individual parameter diagnostics (4 panels each)
-  \item Pages 5-6: Dynamic state trajectories and diagnostics
-  \item Page 7: Bernoulli probabilities alpha_t
+\item Pages 1-4: Individual parameter diagnostics (4 panels each)
+\item Pages 5-6: Dynamic state trajectories and diagnostics
+\item Page 7: Bernoulli probabilities alpha_t
 }
 }
 \section{Controlling Observed Data Display}{
@@ -153,17 +153,17 @@ The \code{show_obs} parameter provides control over the display of observed
 binary outcomes in the Bernoulli probabilities plot:
 
 \itemize{
-  \item When \code{show_obs = TRUE} (default): Observed binary values (0 or 1)
-    are shown as red points overlaid on the estimated alpha_t trajectory. This
-    is useful for model validation and assessing goodness-of-fit.
-  \item When \code{show_obs = FALSE}: Only the estimated trajectory is shown,
-    which can be clearer for presentations or when focusing on the temporal
-    pattern of the Bernoulli probabilities.
+\item When \code{show_obs = TRUE} (default): Observed binary values (0 or 1)
+are shown as red points overlaid on the estimated alpha_t trajectory. This
+is useful for model validation and assessing goodness-of-fit.
+\item When \code{show_obs = FALSE}: Only the estimated trajectory is shown,
+which can be clearer for presentations or when focusing on the temporal
+pattern of the Bernoulli probabilities.
 }
 }
 
 \examples{
-\dontrun{
+\donttest{
 # =============================================================================
 # Example 1: Practical Data Analysis (No True Parameters Known)
 # =============================================================================
@@ -217,7 +217,7 @@ plot(out, type = "mcmc")
 plot(out, type = "mcmc", which = 1:2)  # theta_01, theta_02
 
 # 4. Focus on innovation precision parameters
-plot(out, type = "mcmc", which = 3:4)  # W_1^{-1}, W_2^{-1}
+plot(out, type = "mcmc", which = 3:4)  # W_1^-1, W_2^-1
 
 # 5. Dynamic state trajectories (theta_1, theta_2 on probit scale)
 #    Shows level and trend components over time
@@ -234,7 +234,7 @@ plot(out, type = "alpha", show_obs = FALSE)
 plot(out, type = "alpha", ci_level = 0.90)  # 90\% credible intervals
 
 # 9. Save all diagnostics to a multi-page PDF
-pdf("model_diagnostics.pdf", width = 10, height = 8)
+pdf(file.path(tempdir(), "model_diagnostics.pdf"), width = 10, height = 8)
 plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 dev.off()
 
@@ -381,5 +381,5 @@ plot(out, type = "alpha",
 }
 \seealso{
 \code{\link{mcmc_probit_bernoulli_localtrend}},
-  \code{\link{summary.probit_bernoulli_localtrend}}
+\code{\link{summary.probit_bernoulli_localtrend}}
 }

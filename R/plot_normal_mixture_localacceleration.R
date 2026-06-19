@@ -3,7 +3,7 @@
 #' @description Produces diagnostic plots for MCMC output from Gaussian mixture
 #'   models with dynamic mixture weights.
 #'
-#' @param x An object of class \code{normal_mixture_localacceleration}.
+#' @param x An object of class `normal_mixture_localacceleration`.
 #' @param type Character string specifying the type of plot. One of:
 #'   \describe{
 #'     \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
@@ -14,7 +14,7 @@
 #'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 #'   }
 #' @param which Integer vector specifying which diagnostic plots to display.
-#'   For \code{type = "mcmc"}:
+#'   For `type = "mcmc"`:
 #'   \describe{
 #'     \item{1}{mu_1 (component 1 mean)}
 #'     \item{2}{mu_2 (component 2 mean)}
@@ -23,61 +23,61 @@
 #'     \item{5}{theta_01 (initial level)}
 #'     \item{6}{theta_02 (initial trend)}
 #'     \item{7}{theta_03 (initial acceleration)}
-#'     \item{8}{W_1^{-1} (level innovation precision)}
-#'     \item{9}{W_2^{-1} (trend innovation precision)}
-#'     \item{10}{W_3^{-1} (acceleration innovation precision)}
+#'     \item{8}{W_1^-1 (level innovation precision)}
+#'     \item{9}{W_2^-1 (trend innovation precision)}
+#'     \item{10}{W_3^-1 (acceleration innovation precision)}
 #'   }
-#'   For \code{type = "params"}, \code{type = "states"}: indices of subplots.
-#'   For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
-#'   If \code{NULL} (default), all available plots are shown.
-#' @param ask Logical; if \code{TRUE}, the user is asked before each plot when
-#'   \code{type = "all"}. Default is \code{interactive()} when \code{type = "all"},
-#'   \code{FALSE} otherwise.
-#' @param overlay_data Logical; for \code{type = "alpha"}, whether to overlay
-#'   the original data (if available). Default is \code{TRUE}.
+#'   For `type = "params"`, `type = "states"`: indices of subplots.
+#'   For `type = "alpha"` or `type = "acceptance"`: not used.
+#'   If `NULL` (default), all available plots are shown.
+#' @param ask Logical; if `TRUE`, the user is asked before each plot when
+#'   `type = "all"`. Default is `interactive()` when `type = "all"`,
+#'   `FALSE` otherwise.
+#' @param overlay_data Logical; for `type = "alpha"`, whether to overlay
+#'   the original data (if available). Default is `TRUE`.
 #' @param ci Logical; whether to display credible intervals in plots that
-#'   support them. Default is \code{TRUE}.
+#'   support them. Default is `TRUE`.
 #' @param ci_level Numeric; Bayesian confidence level for credible intervals
-#'   (between 0 and 1). Default is \code{0.95}.
+#'   (between 0 and 1). Default is `0.95`.
 #' @param true_values Named list containing true parameter values and/or state trajectories
-#'   for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
+#'   for comparison with MCMC estimates. If `NULL` (default), no true values are displayed.
 #'
-#'   \strong{Important:} All parameter names in \code{true_values} must match exactly
+#'   \strong{Important:} All parameter names in `true_values` must match exactly
 #'   the component names returned by \code{\link{mcmc_normal_mixture_localacceleration}}.
 #'
 #'   Accepted elements:
 #'   \describe{
-#'     \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
+#'     \item{\strong{Scalar parameters} (for `type = "mcmc"`):}{
 #'       \itemize{
-#'         \item \code{mu_1}: Mean of mixture component 1
-#'         \item \code{mu_2}: Mean of mixture component 2
-#'         \item \code{prec_1}: Precision of mixture component 1 (phi_1)
-#'         \item \code{prec_2}: Precision of mixture component 2 (phi_2)
-#'         \item \code{theta_01}: Initial level state
-#'         \item \code{theta_02}: Initial trend state
-#'         \item \code{theta_03}: Initial acceleration state
-#'         \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
-#'         \item \code{prec_theta2}: Trend innovation precision (W_2^{-1})
-#'         \item \code{prec_theta3}: Acceleration innovation precision (W_3^{-1})
+#'         \item `mu_1`: Mean of mixture component 1
+#'         \item `mu_2`: Mean of mixture component 2
+#'         \item `prec_1`: Precision of mixture component 1 (phi_1)
+#'         \item `prec_2`: Precision of mixture component 2 (phi_2)
+#'         \item `theta_01`: Initial level state
+#'         \item `theta_02`: Initial trend state
+#'         \item `theta_03`: Initial acceleration state
+#'         \item `prec_theta1`: Level innovation precision (W_1^-1)
+#'         \item `prec_theta2`: Trend innovation precision (W_2^-1)
+#'         \item `prec_theta3`: Acceleration innovation precision (W_3^-1)
 #'       }
 #'     }
-#'     \item{\strong{State trajectories} (for \code{type = "states"}):}{
+#'     \item{\strong{State trajectories} (for `type = "states"`):}{
 #'       \itemize{
-#'         \item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
-#'         \item \code{theta_2}: Numeric vector of length \code{n_obs} with true trend state values
-#'         \item \code{theta_3}: Numeric vector of length \code{n_obs} with true acceleration state values
+#'         \item `theta_1`: Numeric vector of length `n_obs` with true level state values
+#'         \item `theta_2`: Numeric vector of length `n_obs` with true trend state values
+#'         \item `theta_3`: Numeric vector of length `n_obs` with true acceleration state values
 #'       }
 #'     }
-#'     \item{\strong{Mixture weights and indicators} (for \code{type = "alpha"}):}{
+#'     \item{\strong{Mixture weights and indicators} (for `type = "alpha"`):}{
 #'       \itemize{
-#'         \item \code{alpha}: Numeric vector of length \code{n_obs} with true mixture weights (P(z_t = 1))
-#'         \item \code{z}: Numeric vector of length \code{n_obs} with true component indicators (0 or 1)
+#'         \item `alpha`: Numeric vector of length `n_obs` with true mixture weights (P(z_t = 1))
+#'         \item `z`: Numeric vector of length `n_obs` with true component indicators (0 or 1)
 #'       }
 #'     }
 #'   }
 #'
 #'   \strong{Note on mixture identifiability:} Due to label switching, the model enforces
-#'   the constraint \code{mu_1 < mu_2}. Ensure your true values respect this ordering.
+#'   the constraint `mu_1 < mu_2`. Ensure your true values respect this ordering.
 #'   If your simulation used different labels, swap them before comparison.
 #'
 #'   You can provide any subset of these elements. For example, to compare only
@@ -93,12 +93,12 @@
 #'   }
 #' @param ... Additional arguments passed to plotting functions.
 #'
-#' @return Invisibly returns the input object \code{x}.
+#' @return Invisibly returns the input object `x`.
 #'
 #' @details
 #' This function provides comprehensive visual diagnostics for Bayesian MCMC output:
 #'
-#' \strong{MCMC Diagnostics (\code{type = "mcmc"}):}
+#' \strong{MCMC Diagnostics (`type = "mcmc"`):}
 #'
 #' Each parameter gets a dedicated page with 4 panels:
 #' \itemize{
@@ -109,9 +109,9 @@
 #' }
 #'
 #' Available parameters: mu_1, mu_2, phi_1, phi_2, theta_01, theta_02, theta_03,
-#' W_1^{-1}, W_2^{-1}, W_3^{-1}
+#' W_1^-1, W_2^-1, W_3^-1
 #'
-#' \strong{Mixture Parameters (\code{type = "params"}):}
+#' \strong{Mixture Parameters (`type = "params"`):}
 #' \itemize{
 #'   \item Joint posterior of component means (mu_1 vs mu_2)
 #'   \item Marginal posteriors for means and precisions
@@ -119,29 +119,29 @@
 #'   \item Optional true parameter values overlay
 #' }
 #'
-#' \strong{Dynamic States (\code{type = "states"}):}
+#' \strong{Dynamic States (`type = "states"`):}
 #' \itemize{
 #'   \item Time-varying state trajectories with credible bands
 #'   \item Innovation sequences
 #'   \item State space representations
 #' }
 #'
-#' \strong{Mixture Weights (\code{type = "alpha"}):}
+#' \strong{Mixture Weights (`type = "alpha"`):}
 #' \itemize{
 #'   \item Page 1: alpha_t trajectory with credible bands and optional data/true values overlay
 #'   \item Page 2: Posterior probabilities of component membership (z_t) with optional true indicators
 #' }
 #'
-#' \strong{Acceptance Proportions} (\code{type = "acceptance"}):
+#' \strong{Acceptance Proportions} (`type = "acceptance"`):
 #' \itemize{
 #'   \item Metropolis-Hastings acceptance proportions over time
 #'   \item Min-Max range across MCMC iterations
-#'   \item Target acceptance proportion reference line (uses the \code{target_acceptance}
-#'     value specified in \code{mcmc_normal_mixture_localacceleration})
-#'   \item Only available if the model was run with \code{return_accept_prop = TRUE}
+#'   \item Target acceptance proportion reference line (uses the `target_acceptance`
+#'     value specified in `mcmc_normal_mixture_localacceleration`)
+#'   \item Only available if the model was run with `return_accept_prop = TRUE`
 #' }
 #'
-#' \strong{Complete Dashboard (\code{type = "all"}):}
+#' \strong{Complete Dashboard (`type = "all"`):}
 #'
 #' Generates up to 17 pages in total:
 #' \itemize{
@@ -156,27 +156,27 @@
 #' @section Target Acceptance Proportion:
 #'
 #' The acceptance proportion plot displays a reference line showing the target acceptance
-#' proportion that was specified when running \code{mcmc_normal_mixture_localacceleration}.
+#' proportion that was specified when running `mcmc_normal_mixture_localacceleration`.
 #' This allows visual assessment of whether the adaptive Metropolis-Hastings algorithm
 #' successfully achieved the desired acceptance proportion. The target value is automatically
 #' extracted from the model object and displayed in the plot legend.
 #'
 #' @section Controlling Data Display:
 #'
-#' The \code{overlay_data} parameter provides control over the display of observed
+#' The `overlay_data` parameter provides control over the display of observed
 #' data in mixture weight plots:
 #'
 #' \itemize{
-#'   \item When \code{overlay_data = TRUE} (default): The original data \code{y}
+#'   \item When `overlay_data = TRUE` (default): The original data `y`
 #'     is overlaid on the mixture weight plot, providing visual context for the
 #'     estimated component membership probabilities.
-#'   \item When \code{overlay_data = FALSE}: Only the estimated mixture weights
+#'   \item When `overlay_data = FALSE`: Only the estimated mixture weights
 #'     are shown, which can be clearer for presentations or when focusing solely
 #'     on the temporal pattern of mixture probabilities.
 #' }
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # =============================================================================
 #' # Example 1: Practical Data Analysis (No True Parameters Known)
 #' # =============================================================================
@@ -255,7 +255,7 @@
 #' plot(out_logit, type = "mcmc", which = 1:4)  # mu_1, mu_2, phi_1, phi_2
 #'
 #' # 4. Focus on dynamic state parameters
-#' plot(out_logit, type = "mcmc", which = 5:10)  # theta_01-03, W_1^{-1}-W_3^{-1}
+#' plot(out_logit, type = "mcmc", which = 5:10)  # theta_01-03, W_1^-1-W_3^-1
 #'
 #' # 5. Mixture parameter relationships (bivariate plots)
 #' #    Shows joint posterior of component means and precisions
@@ -283,7 +283,7 @@
 #' plot(out_logit, type = "alpha", ci_level = 0.90)  # 90% credible intervals
 #'
 #' # 12. Save all diagnostics to a multi-page PDF
-#' pdf("mixture_diagnostics.pdf", width = 10, height = 8)
+#' pdf(file.path(tempdir(), "mixture_diagnostics.pdf"), width = 10, height = 8)
 #' plot(out_logit, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 #' dev.off()
 #'

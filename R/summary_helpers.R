@@ -3,18 +3,20 @@
 #' @description Computes mean, SD, median, and credible intervals for a numeric vector.
 #'
 #' @param x Numeric vector
-#' @param probs Numeric vector of length 2 with credible interval probabilities
+#' @param ci_level Credible interval level; a single numeric value strictly
+#'   between 0 and 1.
 #'
 #' @return Data frame with summary statistics
 #' @keywords internal
 #' @noRd
-compute_summary_stats <- function(x, probs) {
+compute_summary_stats <- function(x, ci_level) {
+  h <- hpdi(x, ci_level)
   data.frame(
     Mean = mean(x),
     SD = sd(x),
     Median = median(x),
-    CI_Lower = quantile(x, probs[1]),
-    CI_Upper = quantile(x, probs[2]),
+    CI_Lower = h[["lower"]],
+    CI_Upper = h[["upper"]],
     row.names = NULL
   )
 }
@@ -22,30 +24,24 @@ compute_summary_stats <- function(x, probs) {
 
 #' Helper: Validate summary input
 #'
-#' @description Validates object class and probs argument for summary methods.
+#' @description Validates object class and ci_level argument for summary methods.
 #'
 #' @param object An object to validate
-#' @param probs Numeric vector of probabilities
+#' @param ci_level Credible interval level; a single numeric value strictly
+#'   between 0 and 1.
 #' @param expected_class Character string with expected class name
 #'
 #' @return Invisible NULL if validation passes, otherwise stops with error
 #' @keywords internal
 #' @noRd
-validate_summary_input <- function(object, probs, expected_class) {
+validate_summary_input <- function(object, ci_level, expected_class) {
   if (!inherits(object, expected_class)) {
     stop(sprintf("Object must be of class '%s'", expected_class))
   }
 
-  if (!is.numeric(probs) || any(probs < 0) || any(probs > 1)) {
-    stop("`probs` must be numeric values between 0 and 1")
-  }
-
-  if (length(probs) != 2) {
-    stop("`probs` must have exactly 2 elements for lower and upper bounds")
-  }
-
-  if (probs[1] >= probs[2]) {
-    stop("`probs[1]` must be less than `probs[2]`")
+  if (!is.numeric(ci_level) || length(ci_level) != 1L ||
+      ci_level <= 0 || ci_level >= 1) {
+    stop("`ci_level` must be a single numeric value between 0 and 1")
   }
 
   invisible(NULL)
@@ -58,19 +54,20 @@ validate_summary_input <- function(object, probs, expected_class) {
 #'   (mu_1, mu_2, phi_1, phi_2).
 #'
 #' @param object An object containing mixture parameters
-#' @param probs Numeric vector of length 2 with credible interval probabilities
+#' @param ci_level Credible interval level; a single numeric value strictly
+#'   between 0 and 1.
 #'
 #' @return Data frame with mixture parameter summaries
 #' @keywords internal
 #' @noRd
-format_mixture_params <- function(object, probs) {
+format_mixture_params <- function(object, ci_level) {
   data.frame(
     Parameter = c("mu_1", "mu_2", "phi_1", "phi_2"),
     rbind(
-      compute_summary_stats(object$mu_1, probs),
-      compute_summary_stats(object$mu_2, probs),
-      compute_summary_stats(object$prec_1, probs),
-      compute_summary_stats(object$prec_2, probs)
+      compute_summary_stats(object$mu_1, ci_level),
+      compute_summary_stats(object$mu_2, ci_level),
+      compute_summary_stats(object$prec_1, ci_level),
+      compute_summary_stats(object$prec_2, ci_level)
     )
   )
 }
@@ -82,19 +79,20 @@ format_mixture_params <- function(object, probs) {
 #'   Flexible to handle different polynomial orders (level, trend, acceleration).
 #'
 #' @param object An object containing state parameters
-#' @param probs Numeric vector of length 2 with credible interval probabilities
+#' @param ci_level Credible interval level; a single numeric value strictly
+#'   between 0 and 1.
 #' @param order Character string: "level", "trend", or "acceleration"
 #'
 #' @return Data frame with state parameter summaries
 #' @keywords internal
 #' @noRd
-format_state_params <- function(object, probs, order = c("level", "trend", "acceleration")) {
+format_state_params <- function(object, ci_level, order = c("level", "trend", "acceleration")) {
   order <- match.arg(order)
 
   # Start with level parameters (always present)
   params_list <- list(
-    theta_01 = compute_summary_stats(object$theta_01, probs),
-    prec_theta1 = compute_summary_stats(object$prec_theta1, probs)
+    theta_01 = compute_summary_stats(object$theta_01, ci_level),
+    prec_theta1 = compute_summary_stats(object$prec_theta1, ci_level)
   )
   param_names <- c("theta_01", "W_1^-1")
 
@@ -102,9 +100,9 @@ format_state_params <- function(object, probs, order = c("level", "trend", "acce
   if (order %in% c("trend", "acceleration")) {
     params_list <- c(
       list(theta_01 = params_list$theta_01),
-      list(theta_02 = compute_summary_stats(object$theta_02, probs)),
+      list(theta_02 = compute_summary_stats(object$theta_02, ci_level)),
       list(prec_theta1 = params_list$prec_theta1),
-      list(prec_theta2 = compute_summary_stats(object$prec_theta2, probs))
+      list(prec_theta2 = compute_summary_stats(object$prec_theta2, ci_level))
     )
     param_names <- c("theta_01", "theta_02", "W_1^-1", "W_2^-1")
   }
@@ -114,10 +112,10 @@ format_state_params <- function(object, probs, order = c("level", "trend", "acce
     params_list <- c(
       list(theta_01 = params_list$theta_01),
       list(theta_02 = params_list$theta_02),
-      list(theta_03 = compute_summary_stats(object$theta_03, probs)),
+      list(theta_03 = compute_summary_stats(object$theta_03, ci_level)),
       list(prec_theta1 = params_list$prec_theta1),
       list(prec_theta2 = params_list$prec_theta2),
-      list(prec_theta3 = compute_summary_stats(object$prec_theta3, probs))
+      list(prec_theta3 = compute_summary_stats(object$prec_theta3, ci_level))
     )
     param_names <- c("theta_01", "theta_02", "theta_03", "W_1^-1", "W_2^-1", "W_3^-1")
   }
@@ -135,18 +133,19 @@ format_state_params <- function(object, probs, order = c("level", "trend", "acce
 #'   (theta_01, W_1^-1, V^-1) in normal_locallevel model.
 #'
 #' @param object An object containing scalar parameters
-#' @param probs Numeric vector of length 2 with credible interval probabilities
+#' @param ci_level Credible interval level; a single numeric value strictly
+#'   between 0 and 1.
 #'
 #' @return Data frame with scalar parameter summaries
 #' @keywords internal
 #' @noRd
-format_scalar_params_locallevel <- function(object, probs) {
+format_scalar_params_locallevel <- function(object, ci_level) {
   data.frame(
     Parameter = c("theta_01", "W_1^-1", "V^-1"),
     rbind(
-      compute_summary_stats(object$theta_01, probs),
-      compute_summary_stats(object$prec_theta1, probs),
-      compute_summary_stats(object$prec_y, probs)
+      compute_summary_stats(object$theta_01, ci_level),
+      compute_summary_stats(object$prec_theta1, ci_level),
+      compute_summary_stats(object$prec_y, ci_level)
     )
   )
 }
@@ -158,21 +157,23 @@ format_scalar_params_locallevel <- function(object, probs) {
 #'   Can produce either simple (min/median/max) or detailed (with mean/SD/CI) summaries.
 #'
 #' @param matrix_param Matrix of parameter samples (n_chain × n_obs)
-#' @param probs Numeric vector of length 2 with credible interval probabilities
+#' @param ci_level Credible interval level; a single numeric value strictly
+#'   between 0 and 1.
 #' @param summary_type Character string: "simple" or "detailed"
 #'
 #' @return Data frame with time-varying parameter summaries
 #' @keywords internal
 #' @noRd
-format_timevarying_summary <- function(matrix_param, probs, summary_type = c("simple", "detailed")) {
+format_timevarying_summary <- function(matrix_param, ci_level, summary_type = c("simple", "detailed")) {
   summary_type <- match.arg(summary_type)
 
   # Compute statistics across time
   mean_time <- apply(matrix_param, 2, mean)
   sd_time <- apply(matrix_param, 2, sd)
   median_time <- apply(matrix_param, 2, median)
-  ci_lower_time <- apply(matrix_param, 2, quantile, probs = probs[1])
-  ci_upper_time <- apply(matrix_param, 2, quantile, probs = probs[2])
+  ci_mat <- hpdi(matrix_param, ci_level)
+  ci_lower_time <- ci_mat[, "lower"]
+  ci_upper_time <- ci_mat[, "upper"]
 
   if (summary_type == "simple") {
     # Simple version (for alpha in mixture models)
@@ -259,15 +260,16 @@ print_summary_header <- function(x) {
   cat("  Thinning:          ", x$thinning, "\n\n", sep = "")
 
   # Credible interval level
-  ci_level <- (x$probs[2] - x$probs[1]) * 100
-  cat("Credible Intervals: ", sprintf("%.1f", ci_level), "%\n\n", sep = "")
+  ci_level_pct <- x$ci_level * 100
+  cat("Credible Intervals (HPDI): ", sprintf("%.1f", ci_level_pct), "%\n\n", sep = "")
 
   # Explanation of statistics
   cat("Statistics Legend:\n")
   cat("  Mean   = Posterior mean (minimizes squared error)\n")
   cat("  Median = Posterior median (minimizes absolute error, shown in print())\n")
   cat("  SD     = Posterior standard deviation\n")
-  cat("  CI     = Credible interval at specified level\n\n")
+  cat("  CI     = HPD interval (shortest interval containing the specified\n")
+  cat("           probability mass of the posterior)\n\n")
 }
 
 

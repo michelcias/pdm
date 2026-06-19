@@ -22,7 +22,7 @@ Invisibly returns the input object \code{x}.
 Prints comprehensive posterior statistics in a readable format.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 500
 set.seed(123)
@@ -52,5 +52,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.probit_bernoulli_locallevel}},
-  \code{\link{print.probit_bernoulli_locallevel}}
+\code{\link{print.probit_bernoulli_locallevel}}
 }

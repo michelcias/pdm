@@ -3,57 +3,12 @@
 
 #include <Rinternals.h>
 
-/**
- * @brief Ensure that a numeric vector matches the expected length.
- *
- * @details This lightweight validation helper checks that wrapper inputs share
- *          consistent lengths before delegating to the core numerical
- *          routines.
- *
- * @param vec        Candidate vector to validate.
- * @param expected   Required length for @p vec.
- * @param arg        Name of the argument being checked, used for error messages.
- * @param reference  Name of the reference argument establishing the length,
- *                   used for error reporting.
- *
- * @return Nothing. Raises an R error when the supplied length is invalid.
- */
-static void ensure_length(SEXP        vec,
-                          int         expected,
-                          const char *arg,
-                          const char *reference);
-
-/**
- * @brief Coerce an object to integer and return the first scalar entry.
- *
- * @details Wrappers rely on this helper to normalise scalar integer
- *          arguments, ensuring consistent type handling across the module.
- *
- * @param x    R object expected to hold an integer scalar.
- * @param arg  Name of the argument being coerced, used for diagnostic messages.
- *
- * @return The first integer extracted from @p x (defaults to 0 when NULL).
- *
- * @note Accepts NULL input (returns 0 for NULL inputs).
- */
-static int require_int_scalar(SEXP        x,
-                              const char *arg);
-
-/**
- * @brief Coerce an object to double and return the first scalar entry.
- *
- * @details Wrappers use this helper to promote scalar numeric arguments to
- *          double precision and to provide uniform error reporting.
- *
- * @param x    R object expected to hold a numeric scalar.
- * @param arg  Name of the argument being coerced, used for diagnostic messages.
- *
- * @return The first double extracted from @p x (defaults to 0.0 when NULL).
- *
- * @note Accepts NULL input (returns 0.0 for NULL inputs).
- */
-static double require_real_scalar(SEXP        x,
-                                  const char *arg);
+/* Note: the scalar/length validation helpers (ensure_length,
+ * require_int_scalar, require_real_scalar) are file-local helpers defined
+ * with internal linkage in test_helpers.c. They are intentionally NOT
+ * declared here: a `static` declaration in this shared header would create
+ * an unused, undefined static symbol in every translation unit that
+ * includes it (e.g. init.c), triggering -Wunused-function warnings. */
 
 /**
  * @brief Evaluate the inverse-logit transform for a scalar value.

@@ -74,19 +74,19 @@
 #' @param prior_prec_y_shape Numeric > 0, shape parameter of the Gamma prior for the data precision \eqn{1/V}.
 #' @param prior_prec_y_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.
 #' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
-#' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.
+#' @param bar_width Integer in \[10, 120\], width of the progress bar when `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
-#'   Default is \code{NULL}, which does not set the seed.
+#'   Default is `NULL`, which does not set the seed.
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
-#'   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
-#'   \item{`theta_01`}{Numeric vector of length `n_chain` for the initial level \eqn{\theta_{0,1}}.}
-#'   \item{`theta_02`}{Numeric vector of length `n_chain` for the initial trend \eqn{\theta_{0,2}}.}
-#'   \item{`prec_theta1`}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
-#'   \item{`prec_theta2`}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
-#'   \item{`prec_y`}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
+#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
+#'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
+#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` for the initial level \eqn{\theta_{0,1}}.}
+#'   \item{\code{theta_02}}{Numeric vector of length `n_chain` for the initial trend \eqn{\theta_{0,2}}.}
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
+#'   \item{\code{prec_theta2}}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
+#'   \item{\code{prec_y}}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
 #' }
 #'
 #' @examples
@@ -151,7 +151,7 @@
 #' ## Posterior analysis and visualization
 #' # The following plots show how to analyze the posterior distributions.
 #' # Point estimates are based on the median of posterior samples.
-#' \dontrun{
+#' \donttest{
 #'   # --- 0. Plot the simulated data ---
 #'   plot.ts(
 #'     y,

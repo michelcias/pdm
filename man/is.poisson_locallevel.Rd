@@ -11,13 +11,13 @@ is.poisson_locallevel(x)
 }
 \value{
 Logical value:  \code{TRUE} if \code{x} inherits from
-  \code{poisson_locallevel}, \code{FALSE} otherwise.
+\code{poisson_locallevel}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{poisson_locallevel}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ? mcmc_poisson_locallevel)
 set.seed(123)
 n <- 500

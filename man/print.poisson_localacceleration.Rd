@@ -18,14 +18,14 @@ Invisibly returns the input object \code{x}.
 }
 \description{
 Prints a concise summary showing posterior medians.
-  Use \code{summary()} for comprehensive statistics when available.
+Use \code{summary()} for comprehensive statistics when available.
 }
 \details{
 This method provides a quick overview using posterior medians,
-  which are robust to outliers and skewness in the posterior distribution.
+which are robust to outliers and skewness in the posterior distribution.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ?mcmc_poisson_localacceleration)
 set.seed(123)
 n <- 500

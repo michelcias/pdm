@@ -21,7 +21,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
   u1 <- rnorm(n, sd = sqrt(1 / prec_theta1_true))
   theta_1_true <- cumsum(c(theta_01_true, u1))[-1]
   alpha_true <- plogis(theta_1_true)
-  y <- rbinom(n, size = n_trials, prob = alpha_true)
+  y <- as.numeric(rbinom(n, size = n_trials, prob = alpha_true))
 
   # --- 2. R Wrapper for the Test Sampler ---
   test_sampler <- function(y, n_trials, burnin, n_chain,
@@ -33,7 +33,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
                            target_acceptance = 0.44) {
 
     .Call("_pdm_test_mcmc_binomial_locallevel_fixed_params",
-          y, n_trials, burnin, 1L, n_chain,
+          y, n_trials, as.integer(burnin), 1L, as.integer(n_chain),
           theta_1_true, theta_01_true, prec_theta1_true,
           prior_theta01_mean, prior_theta01_prec,
           prior_prec1_shape, prior_prec1_rate,
@@ -75,11 +75,17 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
                              theta_01_true = theta_01_true,
                              prec_theta1_true = prec_theta1_true)
 
-  # Check if the posterior mean of theta_1 is close to the true value
-  posterior_mean_C <- colMeans(mcmc_out_C$theta_1)
-  # Check the average absolute difference
-  mean_abs_diff <- mean(abs(posterior_mean_C - theta_1_true))
-  expect_true(mean_abs_diff < 0.1,
-              info = "Posterior mean for theta_1 trajectory should be close to true trajectory.")
+  # Validate theta_1 recovery via credible-interval coverage. Pointwise
+  # closeness of the posterior mean to the truth is not an appropriate target:
+  # it measures how informative the data are, not whether the sampler is
+  # correct. A correct Bayesian sampler should instead have ~95% of the true
+  # trajectory points fall inside their 95% credible intervals, regardless of
+  # how informative each observation is (weak data simply widens the
+  # intervals). The 0.8 floor (below the nominal 0.95) absorbs Monte Carlo
+  # noise; a coverage well under 0.8 would signal genuine sampler bias.
+  ci_C <- apply(mcmc_out_C$theta_1, 2, quantile, probs = c(0.025, 0.975))
+  coverage_C <- mean(theta_1_true >= ci_C[1, ] & theta_1_true <= ci_C[2, ])
+  expect_gt(coverage_C, 0.8,
+            label = "95% credible interval coverage of the true theta_1 trajectory")
 })
 

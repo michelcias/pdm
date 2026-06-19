@@ -132,12 +132,11 @@ summarise_state <- function(state_matrix, ci = TRUE, ci_level = 0.95) {
   # Compute median
   med <- apply(state_matrix, 2, stats::median)
 
-  # Compute credible intervals if requested
+  # Compute credible intervals if requested (Highest Posterior Density)
   if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    lower <- apply(state_matrix, 2, stats::quantile, probs = ci_lower_prob)
-    upper <- apply(state_matrix, 2, stats::quantile, probs = ci_upper_prob)
+    ci_mat <- hpdi(state_matrix, ci_level)
+    lower <- ci_mat[, "lower"]
+    upper <- ci_mat[, "upper"]
   } else {
     lower <- NULL
     upper <- NULL
@@ -157,7 +156,7 @@ summarise_state <- function(state_matrix, ci = TRUE, ci_level = 0.95) {
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #'
 #' @return A named list where each element is the output of
-#'   \code{summarise_state()} for the corresponding state.
+#'   `summarise_state()` for the corresponding state.
 #'
 #' @keywords internal
 #' @noRd

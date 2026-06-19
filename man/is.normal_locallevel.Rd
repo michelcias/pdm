@@ -11,13 +11,13 @@ is.normal_locallevel(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{normal_locallevel}, \code{FALSE} otherwise.
+\code{normal_locallevel}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{normal_locallevel}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ?mcmc_normal_locallevel)
 n <- 1000
 

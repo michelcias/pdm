@@ -11,13 +11,13 @@ is.probit_bernoulli_localtrend(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{probit_bernoulli_localtrend}, \code{FALSE} otherwise.
+\code{probit_bernoulli_localtrend}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{probit_bernoulli_localtrend}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ?mcmc_probit_bernoulli_localtrend)
 n <- 500
 

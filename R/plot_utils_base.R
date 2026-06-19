@@ -22,16 +22,16 @@ NULL
 #'
 #' @param param_samples Numeric vector of MCMC samples for the parameter.
 #' @param param_name Expression or quoted expression for the parameter name
-#'   (used in plot title), e.g., \code{quote(mu[1])}.
-#' @param param_label Expression for axis labels, e.g., \code{expression(mu[1])}.
+#'   (used in plot title), e.g., `quote(mu[1])`.
+#' @param param_label Expression for axis labels, e.g., `expression(mu[1])`.
 #' @param true_value Numeric or NULL. If provided, adds a reference line at
 #'   the true parameter value (useful for simulation studies).
 #' @param color Character; color for the main diagnostic lines. Default is
 #'   "steelblue". This should match the parameter type:
 #'   \itemize{
-#'     \item "steelblue" for level-related parameters (theta_1, theta_01, W_1^{-1})
-#'     \item "firebrick" for trend-related parameters (theta_2, theta_02, W_2^{-1})
-#'     \item "darkgreen" for acceleration-related parameters (theta_3, theta_03, W_3^{-1})
+#'     \item "steelblue" for level-related parameters (theta_1, theta_01, W_1^-1)
+#'     \item "firebrick" for trend-related parameters (theta_2, theta_02, W_2^-1)
+#'     \item "darkgreen" for acceleration-related parameters (theta_3, theta_03, W_3^-1)
 #'     \item "gray30" or other neutral colors for observation/mixture parameters
 #'   }
 #' @param ... Additional arguments (currently unused, for future extensibility).
@@ -295,7 +295,7 @@ plot_param_diagnostics_base <- function(param_samples,
 #'   }
 #'
 #'   \strong{True Value Display:}
-#'   When \code{true_values} is provided, true parameter values are marked
+#'   When `true_values` is provided, true parameter values are marked
 #'   with red "X" symbols (pch = 4) on each panel. This allows visual assessment
 #'   of whether the posterior distribution correctly covers the true values,
 #'   which is essential for validating model performance in simulation studies.
@@ -319,7 +319,7 @@ plot_param_diagnostics_base <- function(param_samples,
 #'   }
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Example 1: Basic usage without true values
 #' plot_mixture_params_base(
 #'   mu_1 = mcmc_output$mu_1,
@@ -670,8 +670,8 @@ plot_mixture_params_base <- function(mu_1,
 #'   \strong{Y-axis scaling:}
 #'   \itemize{
 #'     \item For probability models (binomial/Bernoulli/mixture weights):
-#'       Set \code{ylim_auto = FALSE} to use fixed [0, 1.1] range
-#'     \item For rate models (Poisson): Set \code{ylim_auto = TRUE} to
+#'       Set `ylim_auto = FALSE` to use fixed \[0, 1.1\] range
+#'     \item For rate models (Poisson): Set `ylim_auto = TRUE` to
 #'       compute range dynamically from data
 #'   }
 #'
@@ -721,10 +721,9 @@ plot_alpha_trajectory_base <- function(alpha,
   alpha_median <- apply(alpha, 2, stats::median)
 
   if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
-    alpha_lower <- apply(alpha, 2, stats:: quantile, probs = ci_lower_prob)
-    alpha_upper <- apply(alpha, 2, stats::quantile, probs = ci_upper_prob)
+    ci_mat <- hpdi(alpha, ci_level)
+    alpha_lower <- ci_mat[, "lower"]
+    alpha_upper <- ci_mat[, "upper"]
     ci_label <- paste0(round(ci_level * 100), "% CI")
   }
 
@@ -943,7 +942,7 @@ plot_alpha_trajectory_base <- function(alpha,
 #'
 #'   \strong{Interpretation:}
 #'   \itemize{
-#'     \item \strong{Orange bars} (P(z_t = 1) ≤ 0.5): Observation more likely
+#'     \item \strong{Orange bars} (P(z_t = 1) <= 0.5): Observation more likely
 #'       from Component 1 (lower mean component in the constraint mu_1 < mu_2)
 #'     \item \strong{Violet bars} (P(z_t = 1) > 0.5): Observation more likely
 #'       from Component 2 (higher mean component)
@@ -1016,7 +1015,7 @@ plot_component_probabilities_base <- function(z,
   # ===========================================================================
 
   # Create bar plot with threshold-based coloring using component colors
-  # color_below (darkorange) = Component 1 (z_t = 0, or P(z_t = 1) ≤ 0.5)
+  # color_below (darkorange) = Component 1 (z_t = 0, or P(z_t = 1) <= 0.5)
   # color_above (darkviolet) = Component 2 (z_t = 1, or P(z_t = 1) > 0.5)
   plot(z_prob,
        type = "h",
@@ -1066,7 +1065,7 @@ plot_component_probabilities_base <- function(z,
   # Build legend with component-based interpretation
   legend_items <- c(
     paste0("p(z = 1 | data) > ", threshold, "   "),
-    paste0("p(z = 1 | data) ≤ ", threshold, "   "),
+    paste0("p(z = 1 | data) \u2264 ", threshold, "   "),
     "Threshold"
   )
   legend_cols <- c(color_above, color_below, "darkgray")
@@ -1129,14 +1128,14 @@ plot_component_probabilities_base <- function(z,
 #'
 #' @details This function extracts alpha samples and observed data from
 #'   binomial model objects and delegates to the generic
-#'   \code{plot_alpha_trajectory_base()} function. It automatically computes
+#'   `plot_alpha_trajectory_base()` function. It automatically computes
 #'   observed proportions from y/n_trials.
 #'
 #'   Used by:
 #'   \itemize{
-#'     \item \code{plot.binomial_locallevel}
-#'     \item \code{plot.binomial_localtrend}
-#'     \item \code{plot.binomial_localacceleration}
+#'     \item `plot.binomial_locallevel`
+#'     \item `plot.binomial_localtrend`
+#'     \item `plot.binomial_localacceleration`
 #'   }
 #'
 #' @keywords internal
@@ -1292,9 +1291,9 @@ plot_acceptance_proportions_base <- function(accept_prop,
 #'
 #'   Used by:
 #'   \itemize{
-#'     \item \code{plot.probit_bernoulli_locallevel}
-#'     \item \code{plot.probit_bernoulli_localtrend}
-#'     \item \code{plot.probit_bernoulli_localacceleration}
+#'     \item `plot.probit_bernoulli_locallevel`
+#'     \item `plot.probit_bernoulli_localtrend`
+#'     \item `plot.probit_bernoulli_localacceleration`
 #'   }
 #'
 #' @keywords internal
@@ -1363,15 +1362,15 @@ plot_bernoulli_alpha_base <- function(x,
 #'
 #' @details This function extracts alpha samples and observed data from
 #'   Poisson model objects and delegates to the generic
-#'   \code{plot_alpha_trajectory_base()} function. Unlike binomial models,
+#'   `plot_alpha_trajectory_base()` function. Unlike binomial models,
 #'   observed counts are plotted directly without proportion calculations,
 #'   and the y-axis is automatically scaled to accommodate count data.
 #'
 #'   Used by:
 #'   \itemize{
-#'     \item \code{plot.poisson_locallevel}
-#'     \item \code{plot.poisson_localtrend}
-#'     \item \code{plot.poisson_localacceleration}
+#'     \item `plot.poisson_locallevel`
+#'     \item `plot.poisson_localtrend`
+#'     \item `plot.poisson_localacceleration`
 #'   }
 #'
 #' @keywords internal
@@ -1435,7 +1434,7 @@ plot_poisson_alpha_base <- function(x,
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param overlay_data Logical; whether to overlay observed data on alpha plot.
 #'   Default is TRUE. If TRUE and observed data is available, the data is
-#'   rescaled to [0, 1] and plotted on Page 1 for visual context.
+#'   rescaled to \[0, 1\] and plotted on Page 1 for visual context.
 #' @param obs_data Numeric vector of observed data values (length n_obs).
 #'   If NULL, attempts to extract from attributes. If not available and
 #'   overlay_data = TRUE, a warning is issued. Data is automatically rescaled
@@ -1451,17 +1450,17 @@ plot_poisson_alpha_base <- function(x,
 #' @details
 #'   This function delegates to two specialized functions:
 #'   \itemize{
-#'     \item \code{plot_alpha_trajectory_base()}: Page 1 (alpha_t trajectory)
-#'     \item \code{plot_component_probabilities_base()}: Page 2 (z_t probabilities)
+#'     \item `plot_alpha_trajectory_base()`: Page 1 (alpha_t trajectory)
+#'     \item `plot_component_probabilities_base()`: Page 2 (z_t probabilities)
 #'   }
 #'
 #'   \strong{Data Overlay and Rescaling (Page 1):}
-#'   When \code{overlay_data = TRUE} and observed data is available, the original
-#'   data is rescaled to the unit interval [0, 1] using min-max normalization:
+#'   When `overlay_data = TRUE` and observed data is available, the original
+#'   data is rescaled to the unit interval \[0, 1\] using min-max normalization:
 #'   \deqn{y_{scaled} = \frac{y - \min(y)}{\max(y) - \min(y)}}
 #'
 #'   This rescaling improves visibility by mapping the data to the same scale
-#'   as the mixture weights (alpha_t ∈ [0, 1]). The rescaled data helps identify
+#'   as the mixture weights (alpha_t in \[0, 1\]). The rescaled data helps identify
 #'   temporal patterns and potential relationships between observed values and
 #'   component membership probabilities.
 #'
@@ -1472,7 +1471,7 @@ plot_poisson_alpha_base <- function(x,
 #'   \strong{Color Scheme for Component Probabilities (Page 2):}
 #'   Page 2 uses the mixture component colors to visualize membership probabilities:
 #'   \itemize{
-#'     \item \strong{darkorange} (Component 1): P(z_t = 1) ≤ 0.5 (more likely Component 1)
+#'     \item \strong{darkorange} (Component 1): P(z_t = 1) <= 0.5 (more likely Component 1)
 #'     \item \strong{darkviolet} (Component 2): P(z_t = 1) > 0.5 (more likely Component 2)
 #'   }
 #'
@@ -1632,7 +1631,7 @@ validate_ci_level <- function(ci_level) {
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param overlay_data Logical; whether to overlay observed data on mixture
 #'   weight plots. Default is TRUE. If TRUE and data is available, observed
-#'   values are rescaled to [0, 1] and plotted for visual context.
+#'   values are rescaled to \[0, 1\] and plotted for visual context.
 #' @param true_values Named list containing true values (or NULL).
 #'   Expected elements depend on model type and order. For mixture models:
 #'   \itemize{
@@ -1817,8 +1816,6 @@ plot_dynamic_states_generic_base <- function(x,
 
   # Prepare credible interval parameters
   if (ci) {
-    ci_lower_prob <- (1 - ci_level) / 2
-    ci_upper_prob <- 1 - ci_lower_prob
     ci_label <- paste0(round(ci_level * 100), "% CI")
   }
 

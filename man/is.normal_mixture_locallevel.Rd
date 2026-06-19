@@ -11,13 +11,13 @@ is.normal_mixture_locallevel(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{normal_mixture_locallevel}, \code{FALSE} otherwise.
+\code{normal_mixture_locallevel}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{normal_mixture_locallevel}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 400  # Number of observations to simulate
 

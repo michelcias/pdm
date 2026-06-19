@@ -18,25 +18,25 @@ Invisibly returns the input object \code{x}.
 }
 \description{
 Prints a concise summary showing posterior medians.
-  Use \code{summary()} for means, standard deviations, and credible intervals.
+Use \code{summary()} for means, standard deviations, and credible intervals.
 }
 \details{
 This method provides a quick overview using posterior medians,
-  which are robust to outliers and skewness in the posterior distribution.
+which are robust to outliers and skewness in the posterior distribution.
 
-  For comprehensive statistics including means, standard deviations, and
-  credible intervals, use \code{summary(x)}.
+For comprehensive statistics including means, standard deviations, and
+credible intervals, use \code{summary(x)}.
 
-  \strong{Why medians?}
-  \itemize{
-    \item Robust to outliers and long tails
-    \item More representative for skewed posteriors (e.g., precision parameters)
-    \item Minimizes absolute error loss
-    \item Less sensitive to incomplete MCMC convergence
-  }
+\strong{Why medians?}
+\itemize{
+\item Robust to outliers and long tails
+\item More representative for skewed posteriors (e.g., precision parameters)
+\item Minimizes absolute error loss
+\item Less sensitive to incomplete MCMC convergence
+}
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 400  # Number of observations to simulate
 

@@ -11,13 +11,13 @@ is.binomial_localtrend(x)
 }
 \value{
 Logical value: \code{TRUE} if \code{x} inherits from
-  \code{binomial_localtrend}, \code{FALSE} otherwise.
+\code{binomial_localtrend}, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is of class \code{binomial_localtrend}.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulate data (same setup as ?mcmc_binomial_localtrend)
 set.seed(123)
 n <- 500

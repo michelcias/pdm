@@ -20,17 +20,17 @@
 
 \item{type}{Character string specifying the type of plot. One of:
 \describe{
-  \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
-  \item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
-  \item{\code{"states"}}{Dynamic states (theta_1 trajectory)}
+\item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
+\item{\code{"mcmc"}}{MCMC convergence diagnostics (trace plots, ACF, running means)}
+\item{\code{"states"}}{Dynamic states (theta_1 trajectory)}
 }}
 
 \item{which}{Integer vector specifying which diagnostic plots to display.
 For \code{type = "mcmc"}:
 \describe{
-  \item{1}{phi_y (observation precision)}
-  \item{2}{theta_01 (initial level)}
-  \item{3}{W_1^{-1} (level innovation precision)}
+\item{1}{phi_y (observation precision)}
+\item{2}{theta_01 (initial level)}
+\item{3}{W_1^-1 (level innovation precision)}
 }
 For \code{type = "states"}: indices of subplots.
 If \code{NULL} (default), all available plots are shown.}
@@ -46,30 +46,30 @@ support them. Default is \code{TRUE}.}
 (between 0 and 1). Default is \code{0.95}.}
 
 \item{true_values}{Named list containing true parameter values and/or state trajectories
-  for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
+for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
 
-  \strong{Important:} All parameter names in \code{true_values} must match exactly
-  the component names returned by \code{\link{mcmc_normal_locallevel}}.
+\strong{Important:} All parameter names in \code{true_values} must match exactly
+the component names returned by \code{\link{mcmc_normal_locallevel}}.
 
-  Accepted elements:
-  \describe{
-    \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
-      \itemize{
-        \item \code{prec_y}: Observation precision (phi_y)
-        \item \code{theta_01}: Initial level state
-        \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
-      }
-    }
-    \item{\strong{State trajectories} (for \code{type = "states"}):}{
-      \itemize{
-        \item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
-      }
-    }
-  }
+Accepted elements:
+\describe{
+\item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
+\itemize{
+\item \code{prec_y}: Observation precision (phi_y)
+\item \code{theta_01}: Initial level state
+\item \code{prec_theta1}: Level innovation precision (W_1^-1)
+}
+}
+\item{\strong{State trajectories} (for \code{type = "states"}):}{
+\itemize{
+\item \code{theta_1}: Numeric vector of length \code{n_obs} with true level state values
+}
+}
+}
 
-  You can provide any subset of these elements. For example, to compare only
-  the initial state:
-  \preformatted{
+You can provide any subset of these elements. For example, to compare only
+the initial state:
+\preformatted{
   true_values = list(
     theta_01 = 0
   )
@@ -82,7 +82,7 @@ Invisibly returns the input object \code{x}.
 }
 \description{
 Produces diagnostic plots for MCMC output from Gaussian
-  local level models.
+local level models.
 }
 \details{
 This function provides comprehensive visual diagnostics for Bayesian MCMC output:
@@ -91,30 +91,30 @@ This function provides comprehensive visual diagnostics for Bayesian MCMC output
 
 Each parameter gets a dedicated page with 4 panels:
 \itemize{
-  \item \strong{Trace Plot:} Shows MCMC chain trajectory to assess mixing
-  \item \strong{Autocorrelation:} ACF plot to detect serial correlation
-  \item \strong{Posterior Density:} Marginal posterior distribution
-  \item \strong{Running Mean:} Cumulative mean to assess convergence
+\item \strong{Trace Plot:} Shows MCMC chain trajectory to assess mixing
+\item \strong{Autocorrelation:} ACF plot to detect serial correlation
+\item \strong{Posterior Density:} Marginal posterior distribution
+\item \strong{Running Mean:} Cumulative mean to assess convergence
 }
 
-Available parameters: phi_y, theta_01, W_1^{-1}
+Available parameters: phi_y, theta_01, W_1^-1
 
 \strong{Dynamic States} (\code{type = "states"}):
 \itemize{
-  \item Time-varying state trajectory with credible bands
-  \item Innovation sequence
+\item Time-varying state trajectory with credible bands
+\item Innovation sequence
 }
 
 \strong{Complete Dashboard} (\code{type = "all"}):
 
 Generates 4 pages in total:
 \itemize{
-  \item Pages 1-3: Individual parameter diagnostics (4 panels each)
-  \item Page 4: Dynamic state trajectory and diagnostics
+\item Pages 1-3: Individual parameter diagnostics (4 panels each)
+\item Page 4: Dynamic state trajectory and diagnostics
 }
 }
 \examples{
-\dontrun{
+\donttest{
 # =============================================================================
 # Example 1: Practical Data Analysis (No True Parameters Known)
 # =============================================================================
@@ -167,7 +167,7 @@ plot(out, type = "mcmc", which = 1)  # phi_y
 plot(out, type = "mcmc", which = 2)  # theta_01
 
 # 5. Focus on innovation precision parameter
-plot(out, type = "mcmc", which = 3)  # W_1^{-1}
+plot(out, type = "mcmc", which = 3)  # W_1^-1
 
 # 6. Dynamic state trajectory (theta_1)
 #    Shows level component over time
@@ -180,7 +180,7 @@ plot(out, type = "states", ci = FALSE)
 plot(out, type = "states", ci_level = 0.90)  # 90\% credible intervals
 
 # 9. Save all diagnostics to a multi-page PDF
-pdf("model_diagnostics.pdf", width = 10, height = 8)
+pdf(file.path(tempdir(), "model_diagnostics.pdf"), width = 10, height = 8)
 plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 dev.off()
 
@@ -310,5 +310,5 @@ plot(out, type = "states",
 }
 \seealso{
 \code{\link{mcmc_normal_locallevel}},
-  \code{\link{summary.normal_locallevel}}
+\code{\link{summary.normal_locallevel}}
 }

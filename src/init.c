@@ -63,6 +63,7 @@
 #include "mcmc_poisson_localacceleration.h"
 #include "test_helpers.h"
 #include "utils.h"
+#include "hpdi.h"
 
 //==============================================================================
 // METHOD REGISTRATION TABLE
@@ -212,6 +213,11 @@ static const R_CallMethodDef CallEntries[] = {
   //============================================================================
   // TEST HELPER FUNCTIONS
   //============================================================================
+
+  //============================================================================
+  // POSTERIOR SUMMARY UTILITIES
+  //============================================================================
+  {"_pdm_C_hpdi",                            (DL_FUNC) &C_hpdi,                            2},
 
   // --- Utility and Basic Functions ---
   {"_pdm_test_ilogit",                       (DL_FUNC) &test_ilogit,                       1},

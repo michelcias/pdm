@@ -572,7 +572,7 @@ plot_component_probabilities_ggplot <- function(z,
       values = c("TRUE" = color_above, "FALSE" = color_below),
       breaks = c("FALSE", "TRUE"),
       labels = c(
-        paste0("P(z_t = 1) ≤ ", threshold),
+        paste0("P(z_t = 1) \u2264 ", threshold),
         paste0("P(z_t = 1) > ", threshold)
       )
     ) +

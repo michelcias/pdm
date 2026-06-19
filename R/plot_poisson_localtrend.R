@@ -3,7 +3,7 @@
 #' @description Produces diagnostic plots for MCMC output from Poisson
 #'   local trend models with log link.
 #'
-#' @param x An object of class \code{poisson_localtrend}.
+#' @param x An object of class `poisson_localtrend`.
 #' @param type Character string specifying the type of plot.  One of:
 #'   \describe{
 #'     \item{\code{"all"}}{Complete dashboard with all diagnostic plots (default)}
@@ -13,61 +13,61 @@
 #'     \item{\code{"acceptance"}}{Metropolis-Hastings acceptance proportions (if available)}
 #'   }
 #' @param which Integer vector specifying which diagnostic plots to display.
-#'   For \code{type = "mcmc"}:
+#'   For `type = "mcmc"`:
 #'   \describe{
 #'     \item{1}{theta_01 (initial level)}
 #'     \item{2}{theta_02 (initial trend)}
-#'     \item{3}{W_1^{-1} (level innovation precision)}
-#'     \item{4}{W_2^{-1} (trend innovation precision)}
+#'     \item{3}{W_1^-1 (level innovation precision)}
+#'     \item{4}{W_2^-1 (trend innovation precision)}
 #'   }
-#'   For \code{type = "states"}:  indices of subplots.
-#'   For \code{type = "alpha"} or \code{type = "acceptance"}: not used.
-#'   If \code{NULL} (default), all available plots are shown.
-#' @param ask Logical; if \code{TRUE}, the user is asked before each plot when
-#'   \code{type = "all"}. Default is \code{interactive()} when \code{type = "all"},
-#'   \code{FALSE} otherwise.
+#'   For `type = "states"`:  indices of subplots.
+#'   For `type = "alpha"` or `type = "acceptance"`: not used.
+#'   If `NULL` (default), all available plots are shown.
+#' @param ask Logical; if `TRUE`, the user is asked before each plot when
+#'   `type = "all"`. Default is `interactive()` when `type = "all"`,
+#'   `FALSE` otherwise.
 #' @param ci Logical; whether to display credible intervals in plots that
-#'   support them. Default is \code{TRUE}.
+#'   support them. Default is `TRUE`.
 #' @param ci_level Numeric; Bayesian confidence level for credible intervals
-#'   (between 0 and 1). Default is \code{0.95}.
+#'   (between 0 and 1). Default is `0.95`.
 #' @param show_obs Logical; whether to display observed counts on the
-#'   Poisson rates plot (\code{type = "alpha"}). When \code{TRUE}
+#'   Poisson rates plot (`type = "alpha"`). When `TRUE`
 #'   (default), observed counts \eqn{y_t} are overlaid as
-#'   red points on the alpha_t trajectory. Set to \code{FALSE} to show only
+#'   red points on the alpha_t trajectory. Set to `FALSE` to show only
 #'   the estimated trajectory without observations.  This parameter only
-#'   affects \code{type = "alpha"} and \code{type = "all"}.
+#'   affects `type = "alpha"` and `type = "all"`.
 #' @param true_values Named list containing true parameter values and/or state trajectories
-#'   for comparison with MCMC estimates. If \code{NULL} (default), no true values are displayed.
+#'   for comparison with MCMC estimates. If `NULL` (default), no true values are displayed.
 #'
-#'   \strong{Important:} All parameter names in \code{true_values} must match exactly
+#'   \strong{Important:} All parameter names in `true_values` must match exactly
 #'   the component names returned by \code{\link{mcmc_poisson_localtrend}}.
 #'
 #'   Accepted elements:
 #'   \describe{
-#'     \item{\strong{Scalar parameters} (for \code{type = "mcmc"}):}{
+#'     \item{\strong{Scalar parameters} (for `type = "mcmc"`):}{
 #'       \itemize{
-#'         \item \code{theta_01}: Initial level state
-#'         \item \code{theta_02}: Initial trend state
-#'         \item \code{prec_theta1}: Level innovation precision (W_1^{-1})
-#'         \item \code{prec_theta2}: Trend innovation precision (W_2^{-1})
+#'         \item `theta_01`: Initial level state
+#'         \item `theta_02`: Initial trend state
+#'         \item `prec_theta1`: Level innovation precision (W_1^-1)
+#'         \item `prec_theta2`: Trend innovation precision (W_2^-1)
 #'       }
 #'     }
-#'     \item{\strong{State trajectories} (for \code{type = "states"}):}{
+#'     \item{\strong{State trajectories} (for `type = "states"`):}{
 #'       \itemize{
-#'         \item \code{theta_1}:  Numeric vector of length \code{n_obs} with true level state values
-#'         \item \code{theta_2}: Numeric vector of length \code{n_obs} with true trend state values
+#'         \item `theta_1`:  Numeric vector of length `n_obs` with true level state values
+#'         \item `theta_2`: Numeric vector of length `n_obs` with true trend state values
 #'       }
 #'     }
-#'     \item{\strong{Poisson rates} (for \code{type = "alpha"}):}{
+#'     \item{\strong{Poisson rates} (for `type = "alpha"`):}{
 #'       \itemize{
-#'         \item \code{alpha}:  Numeric vector of length \code{n_obs} with true alpha_t rates
+#'         \item `alpha`:  Numeric vector of length `n_obs` with true alpha_t rates
 #'       }
 #'     }
 #'   }
 #'
-#'   \strong{Note on state trajectories:} If you only have the true \code{alpha},
-#'   you can obtain \code{theta_1} using \code{log(alpha)}. However, \code{theta_2}
-#'   (trend) cannot be recovered from \code{alpha} alone and must come from your
+#'   \strong{Note on state trajectories:} If you only have the true `alpha`,
+#'   you can obtain `theta_1` using `log(alpha)`. However, `theta_2`
+#'   (trend) cannot be recovered from `alpha` alone and must come from your
 #'   simulation data.
 #'
 #'   You can provide any subset of these elements.  For example, to compare only
@@ -81,12 +81,12 @@
 #'   }
 #' @param ... Additional arguments passed to plotting functions.
 #'
-#' @return Invisibly returns the input object \code{x}.
+#' @return Invisibly returns the input object `x`.
 #'
 #' @details
 #' This function provides comprehensive visual diagnostics for Bayesian MCMC output:
 #'
-#' \strong{MCMC Diagnostics} (\code{type = "mcmc"}):
+#' \strong{MCMC Diagnostics} (`type = "mcmc"`):
 #'
 #' Each parameter gets a dedicated page with 4 panels:
 #' \itemize{
@@ -96,31 +96,31 @@
 #'   \item \strong{Running Mean:} Cumulative mean to assess convergence
 #' }
 #'
-#' Available parameters:  theta_01, theta_02, W_1^{-1}, W_2^{-1}
+#' Available parameters:  theta_01, theta_02, W_1^-1, W_2^-1
 #'
-#' \strong{Dynamic States} (\code{type = "states"}):
+#' \strong{Dynamic States} (`type = "states"`):
 #' \itemize{
 #'   \item Time-varying state trajectories with credible bands (on log scale)
 #'   \item Innovation sequences
 #'   \item State space relationships
 #' }
 #'
-#' \strong{Poisson Rates} (\code{type = "alpha"}):
+#' \strong{Poisson Rates} (`type = "alpha"`):
 #' \itemize{
 #'   \item alpha_t trajectory with credible bands
-#'   \item Optional observed counts overlay (controlled by \code{show_obs})
+#'   \item Optional observed counts overlay (controlled by `show_obs`)
 #' }
 #'
-#' \strong{Acceptance Proportions} (\code{type = "acceptance"}):
+#' \strong{Acceptance Proportions} (`type = "acceptance"`):
 #' \itemize{
 #'   \item Metropolis-Hastings acceptance proportions over time
 #'   \item Min-Max range across MCMC iterations
-#'   \item Target acceptance proportion reference line (uses the \code{target_acceptance}
-#'     value specified in \code{mcmc_poisson_localtrend})
-#'   \item Only available if the model was run with \code{return_accept_prop = TRUE}
+#'   \item Target acceptance proportion reference line (uses the `target_acceptance`
+#'     value specified in `mcmc_poisson_localtrend`)
+#'   \item Only available if the model was run with `return_accept_prop = TRUE`
 #' }
 #'
-#' \strong{Complete Dashboard} (\code{type = "all"}):
+#' \strong{Complete Dashboard} (`type = "all"`):
 #'
 #' Generates up to 8 pages in total:
 #' \itemize{
@@ -133,27 +133,27 @@
 #' @section Target Acceptance Proportion:
 #'
 #' The acceptance proportion plot displays a reference line showing the target acceptance
-#' proportion that was specified when running \code{mcmc_poisson_localtrend}.
+#' proportion that was specified when running `mcmc_poisson_localtrend`.
 #' This allows visual assessment of whether the adaptive Metropolis-Hastings algorithm
 #' successfully achieved the desired acceptance proportion.  The target value is automatically
 #' extracted from the model object and displayed in the plot legend.
 #'
 #' @section Controlling Observed Data Display:
 #'
-#' The \code{show_obs} parameter provides control over the display of observed
+#' The `show_obs` parameter provides control over the display of observed
 #' counts in the Poisson rates plot:
 #'
 #' \itemize{
-#'   \item When \code{show_obs = TRUE} (default): Observed counts are shown
+#'   \item When `show_obs = TRUE` (default): Observed counts are shown
 #'     as red points overlaid on the estimated alpha_t trajectory.  This is useful
 #'     for model validation and assessing goodness-of-fit.
-#'   \item When \code{show_obs = FALSE}: Only the estimated trajectory is shown,
+#'   \item When `show_obs = FALSE`: Only the estimated trajectory is shown,
 #'     which can be clearer for presentations or when focusing on the temporal
 #'     pattern of the Poisson rates.
 #' }
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # =============================================================================
 #' # Example 1: Practical Data Analysis (No True Parameters Known)
 #' # =============================================================================
@@ -209,7 +209,7 @@
 #' plot(out, type = "mcmc", which = 1:2)  # theta_01, theta_02
 #'
 #' # 4. Focus on innovation precision parameters
-#' plot(out, type = "mcmc", which = 3:4)  # W_1^{-1}, W_2^{-1}
+#' plot(out, type = "mcmc", which = 3:4)  # W_1^-1, W_2^-1
 #'
 #' # 5. Dynamic state trajectories (theta_1, theta_2 on log scale)
 #' #    Shows level and trend components over time
@@ -230,7 +230,7 @@
 #' plot(out, type = "alpha", ci_level = 0.90)  # 90% credible intervals
 #'
 #' # 10. Save all diagnostics to a multi-page PDF
-#' pdf("model_diagnostics.pdf", width = 10, height = 8)
+#' pdf(file.path(tempdir(), "model_diagnostics.pdf"), width = 10, height = 8)
 #' plot(out, type = "all", ask = FALSE)  # ask = FALSE prevents pausing
 #' dev.off()
 #'
@@ -275,7 +275,7 @@
 #'
 #' # --- Step 3: Generate observations ---
 #' # Transform level state to rate using exponential
-#' alpha_true <- exp(theta1_true)  # Poisson rates (positive)
+#' alpha_true <- exp(pmin(theta1_true, 10))  # cap to prevent Inf
 #'
 #' # Generate Poisson observations
 #' y <- rpois(n = n, lambda = alpha_true)

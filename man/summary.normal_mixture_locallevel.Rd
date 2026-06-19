@@ -4,47 +4,49 @@
 \alias{summary.normal_mixture_locallevel}
 \title{Summary method for normal_mixture_locallevel objects}
 \usage{
-\method{summary}{normal_mixture_locallevel}(object, probs = c(0.025, 0.975), ...)
+\method{summary}{normal_mixture_locallevel}(object, ci_level = 0.95, ...)
 }
 \arguments{
 \item{object}{An object of class \code{normal_mixture_locallevel}, typically
 the result of calling \code{\link{mcmc_normal_mixture_locallevel}}.}
 
-\item{probs}{Numeric vector of probabilities for credible intervals.
-Default is \code{c(0.025, 0.975)} for 95\% credible intervals.}
+\item{ci_level}{Credible interval level; a single numeric value strictly
+between 0 and 1. Defaults to \code{0.95}. The reported interval is the
+Highest Posterior Density Interval (HPDI), i.e. the shortest contiguous
+interval containing that probability mass of the posterior.}
 
 \item{...}{Additional arguments (currently unused).}
 }
 \value{
 An object of class \code{summary.normal_mixture_locallevel}, which is
-  a list containing:
-  \describe{
-    \item{\code{link}}{Character string indicating the link function used}
-    \item{\code{model_type}}{Character string indicating the model type}
-    \item{\code{n_obs}}{Number of observations}
-    \item{\code{n_chain}}{Number of MCMC samples}
-    \item{\code{burnin}}{Number of burn-in iterations}
-    \item{\code{thinning}}{Thinning interval}
-    \item{\code{probs}}{Probabilities used for credible intervals}
-    \item{\code{mixture_params}}{Data frame with summary statistics for
-      mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
-    \item{\code{state_params}}{Data frame with summary statistics for
-      dynamic state parameters (theta_01, W_1^{-1})}
-    \item{\code{alpha_summary}}{Summary statistics for the mixture weights
-      alpha_t (min, median, max across time)}
-  }
+a list containing:
+\describe{
+\item{\code{link}}{Character string indicating the link function used}
+\item{\code{model_type}}{Character string indicating the model type}
+\item{\code{n_obs}}{Number of observations}
+\item{\code{n_chain}}{Number of MCMC samples}
+\item{\code{burnin}}{Number of burn-in iterations}
+\item{\code{thinning}}{Thinning interval}
+\item{\code{ci_level}}{Credible interval level used (HPDI)}
+\item{\code{mixture_params}}{Data frame with summary statistics for
+mixture component parameters (mu_1, mu_2, phi_1, phi_2)}
+\item{\code{state_params}}{Data frame with summary statistics for
+dynamic state parameters (theta_01, W_1^-1)}
+\item{\code{alpha_summary}}{Summary statistics for the mixture weights
+alpha_t (min, median, max across time)}
+}
 }
 \description{
 Produces comprehensive posterior statistics including means,
-  standard deviations, medians, and credible intervals.
+standard deviations, medians, and credible intervals.
 }
 \details{
 This method provides complete posterior inference with multiple statistics:
 \describe{
-  \item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
-  \item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
-  \item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
-  \item{\strong{CI}}{Credible intervals at specified probabilities}
+\item{\strong{Mean}}{Expected value under the posterior (minimizes squared error loss)}
+\item{\strong{Median}}{Typical value (minimizes absolute error loss, shown in \code{print()})}
+\item{\strong{SD}}{Posterior standard deviation (measure of uncertainty)}
+\item{\strong{CI}}{Credible intervals at specified probabilities}
 }
 
 For a quick overview showing only medians, use \code{print(x)}.
@@ -53,7 +55,7 @@ For time-varying parameters like alpha_t, only summary statistics across
 time are reported. Use \code{plot()} to visualize the full trajectories.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 400  # Number of observations to simulate
 
@@ -116,13 +118,13 @@ print(out_logit)
 summary(out_logit)
 
 # Custom credible intervals
-summary(out_logit, probs = c(0.05, 0.95))  # 90\% CI
-summary(out_logit, probs = c(0.10, 0.90))  # 80\% CI
+summary(out_logit, ci_level = 0.90)  # 90\% HPD interval
+summary(out_logit, ci_level = 0.80)  # 80\% HPD interval
 }
 
 }
 \seealso{
 \code{\link{mcmc_normal_mixture_locallevel}},
-  \code{\link{print.normal_mixture_locallevel}},
-  \code{\link{plot.normal_mixture_locallevel}}
+\code{\link{print.normal_mixture_locallevel}},
+\code{\link{plot.normal_mixture_locallevel}}
 }

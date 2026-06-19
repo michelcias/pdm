@@ -1,7 +1,7 @@
 #' Constructor for normal_locallevel class
 #'
 #' @description Internal constructor function for creating objects of class
-#'   \code{normal_locallevel}. This function is called by
+#'   `normal_locallevel`. This function is called by
 #'   \code{\link{mcmc_normal_locallevel}} and should not be called directly by
 #'   users.
 #'
@@ -12,32 +12,32 @@
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
 #'
-#' @return An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
+#' @return An object of class `c("normal_locallevel", "pdm_mcmc", "list")`
 #'   with the following structure:
 #'   \describe{
-#'     \item{Data components}{All elements from \code{result} (theta_1, theta_01,
+#'     \item{Data components}{All elements from `result` (theta_1, theta_01,
 #'       prec_theta1, prec_y)}
 #'     \item{Attributes}{
 #'       \itemize{
-#'         \item \code{n_obs}: Number of observations
-#'         \item \code{n_chain}: Number of MCMC samples
-#'         \item \code{burnin}: Burn-in iterations
-#'         \item \code{thinning}: Thinning interval
-#'         \item \code{model_type}: \code{"locallevel"} (polynomial order 1)
-#'         \item \code{y}: Original observed data
+#'         \item `n_obs`: Number of observations
+#'         \item `n_chain`: Number of MCMC samples
+#'         \item `burnin`: Burn-in iterations
+#'         \item `thinning`: Thinning interval
+#'         \item `model_type`: `"locallevel"` (polynomial order 1)
+#'         \item `y`: Original observed data
 #'       }
 #'     }
 #'   }
 #'
 #' @details This constructor adds class attributes and metadata to the raw MCMC
-#'   output, enabling the use of S3 methods like \code{summary()}, \code{plot()},
-#'   and \code{print()}.
+#'   output, enabling the use of S3 methods like `summary()`, `plot()`,
+#'   and `print()`.
 #'
 #'   The class hierarchy is:
 #'   \itemize{
-#'     \item \code{normal_locallevel}: Specific model class
-#'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
-#'     \item \code{list}: Base R list class
+#'     \item `normal_locallevel`: Specific model class
+#'     \item `pdm_mcmc`: General MCMC class for the pdm package
+#'     \item `list`: Base R list class
 #'   }
 #'
 #' @keywords internal
@@ -89,12 +89,12 @@ new_normal_locallevel <- function(result,
 #' Validator for normal_locallevel class
 #'
 #' @description Internal function to validate objects of class
-#'   \code{normal_locallevel}. Checks that all required components are present
+#'   `normal_locallevel`. Checks that all required components are present
 #'   and have correct dimensions.
 #'
 #' @param x An object to validate.
 #'
-#' @return The input object \code{x} if validation succeeds.
+#' @return The input object `x` if validation succeeds.
 #' @keywords internal
 #' @noRd
 validate_normal_locallevel <- function(x) {
@@ -248,15 +248,15 @@ validate_normal_locallevel <- function(x) {
 
 #' Check if object is of class normal_locallevel
 #'
-#' @description Test whether an object is of class \code{normal_locallevel}.
+#' @description Test whether an object is of class `normal_locallevel`.
 #'
 #' @param x An object to test.
 #'
-#' @return Logical value: \code{TRUE} if \code{x} inherits from
-#'   \code{normal_locallevel}, \code{FALSE} otherwise.
+#' @return Logical value: `TRUE` if `x` inherits from
+#'   `normal_locallevel`, `FALSE` otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_normal_locallevel)
 #' n <- 1000
 #'
@@ -300,19 +300,19 @@ is.normal_locallevel <- function(x) {
 #' Print method for normal_locallevel objects
 #'
 #' @description Prints a concise summary showing posterior medians.
-#'   Use \code{summary()} for comprehensive statistics when available.
+#'   Use `summary()` for comprehensive statistics when available.
 #'
-#' @param x An object of class \code{normal_locallevel}.
+#' @param x An object of class `normal_locallevel`.
 #' @param digits Integer, number of decimal places to display. Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return Invisibly returns the input object \code{x}.
+#' @return Invisibly returns the input object `x`.
 #'
 #' @details This method provides a quick overview using posterior medians,
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_normal_locallevel)
 #' n <- 1000
 #'

@@ -22,7 +22,7 @@ Invisibly returns the input object \code{x}.
 Prints comprehensive posterior statistics in a readable format.
 }
 \examples{
-\dontrun{
+\donttest{
 ## Simulation of data
 n <- 500
 theta01_true <- 0.5
@@ -42,7 +42,7 @@ for (t in 2:n) {
   theta2_true[t] <- theta2_true[t-1] + u2[t]
   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
 }
-alpha_true <- exp(theta1_true)
+alpha_true <- exp(pmin(theta1_true, 10))  # cap to prevent Inf
 y <- rpois(n, lambda = alpha_true)
 
 out <- mcmc_poisson_localtrend(
@@ -80,5 +80,5 @@ summary(out)
 }
 \seealso{
 \code{\link{summary.poisson_localtrend}},
-  \code{\link{print.poisson_localtrend}}
+\code{\link{print.poisson_localtrend}}
 }

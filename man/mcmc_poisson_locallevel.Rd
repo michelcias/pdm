@@ -63,42 +63,42 @@ rate. Default is 0.6.}
 \item{target_acceptance}{Numeric in (0,1), target acceptance proportion for
 Metropolis-Hastings proposals. Default is 0.44 (theoretically optimal).}
 
-\item{min_deviation_threshold}{Numeric \eqn{\geq 0} or `NULL`, minimum absolute deviation
-from `target_acceptance` required to trigger adaptation. If `NULL` (default),
-uses practical threshold of `1.0/lag_update`. Set to `0.0` for maximum sensitivity
+\item{min_deviation_threshold}{Numeric \eqn{\geq 0} or \code{NULL}, minimum absolute deviation
+from \code{target_acceptance} required to trigger adaptation. If \code{NULL} (default),
+uses practical threshold of \code{1.0/lag_update}. Set to \code{0.0} for maximum sensitivity
 (adapt for any deviation). Larger values make adaptation more conservative.}
 
 \item{return_log_sigma}{Logical, whether to return proposal scale diagnostics
-(log-scale proposal standard deviations). Default is `FALSE`.}
+(log-scale proposal standard deviations). Default is \code{FALSE}.}
 
 \item{return_accept_prop}{Logical, whether to return acceptance proportion diagnostics
-over iterations. Default is `FALSE`.}
+over iterations. Default is \code{FALSE}.}
 
-\item{verbose}{Logical, whether to display a progress bar during sampling. Default is `TRUE`.}
+\item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{TRUE}.}
 
-\item{bar_width}{Integer in [10, 120], width of the progress bar when `verbose = TRUE`.
-Default is `60`.}
+\item{bar_width}{Integer in [10, 120], width of the progress bar when \code{verbose = TRUE}.
+Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed for
-reproducibility. Default is `NULL` (no seed set).}
+reproducibility. Default is \code{NULL} (no seed set).}
 }
 \value{
 An object of class \code{c("poisson_locallevel", "pdm_mcmc", "list")}
-  with components:
+with components:
 \describe{
-  \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
-  \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,1}}.}
-  \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_1}.}
-  \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t} (rates).}
-  \item{`log_sigma`}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics
-    (if `return_log_sigma = TRUE`).}
-  \item{`accept_prop`}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion
-    diagnostics (if `return_accept_prop = TRUE`).}
+\item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
+\item{\code{theta_01}}{Numeric vector of length \code{n_chain} of posterior samples for \eqn{\theta_{0,1}}.}
+\item{\code{prec_theta1}}{Numeric vector of length \code{n_chain} of posterior samples for \eqn{1/W_1}.}
+\item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t} (rates).}
+\item{\code{log_sigma}}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics
+(if \code{return_log_sigma = TRUE}).}
+\item{\code{accept_prop}}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion
+diagnostics (if \code{return_accept_prop = TRUE}).}
 }
 }
 \description{
 Runs a Gibbs sampler for the local-level Poisson dynamic model
-  with log link.
+with log link.
 }
 \details{
 The model is defined as:
@@ -134,11 +134,11 @@ W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1).
 
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
-  \strong{Hyperparameter} \tab \strong{Function Argument} \cr
-  \eqn{\mu_{01}} \tab `prior_theta01_mean` \cr
-  \eqn{\tau_{01}} \tab `prior_theta01_prec` \cr
-  \eqn{\nu_1} \tab `prior_prec1_shape` \cr
-  \eqn{\eta_1} \tab `prior_prec1_rate`
+\strong{Hyperparameter} \tab \strong{Function Argument} \cr
+\eqn{\mu_{01}} \tab \code{prior_theta01_mean} \cr
+\eqn{\tau_{01}} \tab \code{prior_theta01_prec} \cr
+\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
+\eqn{\eta_1} \tab \code{prior_prec1_rate}
 }
 
 \strong{Adaptive Metropolis-Hastings Algorithm:}
@@ -150,9 +150,9 @@ The innovation precision is sampled from its conjugate Gamma posterior.
 
 The adaptive algorithm uses a diminishing adaptation schedule that ensures
 theoretical convergence guarantees (Roberts and Rosenthal, 2007). Adaptation
-occurs every `lag_update` iterations (e.g., at MCMC iterations 50, 100, 150, ...
-if `lag_update = 50`), and only after sufficient history has been accumulated
-(iteration >= `lag_update`).
+occurs every \code{lag_update} iterations (e.g., at MCMC iterations 50, 100, 150, ...
+if \code{lag_update = 50}), and only after sufficient history has been accumulated
+(iteration >= \code{lag_update}).
 
 At each adaptation point (MCMC iteration \eqn{m}), for each time point \eqn{t},
 the proposal log-scale standard deviation is updated according to:
@@ -161,15 +161,15 @@ the proposal log-scale standard deviation is updated according to:
 
 where:
 \itemize{
-  \item \eqn{\gamma_m} is the diminishing step size at MCMC iteration \eqn{m}, computed as
-    \deqn{\gamma_m = \min\left(\text{max\_step\_size}, \frac{\text{base\_adaptation\_rate}}{m^\xi}\right);}
-  \item \eqn{\xi} is the decay exponent (`decay_exponent`) applied to the MCMC iteration number;
-  \item \eqn{\hat{p}_t} is the empirical acceptance proportion at time point \eqn{t}
-    over the last `lag_update` MCMC iterations;
-  \item \eqn{p^*} is the target acceptance rate (`target_acceptance`);
-  \item \eqn{\tau} is the minimum deviation threshold (`min_deviation_threshold`);
-  \item \eqn{\mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}}} is an indicator function that equals 1 when
-    the condition is true, 0 otherwise.
+\item \eqn{\gamma_m} is the diminishing step size at MCMC iteration \eqn{m}, computed as
+\deqn{\gamma_m = \min\left(\text{max\_step\_size}, \frac{\text{base\_adaptation\_rate}}{m^\xi}\right);}
+\item \eqn{\xi} is the decay exponent (\code{decay_exponent}) applied to the MCMC iteration number;
+\item \eqn{\hat{p}_t} is the empirical acceptance proportion at time point \eqn{t}
+over the last \code{lag_update} MCMC iterations;
+\item \eqn{p^*} is the target acceptance rate (\code{target_acceptance});
+\item \eqn{\tau} is the minimum deviation threshold (\code{min_deviation_threshold});
+\item \eqn{\mathbb{1}_{\{|\hat{p}_t - p^*| > \tau\}}} is an indicator function that equals 1 when
+the condition is true, 0 otherwise.
 }
 
 The update only occurs if the absolute deviation exceeds the threshold:
@@ -181,37 +181,37 @@ This threshold-based approach prevents spurious updates due to random fluctuatio
 
 The adaptive tuning parameters interact as follows:
 \itemize{
-  \item \strong{lag_update}:  Controls both the sliding window size for computing acceptance
-    proportions AND the frequency of adaptation. Adaptation occurs at MCMC iterations
-    \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Larger values
-    provide more stable estimates but slower adaptation. Common choices:  50-200 iterations.
-  \item \strong{target_acceptance}:  Optimal acceptance rate for the Metropolis-Hastings
-    algorithm. The value 0.44 is theoretically optimal for univariate random-walk proposals
-    (Roberts and Rosenthal, 2001). Each time point \eqn{t} has its own acceptance rate
-    \eqn{\hat{p}_t}.
-  \item \strong{min_deviation_threshold}:  Minimum deviation \eqn{|\hat{p}_t - p^*|}
-    required to trigger adaptation for time point \eqn{t}. The default `NULL` uses the
-    practical threshold \eqn{1/\text{lag\_update}}, corresponding to one additional
-    acceptance/rejection in the sliding window.
-  \item \strong{max_step_size}: Maximum allowed change in log-scale proposal variance
-    per adaptation step. Prevents extreme adjustments. Common choices: 0.01-0.1.
-  \item \strong{base_adaptation_rate}: Controls the overall speed of adaptation before
-    decay is applied. Higher values lead to faster but potentially less stable adaptation.
-    Common choices: 0.1-10.0.
-  \item \strong{decay_exponent}: Controls how quickly the adaptation step size diminishes
-    over MCMC iterations. As the algorithm runs, \eqn{\gamma_m} decreases according to
-    \eqn{m^{-\xi}}. Must be in (0.5, 1] for theoretical convergence guarantees.
-    Common choices: 0.5-0.8.
+\item \strong{lag_update}:  Controls both the sliding window size for computing acceptance
+proportions AND the frequency of adaptation. Adaptation occurs at MCMC iterations
+\eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Larger values
+provide more stable estimates but slower adaptation. Common choices:  50-200 iterations.
+\item \strong{target_acceptance}:  Optimal acceptance rate for the Metropolis-Hastings
+algorithm. The value 0.44 is theoretically optimal for univariate random-walk proposals
+(Roberts and Rosenthal, 2001). Each time point \eqn{t} has its own acceptance rate
+\eqn{\hat{p}_t}.
+\item \strong{min_deviation_threshold}:  Minimum deviation \eqn{|\hat{p}_t - p^*|}
+required to trigger adaptation for time point \eqn{t}. The default \code{NULL} uses the
+practical threshold \eqn{1/\text{lag\_update}}, corresponding to one additional
+acceptance/rejection in the sliding window.
+\item \strong{max_step_size}: Maximum allowed change in log-scale proposal variance
+per adaptation step. Prevents extreme adjustments. Common choices: 0.01-0.1.
+\item \strong{base_adaptation_rate}: Controls the overall speed of adaptation before
+decay is applied. Higher values lead to faster but potentially less stable adaptation.
+Common choices: 0.1-10.0.
+\item \strong{decay_exponent}: Controls how quickly the adaptation step size diminishes
+over MCMC iterations. As the algorithm runs, \eqn{\gamma_m} decreases according to
+\eqn{m^{-\xi}}. Must be in (0.5, 1] for theoretical convergence guarantees.
+Common choices: 0.5-0.8.
 }
 
 \strong{Example of Adaptation Schedule:}
 
-With `lag_update = 50`, `base_adaptation_rate = 1.0`, `decay_exponent = 0.6`,
-and `max_step_size = 0.1`:
+With \code{lag_update = 50}, \code{base_adaptation_rate = 1.0}, \code{decay_exponent = 0.6},
+and \code{max_step_size = 0.1}:
 \itemize{
-  \item At MCMC iteration 50:  \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}.
-  \item At MCMC iteration 100: \eqn{\gamma_{100} = \min(0.1, 1.0/100^{0.6}) \approx 0.0631}.
-  \item At MCMC iteration 1000: \eqn{\gamma_{1000} = \min(0.1, 1.0/1000^{0.6}) \approx 0.0158}.
+\item At MCMC iteration 50:  \eqn{\gamma_{50} = \min(0.1, 1.0/50^{0.6}) \approx 0.0875}.
+\item At MCMC iteration 100: \eqn{\gamma_{100} = \min(0.1, 1.0/100^{0.6}) \approx 0.0631}.
+\item At MCMC iteration 1000: \eqn{\gamma_{1000} = \min(0.1, 1.0/1000^{0.6}) \approx 0.0158}.
 }
 
 This ensures that adaptation becomes increasingly conservative as the chain progresses,
@@ -221,15 +221,15 @@ satisfying theoretical requirements for ergodicity.
 
 For most applications:
 \itemize{
-  \item `lag_update = 50`: Provides good balance between stability and responsiveness;
-  \item `max_step_size = 0.1`: Conservative adjustment rate;
-  \item `base_adaptation_rate = 1.0`: Moderate adaptation speed;
-  \item `decay_exponent = 0.6`: Standard diminishing adaptation;
-  \item `target_acceptance = 0.44`: Theoretically optimal for univariate proposals;
-  \item `min_deviation_threshold = NULL`: Uses practical default of 1/lag_update.
+\item \code{lag_update = 50}: Provides good balance between stability and responsiveness;
+\item \code{max_step_size = 0.1}: Conservative adjustment rate;
+\item \code{base_adaptation_rate = 1.0}: Moderate adaptation speed;
+\item \code{decay_exponent = 0.6}: Standard diminishing adaptation;
+\item \code{target_acceptance = 0.44}: Theoretically optimal for univariate proposals;
+\item \code{min_deviation_threshold = NULL}: Uses practical default of 1/lag_update.
 }
 
-Burn-in and thinning are applied so that exactly `n_chain` posterior samples
+Burn-in and thinning are applied so that exactly \code{n_chain} posterior samples
 are returned.
 }
 \examples{
@@ -276,7 +276,7 @@ out <- mcmc_poisson_locallevel(
 
 ## Posterior analysis and visualization
 # Use the plot method for comprehensive diagnostics
-\dontrun{
+\donttest{
   # Complete dashboard with all diagnostics
   plot(out, type = "all")
 
@@ -303,6 +303,6 @@ Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
 }
 \seealso{
 \code{\link{plot.poisson_locallevel}},
-  \code{\link{print.poisson_locallevel}},
-  \link[pdm]{mcmc_normal_locallevel}
+\code{\link{print.poisson_locallevel}},
+\link[pdm]{mcmc_normal_locallevel}
 }

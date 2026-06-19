@@ -72,7 +72,7 @@
 #'
 #' The progress bar update frequency is automatically calculated as approximately
 #' one update per bar segment, ensuring smooth visual feedback with minimal
-#' performance overhead (~0.01\% for typical runs).
+#' performance overhead (~0.01% for typical runs).
 #'
 #' Burn-in and thinning are applied so that exactly `n_chain` posterior
 #' samples are returned.
@@ -91,25 +91,25 @@
 #' @param prior_prec2_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_2}.
 #' @param prior_prec2_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_2}.
 #' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
-#' @param bar_width Integer in [10, 120], width of the progress bar when `verbose = TRUE`. Default is `60`.
+#' @param bar_width Integer in \[10, 120\], width of the progress bar when `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is `NULL`, which does not set the seed.
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{`theta_1`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the latent level state \eqn{\theta_{t,1}}.}
-#'   \item{`theta_2`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+#'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the latent trend state \eqn{\theta_{t,2}}.}
-#'   \item{`theta_01`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the initial level state \eqn{\theta_{0,1}}.}
-#'   \item{`theta_02`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_02}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the initial trend state \eqn{\theta_{0,2}}.}
-#'   \item{`prec_theta1`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the level innovation precision \eqn{1/W_1}.}
-#'   \item{`prec_theta2`}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta2}}{Numeric vector of length `n_chain` of posterior samples
 #'     for the trend innovation precision \eqn{1/W_2}.}
-#'   \item{`alpha`}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+#'   \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the Bernoulli probabilities \eqn{\alpha_t}.}
 #' }
 #'
@@ -157,7 +157,7 @@
 #' ## Posterior analysis and visualization
 #' # The following plots show how to analyze the posterior distributions.
 #' # Point estimates are based on the median of posterior samples.
-#' \dontrun{
+#' \donttest{
 #'   # --- 0. Plot the simulated data ---
 #'   plot(
 #'     y,

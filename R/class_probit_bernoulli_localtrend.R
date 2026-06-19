@@ -1,7 +1,7 @@
 #' Constructor for probit_bernoulli_localtrend class
 #'
 #' @description Internal constructor function for creating objects of class
-#'   \code{probit_bernoulli_localtrend}. This function is called by
+#'   `probit_bernoulli_localtrend`. This function is called by
 #'   \code{\link{mcmc_probit_bernoulli_localtrend}} and should not be called
 #'   directly by users.
 #'
@@ -12,33 +12,33 @@
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
 #'
-#' @return An object of class \code{c("probit_bernoulli_localtrend", "pdm_mcmc", "list")}
+#' @return An object of class `c("probit_bernoulli_localtrend", "pdm_mcmc", "list")`
 #'   with the following structure:
 #'   \describe{
-#'     \item{Data components}{All elements from \code{result} (theta_1, theta_2,
+#'     \item{Data components}{All elements from `result` (theta_1, theta_2,
 #'       theta_01, theta_02, prec_theta1, prec_theta2, alpha)}
 #'     \item{Attributes}{
 #'       \itemize{
-#'         \item \code{n_obs}: Number of observations
-#'         \item \code{n_chain}: Number of MCMC samples
-#'         \item \code{burnin}: Burn-in iterations
-#'         \item \code{thinning}: Thinning interval
-#'         \item \code{model_type}: \code{"localtrend"} (polynomial order 2)
-#'         \item \code{link}: \code{"probit"} (link function)
-#'         \item \code{y}: Original observed data
+#'         \item `n_obs`: Number of observations
+#'         \item `n_chain`: Number of MCMC samples
+#'         \item `burnin`: Burn-in iterations
+#'         \item `thinning`: Thinning interval
+#'         \item `model_type`: `"localtrend"` (polynomial order 2)
+#'         \item `link`: `"probit"` (link function)
+#'         \item `y`: Original observed data
 #'       }
 #'     }
 #'   }
 #'
 #' @details This constructor adds class attributes and metadata to the raw MCMC
-#'   output, enabling the use of S3 methods like \code{summary()}, \code{plot()},
-#'   and \code{print()}.
+#'   output, enabling the use of S3 methods like `summary()`, `plot()`,
+#'   and `print()`.
 #'
 #'   The class hierarchy is:
 #'   \itemize{
-#'     \item \code{probit_bernoulli_localtrend}: Specific model class
-#'     \item \code{pdm_mcmc}: General MCMC class for the pdm package
-#'     \item \code{list}: Base R list class
+#'     \item `probit_bernoulli_localtrend`: Specific model class
+#'     \item `pdm_mcmc`: General MCMC class for the pdm package
+#'     \item `list`: Base R list class
 #'   }
 #'
 #' @keywords internal
@@ -91,12 +91,12 @@ new_probit_bernoulli_localtrend <- function(result,
 #' Validator for probit_bernoulli_localtrend class
 #'
 #' @description Internal function to validate objects of class
-#'   \code{probit_bernoulli_localtrend}. Checks that all required components
+#'   `probit_bernoulli_localtrend`. Checks that all required components
 #'   are present and have correct dimensions.
 #'
 #' @param x An object to validate.
 #'
-#' @return The input object \code{x} if validation succeeds.
+#' @return The input object `x` if validation succeeds.
 #' @keywords internal
 #' @noRd
 validate_probit_bernoulli_localtrend <- function(x) {
@@ -283,15 +283,15 @@ validate_probit_bernoulli_localtrend <- function(x) {
 
 #' Check if object is of class probit_bernoulli_localtrend
 #'
-#' @description Test whether an object is of class \code{probit_bernoulli_localtrend}.
+#' @description Test whether an object is of class `probit_bernoulli_localtrend`.
 #'
 #' @param x An object to test.
 #'
-#' @return Logical value: \code{TRUE} if \code{x} inherits from
-#'   \code{probit_bernoulli_localtrend}, \code{FALSE} otherwise.
+#' @return Logical value: `TRUE` if `x` inherits from
+#'   `probit_bernoulli_localtrend`, `FALSE` otherwise.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_probit_bernoulli_localtrend)
 #' n <- 500
 #'
@@ -331,19 +331,19 @@ is.probit_bernoulli_localtrend <- function(x) {
 #' Print method for probit_bernoulli_localtrend objects
 #'
 #' @description Prints a concise summary showing posterior medians.
-#'   Use \code{summary()} for comprehensive statistics when available.
+#'   Use `summary()` for comprehensive statistics when available.
 #'
-#' @param x An object of class \code{probit_bernoulli_localtrend}.
+#' @param x An object of class `probit_bernoulli_localtrend`.
 #' @param digits Integer, number of decimal places to display. Default is 3.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return Invisibly returns the input object \code{x}.
+#' @return Invisibly returns the input object `x`.
 #'
 #' @details This method provides a quick overview using posterior medians,
 #'   which are robust to outliers and skewness in the posterior distribution.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Simulate data (same setup as ?mcmc_probit_bernoulli_localtrend)
 #' n <- 500
 #'

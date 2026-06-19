@@ -22,4 +22,5 @@ Suggests:
     patchwork (>= 1.1.0),
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.0.0

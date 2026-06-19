@@ -12,3 +12,4 @@
 ..Rcheck/
 src/symbols.rds
 .positai
+.claude/

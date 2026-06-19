@@ -160,7 +160,7 @@ test_that("summary() returns correct structure", {
   expect_true("model_type" %in% names(summ))
   expect_true("n_obs" %in% names(summ))
   expect_true("n_chain" %in% names(summ))
-  expect_true("probs" %in% names(summ))
+  expect_true("ci_level" %in% names(summ))
 })
 
 test_that("summary() includes mean AND median", {
@@ -192,16 +192,16 @@ test_that("summary() mean and median differ for skewed distributions", {
   expect_true(mean_prec1 > median_prec1)
 })
 
-test_that("summary() respects custom probs", {
+test_that("summary() respects custom ci_level", {
   mock_obj <- create_mock_object()
 
   # Default 95% CI
-  summ_95 <- summary(mock_obj, probs = c(0.025, 0.975))
-  expect_equal(summ_95$probs, c(0.025, 0.975))
+  summ_95 <- summary(mock_obj, ci_level = 0.95)
+  expect_equal(summ_95$ci_level, 0.95)
 
   # Custom 90% CI
-  summ_90 <- summary(mock_obj, probs = c(0.05, 0.95))
-  expect_equal(summ_90$probs, c(0.05, 0.95))
+  summ_90 <- summary(mock_obj, ci_level = 0.90)
+  expect_equal(summ_90$ci_level, 0.90)
 
   # CI should be narrower for 90%
   ci_width_95 <- summ_95$mixture_params$CI_Upper[1] - summ_95$mixture_params$CI_Lower[1]
@@ -210,22 +210,22 @@ test_that("summary() respects custom probs", {
   expect_true(ci_width_90 < ci_width_95)
 })
 
-test_that("summary() validates probs argument", {
+test_that("summary() validates ci_level argument", {
   mock_obj <- create_mock_object()
 
   # Invalid: not numeric
-  expect_error(summary(mock_obj, probs = "invalid"), "must be numeric")
+  expect_error(summary(mock_obj, ci_level = "invalid"),
+               "between 0 and 1")
 
-  # Invalid: outside [0, 1]
-  expect_error(summary(mock_obj, probs = c(-0.1, 0.5)), "between 0 and 1")
-  expect_error(summary(mock_obj, probs = c(0.5, 1.5)), "between 0 and 1")
+  # Invalid: outside (0, 1)
+  expect_error(summary(mock_obj, ci_level = -0.1), "between 0 and 1")
+  expect_error(summary(mock_obj, ci_level = 1.5), "between 0 and 1")
+  expect_error(summary(mock_obj, ci_level = 0), "between 0 and 1")
+  expect_error(summary(mock_obj, ci_level = 1), "between 0 and 1")
 
-  # Invalid: wrong length
-  expect_error(summary(mock_obj, probs = c(0.025)), "exactly 2 elements")
-  expect_error(summary(mock_obj, probs = c(0.025, 0.5, 0.975)), "exactly 2 elements")
-
-  # Invalid: wrong order
-  expect_error(summary(mock_obj, probs = c(0.975, 0.025)), "must be less than")
+  # Invalid: not a single value
+  expect_error(summary(mock_obj, ci_level = c(0.9, 0.95)),
+               "single numeric value")
 })
 
 
@@ -248,12 +248,12 @@ test_that("print.summary() shows credible interval level", {
   mock_obj <- create_mock_object()
 
   # Test with 95% CI
-  summ_95 <- summary(mock_obj, probs = c(0.025, 0.975))
+  summ_95 <- summary(mock_obj, ci_level = 0.95)
   output_95 <- capture.output(print(summ_95))
   expect_true(any(grepl("95\\.0%", output_95)))
 
   # Test with 90% CI
-  summ_90 <- summary(mock_obj, probs = c(0.05, 0.95))
+  summ_90 <- summary(mock_obj, ci_level = 0.90)
   output_90 <- capture.output(print(summ_90))
   expect_true(any(grepl("90\\.0%", output_90)))
 })

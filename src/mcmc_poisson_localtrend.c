@@ -277,8 +277,8 @@ SEXP C_MCMC_log_poisson_localtrend(SEXP y_,
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
-  prec_theta1_previous   = rgamma(nu_01, 1.0 / eta_01);
-  prec_theta2_previous   = rgamma(nu_02, 1.0 / eta_02);
+  prec_theta1_previous   = rgamma_positive(nu_01, 1.0 / eta_01);
+  prec_theta2_previous   = rgamma_positive(nu_02, 1.0 / eta_02);
 
   /* Initialize theta_1, theta_2 and alpha with efficient neutral starting values */
   for (int t = 0; t < n; t++) {

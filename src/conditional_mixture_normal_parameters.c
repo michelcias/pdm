@@ -70,6 +70,7 @@
 #include <R.h>
 #include <Rmath.h>
 #include "conditional_mixture_normal_parameters.h"
+#include "utils.h"          /* rgamma_positive */
 
 /**
  * @brief Generate component parameters for a two-component Gaussian mixture model
@@ -379,7 +380,7 @@ void conditional_mixture_normal_parameters_k2(const double *y,
    * by half the sum of squared deviations v_0/2. */
   double nu_bar_1 = nu_01 + T_0 / 2.0;
   double eta_bar_1 = eta_01 + v_0 / 2.0;
-  double prec_1_curr = rgamma(nu_bar_1, 1.0 / eta_bar_1);
+  double prec_1_curr = rgamma_positive(nu_bar_1, 1.0 / eta_bar_1);
 
   /* ========== Sample Precision of Component 2 (Upper) ========== */
   /* Full conditional posterior:
@@ -389,7 +390,7 @@ void conditional_mixture_normal_parameters_k2(const double *y,
    * eta_bar_2 = eta_02 + v_1 / 2 */
   double nu_bar_2 = nu_02 + T_1 / 2.0;
   double eta_bar_2 = eta_02 + v_1 / 2.0;
-  double prec_2_curr = rgamma(nu_bar_2, 1.0 / eta_bar_2);
+  double prec_2_curr = rgamma_positive(nu_bar_2, 1.0 / eta_bar_2);
 
   /* ========== Enforce Label Switching Constraint ========== */
   /* To ensure identifiability, enforce mu_1 < mu_2 (ordering constraint).

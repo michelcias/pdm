@@ -40,6 +40,7 @@
 #include "conditional_state.h"
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
+#include "utils.h"          /* rgamma_positive */
 #include "mcmc_normal_localacceleration.h"
 #include "mcmc_progress_bar.h"
 
@@ -262,10 +263,10 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
   theta_03_previous = rnorm(mean_theta03, sqrt(1.0 / prec_theta03));
-  prec_theta1_previous   = rgamma(nu_01, 1.0 / eta_01);
-  prec_theta2_previous   = rgamma(nu_02, 1.0 / eta_02);
-  prec_theta3_previous   = rgamma(nu_03, 1.0 / eta_03);
-  prec_y_previous   = rgamma(nu_y, 1.0 / eta_y);
+  prec_theta1_previous   = rgamma_positive(nu_01, 1.0 / eta_01);
+  prec_theta2_previous   = rgamma_positive(nu_02, 1.0 / eta_02);
+  prec_theta3_previous   = rgamma_positive(nu_03, 1.0 / eta_03);
+  prec_y_previous   = rgamma_positive(nu_y, 1.0 / eta_y);
 
   /* Initialize theta_1, theta_2, and theta_3 trajectories with neutral starting values */
   for (int j = 0; j < n; j++) {

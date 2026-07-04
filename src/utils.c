@@ -14,6 +14,7 @@
 #include <R.h>
 #include <Rmath.h>
 #include <Rinternals.h>
+#include <float.h>          /* DBL_EPSILON */
 
 /**
  * @brief Computes the inverse logit (logistic) function of the input value.
@@ -27,6 +28,35 @@
  */
 double ilogit(double x) {
   return exp(-Rf_log1pexp(-x));
+}
+
+//----------------------------------------------------------------------
+
+/**
+ * @brief Draw a Gamma variate guaranteed to be strictly positive.
+ *
+ * @details See utils.h for the full rationale. In short: with small shape
+ *          parameters rgamma can underflow to a subnormal value or exactly
+ *          0.0, and a zero precision poisons the MCMC (Inf/NaN via 1/prec,
+ *          sqrt(1/prec) and zero Cholesky pivots). Flooring at DBL_EPSILON
+ *          is statistically inert (variance ~4.5e15) and keeps every
+ *          downstream computation finite. The negated comparison also traps
+ *          NaN, so a degenerate draw resets to the floor instead of
+ *          propagating.
+ *
+ * @param shape  Gamma shape parameter (> 0).
+ * @param scale  Gamma scale parameter (> 0). Note: scale = 1/rate.
+ * @return       Gamma(shape, scale) draw, floored at DBL_EPSILON.
+ */
+double rgamma_positive(double shape, double scale) {
+  double x = rgamma(shape, scale);
+
+  /* !(x > floor) is true for x <= floor AND for NaN */
+  if (!(x > DBL_EPSILON)) {
+    x = DBL_EPSILON;
+  }
+
+  return x;
 }
 
 //----------------------------------------------------------------------

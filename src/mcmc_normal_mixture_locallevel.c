@@ -294,9 +294,9 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
   params_previous[0] = rnorm(mu_01_mean, sqrt(1.0 / mu_01_prec));
-  params_previous[1] = rgamma(prec_01_shape, 1.0 / prec_01_rate);
+  params_previous[1] = rgamma_positive(prec_01_shape, 1.0 / prec_01_rate);
   params_previous[2] = rnorm(mu_02_mean, sqrt(1.0 / mu_02_prec));
-  params_previous[3] = rgamma(prec_02_shape, 1.0 / prec_02_rate);
+  params_previous[3] = rgamma_positive(prec_02_shape, 1.0 / prec_02_rate);
 
   if (params_previous[0] > params_previous[2]) {
     double temp_mu = params_previous[0];
@@ -308,7 +308,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
   }
 
   theta_01_previous    = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous = rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous = rgamma_positive(nu_01, 1.0 / eta_01);
 
   for (int t = 0; t < n; t++) {
     theta_1_previous[t] = 0.0;

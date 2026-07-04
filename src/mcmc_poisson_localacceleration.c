@@ -299,9 +299,9 @@ SEXP C_MCMC_log_poisson_localacceleration(SEXP y_,
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
   theta_03_previous = rnorm(mean_theta03, sqrt(1.0 / prec_theta03));
-  prec_theta1_previous   = rgamma(nu_01, 1.0 / eta_01);
-  prec_theta2_previous   = rgamma(nu_02, 1.0 / eta_02);
-  prec_theta3_previous   = rgamma(nu_03, 1.0 / eta_03);
+  prec_theta1_previous   = rgamma_positive(nu_01, 1.0 / eta_01);
+  prec_theta2_previous   = rgamma_positive(nu_02, 1.0 / eta_02);
+  prec_theta3_previous   = rgamma_positive(nu_03, 1.0 / eta_03);
 
   /* Initialize state vectors with efficient neutral starting values */
   for (int t = 0; t < n; t++) {

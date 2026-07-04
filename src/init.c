@@ -107,8 +107,9 @@
  *
  *          **Test Helper Functions:**
  *
- *          *Utility and Basic Functions (4 functions):*
+ *          *Utility and Basic Functions (5 functions):*
  *          - test_ilogit:  Inverse logit transformation (1 arg)
+ *          - test_rgamma_positive:  Floored Gamma draws for precisions (3 args)
  *          - test_generate_normal_vector:  Multivariate normal sampling (4 args)
  *          - test_adapt_cwmh_parameters:  CWMH adaptation testing (10 args)
  *          - reset_adaptation_cache: Cache management (0 args)
@@ -221,6 +222,7 @@ static const R_CallMethodDef CallEntries[] = {
 
   // --- Utility and Basic Functions ---
   {"_pdm_test_ilogit",                       (DL_FUNC) &test_ilogit,                       1},
+  {"_pdm_test_rgamma_positive",              (DL_FUNC) &test_rgamma_positive,              3},
   {"_pdm_test_generate_normal_vector",       (DL_FUNC) &test_generate_normal_vector,       4},
   {"_pdm_test_adapt_cwmh_parameters",        (DL_FUNC) &test_adapt_cwmh_parameters,       10},
   {"_pdm_reset_adaptation_cache",            (DL_FUNC) &reset_adaptation_cache_wrapper,    0},

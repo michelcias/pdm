@@ -151,6 +151,46 @@ SEXP test_ilogit(SEXP x_) {
 }
 
 /**
+ * @brief Draw floored Gamma variates through the shared rgamma_positive helper.
+ *
+ * @details Exposes @c rgamma_positive so that tests can confirm the
+ *          DBL_EPSILON floor: with very small shape parameters raw rgamma
+ *          draws underflow to subnormal values or exactly 0.0, which would
+ *          poison precision updates in the MCMC samplers.
+ *
+ * @param shape_  Length-one numeric vector with the Gamma shape parameter.
+ * @param scale_  Length-one numeric vector with the Gamma scale parameter.
+ * @param n_      Length-one integer vector with the number of draws.
+ *
+ * @return A numeric vector of @p n_ Gamma draws, each floored at DBL_EPSILON.
+ */
+SEXP test_rgamma_positive(SEXP shape_, SEXP scale_, SEXP n_) {
+  if (!isReal(shape_) || LENGTH(shape_) == 0 ||
+      !isReal(scale_) || LENGTH(scale_) == 0) {
+    error("shape and scale must be non-empty numeric vectors");
+  }
+
+  double shape = REAL(shape_)[0];
+  double scale = REAL(scale_)[0];
+  int n = asInteger(n_);
+
+  if (n <= 0) {
+    error("n must be a positive integer");
+  }
+
+  SEXP out = PROTECT(allocVector(REALSXP, n));
+
+  GetRNGstate();
+  for (int i = 0; i < n; i++) {
+    REAL(out)[i] = rgamma_positive(shape, scale);
+  }
+  PutRNGstate();
+
+  UNPROTECT(1);
+  return out;
+}
+
+/**
  * @brief Draw a normal vector used when simulating latent states.
  *
  * @details Calls the shared random number helper to produce conditionally
@@ -2019,7 +2059,7 @@ SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous = fix_prec_theta1 ?  prec_theta1_true :  rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous = fix_prec_theta1 ?  prec_theta1_true :  rgamma_positive(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   if (fix_theta_1) {
@@ -2419,7 +2459,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous = fix_prec_theta1 ? prec_theta1_true : rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous = fix_prec_theta1 ? prec_theta1_true : rgamma_positive(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   if (fix_theta_1) {
@@ -2753,7 +2793,7 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = fix_theta_01 ? theta_01_true : rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous = fix_prec_theta1 ? prec_theta1_true : rgamma(nu_01, 1.0 / eta_01);
+  prec_theta1_previous = fix_prec_theta1 ? prec_theta1_true : rgamma_positive(nu_01, 1.0 / eta_01);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   if (fix_theta_1) {

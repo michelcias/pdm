@@ -31,6 +31,7 @@
 #include "conditional_state.h"
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
+#include "utils.h"          /* rgamma_positive */
 #include "mcmc_progress_bar.h"
 #include "mcmc_normal_locallevel.h"
 
@@ -187,8 +188,8 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous   = rgamma(nu_01, 1.0 / eta_01);
-  prec_y_previous   = rgamma(nu_y, 1.0 / eta_y);
+  prec_theta1_previous   = rgamma_positive(nu_01, 1.0 / eta_01);
+  prec_y_previous   = rgamma_positive(nu_y, 1.0 / eta_y);
 
   /* Initialize theta_1 trajectory with neutral starting values */
   for (int j = 0; j < n; j++) {

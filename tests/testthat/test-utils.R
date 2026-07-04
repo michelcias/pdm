@@ -51,3 +51,37 @@ test_that("generate_normal_vector C function generates a vector of correct lengt
   result_c_redux <- test_gen_norm_C(y, a, b, add_a)
   expect_equal(result_c, result_c_redux)
 })
+
+
+test_that("rgamma_positive floors precision draws at machine epsilon", {
+
+  test_rg_C <- function(shape, scale, n) {
+    .Call("_pdm_test_rgamma_positive",
+          as.numeric(shape), as.numeric(scale), as.integer(n))
+  }
+
+  # With a tiny shape (weakly informative precision prior, or an empty mixture
+  # component), a large fraction of raw rgamma draws underflows below machine
+  # epsilon -- many to exactly 0. The wrapper must floor every draw so that
+  # 1/prec, sqrt(1/prec) and the Cholesky pivots downstream remain finite.
+  set.seed(501)
+  draws <- test_rg_C(0.01, 100, 1e4)
+  expect_true(all(is.finite(draws)))
+  expect_true(all(draws >= .Machine$double.eps))
+  # sanity: the floor is actually being exercised in this regime
+  expect_true(any(draws == .Machine$double.eps))
+
+  # In a realistic posterior regime (large shape) the floor must be inert
+  set.seed(502)
+  draws_post <- test_rg_C(500, 1 / 500, 1e4)
+  expect_true(all(draws_post > .Machine$double.eps))
+  set.seed(502)
+  expect_identical(rgamma(1e4, shape = 500, scale = 1 / 500), draws_post)
+
+  # Reproducibility
+  set.seed(503)
+  d1 <- test_rg_C(0.01, 100, 100)
+  set.seed(503)
+  d2 <- test_rg_C(0.01, 100, 100)
+  expect_identical(d1, d2)
+})

@@ -24,6 +24,20 @@
 SEXP test_ilogit(SEXP x_);
 
 /**
+ * @brief Draw floored Gamma variates through the shared rgamma_positive helper.
+ *
+ * @details Exposes @c rgamma_positive so that tests can confirm the
+ *          DBL_EPSILON floor applied to precision draws.
+ *
+ * @param shape_  Length-one numeric vector with the Gamma shape parameter.
+ * @param scale_  Length-one numeric vector with the Gamma scale parameter.
+ * @param n_      Length-one integer vector with the number of draws.
+ *
+ * @return A numeric vector of @p n_ Gamma draws, each floored at DBL_EPSILON.
+ */
+SEXP test_rgamma_positive(SEXP shape_, SEXP scale_, SEXP n_);
+
+/**
  * @brief Draw a normal vector used when simulating latent states.
  *
  * @details Calls the shared random number helper to produce conditionally

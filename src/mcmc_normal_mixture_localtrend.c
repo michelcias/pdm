@@ -399,9 +399,9 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
 
   /* Initialize mixture component parameters */
   params_previous[0] = rnorm(mu_01_mean, sqrt(1.0 / mu_01_prec));      /* mu_1 */
-  params_previous[1] = rgamma(prec_01_shape, 1.0 / prec_01_rate);      /* prec_1 */
+  params_previous[1] = rgamma_positive(prec_01_shape, 1.0 / prec_01_rate);      /* prec_1 */
   params_previous[2] = rnorm(mu_02_mean, sqrt(1.0 / mu_02_prec));      /* mu_2 */
-  params_previous[3] = rgamma(prec_02_shape, 1.0 / prec_02_rate);      /* prec_2 */
+  params_previous[3] = rgamma_positive(prec_02_shape, 1.0 / prec_02_rate);      /* prec_2 */
 
   /* Enforce label switching constraint for initialization */
   if (params_previous[0] > params_previous[2]) {
@@ -416,8 +416,8 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
   /* Initialize dynamic state parameters */
   theta_01_previous     = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   theta_02_previous     = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
-  prec_theta1_previous  = rgamma(nu_01, 1.0 / eta_01);
-  prec_theta2_previous  = rgamma(nu_02, 1.0 / eta_02);
+  prec_theta1_previous  = rgamma_positive(nu_01, 1.0 / eta_01);
+  prec_theta2_previous  = rgamma_positive(nu_02, 1.0 / eta_02);
 
   /* Initialize state vectors with neutral starting values */
   for (int t = 0; t < n; t++) {

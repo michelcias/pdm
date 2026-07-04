@@ -23,6 +23,7 @@
 #include <R.h>
 #include <Rmath.h>
 #include "conditional_precision.h"
+#include "utils.h"          /* rgamma_positive */
 
 /**
  * @brief Sample observation precision 1/V from Gamma posterior
@@ -101,7 +102,7 @@ double generate_precision_data(const double *y,
   /* Draw 1/V ~ Gamma(nu_post, eta_post)
    * R's rgamma uses scale parameterization (inverse of rate).
    * Higher SSE leads to lower sampled precision (higher variance). */
-  return rgamma(
+  return rgamma_positive(
     nu_y_post,       /* shape: posterior Gamma shape parameter */
     1.0 / eta_y_post /* scale: inverse of posterior rate parameter */
   );
@@ -204,7 +205,7 @@ double generate_precision_theta_k(double        theta_0k,
   /* ========== Sample Precision from Gamma Posterior ========== */
   /* Draw 1/W_k ~ Gamma(nu_post, eta_post)
    * R's rgamma uses scale parameterization (inverse of rate). */
-  return rgamma(
+  return rgamma_positive(
     nu_0k_post,       /* shape: posterior Gamma shape parameter */
     1.0 / eta_0k_post /* scale: inverse of posterior rate parameter */
   );
@@ -304,7 +305,7 @@ double generate_precision_theta_p(double        theta_0p,
   /* ========== Sample Precision from Gamma Posterior ========== */
   /* Draw 1/W_p ~ Gamma(nu_post, eta_post)
    * R's rgamma uses scale parameterization (inverse of rate). */
-  return rgamma(
+  return rgamma_positive(
     nu_0p_post,       /* shape: posterior Gamma shape parameter */
     1.0 / eta_0p_post /* scale: inverse of posterior rate parameter */
   );

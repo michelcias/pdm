@@ -32,6 +32,44 @@ double ilogit(double x);
 //----------------------------------------------------------------------
 
 /**
+ * @brief Draw a Gamma variate guaranteed to be strictly positive.
+ *
+ * @details Thin wrapper around R's rgamma that floors the draw at DBL_EPSILON
+ *          (~2.2e-16). With small shape parameters (e.g., weakly informative
+ *          precision priors such as Gamma(0.01, 0.01), or empty mixture
+ *          components where the posterior shape reduces to the prior shape),
+ *          the Gamma distribution places substantial mass so close to zero
+ *          that rgamma underflows to a subnormal value or to exactly 0.0.
+ *
+ *          A zero (or subnormal) precision then propagates through the MCMC:
+ *          1/prec and sqrt(1/prec) overflow to Inf, zero pivots appear in the
+ *          Cholesky factorization of the state precision matrix, and squared
+ *          innovations overflow, permanently poisoning the chain with Inf/NaN.
+ *
+ *          Flooring at DBL_EPSILON is statistically inert: a precision below
+ *          machine epsilon corresponds to a variance above ~4.5e15, which is
+ *          indistinguishable from a flat prior for any real dataset, while
+ *          every downstream quantity (1/prec, sqrt(1/prec), squared
+ *          innovations) remains comfortably finite. The guard also catches
+ *          NaN produced by degenerate parameters (e.g., scale = 1/Inf after
+ *          an upstream overflow), allowing the chain to recover instead of
+ *          propagating NaN forever.
+ *
+ * @param shape  Gamma shape parameter (> 0).
+ * @param scale  Gamma scale parameter (> 0). Note: scale = 1/rate.
+ * @return       Gamma(shape, scale) draw, floored at DBL_EPSILON.
+ *
+ * @note Intended for sampling precision parameters (initialization draws from
+ *       the prior and conjugate Gamma posterior updates).
+ * @note Requires GetRNGstate()/PutRNGstate() bracket in calling function.
+ *
+ * @see rgamma
+ */
+double rgamma_positive(double shape, double scale);
+
+//----------------------------------------------------------------------
+
+/**
  * @brief Generate a multivariate normal random vector with structured tridiagonal precision matrix.
  *
  * @details This function generates samples from a multivariate normal distribution N(mu, Sigma)

@@ -24,6 +24,7 @@
 
 #include <R.h>
 #include <Rmath.h>
+#include <float.h>          /* DBL_EPSILON */
 #include "cwmh_adaptive.h"  /* adapt_cwmh_parameters */
 #include "cwmh_binomial.h"
 #include "utils.h"          /* generate_normal_vector */
@@ -359,7 +360,9 @@ void generate_alpha_logit_binomial(const double *theta_1_previous,
  *
  *          **Numerical stability:**
  *          - Probability floor set to 1e-300 (100x larger than DBL_MIN ~= 2.2e-308)
- *          - Provides comfortable safety margin while preserving numerical precision
+ *          - Probability ceiling set to the largest double < 1.0 (1 - DBL_EPSILON/2)
+ *          - Unilateral truncations computed on the tail that stays away from 1.0,
+ *            avoiding catastrophic cancellation for bounds far from the mean
  *          - Prevents qnorm from returning +/- Inf on degenerate intervals
  *          - Handles extreme truncations gracefully (up to ~36 standard deviations)
  *
@@ -397,7 +400,13 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
    * numerical precision. Pushing this significantly lower risks pnorm/qnorm underflow,
    * which would propagate NaNs into the state sampler. */
   const double PROB_FLOOR   = 1e-300;
-  const double PROB_CEILING = 1.0 - 1e-300;
+
+  /* Numerical stability ceiling: the largest double strictly less than 1.0.
+   * The spacing of doubles just below 1.0 is DBL_EPSILON / 2 (~1.1e-16), so an
+   * expression like 1.0 - 1e-300 rounds to exactly 1.0 and provides no protection:
+   * qnorm(1.0, ...) returns +Inf, which would poison the state sampler with
+   * Inf/NaN values. */
+  const double PROB_CEILING = 1.0 - DBL_EPSILON / 2.0;
 
   double p_lower, p_upper, p;
 
@@ -434,8 +443,11 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
     p_upper = (p_upper >= 1.0) ? PROB_CEILING :
       (p_upper <= 0.0) ? PROB_FLOOR : p_upper;
 
-    /* Sample from [0, p_upper] and transform */
+    /* Sample from (0, p_upper] and transform */
     p = unif_rand() * p_upper;
+
+    /* Guard against underflow of the product to exactly 0 */
+    p = (p <= 0.0) ? PROB_FLOOR : p;
 
     return qnorm(p, mu, sigma, 1, 0);
   }
@@ -443,19 +455,31 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
   /* ========== Fast Path 3: Only Lower Truncation ========== */
   /* Common in Albert-Chib when y_t = 1: sample N(theta_t, 1) truncated above 0.
    * This pattern also occurs in approximately 50% of probit model updates.
-   * Reduces computational cost by eliminating upper bound calculations. */
+   * Reduces computational cost by eliminating upper bound calculations.
+   *
+   * The computation is carried out entirely in the upper tail (survival scale).
+   * The lower-tail formulation p_lower + u * (1 - p_lower) loses all precision
+   * once mu is ~8 standard deviations below the bound: pnorm(lower, ...) rounds
+   * to exactly 1.0 and qnorm(1.0, ...) returns +Inf, poisoning the state sampler
+   * with Inf/NaN. Working with s = P(X > lower) avoids the catastrophic
+   * cancellation because small survival probabilities are representable down to
+   * ~1e-308. */
   if (upper == R_PosInf) {
-    /* Compute lower cumulative probability */
-    p_lower = pnorm(lower, mu, sigma, 1, 0);
+    /* Compute survival probability P(X > lower) directly in the upper tail */
+    double s_lower = pnorm(lower, mu, sigma, 0, 0);
 
     /* Apply numerical stability guard */
-    p_lower = (p_lower >= 1.0) ? PROB_CEILING :
-      (p_lower <= 0.0) ? PROB_FLOOR : p_lower;
+    s_lower = (s_lower >= 1.0) ? PROB_CEILING :
+      (s_lower <= 0.0) ? PROB_FLOOR : s_lower;
 
-    /* Sample from [p_lower, 1] and transform */
-    p = p_lower + unif_rand() * (1.0 - p_lower);
+    /* Sample from (0, s_lower] on the survival scale */
+    p = unif_rand() * s_lower;
 
-    return qnorm(p, mu, sigma, 1, 0);
+    /* Guard against underflow of the product to exactly 0 */
+    p = (p <= 0.0) ? PROB_FLOOR : p;
+
+    /* Upper-tail inverse CDF: returns x with P(X > x) = p, hence x >= lower */
+    return qnorm(p, mu, sigma, 0, 0);
   }
 
   /* ========== General Case: Both Bounds Finite ========== */
@@ -706,11 +730,11 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
    * - y_t = 0: sample from N(theta_{t-1,1}, 1) truncated below 0
    *
    * For local trend model, the right-hand side vector is:
-   * rhs = v + prec_theta_1 * [(theta_01 + theta_02) * e_1 + H'B * theta_2]
+   * rhs = v + prec_theta_1 * [theta_01 * e_1 + H'B * theta_2]
    *
    * The term H'B * theta_2 accounts for the trend contribution:
    * (H'B * theta_2)[0]   = theta_02 - theta_2[0]  (boundary condition)
-   * (H'B * theta_2)[t]   = theta_2[t] - theta_2[t-1] for t = 1,...,n-2
+   * (H'B * theta_2)[t]   = theta_2[t-1] - theta_2[t] for t = 1,...,n-2
    * (H'B * theta_2)[n-1] = theta_2[n-2] (boundary condition) */
 
   /* First time point with boundary condition */
@@ -721,8 +745,8 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
     v_b = rtruncnorm(theta_1_previous[0], 1.0, R_NegInf, 0.0);
   }
 
-  rhs_vector[0] = v_b + prec_theta1_previous * (theta_01_previous + theta_02_previous - //+
-    theta_2_current[0]);//theta_2_current[0] - theta_02_previous);
+  rhs_vector[0] = v_b + prec_theta1_previous * (theta_01_previous + theta_02_previous -
+    theta_2_current[0]);
 
   /* Intermediate time points */
   for (int t = 1; t < n - 1; t++) {
@@ -734,7 +758,7 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
       v_t = rtruncnorm(theta_1_previous[t], 1.0, R_NegInf, 0.0);
     }
 
-    double theta_2_diff = theta_2_current[t - 1] - theta_2_current[t];//theta_2_current[t] - theta_2_current[t - 1];
+    double theta_2_diff = theta_2_current[t - 1] - theta_2_current[t];
     rhs_vector[t] = v_t + prec_theta1_previous * theta_2_diff;
   }
 

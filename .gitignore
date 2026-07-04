@@ -11,5 +11,6 @@
 *.Rcheck/
 ..Rcheck/
 src/symbols.rds
+tests/testthat/Rplots.pdf
 .positai
 .claude/

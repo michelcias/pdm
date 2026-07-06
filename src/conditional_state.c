@@ -3,7 +3,7 @@
  * @brief Conditional posterior sampling for state parameters in Gaussian models
  * @author Michel H. Montoril
  * @date 2025-10-11
- * @version 1.1
+ * @version 1.2
  *
  * @details This file contains optimized functions for Bayesian state parameter sampling
  *          in polynomial dynamic models with Gaussian observation equations:
@@ -15,6 +15,11 @@
  *          - Full Normal conjugacy exploitation via tridiagonal precision matrices
  *
  * @changelog
+ * - v1.2 (2026-07-06): Bracketed the per-call R_alloc scratch with
+ *   vmaxget()/vmaxset() in all four sampling functions. These helpers run once
+ *   per Gibbs iteration, and the R_alloc stack unwinds only when the enclosing
+ *   .Call returns, so the scratch previously accumulated across iterations
+ *   (peak memory proportional to iterations x n). Now reclaimed every call.
  * - v1.1 (2025-10-11): Refactored all functions to use scalar parameters and direct
  *   vector operations instead of array indexing. Removed iteration index parameters.
  *   Improved memory efficiency by eliminating O(n_iter) storage requirements. Added
@@ -88,7 +93,12 @@ void generate_theta_1_locallevel(const double *data,
 
   /* ========== Allocate Mean Vector ========== */
   /* Temporary storage for conditional posterior mean.
-   * This vector combines information from observations and state dynamics. */
+   * This vector combines information from observations and state dynamics.
+   * The R_alloc stack unwinds only when the enclosing .Call returns, and this
+   * function runs once per Gibbs iteration; the vmaxget()/vmaxset() bracket
+   * reclaims the scratch every call so peak memory stays O(n) instead of
+   * growing with the number of iterations. */
+  const void *vmax = vmaxget();
   double *mean_theta_1 = (double *)R_alloc(n, sizeof(double));
 
   /* ========== Construct Posterior Mean Vector ========== */
@@ -122,6 +132,9 @@ void generate_theta_1_locallevel(const double *data,
     n,               /* n: number of time points */
     1                /* add_a: adjust last diagonal element */
   );
+
+  /* Release the R_alloc scratch (mean vector); results are in theta_1_current. */
+  vmaxset(vmax);
 }
 
 //----------------------------------------------------------------------
@@ -192,7 +205,10 @@ void generate_theta_1(const double *data,
 
   /* ========== Allocate Mean Vector ========== */
   /* Temporary storage for conditional posterior mean.
-   * This vector combines observation, trend, and initial state information. */
+   * This vector combines observation, trend, and initial state information.
+   * vmaxget()/vmaxset() bracket: reclaim the per-call R_alloc scratch, which
+   * would otherwise accumulate across Gibbs iterations until .Call returns. */
+  const void *vmax = vmaxget();
   double *mean_theta_1 = (double *)R_alloc(n, sizeof(double));
 
   /* ========== Construct Posterior Mean Vector ========== */
@@ -234,6 +250,9 @@ void generate_theta_1(const double *data,
     n,               /* n: number of time points */
     1                /* add_a: adjust last diagonal element */
   );
+
+  /* Release the R_alloc scratch (mean vector); results are in theta_1_current. */
+  vmaxset(vmax);
 }
 
 //----------------------------------------------------------------------
@@ -306,7 +325,10 @@ void generate_theta_k(const double *theta_km1_previous,
 
   /* ========== Allocate Mean Vector ========== */
   /* Temporary storage for conditional posterior mean.
-   * This vector combines information from adjacent polynomial components. */
+   * This vector combines information from adjacent polynomial components.
+   * vmaxget()/vmaxset() bracket: reclaim the per-call R_alloc scratch, which
+   * would otherwise accumulate across Gibbs iterations until .Call returns. */
+  const void *vmax = vmaxget();
   double *mean_theta_k = (double *)R_alloc(n, sizeof(double));
 
   /* ========== Construct Posterior Mean Vector ========== */
@@ -348,6 +370,9 @@ void generate_theta_k(const double *theta_km1_previous,
     n,               /* n: number of time points */
     0                /* add_a: boundary adjustment flag */
   );
+
+  /* Release the R_alloc scratch (mean vector); results are in theta_k_current. */
+  vmaxset(vmax);
 }
 
 //----------------------------------------------------------------------
@@ -416,7 +441,10 @@ void generate_theta_p(const double *theta_pm1_previous,
 
   /* ========== Allocate Mean Vector ========== */
   /* Temporary storage for conditional posterior mean.
-   * This vector combines information from penultimate component. */
+   * This vector combines information from penultimate component.
+   * vmaxget()/vmaxset() bracket: reclaim the per-call R_alloc scratch, which
+   * would otherwise accumulate across Gibbs iterations until .Call returns. */
+  const void *vmax = vmaxget();
   double *mean_theta_p = (double *)R_alloc(n, sizeof(double));
 
   /* ========== Construct Posterior Mean Vector ========== */
@@ -454,4 +482,7 @@ void generate_theta_p(const double *theta_pm1_previous,
     n,               /* n: number of time points */
     0                /* add_a: boundary adjustment flag */
   );
+
+  /* Release the R_alloc scratch (mean vector); results are in theta_p_current. */
+  vmaxset(vmax);
 }

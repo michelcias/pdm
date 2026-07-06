@@ -101,10 +101,12 @@ double rgamma_positive(double shape, double scale);
  *                - 0: A[n-1,n-1] = b
  *
  * @complexity O(n) time, O(n) space
- * @memory Allocates 4n doubles: d[n], l[n-1], u[n], x[n]
+ * @memory Allocates 4n doubles: d[n], l[n-1], u[n], x[n], released via
+ *         vmaxget()/vmaxset() before returning so per-iteration callers
+ *         do not accumulate R_alloc stack memory across a long MCMC run.
  *
  * @note **Critical Assumption**: n > 2 required for algorithm stability.
- * @note Uses R's memory allocation (R_alloc) - automatically garbage collected.
+ * @note Uses R's memory allocation (R_alloc), reclaimed on exit via vmaxset.
  * @note Numerical stability depends on condition number of precision matrix A.
  * @note Requires GetRNGstate()/PutRNGstate() bracket in calling function.
  *

@@ -93,10 +93,12 @@ double rgamma_positive(double shape, double scale) {
  *                - 0: A[n-1,n-1] = b
  *
  * @complexity O(n) time, O(n) space
- * @memory Allocates 4n doubles: d[n], l[n-1], u[n], x[n]
+ * @memory Allocates 4n doubles: d[n], l[n-1], u[n], x[n], released via
+ *         vmaxget()/vmaxset() before returning so per-iteration callers
+ *         do not accumulate R_alloc stack memory across a long MCMC run.
  *
  * @note **Critical Assumption**: n > 2 required for algorithm stability.
- * @note Uses R's memory allocation (R_alloc) - automatically garbage collected.
+ * @note Uses R's memory allocation (R_alloc), reclaimed on exit via vmaxset.
  * @note Numerical stability depends on condition number of precision matrix A.
  * @note Requires GetRNGstate()/PutRNGstate() bracket in calling function.
  *
@@ -128,6 +130,11 @@ void generate_normal_vector(double       *r,
   int i;                                                              // Loop index for matrix elements
 
   /* ========== Memory Allocation ========== */
+  /* The R_alloc stack is only unwound when the enclosing .Call returns, and
+   * this function runs once per Gibbs iteration. Save the stack pointer here
+   * and restore it on exit so the scratch buffers are reclaimed every call
+   * instead of accumulating O(iterations * n) peak memory. */
+  const void *vmax = vmaxget();
   double *d = (double *)R_alloc(n, sizeof(double));                   // Diagonal of L
   double *l = (double *)R_alloc(n - 1, sizeof(double));               // Subdiagonal of L
   double *u = (double *)R_alloc(n, sizeof(double));                   // Temporary vector (L*u = y)
@@ -165,4 +172,6 @@ void generate_normal_vector(double       *r,
 
   r[0] += x[0];                                                       // Final addition to r[0]
 
+  /* Release the scratch buffers (d, l, u, x); only r carries results out. */
+  vmaxset(vmax);
 }

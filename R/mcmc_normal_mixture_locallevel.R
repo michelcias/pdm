@@ -215,11 +215,11 @@
 #'   \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Default is 50.
 #'   Ignored when `link = "probit"`.
 #' @param max_step_size Numeric > 0, maximum allowed change in log-scale proposal variance
-#'   per adaptation step (logit link only). Prevents extreme adjustments. Default is 1.0.
+#'   per adaptation step (logit link only). Prevents extreme adjustments. Default is 0.1.
 #'   Ignored when `link = "probit"`.
 #' @param base_adaptation_rate Numeric > 0, base rate controlling adaptation speed
 #'   (logit link only). Higher values lead to faster but potentially less stable adaptation.
-#'   Default is 0.01. Ignored when `link = "probit"`.
+#'   Default is 1.0. Ignored when `link = "probit"`.
 #' @param decay_exponent Numeric > 0, exponent controlling diminishing adaptation
 #'   rate (logit link only). The adaptation rate decays as \eqn{m^{-\text{decay\_exponent}}}
 #'   to satisfy diminishing adaptation conditions. Must be in (0.5, 1] for theoretical
@@ -329,8 +329,8 @@
 #'   prior_prec1_shape       = 100,
 #'   prior_prec1_rate        = 1,
 #'   lag_update              = 50,
-#'   max_step_size           = 1.0,
-#'   base_adaptation_rate    = 0.01,
+#'   max_step_size           = 0.1,
+#'   base_adaptation_rate    = 1.0,
 #'   decay_exponent          = 0.6,
 #'   target_acceptance       = 0.44,
 #'   min_deviation_threshold = NULL,
@@ -1132,8 +1132,8 @@ mcmc_normal_mixture_locallevel <- function(y,
                                            prior_prec1_shape = 0.01,
                                            prior_prec1_rate = 0.01,
                                            lag_update = 50,
-                                           max_step_size = 1.0,
-                                           base_adaptation_rate = 0.01,
+                                           max_step_size = 0.1,
+                                           base_adaptation_rate = 1.0,
                                            decay_exponent = 0.6,
                                            target_acceptance = 0.44,
                                            min_deviation_threshold = NULL,

@@ -249,11 +249,11 @@
 #'   iterations. Default is 50. Ignored when `link = "probit"`.
 #' @param max_step_size Numeric > 0, maximum allowed change in log-scale proposal
 #'   variance per adaptation step (logit link only). Prevents extreme adjustments
-#'   that could destabilize the sampler. Common choices: 0.01-0.1. Default is 1.0.
+#'   that could destabilize the sampler. Common choices: 0.01-0.1. Default is 0.1.
 #'   Ignored when `link = "probit"`.
 #' @param base_adaptation_rate Numeric > 0, controls the overall speed of adaptation
 #'   before decay is applied (logit link only). Higher values lead to faster but
-#'   potentially less stable adaptation. Common choices: 0.1-10.0. Default is 0.01.
+#'   potentially less stable adaptation. Common choices: 0.1-10.0. Default is 1.0.
 #'   Ignored when `link = "probit"`.
 #' @param decay_exponent Numeric > 0, controls how quickly the adaptation
 #'   step size diminishes over MCMC iterations (logit link only). As the algorithm
@@ -393,8 +393,8 @@
 #'   prior_prec3_shape       = 900,
 #'   prior_prec3_rate        = 1,
 #'   lag_update              = 50,
-#'   max_step_size           = 1.0,
-#'   base_adaptation_rate    = 0.01,
+#'   max_step_size           = 0.1,
+#'   base_adaptation_rate    = 1.0,
 #'   decay_exponent          = 0.6,
 #'   target_acceptance       = 0.44,
 #'   min_deviation_threshold = NULL,  # Use default (1/lag_update)
@@ -1513,8 +1513,8 @@ mcmc_normal_mixture_localacceleration <- function(y,
                                                   prior_prec3_shape = 0.01,
                                                   prior_prec3_rate = 0.01,
                                                   lag_update = 50,
-                                                  max_step_size = 1.0,
-                                                  base_adaptation_rate = 0.01,
+                                                  max_step_size = 0.1,
+                                                  base_adaptation_rate = 1.0,
                                                   decay_exponent = 0.6,
                                                   target_acceptance = 0.44,
                                                   min_deviation_threshold = NULL,

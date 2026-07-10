@@ -27,8 +27,8 @@ mcmc_normal_mixture_localtrend(
   prior_prec2_shape = 0.01,
   prior_prec2_rate = 0.01,
   lag_update = 50,
-  max_step_size = 1,
-  base_adaptation_rate = 0.01,
+  max_step_size = 0.1,
+  base_adaptation_rate = 1,
   decay_exponent = 0.6,
   target_acceptance = 0.44,
   min_deviation_threshold = NULL,
@@ -108,12 +108,12 @@ Default is 50. Ignored when \code{link = "probit"}.}
 
 \item{max_step_size}{Numeric > 0, maximum allowed change in log-scale proposal variance
 per adaptation step (logit link only). Prevents extreme adjustments in proposal
-scaling. Default is 1.0. Ignored when \code{link = "probit"}.}
+scaling. Default is 0.1. Ignored when \code{link = "probit"}.}
 
 \item{base_adaptation_rate}{Numeric > 0, base rate controlling adaptation speed
 (logit link only). Higher values lead to faster but potentially less stable adaptation.
 Controls the magnitude of adaptation adjustments before decay is applied. Default
-is 0.01. Ignored when \code{link = "probit"}.}
+is 1.0. Ignored when \code{link = "probit"}.}
 
 \item{decay_exponent}{Numeric > 0, exponent controlling diminishing adaptation
 rate (logit link only). The adaptation rate decays as \eqn{m^{-\text{decay\_exponent}}}
@@ -435,8 +435,8 @@ out_logit <- mcmc_normal_mixture_localtrend(
   prior_prec2_shape       = 400,
   prior_prec2_rate        = 1,
   lag_update              = 50,
-  max_step_size           = 1.0,
-  base_adaptation_rate    = 0.01,
+  max_step_size           = 0.1,
+  base_adaptation_rate    = 1.0,
   decay_exponent          = 0.6,
   target_acceptance       = 0.44,
   min_deviation_threshold = NULL,  # Use default (1/lag_update)

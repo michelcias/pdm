@@ -419,8 +419,8 @@ validate_normal_mixture_localacceleration <- function(x) {
 #'   prior_prec3_shape       = 900,
 #'   prior_prec3_rate        = 1,
 #'   lag_update              = 50,
-#'   max_step_size           = 1.0,
-#'   base_adaptation_rate    = 0.01,
+#'   max_step_size           = 0.1,
+#'   base_adaptation_rate    = 1.0,
 #'   decay_exponent          = 0.6,
 #'   target_acceptance       = 0.44,
 #'   min_deviation_threshold = NULL,  # Use default (1/lag_update)
@@ -519,8 +519,8 @@ is.normal_mixture_localacceleration <- function(x) {
 #'   prior_prec3_shape       = 900,
 #'   prior_prec3_rate        = 1,
 #'   lag_update              = 50,
-#'   max_step_size           = 1.0,
-#'   base_adaptation_rate    = 0.01,
+#'   max_step_size           = 0.1,
+#'   base_adaptation_rate    = 1.0,
 #'   decay_exponent          = 0.6,
 #'   target_acceptance       = 0.44,
 #'   min_deviation_threshold = NULL,  # Use default (1/lag_update)

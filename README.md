@@ -165,6 +165,63 @@ The package implements hybrid MCMC strategies to ensure efficiency and convergen
   - Implements the diminishing adaptation scheme of Roberts & Rosenthal (2009).
   - **User Benefit**: The proposal variances are automatically tuned throughout the MCMC chain to converge towards a target acceptance proportion (user-defined), removing the need for manual parameter tuning.
 
+### Numerical Safeguards
+
+MCMC samplers are only as robust as their weakest arithmetic step: a **single**
+degenerate draw can silently poison an otherwise correct chain. A sampled
+precision that underflows to `0` turns into an infinite variance and a zero
+Cholesky pivot; a latent variable drawn many standard deviations into a tail can
+evaluate to `±Inf`; a link that saturates to exactly `0` or `1` flattens the
+likelihood and lets an unidentified state wander off. Once an `Inf`/`NaN` enters
+the state vector it propagates to every subsequent iteration, and stalling
+behaviour (a state that drifts away while its innovation precision collapses)
+degrades convergence without ever raising an error.
+
+The C backend therefore applies a small number of guards. They share a common
+design principle: **each one only acts where the ordinary floating-point
+evaluation of the model has already lost the information the sampler needs**, so
+on the identifiable part of the parameter space they leave the target
+distribution unchanged and do not affect the underlying theory. In well-behaved
+problems they never trigger.
+
+- **Strictly positive precisions** (`rgamma_positive`, `src/utils.c`). Every
+  sampled precision ($V^{-1}$, $W_k^{-1}$, $\phi_k$) is floored at machine
+  epsilon (`DBL_EPSILON` $\approx 2.2\times10^{-16}$). With small shape
+  parameters `rgamma` can return a subnormal value or exactly `0`, which would
+  produce an infinite variance $1/\text{prec}$, an infinite standard deviation
+  $\sqrt{1/\text{prec}}$, or a zero pivot in the state update. The floor
+  corresponds to an astronomically large variance ($\approx 4.5\times10^{15}$),
+  so it is statistically inert — it only
+  replaces a value that carries no usable information — while keeping every
+  downstream computation finite. The negated comparison also traps `NaN`.
+
+- **Finite truncated-normal draws** (`rtruncnorm`, `src/generate_alpha_binomial.c`).
+  The Albert–Chib latent variables are drawn by inverse-CDF. When the mean sits
+  many standard deviations from the truncation point, `pnorm` rounds to exactly
+  `0` or `1` and `qnorm` would return `±Inf`. One-sided truncations are hence
+  computed on the *survival* scale (the tail that stays away from `1`) to avoid
+  catastrophic cancellation, and the cumulative probabilities are confined to
+  `[1e-300, 1 - DBL_EPSILON/2]`. This handles truncations up to $\sim 36$
+  standard deviations while leaving typical draws unchanged.
+
+- **Latent-state saturation clamps** (`clamp_probit_state` in
+  `src/generate_alpha_binomial.c`; `clamp_logit_state` in `src/cwmh_binomial.c`).
+  When the mixture weight $\alpha_t = g(\theta_{t,1})$ is pushed to the boundary
+  over a stretch — common with well-separated or segmented data, e.g. aCGH
+  copy-number profiles — the inverse link saturates to exactly `0` or `1` and the
+  Bernoulli/Binomial likelihood becomes flat. The state $\theta_{t,1}$ is then
+  unidentified by the data, and the sampler can random-walk into that tail,
+  inflating the state innovations and dragging the innovation precision
+  $W_1^{-1}$ toward zero in a positive-feedback loop that stalls the chain. The
+  probit link saturates already near $|\theta| \approx 8.3$, far earlier than the
+  logit link ($\approx 36.7$), so this most visibly affects the probit samplers.
+  Each state is therefore clamped to a band at its link's saturation point
+  ($\pm 8$ for probit, $\pm 36$ for logit). Since $g$ is already numerically at
+  the boundary there, $\alpha_t = g(\theta_{t,1})$ is unchanged (and, as a side
+  effect, kept strictly inside $(0, 1)$, so the mixture indicator sampler never
+  takes a degenerate deterministic branch); for well-identified problems
+  $|\theta_{t,1}|$ stays far below the bound, so the clamp is inert.
+
 ### Diagnostic Tools
 
 The package provides a unified `plot()` method with the `type` argument:

@@ -40,6 +40,38 @@ static inline double stable_log_accept_prob(double lp1n,
 }
 
 /**
+ * @brief Numerical saturation bound for the logit latent state theta_1.
+ *
+ * @details Symmetric counterpart of the probit guard in generate_alpha_binomial.c
+ *          (see clamp_probit_state). It addresses the same failure mode: once the
+ *          inverse link saturates, the Binomial/Bernoulli likelihood
+ *          P(y | theta) becomes flat, theta_1 is no longer identified by the
+ *          data, and a random walk of the state can drift into that tail,
+ *          inflating the sampled innovations and dragging the innovation
+ *          precision 1/W_1 toward zero.
+ *
+ *          The logistic transform saturates far later than the probit one: for
+ *          |theta| >= LOGIT_THETA_CLAMP = 36, ilogit(theta) is within ~2e-16 of 0
+ *          or 1 (ilogit(36) = 1 - 2.3e-16), i.e. numerically at the boundary,
+ *          whereas Phi reaches that point already near |theta| ~ 8. Because the
+ *          bound is so large and the component-wise random-walk proposals move in
+ *          small steps, this guard essentially never binds in practice; it is a
+ *          defensive, symmetric safeguard that keeps alpha = ilogit(theta)
+ *          strictly inside (0, 1) (so the mixture indicator sampler never hits its
+ *          degenerate deterministic branch) and rules out the runaway drift by
+ *          construction. Since ilogit is already saturated at the bound, clamping
+ *          leaves alpha numerically unchanged, and for well-identified problems
+ *          |theta_1| stays far below 36, so the guard is inert.
+ */
+#define LOGIT_THETA_CLAMP 36.0
+
+static inline double clamp_logit_state(double theta) {
+  if (theta >  LOGIT_THETA_CLAMP) return  LOGIT_THETA_CLAMP;
+  if (theta < -LOGIT_THETA_CLAMP) return -LOGIT_THETA_CLAMP;
+  return theta;
+}
+
+/**
  * @brief Cache structure for expensive precision computations
  */
 typedef struct {
@@ -295,6 +327,16 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
 
   /* Store acceptance indicator in sliding window */
   theta_1_updated[window_idx + (n - 1)] = accepted_last;
+
+  /* ========== Guard Against Logit Saturation Drift ========== */
+  /* Clamp the accepted states to the band where ilogit is not numerically
+   * saturated (see clamp_logit_state). Inert whenever |theta_1| < LOGIT_THETA_CLAMP,
+   * which is the norm for the small-step random walk; it defends against the same
+   * runaway drift / 1/W_1 collapse guarded against in the probit sampler and keeps
+   * alpha = ilogit(theta) strictly inside (0, 1). */
+  for (t = 0; t < n; t++) {
+    theta_1_new[t] = clamp_logit_state(theta_1_new[t]);
+  }
 
   /* ========== Update Output Arrays with Branch Hoisting Optimization ========== */
   /* Branch hoisting: test compute_alpha once outside loop instead of n times inside.
@@ -559,6 +601,16 @@ void cwmh_alpha_logit_binomial(const double *theta_1_previous,
 
   /* Store acceptance indicator in sliding window */
   theta_1_updated[window_idx + (n - 1)] = accepted_last;
+
+  /* ========== Guard Against Logit Saturation Drift ========== */
+  /* Clamp the accepted states to the band where ilogit is not numerically
+   * saturated (see clamp_logit_state). Inert whenever |theta_1| < LOGIT_THETA_CLAMP,
+   * which is the norm for the small-step random walk; it defends against the same
+   * runaway drift / 1/W_1 collapse guarded against in the probit sampler and keeps
+   * alpha = ilogit(theta) strictly inside (0, 1). */
+  for (t = 0; t < n; t++) {
+    theta_1_new[t] = clamp_logit_state(theta_1_new[t]);
+  }
 
   /* ========== Update Output Arrays with Branch Hoisting Optimization ========== */
   /* Branch hoisting: test compute_alpha once outside loop instead of n times inside.

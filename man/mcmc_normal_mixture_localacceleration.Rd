@@ -129,7 +129,7 @@ Ignored when \code{link = "probit"}.}
 
 \item{base_adaptation_rate}{Numeric > 0, controls the overall speed of adaptation
 before decay is applied (logit link only). Higher values lead to faster but
-potentially less stable adaptation. Common choices: 0.1-10.0. Default is 0.01.
+potentially less stable adaptation. Common choices: 0.1-10.0. Default is 1.0.
 Ignored when \code{link = "probit"}.}
 
 \item{decay_exponent}{Numeric > 0, controls how quickly the adaptation

@@ -31,22 +31,22 @@ out_logit_level <- mcmc_normal_mixture_locallevel(
   n_chain                 = 1000,         # Number of samples to keep
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile of y
-  prior_mu01_prec         = 1 / (10 * var(y)),
+  prior_mu01_prec         = 1 / (1 * var(y)),
   # Prior for precision of first mixture component
-  prior_prec01_shape      = 0.01,
-  prior_prec01_rate       = 0.01,
+  prior_prec01_shape      = 0.1,
+  prior_prec01_rate       = 0.1,
   # Prior for mean of second mixture component
   prior_mu02_mean         = NULL,         # Default: 75th percentile of y
-  prior_mu02_prec         = 1 / (10 * var(y)),
+  prior_mu02_prec         = 1 / (1 * var(y)),
   # Prior for precision of second mixture component
-  prior_prec02_shape      = 0.01,
-  prior_prec02_rate       = 0.01,
+  prior_prec02_shape      = 0.1,
+  prior_prec02_rate       = 0.1,
   # Prior for state equation parameters
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
   # Prior for state precision
-  prior_prec1_shape       = 0.01,
-  prior_prec1_rate        = 0.01,
+  prior_prec1_shape       = 0.1,
+  prior_prec1_rate        = 0.1,
   # Adaptive MALA parameters
   lag_update              = 50,           # Update adaptation every 50 iterations
   max_step_size           = 0.1,          # Maximum step size for MALA
@@ -60,8 +60,7 @@ out_logit_level <- mcmc_normal_mixture_locallevel(
   verbose                 = TRUE,
   bar_width               = 60,
   seed                    = 456
-)
-plot(out_logit_level, type = "alpha")
+); plot(out_logit_level, ask = FALSE)
 
 ## 1.2 Local Level with Probit Link
 cat("\n=== Running Local Level Model with Probit Link ===\n")
@@ -72,22 +71,21 @@ out_probit_level <- mcmc_normal_mixture_locallevel(
   thinning           = 250,
   n_chain            = 1000,
   prior_mu01_mean    = NULL,
-  prior_mu01_prec    = 1 / (10 * var(y)),
-  prior_prec01_shape = 0.01,
-  prior_prec01_rate  = 0.01,
+  prior_mu01_prec    = 1 / (1 * var(y)),
+  prior_prec01_shape = 0.1,
+  prior_prec01_rate  = 0.1,
   prior_mu02_mean    = NULL,
   prior_mu02_prec    = 1 / (10 * var(y)),
-  prior_prec02_shape = 0.01,
-  prior_prec02_rate  = 0.01,
+  prior_prec02_shape = 0.1,
+  prior_prec02_rate  = 0.1,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
-  prior_prec1_shape  = 0.01,
-  prior_prec1_rate   = 0.01,
+  prior_prec1_shape  = 0.1,
+  prior_prec1_rate   = 0.1,
   verbose            = TRUE,
   bar_width          = 60,
   seed               = 789
-)
-plot(out_probit_level, type = "alpha")
+);plot(out_probit_level, ask = FALSE)
 
 ################################################################################
 # 2. LOCAL TREND MODEL
@@ -101,19 +99,19 @@ cat("\n=== Running Local Trend Model with Logit Link ===\n")
 out_logit_trend <- mcmc_normal_mixture_localtrend(
   y,
   link                    = "logit",
-  burnin                  = 150000,       # Increased burn-in for more complex model
-  thinning                = 250,
+  burnin                  = 50000,       # Increased burn-in for more complex model
+  thinning                = 200,
   n_chain                 = 1000,
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile
-  prior_mu01_prec         = 1 / (10 * var(y)),
-  prior_prec01_shape      = 0.01,
-  prior_prec01_rate       = 0.01,
+  prior_mu01_prec         = 1 / (1 * var(y)),
+  prior_prec01_shape      = 0.1,
+  prior_prec01_rate       = 0.1,
   # Prior for mean of second mixture component
   prior_mu02_mean         = NULL,         # Default: 75th percentile
-  prior_mu02_prec         = 1 / (10 * var(y)),
-  prior_prec02_shape      = 0.01,
-  prior_prec02_rate       = 0.01,
+  prior_mu02_prec         = 1 / (1 * var(y)),
+  prior_prec02_shape      = 0.1,
+  prior_prec02_rate       = 0.1,
   # Prior for state equation - level
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
@@ -121,16 +119,16 @@ out_logit_trend <- mcmc_normal_mixture_localtrend(
   prior_theta02_mean      = 0,
   prior_theta02_prec      = 1,
   # Prior for state precision - level
-  prior_prec1_shape       = 0.01,
-  prior_prec1_rate        = 0.01,
+  prior_prec1_shape       = 0.1,
+  prior_prec1_rate        = 0.1,
   # Prior for state precision - slope
-  prior_prec2_shape       = 0.01,
-  prior_prec2_rate        = 0.01,
+  prior_prec2_shape       = 0.1,
+  prior_prec2_rate        = 0.1,
   # Adaptive MALA parameters
   lag_update              = 50,
   max_step_size           = 0.1,
   base_adaptation_rate    = 1,
-  decay_exponent          = 0.5,
+  decay_exponent          = 0.6,
   target_acceptance       = 0.44,
   min_deviation_threshold = NULL,         # Default: 1/lag_update
   # Output options
@@ -139,38 +137,36 @@ out_logit_trend <- mcmc_normal_mixture_localtrend(
   verbose                 = TRUE,
   bar_width               = 60,
   seed                    = 456
-)
-plot(out_logit_trend, type = "alpha")
+);plot(out_logit_trend, ask = FALSE)
 
 ## 2.2 Local Trend with Probit Link
 cat("\n=== Running Local Trend Model with Probit Link ===\n")
 out_probit_trend <- mcmc_normal_mixture_localtrend(
   y,
   link               = "probit",
-  burnin             = 150000,
-  thinning           = 250,
+  burnin             = 50000,
+  thinning           = 200,
   n_chain            = 1000,
   prior_mu01_mean    = NULL,
-  prior_mu01_prec    = 1 / (10 * var(y)),
-  prior_prec01_shape = 0.01,
-  prior_prec01_rate  = 0.01,
+  prior_mu01_prec    = 1 / (1 * var(y)),
+  prior_prec01_shape = 0.1,
+  prior_prec01_rate  = 0.1,
   prior_mu02_mean    = NULL,
-  prior_mu02_prec    = 1 / (10 * var(y)),
-  prior_prec02_shape = 0.01,
-  prior_prec02_rate  = 0.01,
+  prior_mu02_prec    = 1 / (1 * var(y)),
+  prior_prec02_shape = 0.1,
+  prior_prec02_rate  = 0.1,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_theta02_mean = 0,
   prior_theta02_prec = 1,
-  prior_prec1_shape  = 0.01,
-  prior_prec1_rate   = 0.01,
-  prior_prec2_shape  = 0.01,
-  prior_prec2_rate   = 0.01,
+  prior_prec1_shape  = 01,
+  prior_prec1_rate   = 01,
+  prior_prec2_shape  = 01,
+  prior_prec2_rate   = 01,
   verbose            = TRUE,
   bar_width          = 60,
   seed               = 789
-)
-plot(out_probit_trend, type = "alpha", which = 1)
+);plot(out_probit_trend, ask = FALSE)
 
 ################################################################################
 # 3. LOCAL ACCELERATION MODEL
@@ -184,19 +180,19 @@ cat("\n=== Running Local Acceleration Model with Logit Link ===\n")
 out_logit_accel <- mcmc_normal_mixture_localacceleration(
   y,
   link                    = "logit",
-  burnin                  = 100000,       # Increased burn-in for most complex model
-  thinning                = 250,
+  burnin                  = 50000,       # Increased burn-in for most complex model
+  thinning                = 1000,
   n_chain                 = 1000,
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile
-  prior_mu01_prec         = 1 / (10 * var(y)),
-  prior_prec01_shape      = 0.01,
-  prior_prec01_rate       = 0.01,
+  prior_mu01_prec         = 1 / (1 * var(y)),
+  prior_prec01_shape      = 01,
+  prior_prec01_rate       = 01,
   # Prior for mean of second mixture component
   prior_mu02_mean         = NULL,         # Default: 75th percentile
-  prior_mu02_prec         = 1 / (10 * var(y)),
-  prior_prec02_shape      = 0.01,
-  prior_prec02_rate       = 0.01,
+  prior_mu02_prec         = 1 / (1 * var(y)),
+  prior_prec02_shape      = 01,
+  prior_prec02_rate       = 01,
   # Prior for state equation - level
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
@@ -207,14 +203,14 @@ out_logit_accel <- mcmc_normal_mixture_localacceleration(
   prior_theta03_mean      = 0,
   prior_theta03_prec      = 1,
   # Prior for state precision - level
-  prior_prec1_shape       = 0.1,
-  prior_prec1_rate        = 0.1,
+  prior_prec1_shape       = 01,
+  prior_prec1_rate        = 01,
   # Prior for state precision - slope
-  prior_prec2_shape       = 0.1,
-  prior_prec2_rate        = 0.1,
+  prior_prec2_shape       = 01,
+  prior_prec2_rate        = 01,
   # Prior for state precision - acceleration
-  prior_prec3_shape       = 0.1,
-  prior_prec3_rate        = 0.1,
+  prior_prec3_shape       = 01,
+  prior_prec3_rate        = 01,
   # Adaptive MALA parameters
   lag_update              = 50,
   max_step_size           = 0.1,
@@ -228,42 +224,40 @@ out_logit_accel <- mcmc_normal_mixture_localacceleration(
   verbose                 = TRUE,
   bar_width               = 60,
   seed                    = 456
-)
-plot(out_logit_accel, ask = FALSE)
+);plot(out_logit_accel, ask = FALSE)
 
 ## 3.2 Local Acceleration with Probit Link
 cat("\n=== Running Local Acceleration Model with Probit Link ===\n")
 out_probit_accel <- mcmc_normal_mixture_localacceleration(
   y,
   link               = "probit",
-  burnin             = 150000,
-  thinning           = 250,
+  burnin             = 50000,
+  thinning           = 500,
   n_chain            = 1000,
   prior_mu01_mean    = NULL,
-  prior_mu01_prec    = 1 / (10 * var(y)),
-  prior_prec01_shape = 0.01,
-  prior_prec01_rate  = 0.01,
+  prior_mu01_prec    = 1 / (1 * var(y)),
+  prior_prec01_shape = 01,
+  prior_prec01_rate  = 01,
   prior_mu02_mean    = NULL,
-  prior_mu02_prec    = 1 / (10 * var(y)),
-  prior_prec02_shape = 0.01,
-  prior_prec02_rate  = 0.01,
+  prior_mu02_prec    = 1 / (1 * var(y)),
+  prior_prec02_shape = 01,
+  prior_prec02_rate  = 01,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_theta02_mean = 0,
   prior_theta02_prec = 1,
   prior_theta03_mean = 0,
   prior_theta03_prec = 1,
-  prior_prec1_shape  = 0.01,
-  prior_prec1_rate   = 0.01,
-  prior_prec2_shape  = 1,
-  prior_prec2_rate   = 0.1,
-  prior_prec3_shape  = 100,
-  prior_prec3_rate   = 1,
+  prior_prec1_shape  = 01,
+  prior_prec1_rate   = 01,
+  prior_prec2_shape  = 01,
+  prior_prec2_rate   = 01,
+  prior_prec3_shape  = 01,
+  prior_prec3_rate   = 01,
   verbose            = TRUE,
   bar_width          = 60,
   seed               = 123
-)
-plot(out_probit_accel, ask = FALSE)
+);plot(out_probit_accel, ask = FALSE)
 
 ################################################################################
 # 4. RESULTS SUMMARY

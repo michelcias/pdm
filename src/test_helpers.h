@@ -159,6 +159,22 @@ SEXP test_generate_precision_theta_p(SEXP theta_0p_,
                                      SEXP eta_0p_);
 
 /**
+ * @brief Update the Half-t scale-mixture auxiliary variable b = 1/a.
+ *
+ * @details Thin R-facing wrapper around ::generate_halft_aux used to unit-test
+ *          the auxiliary draw of the Half-t (Half-Cauchy when df = 1) prior.
+ *
+ * @param prec_      Scalar current precision W^{-1} (> 0).
+ * @param hc_scale_  Scalar Half-t scale hyperparameter A (> 0).
+ * @param df_        Scalar Half-t degrees of freedom nu (> 0).
+ *
+ * @return A length-one numeric vector containing the sampled auxiliary b = 1/a.
+ */
+SEXP test_generate_halft_aux(SEXP prec_,
+                             SEXP hc_scale_,
+                             SEXP df_);
+
+/**
  * @brief Sample the first latent state for the local level model.
  *
  * @details Performs argument coercion and length extraction prior to sampling

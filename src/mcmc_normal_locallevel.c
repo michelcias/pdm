@@ -35,6 +35,72 @@
 #include "mcmc_progress_bar.h"
 #include "mcmc_normal_locallevel.h"
 
+/* =========================================================================
+ * Innovation/observation precision prior dispatch
+ *
+ * The prior on each precision (Gamma on the precision, or Half-t on the
+ * standard deviation) is chosen ONCE, before the Gibbs loop, by binding a
+ * function pointer per precision. The per-iteration hot path then calls
+ * through the pointer and never re-tests which prior is in force.
+ *
+ * The Half-t path uses the inverse-gamma scale-mixture representation
+ * (Wand et al. 2011; Huang & Wand 2013): sqrt(W) ~ Half-t(df, A) is drawn via
+ * an auxiliary b = 1/a, and the precision draw reuses the existing conjugate
+ * Gamma sampler with shape df/2 and prior rate df * b. df = 1 is Half-Cauchy.
+ * ========================================================================= */
+
+/* Prior-kind codes shared with the R wrapper (see mcmc_normal_locallevel.R). */
+#define PDM_PREC_PRIOR_GAMMA 0
+#define PDM_PREC_PRIOR_HALFT 1
+
+/* Hyperparameters for one precision prior. Only the fields relevant to the
+ * selected kind are read by the corresponding step function. */
+typedef struct {
+  double shape;    /* Gamma prior shape nu    (Gamma kind)  */
+  double rate;     /* Gamma prior rate  eta   (Gamma kind)  */
+  double df;       /* Half-t degrees of freedom nu (Half-t kind) */
+  double hc_scale; /* Half-t scale A          (Half-t kind) */
+} prec_prior_t;
+
+/* Step signatures. `aux` points to the Half-t auxiliary b = 1/a, updated in
+ * place; it is ignored by the Gamma steps. */
+typedef double (*prec_thetap_step_t)(double theta_0p, const double *theta_p,
+                                     int n, const prec_prior_t *pr, double *aux);
+typedef double (*prec_data_step_t)(const double *y, const double *theta_1,
+                                   int n, const prec_prior_t *pr, double *aux);
+
+/* --- Innovation precision W_1^{-1} (random-walk / terminal component) --- */
+static double step_prec_thetap_gamma(double theta_0p, const double *theta_p,
+                                     int n, const prec_prior_t *pr, double *aux) {
+  (void) aux;  /* Gamma prior carries no auxiliary variable */
+  return generate_precision_theta_p(theta_0p, theta_p, pr->shape, pr->rate, n);
+}
+
+static double step_prec_thetap_halft(double theta_0p, const double *theta_p,
+                                     int n, const prec_prior_t *pr, double *aux) {
+  /* Precision: conjugate Gamma sampler with shape df/2 and prior rate df * b. */
+  double prec = generate_precision_theta_p(theta_0p, theta_p,
+                                           0.5 * pr->df, pr->df * (*aux), n);
+  /* Auxiliary refresh: b | prec ~ Gamma((df+1)/2, rate = df*prec + 1/A^2). */
+  *aux = generate_halft_aux(prec, pr->hc_scale, pr->df);
+  return prec;
+}
+
+/* --- Observation precision V^{-1} --- */
+static double step_prec_data_gamma(const double *y, const double *theta_1,
+                                   int n, const prec_prior_t *pr, double *aux) {
+  (void) aux;
+  return generate_precision_data(y, theta_1, pr->shape, pr->rate, n);
+}
+
+static double step_prec_data_halft(const double *y, const double *theta_1,
+                                   int n, const prec_prior_t *pr, double *aux) {
+  double prec = generate_precision_data(y, theta_1,
+                                        0.5 * pr->df, pr->df * (*aux), n);
+  *aux = generate_halft_aux(prec, pr->hc_scale, pr->df);
+  return prec;
+}
+
 /**
  * @brief Gibbs sampler for local-level dynamic model with Gaussian observations
  *
@@ -75,14 +141,27 @@
  *                              Typical value: 0 (vague prior).
  * @param prior_theta01_prec_   SEXP Double scalar, prior precision tau_0 = 1/sigma_0^2 for
  *                              initial state. Typical value: 0.001 (vague prior).
- * @param prior_prec1_shape_    SEXP Double scalar, shape parameter nu_1 for Gamma(nu_1, eta_1)
- *                              prior on 1/W_1. Typical value: 0.001 (vague prior).
- * @param prior_prec1_rate_     SEXP Double scalar, rate parameter eta_1 for Gamma(nu_1, eta_1)
- *                              prior on 1/W_1. Typical value: 0.001 (vague prior).
- * @param prior_prec_y_shape_   SEXP Double scalar, shape parameter nu_y for Gamma(nu_y, eta_y)
- *                              prior on 1/V. Typical value: 0.001 (vague prior).
- * @param prior_prec_y_rate_    SEXP Double scalar, rate parameter eta_y for Gamma(nu_y, eta_y)
- *                              prior on 1/V. Typical value: 0.001 (vague prior).
+ * @param prior_prec1_type_     SEXP Integer scalar selecting the prior on 1/W_1:
+ *                              0 = Gamma on the precision, 1 = Half-t on the
+ *                              innovation standard deviation sqrt(W_1).
+ * @param prior_prec1_shape_    SEXP Double scalar, Gamma shape nu_1 (used when
+ *                              prior_prec1_type_ == 0). Typical value: 0.001.
+ * @param prior_prec1_rate_     SEXP Double scalar, Gamma rate eta_1 (used when
+ *                              prior_prec1_type_ == 0). Typical value: 0.001.
+ * @param prior_prec1_scale_    SEXP Double scalar, Half-t scale A_1 > 0 (used when
+ *                              prior_prec1_type_ == 1).
+ * @param prior_prec1_df_       SEXP Double scalar, Half-t degrees of freedom nu_1 > 0
+ *                              (used when prior_prec1_type_ == 1; 1 = Half-Cauchy).
+ * @param prior_prec_y_type_    SEXP Integer scalar selecting the prior on 1/V
+ *                              (0 = Gamma on the precision, 1 = Half-t on sqrt(V)).
+ * @param prior_prec_y_shape_   SEXP Double scalar, Gamma shape nu_y (used when
+ *                              prior_prec_y_type_ == 0). Typical value: 0.001.
+ * @param prior_prec_y_rate_    SEXP Double scalar, Gamma rate eta_y (used when
+ *                              prior_prec_y_type_ == 0). Typical value: 0.001.
+ * @param prior_prec_y_scale_   SEXP Double scalar, Half-t scale A_V > 0 (used when
+ *                              prior_prec_y_type_ == 1).
+ * @param prior_prec_y_df_      SEXP Double scalar, Half-t degrees of freedom nu_y > 0
+ *                              (used when prior_prec_y_type_ == 1; 1 = Half-Cauchy).
  * @param verbose_              SEXP Logical scalar controlling progress bar display
  *                              (0 = disabled, non-zero = enabled).
  * @param bar_width_            SEXP Integer scalar defining progress bar width in
@@ -115,10 +194,16 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
                               SEXP n_chain_,
                               SEXP prior_theta01_mean_,
                               SEXP prior_theta01_prec_,
+                              SEXP prior_prec1_type_,
                               SEXP prior_prec1_shape_,
                               SEXP prior_prec1_rate_,
+                              SEXP prior_prec1_scale_,
+                              SEXP prior_prec1_df_,
+                              SEXP prior_prec_y_type_,
                               SEXP prior_prec_y_shape_,
                               SEXP prior_prec_y_rate_,
+                              SEXP prior_prec_y_scale_,
+                              SEXP prior_prec_y_df_,
                               SEXP verbose_,
                               SEXP bar_width_) {
 
@@ -151,10 +236,34 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   /* ========== Parse Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
   double prec_theta01 = REAL(prior_theta01_prec_)[0]; /* Prior precision for theta_{0,1} */
-  double nu_01        = REAL(prior_prec1_shape_)[0];  /* Gamma shape for 1/W_1 */
-  double eta_01       = REAL(prior_prec1_rate_)[0];   /* Gamma rate for 1/W_1 */
-  double nu_y         = REAL(prior_prec_y_shape_)[0]; /* Gamma shape for 1/V */
-  double eta_y        = REAL(prior_prec_y_rate_)[0];  /* Gamma rate for 1/V */
+
+  /* Innovation precision 1/W_1 prior. The R wrapper resolves the "halfcauchy"
+   * alias to Half-t with df = 1 and passes finite placeholders for the unused
+   * fields, so no field is ever NA regardless of the selected kind. */
+  int          prec1_kind = asInteger(prior_prec1_type_);
+  prec_prior_t prior_W1   = {
+    .shape    = REAL(prior_prec1_shape_)[0],  /* Gamma shape nu_1 */
+    .rate     = REAL(prior_prec1_rate_)[0],   /* Gamma rate  eta_1 */
+    .df       = REAL(prior_prec1_df_)[0],     /* Half-t df   nu_1 */
+    .hc_scale = REAL(prior_prec1_scale_)[0]   /* Half-t scale A_1 */
+  };
+
+  /* Observation precision 1/V prior. */
+  int          precy_kind = asInteger(prior_prec_y_type_);
+  prec_prior_t prior_V    = {
+    .shape    = REAL(prior_prec_y_shape_)[0],
+    .rate     = REAL(prior_prec_y_rate_)[0],
+    .df       = REAL(prior_prec_y_df_)[0],
+    .hc_scale = REAL(prior_prec_y_scale_)[0]
+  };
+
+  /* ===== Resolve the prior dispatch ONCE (outside the Gibbs loop) ===== */
+  prec_thetap_step_t update_prec_W1 =
+    (prec1_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetap_halft
+                                         : step_prec_thetap_gamma;
+  prec_data_step_t   update_prec_V  =
+    (precy_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_data_halft
+                                         : step_prec_data_gamma;
 
   /* ========== Parse Progress Bar Parameters ========== */
   int verbose   = asLogical(verbose_);
@@ -182,14 +291,37 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   double prec_theta1_current,   prec_theta1_previous;
   double prec_y_current,   prec_y_previous;
 
+  /* Half-t auxiliary variables b = 1/a. Each is refreshed in place right after
+   * its precision draw when the corresponding prior is Half-t; under the Gamma
+   * prior it stays 0 and is never read. A single variable suffices (no
+   * previous/current split): it is used only to form the next precision rate. */
+  double aux_W1 = 0.0, aux_V = 0.0;
+
   /* ========== Initialize RNG State ========== */
   GetRNGstate();
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
-  /* Draw initial values from priors to start the Markov chain */
+  /* Draw initial values from the priors to start the Markov chain. For a Half-t
+   * prior the starting precision is drawn through the scale-mixture
+   * representation: b ~ Gamma(1/2, scale = A^2), then W^{-1} ~ Gamma(df/2, df*b).
+   * These one-time branches are outside the Gibbs loop. */
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous   = rgamma_positive(nu_01, 1.0 / eta_01);
-  prec_y_previous   = rgamma_positive(nu_y, 1.0 / eta_y);
+
+  if (prec1_kind == PDM_PREC_PRIOR_HALFT) {
+    aux_W1 = rgamma_positive(0.5, prior_W1.hc_scale * prior_W1.hc_scale);
+    prec_theta1_previous = rgamma_positive(0.5 * prior_W1.df,
+                                           1.0 / (prior_W1.df * aux_W1));
+  } else {
+    prec_theta1_previous = rgamma_positive(prior_W1.shape, 1.0 / prior_W1.rate);
+  }
+
+  if (precy_kind == PDM_PREC_PRIOR_HALFT) {
+    aux_V = rgamma_positive(0.5, prior_V.hc_scale * prior_V.hc_scale);
+    prec_y_previous = rgamma_positive(0.5 * prior_V.df,
+                                      1.0 / (prior_V.df * aux_V));
+  } else {
+    prec_y_previous = rgamma_positive(prior_V.shape, 1.0 / prior_V.rate);
+  }
 
   /* Initialize theta_1 trajectory with neutral starting values */
   for (int j = 0; j < n; j++) {
@@ -216,14 +348,15 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
     );
 
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
-    /* Draw 1/W_1 | theta_1_current, theta_{0,1}_previous from Gamma posterior.
-     * Uses current theta_1 (just sampled) and previous theta_{0,1}. */
-    prec_theta1_current = generate_precision_theta_p(
+    /* Draw 1/W_1 | theta_1_current, theta_{0,1}_previous through the prior chosen
+     * before the loop (Gamma posterior, or Half-t via its scale-mixture step,
+     * which also refreshes aux_W1). Uses current theta_1 and previous theta_{0,1}. */
+    prec_theta1_current = update_prec_W1(
       theta_01_previous,  /* scalar: initial state from previous iteration */
       theta_1_current,    /* vector: current theta_1 [n] */
-      nu_01,              /* prior shape */
-      eta_01,             /* prior rate */
-      n                   /* sample size */
+      n,                  /* sample size */
+      &prior_W1,          /* prior hyperparameters for the resolved kind */
+      &aux_W1             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 3: Sample Initial State theta_{0,1} ===== */
@@ -238,14 +371,15 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
     );
 
     /* ===== Step 4: Sample Observation Precision 1/V ===== */
-    /* Draw 1/V | y, theta_1_current from Gamma posterior.
-     * Uses current theta_1 to compute observation residuals. */
-    prec_y_current = generate_precision_data(
+    /* Draw 1/V | y, theta_1_current through the prior chosen before the loop
+     * (Gamma posterior, or Half-t via its scale-mixture step, which also
+     * refreshes aux_V). Uses current theta_1 to compute observation residuals. */
+    prec_y_current = update_prec_V(
       y,                  /* data: observed series [n] */
       theta_1_current,    /* vector: current theta_1 [n] */
-      nu_y,               /* prior shape */
-      eta_y,              /* prior rate */
-      n                   /* sample size */
+      n,                  /* sample size */
+      &prior_V,           /* prior hyperparameters for the resolved kind */
+      &aux_V              /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Store Post-Burn-in Samples with Thinning ===== */

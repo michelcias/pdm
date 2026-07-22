@@ -23,8 +23,16 @@
  *
  *          **Prior distributions:**
  *          - theta_{0,1} ~ N(mu_0, sigma_0^2)
- *          - 1/W_1 ~ Gamma(nu_1, eta_1)
- *          - 1/V   ~ Gamma(nu_y, eta_y)
+ *          - 1/W_1: Gamma(nu_1, eta_1) on the precision, OR Half-t(df, A) on the
+ *            innovation standard deviation sqrt(W_1) (df = 1 is Half-Cauchy),
+ *            selected by prior_prec1_type_ (0 = Gamma, 1 = Half-t).
+ *          - 1/V:   Gamma(nu_y, eta_y) on the precision, OR Half-t(df, A) on the
+ *            observation standard deviation sqrt(V), selected by
+ *            prior_prec_y_type_ (0 = Gamma, 1 = Half-t).
+ *
+ *          The Half-t priors are handled by an inverse-gamma scale mixture so the
+ *          Gibbs updates stay closed-form; the prior choice is resolved once,
+ *          before the sampling loop, via a per-precision function pointer.
  *
  *          **Gibbs sampling sequence:**
  *          1. theta_1 | y, theta_{0,1}, W_1, V → Multivariate Normal
@@ -120,10 +128,16 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
                               SEXP n_chain_,
                               SEXP prior_theta01_mean_,
                               SEXP prior_theta01_prec_,
+                              SEXP prior_prec1_type_,
                               SEXP prior_prec1_shape_,
                               SEXP prior_prec1_rate_,
+                              SEXP prior_prec1_scale_,
+                              SEXP prior_prec1_df_,
+                              SEXP prior_prec_y_type_,
                               SEXP prior_prec_y_shape_,
                               SEXP prior_prec_y_rate_,
+                              SEXP prior_prec_y_scale_,
+                              SEXP prior_prec_y_df_,
                               SEXP verbose_,
                               SEXP bar_width_);
 

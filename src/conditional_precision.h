@@ -222,4 +222,46 @@ double generate_precision_theta_k(double        theta_0k,
                                     double        eta_0p,
                                     int           n);
 
+/**
+ * @brief Update the auxiliary variable of a Half-t scale-mixture prior.
+ *
+ * @details Draws the full conditional of the auxiliary variable @f$b_k = 1/a_k@f$
+ *          in the inverse-gamma scale-mixture representation of a Half-t prior
+ *          placed on an innovation/observation standard deviation
+ *          @f$\sqrt{W_k} \sim \text{Half-}t(\nu, A)@f$ (Wand et al. 2011;
+ *          Huang & Wand 2013). The representation is
+ *          \f[
+ *            W_k \mid a_k \sim \text{IG}(\nu/2,\ \nu/a_k), \qquad
+ *            a_k \sim \text{IG}(1/2,\ 1/A^2),
+ *          \f]
+ *          which marginally yields @f$\sqrt{W_k} \sim \text{Half-}t(\nu, A)@f$;
+ *          @f$\nu = 1@f$ recovers the Half-Cauchy@f$(A)@f$ case.
+ *
+ *          **Full conditional (in terms of @f$b_k = 1/a_k@f$):**
+ *          \f[
+ *            b_k \mid W_k^{-1} \sim \text{Gamma}\!\left(\tfrac{\nu+1}{2},\
+ *              \text{rate} = \nu\,W_k^{-1} + 1/A^2\right).
+ *          \f]
+ *          For @f$\nu = 1@f$ this is @f$\text{Exponential}(W_k^{-1} + 1/A^2)@f$.
+ *
+ *          Only @f$b_k@f$ is needed downstream: it enters the precision update
+ *          as the (scaled) Gamma rate @f$\nu\,b_k@f$, so the reciprocal @f$a_k@f$
+ *          is never formed. The precision draw itself reuses
+ *          ::generate_precision_theta_k / ::generate_precision_theta_p /
+ *          ::generate_precision_data with shape @f$\nu/2@f$ and prior rate
+ *          @f$\nu\,b_k@f$.
+ *
+ * @param prec      Current innovation/observation precision @f$W_k^{-1}@f$ (> 0).
+ * @param hc_scale  Half-t scale hyperparameter @f$A@f$ (> 0).
+ * @param df        Half-t degrees of freedom @f$\nu@f$ (> 0); @f$\nu = 1@f$ is Half-Cauchy.
+ *
+ * @return Sampled auxiliary value @f$b_k = 1/a_k@f$ (> 0), floored at
+ *         `DBL_EPSILON` via ::rgamma_positive.
+ *
+ * @note Requires GetRNGstate()/PutRNGstate() bracket in the calling function.
+ * @see generate_precision_theta_p
+ * @see rgamma_positive
+ */
+double generate_halft_aux(double prec, double hc_scale, double df);
+
 #endif /* CONDITIONAL_PRECISION_H */

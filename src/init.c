@@ -81,7 +81,7 @@
  *          **Main MCMC Functions (Production):**
  *
  *          *Gaussian Dynamic Models (3 functions):*
- *          - C_MCMC_normal_locallevel:  Gaussian local level model (12 args)
+ *          - C_MCMC_normal_locallevel:  Gaussian local level model (18 args)
  *          - C_MCMC_normal_localtrend: Gaussian local trend model (16 args)
  *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (20 args)
  *
@@ -187,7 +187,7 @@ static const R_CallMethodDef CallEntries[] = {
   //============================================================================
 
   // --- Gaussian Dynamic Models ---
-  {"_pdm_C_MCMC_normal_locallevel",               (DL_FUNC) &C_MCMC_normal_locallevel,        12},
+  {"_pdm_C_MCMC_normal_locallevel",               (DL_FUNC) &C_MCMC_normal_locallevel,        18},
   {"_pdm_C_MCMC_normal_localtrend",               (DL_FUNC) &C_MCMC_normal_localtrend,        16},
   {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 20},
 
@@ -231,6 +231,7 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_test_generate_precision_data",    (DL_FUNC) &test_generate_precision_data,    4},
   {"_pdm_test_generate_precision_theta_k", (DL_FUNC) &test_generate_precision_theta_k, 6},
   {"_pdm_test_generate_precision_theta_p", (DL_FUNC) &test_generate_precision_theta_p, 4},
+  {"_pdm_test_generate_halft_aux",         (DL_FUNC) &test_generate_halft_aux,         3},
 
   // --- State Parameter Sampling Tests ---
   {"_pdm_test_generate_theta_1_locallevel", (DL_FUNC) &test_generate_theta_1_locallevel, 4},

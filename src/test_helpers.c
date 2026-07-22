@@ -491,6 +491,33 @@ SEXP test_generate_precision_theta_p(SEXP theta_0p_,
   return ScalarReal(sample);
 }
 
+/**
+ * @brief Update the Half-t scale-mixture auxiliary variable b = 1/a.
+ *
+ * @details Coerces the scalar inputs and forwards to ::generate_halft_aux,
+ *          bracketing the draw with GetRNGstate()/PutRNGstate(). Used to unit
+ *          test the auxiliary step of the Half-t (Half-Cauchy at df = 1) prior.
+ *
+ * @param prec_      Scalar current precision W^{-1}.
+ * @param hc_scale_  Scalar Half-t scale hyperparameter A.
+ * @param df_        Scalar Half-t degrees of freedom nu.
+ *
+ * @return A length-one numeric vector with the sampled auxiliary b = 1/a.
+ */
+SEXP test_generate_halft_aux(SEXP prec_,
+                             SEXP hc_scale_,
+                             SEXP df_) {
+  double prec     = require_real_scalar(prec_, "prec");
+  double hc_scale = require_real_scalar(hc_scale_, "hc_scale");
+  double df       = require_real_scalar(df_, "df");
+
+  GetRNGstate();
+  double sample = generate_halft_aux(prec, hc_scale, df);
+  PutRNGstate();
+
+  return ScalarReal(sample);
+}
+
 //==============================================================================
 // CONDITIONAL STATE WRAPPERS
 //==============================================================================

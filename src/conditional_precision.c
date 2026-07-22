@@ -310,3 +310,44 @@ double generate_precision_theta_p(double        theta_0p,
     1.0 / eta_0p_post /* scale: inverse of posterior rate parameter */
   );
 }
+
+//----------------------------------------------------------------------
+
+/**
+ * @brief Update the auxiliary variable of a Half-t scale-mixture prior.
+ *
+ * @details Implements the auxiliary-variable step that makes a Half-t prior on a
+ *          standard deviation conjugate within a Gibbs sampler. Given the current
+ *          precision `prec` = W_k^{-1}, it draws
+ *
+ *              b ~ Gamma( (df + 1)/2 ,  rate = df * prec + 1/hc_scale^2 ),
+ *
+ *          the full conditional of b = 1/a under
+ *              W_k | a ~ IG(df/2, df/a),   a ~ IG(1/2, 1/hc_scale^2),
+ *          whose marginal is sqrt(W_k) ~ Half-t(df, hc_scale). With df = 1 the
+ *          draw reduces to Exponential(rate = prec + 1/hc_scale^2), i.e. the
+ *          Half-Cauchy case.
+ *
+ *          The returned b feeds the next precision update as the (scaled) Gamma
+ *          rate df * b, so the precision draw reuses the existing conjugate
+ *          samplers with shape df/2 and prior rate df * b. See the header for the
+ *          full derivation and references.
+ *
+ * @param prec      Current precision W_k^{-1} (> 0).
+ * @param hc_scale  Half-t scale hyperparameter A (> 0).
+ * @param df        Half-t degrees of freedom nu (> 0); nu = 1 is Half-Cauchy.
+ *
+ * @return Auxiliary draw b = 1/a (> 0), floored at DBL_EPSILON via rgamma_positive.
+ */
+double generate_halft_aux(double prec, double hc_scale, double df) {
+
+  /* Rate of the auxiliary Gamma full conditional:
+   * nu * prec pulls b toward the data-driven precision, while 1/A^2 is the
+   * (fixed) contribution of the Half-t scale hyperparameter. */
+  double rate = df * prec + 1.0 / (hc_scale * hc_scale);
+
+  /* b ~ Gamma((df + 1)/2, scale = 1/rate). rgamma uses the scale
+   * parameterization; rgamma_positive floors the draw at DBL_EPSILON so a
+   * subnormal/zero auxiliary can never poison the subsequent precision rate. */
+  return rgamma_positive(0.5 * (df + 1.0), 1.0 / rate);
+}

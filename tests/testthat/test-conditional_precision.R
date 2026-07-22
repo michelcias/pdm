@@ -108,3 +108,49 @@ test_that("generate_precision_theta_p samples from the correct posterior", {
 
   expect_equal(result_C, result_R)
 })
+
+# --- Test for generate_halft_aux (Half-t / Half-Cauchy auxiliary variable) ---
+test_that("generate_halft_aux samples the auxiliary from the correct Gamma", {
+
+  # R wrapper for the C test function
+  test_C_halft_aux <- function(prec, hc_scale, df) {
+    .Call("_pdm_test_generate_halft_aux", prec, hc_scale, df)
+  }
+
+  prec     <- 2.5
+  hc_scale <- 3.0
+  df       <- 4.0
+
+  # Full conditional of b = 1/a: Gamma((df + 1)/2, rate = df * prec + 1/A^2).
+  shape_post <- (df + 1) / 2
+  rate_post  <- df * prec + 1 / hc_scale^2
+
+  set.seed(2024)
+  result_C <- test_C_halft_aux(prec, hc_scale, df)
+
+  set.seed(2024)
+  result_R <- rgamma(1, shape = shape_post, rate = rate_post)
+
+  expect_equal(result_C, result_R)
+})
+
+test_that("generate_halft_aux reduces to the Half-Cauchy case at df = 1", {
+
+  test_C_halft_aux <- function(prec, hc_scale, df) {
+    .Call("_pdm_test_generate_halft_aux", prec, hc_scale, df)
+  }
+
+  prec     <- 1.7
+  hc_scale <- 2.0
+
+  # df = 1: b ~ Gamma(1, rate = prec + 1/A^2) (equivalently Exponential(rate)).
+  rate_post <- prec + 1 / hc_scale^2
+
+  set.seed(99)
+  result_C <- test_C_halft_aux(prec, hc_scale, 1.0)
+
+  set.seed(99)
+  result_R <- rgamma(1, shape = 1, rate = rate_post)
+
+  expect_equal(result_C, result_R)
+})

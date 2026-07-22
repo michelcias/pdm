@@ -25,6 +25,12 @@
 #' }
 #'
 #' \emph{Precision Parameters:}
+#'
+#' Each precision (the innovation precision \eqn{W_1^{-1}} and the observation
+#' precision \eqn{V^{-1}}) may be given one of two priors, chosen independently
+#' through `prior_prec1_type` and `prior_prec_y_type`:
+#'
+#' \emph{(a) Gamma prior on the precision} (default, conjugate):
 #' \deqn{
 #' \begin{aligned}
 #' W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1), \\
@@ -32,22 +38,39 @@
 #' \end{aligned}
 #' }
 #'
+#' \emph{(b) Half-t prior on the standard deviation} (Gelman, 2006):
+#' \deqn{
+#' \sqrt{W_1} \sim \text{Half-}t(\nu_1, A_1), \qquad
+#' \sqrt{V} \sim \text{Half-}t(\nu_V, A_V),
+#' }
+#' where \eqn{A > 0} is a scale hyperparameter and \eqn{\nu > 0} the degrees of
+#' freedom. Setting \eqn{\nu = 1} gives the Half-Cauchy prior (also selectable
+#' directly with `type = "halfcauchy"`); larger \eqn{\nu} approaches a
+#' Half-Normal. The Half-t prior is represented by the inverse-gamma scale
+#' mixture of Wand et al. (2011), which keeps every Gibbs update closed-form via
+#' a single auxiliary variable per precision.
+#'
 #' The prior hyperparameters correspond to function arguments as follows:
 #' \tabular{cc}{
 #'   \strong{Hyperparameter} \tab \strong{Function Argument} \cr
 #'   \eqn{\mu_{01}} \tab `prior_theta01_mean` \cr
 #'   \eqn{\tau_{01}} \tab `prior_theta01_prec` \cr
-#'   \eqn{\nu_1} \tab `prior_prec1_shape` \cr
-#'   \eqn{\eta_1} \tab `prior_prec1_rate` \cr
-#'   \eqn{\nu_V} \tab `prior_prec_y_shape` \cr
-#'   \eqn{\eta_V} \tab `prior_prec_y_rate`
+#'   \eqn{\nu_1} (Gamma shape) \tab `prior_prec1_shape` \cr
+#'   \eqn{\eta_1} (Gamma rate) \tab `prior_prec1_rate` \cr
+#'   \eqn{A_1} (Half-t scale) \tab `prior_prec1_scale` \cr
+#'   \eqn{\nu_1} (Half-t df) \tab `prior_prec1_df` \cr
+#'   \eqn{\nu_V} (Gamma shape) \tab `prior_prec_y_shape` \cr
+#'   \eqn{\eta_V} (Gamma rate) \tab `prior_prec_y_rate` \cr
+#'   \eqn{A_V} (Half-t scale) \tab `prior_prec_y_scale` \cr
+#'   \eqn{\nu_V} (Half-t df) \tab `prior_prec_y_df`
 #' }
 #'
-#' These conjugate priors enable efficient Gibbs sampling with closed-form
-#' conditional distributions. The parameterization uses precision (inverse
-#' variance) to maintain natural conjugacy and ensure numerical stability.
-#' The Gamma distribution uses shape-rate parameterization, where
-#' \eqn{E(X) = \nu/\eta} and \eqn{\text{Var}(X) = \nu/\eta^2}.
+#' The Gamma parameterization uses shape-rate, where \eqn{E(X) = \nu/\eta} and
+#' \eqn{\text{Var}(X) = \nu/\eta^2}. The Gamma shape/rate arguments are required
+#' only when the corresponding `_type` is `"gamma"`; the Half-t scale/df
+#' arguments are required only when it is `"halft"` or `"halfcauchy"`. The prior
+#' choice is resolved once, before the sampler runs, and never re-evaluated
+#' inside the MCMC loop.
 #'
 #' Burn‐in and thinning are applied so that exactly `n_chain`
 #' posterior samples are returned.
@@ -58,14 +81,33 @@
 #' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_theta01_mean Numeric, prior mean for the initial state \eqn{\theta_{0,1}}.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,1}}.
-#' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for the innovation precision \eqn{1/W_1}.
-#' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}.
-#' @param prior_prec_y_shape Numeric > 0, shape parameter of the Gamma prior for the data precision \eqn{1/V}.
-#' @param prior_prec_y_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.
+#' @param prior_prec1_shape Numeric > 0, shape parameter \eqn{\nu_1} of the Gamma prior for the innovation precision \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
+#' @param prior_prec1_rate Numeric > 0, rate parameter \eqn{\eta_1} of the Gamma prior for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
+#' @param prior_prec_y_shape Numeric > 0, shape parameter \eqn{\nu_V} of the Gamma prior for the data precision \eqn{1/V}. Required (and used) only when `prior_prec_y_type = "gamma"`.
+#' @param prior_prec_y_rate Numeric > 0, rate parameter \eqn{\eta_V} of the Gamma prior for \eqn{1/V}. Required (and used) only when `prior_prec_y_type = "gamma"`.
 #' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
 #' @param bar_width Integer in \[10, 120\], width of the progress bar when `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is `NULL`, which does not set the seed.
+#' @param prior_prec1_type Character, prior on the innovation precision \eqn{1/W_1}:
+#'   `"gamma"` (default) for a Gamma prior on the precision, or `"halft"` /
+#'   `"halfcauchy"` for a Half-t / Half-Cauchy prior on the innovation standard
+#'   deviation \eqn{\sqrt{W_1}}. `"halfcauchy"` is Half-t with `df = 1`.
+#' @param prior_prec1_scale Numeric > 0, scale \eqn{A_1} of the Half-t prior for
+#'   \eqn{\sqrt{W_1}}. Required when `prior_prec1_type` is `"halft"` or
+#'   `"halfcauchy"`; ignored otherwise.
+#' @param prior_prec1_df Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
+#'   prior for \eqn{\sqrt{W_1}}. Default `1` (Half-Cauchy). Must equal `1` when
+#'   `prior_prec1_type = "halfcauchy"`.
+#' @param prior_prec_y_type Character, prior on the observation precision
+#'   \eqn{1/V}: `"gamma"` (default), or `"halft"` / `"halfcauchy"` for a Half-t /
+#'   Half-Cauchy prior on the observation standard deviation \eqn{\sqrt{V}}.
+#' @param prior_prec_y_scale Numeric > 0, scale \eqn{A_V} of the Half-t prior for
+#'   \eqn{\sqrt{V}}. Required when `prior_prec_y_type` is `"halft"` or
+#'   `"halfcauchy"`; ignored otherwise.
+#' @param prior_prec_y_df Numeric > 0, degrees of freedom \eqn{\nu_V} of the
+#'   Half-t prior for \eqn{\sqrt{V}}. Default `1` (Half-Cauchy). Must equal `1`
+#'   when `prior_prec_y_type = "halfcauchy"`.
 #'
 #' @return An object of class `c("normal_locallevel", "pdm_mcmc", "list")`
 #'   containing the following components:
@@ -335,6 +377,14 @@
 #'   )
 #' }
 #'
+#' @references
+#' Gelman, A. (2006). Prior distributions for variance parameters in
+#' hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
+#'
+#' Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+#' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+#' 6(4), 847-900.
+#'
 #' @seealso \link[pdm]{mcmc_normal_localtrend}
 #' @export
 mcmc_normal_locallevel <- function(y,
@@ -343,13 +393,28 @@ mcmc_normal_locallevel <- function(y,
                                    n_chain,
                                    prior_theta01_mean,
                                    prior_theta01_prec,
-                                   prior_prec1_shape,
-                                   prior_prec1_rate,
-                                   prior_prec_y_shape,
-                                   prior_prec_y_rate,
+                                   prior_prec1_shape = NULL,
+                                   prior_prec1_rate = NULL,
+                                   prior_prec_y_shape = NULL,
+                                   prior_prec_y_rate = NULL,
                                    verbose = FALSE,
                                    bar_width = 60,
-                                   seed = NULL) {
+                                   seed = NULL,
+                                   prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+                                   prior_prec1_scale = NULL,
+                                   prior_prec1_df = 1,
+                                   prior_prec_y_type = c("gamma", "halfcauchy", "halft"),
+                                   prior_prec_y_scale = NULL,
+                                   prior_prec_y_df = 1) {
+
+  # Record whether the user explicitly set the degrees of freedom (used to flag
+  # a contradictory `type = "halfcauchy"` + `df != 1`). `missing()` must be read
+  # before these arguments are touched.
+  prec1_df_user_set  <- !missing(prior_prec1_df)
+  prec_y_df_user_set <- !missing(prior_prec_y_df)
+
+  prior_prec1_type  <- match.arg(prior_prec1_type)
+  prior_prec_y_type <- match.arg(prior_prec_y_type)
   # --- Input Validation ---
   if (!is.numeric(y)) {
     stop("`y` must be a numeric vector")
@@ -372,18 +437,64 @@ mcmc_normal_locallevel <- function(y,
   if (!is.numeric(prior_theta01_prec) || length(prior_theta01_prec) != 1 || prior_theta01_prec <= 0) {
     stop("`prior_theta01_prec` must be a single positive numeric value")
   }
-  if (!is.numeric(prior_prec1_shape) || length(prior_prec1_shape) != 1 || prior_prec1_shape <= 0) {
-    stop("`prior_prec1_shape` must be a single positive numeric value")
+  # --- Resolve each precision prior (Gamma or Half-t) ---
+  # Validation and the "halfcauchy" -> Half-t(df = 1) normalisation happen here,
+  # in R, so the C sampler receives an already-decided integer code (0 = Gamma,
+  # 1 = Half-t) plus finite numeric hyperparameters. The prior choice is never
+  # re-decided inside the MCMC loop.
+  resolve_prec_prior <- function(type, shape, rate, scale, df, df_user_set, label) {
+    if (type == "gamma") {
+      if (is.null(shape) || is.null(rate)) {
+        stop(sprintf(
+          "`%s_type = \"gamma\"` requires both `%s_shape` and `%s_rate`",
+          label, label, label
+        ))
+      }
+      if (!is.numeric(shape) || length(shape) != 1 || shape <= 0) {
+        stop(sprintf("`%s_shape` must be a single positive numeric value", label))
+      }
+      if (!is.numeric(rate) || length(rate) != 1 || rate <= 0) {
+        stop(sprintf("`%s_rate` must be a single positive numeric value", label))
+      }
+      return(list(code = 0L, type = "gamma",
+                  shape = as.numeric(shape), rate = as.numeric(rate),
+                  scale = 1, df = 1))
+    }
+
+    # type is "halfcauchy" (alias for Half-t with df = 1) or "halft"
+    if (type == "halfcauchy") {
+      if (df_user_set && !isTRUE(all.equal(df, 1))) {
+        stop(sprintf(
+          "`%s_type = \"halfcauchy\"` fixes df = 1; use `%s_type = \"halft\"` to set `%s_df`",
+          label, label, label
+        ))
+      }
+      df <- 1
+    }
+    if (is.null(scale)) {
+      stop(sprintf(
+        "A Half-t/Half-Cauchy prior requires `%s_scale` (the scale A > 0)", label
+      ))
+    }
+    if (!is.numeric(scale) || length(scale) != 1 || scale <= 0) {
+      stop(sprintf("`%s_scale` must be a single positive numeric value", label))
+    }
+    if (!is.numeric(df) || length(df) != 1 || df <= 0) {
+      stop(sprintf("`%s_df` must be a single positive numeric value", label))
+    }
+    list(code = 1L, type = type,
+         shape = 1, rate = 1,
+         scale = as.numeric(scale), df = as.numeric(df))
   }
-  if (!is.numeric(prior_prec1_rate) || length(prior_prec1_rate) != 1 || prior_prec1_rate <= 0) {
-    stop("`prior_prec1_rate` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec_y_shape) || length(prior_prec_y_shape) != 1 || prior_prec_y_shape <= 0) {
-    stop("`prior_prec_y_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec_y_rate) || length(prior_prec_y_rate) != 1 || prior_prec_y_rate <= 0) {
-    stop("`prior_prec_y_rate` must be a single positive numeric value")
-  }
+
+  prec1_prior <- resolve_prec_prior(
+    prior_prec1_type, prior_prec1_shape, prior_prec1_rate,
+    prior_prec1_scale, prior_prec1_df, prec1_df_user_set, "prior_prec1"
+  )
+  prec_y_prior <- resolve_prec_prior(
+    prior_prec_y_type, prior_prec_y_shape, prior_prec_y_rate,
+    prior_prec_y_scale, prior_prec_y_df, prec_y_df_user_set, "prior_prec_y"
+  )
 
   if (!is.logical(verbose) || length(verbose) != 1) {
     stop("`verbose` must be a single logical value")
@@ -402,7 +513,9 @@ mcmc_normal_locallevel <- function(y,
   }
   # --- End Input Validation ---
 
-  # Call the C function
+  # Call the C function. Argument order groups each precision's prior spec
+  # (type code, Gamma shape/rate, Half-t scale/df) and must match the C signature
+  # in `src/mcmc_normal_locallevel.c`.
   result <- .Call(
     "_pdm_C_MCMC_normal_locallevel",
     as.numeric(y),
@@ -411,10 +524,16 @@ mcmc_normal_locallevel <- function(y,
     as.integer(n_chain),
     as.numeric(prior_theta01_mean),
     as.numeric(prior_theta01_prec),
-    as.numeric(prior_prec1_shape),
-    as.numeric(prior_prec1_rate),
-    as.numeric(prior_prec_y_shape),
-    as.numeric(prior_prec_y_rate),
+    as.integer(prec1_prior$code),
+    as.numeric(prec1_prior$shape),
+    as.numeric(prec1_prior$rate),
+    as.numeric(prec1_prior$scale),
+    as.numeric(prec1_prior$df),
+    as.integer(prec_y_prior$code),
+    as.numeric(prec_y_prior$shape),
+    as.numeric(prec_y_prior$rate),
+    as.numeric(prec_y_prior$scale),
+    as.numeric(prec_y_prior$df),
     as.logical(verbose),
     as.integer(bar_width)
   )
@@ -429,6 +548,12 @@ mcmc_normal_locallevel <- function(y,
   )
 
   result <- validate_normal_locallevel(result)
+
+  # Record the priors actually used on the innovation and observation precisions
+  # (for reproducibility / downstream reporting). The auxiliary Half-t variable
+  # is a nuisance parameter and is intentionally not returned.
+  attr(result, "prior_prec_theta1") <- prec1_prior[c("type", "shape", "rate", "scale", "df")]
+  attr(result, "prior_prec_y")      <- prec_y_prior[c("type", "shape", "rate", "scale", "df")]
 
   return(result)
 }

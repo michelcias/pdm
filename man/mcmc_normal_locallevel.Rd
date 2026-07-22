@@ -11,13 +11,19 @@ mcmc_normal_locallevel(
   n_chain,
   prior_theta01_mean,
   prior_theta01_prec,
-  prior_prec1_shape,
-  prior_prec1_rate,
-  prior_prec_y_shape,
-  prior_prec_y_rate,
+  prior_prec1_shape = NULL,
+  prior_prec1_rate = NULL,
+  prior_prec_y_shape = NULL,
+  prior_prec_y_rate = NULL,
   verbose = FALSE,
   bar_width = 60,
-  seed = NULL
+  seed = NULL,
+  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec1_scale = NULL,
+  prior_prec1_df = 1,
+  prior_prec_y_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec_y_scale = NULL,
+  prior_prec_y_df = 1
 )
 }
 \arguments{
@@ -33,13 +39,13 @@ mcmc_normal_locallevel(
 
 \item{prior_theta01_prec}{Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,1}}.}
 
-\item{prior_prec1_shape}{Numeric > 0, shape parameter of the Gamma prior for the innovation precision \eqn{1/W_1}.}
+\item{prior_prec1_shape}{Numeric > 0, shape parameter \eqn{\nu_1} of the Gamma prior for the innovation precision \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
-\item{prior_prec1_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}.}
+\item{prior_prec1_rate}{Numeric > 0, rate parameter \eqn{\eta_1} of the Gamma prior for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
-\item{prior_prec_y_shape}{Numeric > 0, shape parameter of the Gamma prior for the data precision \eqn{1/V}.}
+\item{prior_prec_y_shape}{Numeric > 0, shape parameter \eqn{\nu_V} of the Gamma prior for the data precision \eqn{1/V}. Required (and used) only when \code{prior_prec_y_type = "gamma"}.}
 
-\item{prior_prec_y_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/V}.}
+\item{prior_prec_y_rate}{Numeric > 0, rate parameter \eqn{\eta_V} of the Gamma prior for \eqn{1/V}. Required (and used) only when \code{prior_prec_y_type = "gamma"}.}
 
 \item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{FALSE}.}
 
@@ -47,6 +53,31 @@ mcmc_normal_locallevel(
 
 \item{seed}{Optional integer used to set the random number generator seed.
 Default is \code{NULL}, which does not set the seed.}
+
+\item{prior_prec1_type}{Character, prior on the innovation precision \eqn{1/W_1}:
+\code{"gamma"} (default) for a Gamma prior on the precision, or \code{"halft"} /
+\code{"halfcauchy"} for a Half-t / Half-Cauchy prior on the innovation standard
+deviation \eqn{\sqrt{W_1}}. \code{"halfcauchy"} is Half-t with \code{df = 1}.}
+
+\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A_1} of the Half-t prior for
+\eqn{\sqrt{W_1}}. Required when \code{prior_prec1_type} is \code{"halft"} or
+\code{"halfcauchy"}; ignored otherwise.}
+
+\item{prior_prec1_df}{Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
+prior for \eqn{\sqrt{W_1}}. Default \code{1} (Half-Cauchy). Must equal \code{1} when
+\code{prior_prec1_type = "halfcauchy"}.}
+
+\item{prior_prec_y_type}{Character, prior on the observation precision
+\eqn{1/V}: \code{"gamma"} (default), or \code{"halft"} / \code{"halfcauchy"} for a Half-t /
+Half-Cauchy prior on the observation standard deviation \eqn{\sqrt{V}}.}
+
+\item{prior_prec_y_scale}{Numeric > 0, scale \eqn{A_V} of the Half-t prior for
+\eqn{\sqrt{V}}. Required when \code{prior_prec_y_type} is \code{"halft"} or
+\code{"halfcauchy"}; ignored otherwise.}
+
+\item{prior_prec_y_df}{Numeric > 0, degrees of freedom \eqn{\nu_V} of the
+Half-t prior for \eqn{\sqrt{V}}. Default \code{1} (Half-Cauchy). Must equal \code{1}
+when \code{prior_prec_y_type = "halfcauchy"}.}
 }
 \value{
 An object of class \code{c("normal_locallevel", "pdm_mcmc", "list")}
@@ -87,6 +118,12 @@ tractability and closed-form posterior updates in the Gibbs sampler:
 }
 
 \emph{Precision Parameters:}
+
+Each precision (the innovation precision \eqn{W_1^{-1}} and the observation
+precision \eqn{V^{-1}}) may be given one of two priors, chosen independently
+through \code{prior_prec1_type} and \code{prior_prec_y_type}:
+
+\emph{(a) Gamma prior on the precision} (default, conjugate):
 \deqn{
 \begin{aligned}
 W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1), \\
@@ -94,22 +131,39 @@ V^{-1} &\sim \text{Gamma}(\nu_V, \eta_V).
 \end{aligned}
 }
 
+\emph{(b) Half-t prior on the standard deviation} (Gelman, 2006):
+\deqn{
+\sqrt{W_1} \sim \text{Half-}t(\nu_1, A_1), \qquad
+\sqrt{V} \sim \text{Half-}t(\nu_V, A_V),
+}
+where \eqn{A > 0} is a scale hyperparameter and \eqn{\nu > 0} the degrees of
+freedom. Setting \eqn{\nu = 1} gives the Half-Cauchy prior (also selectable
+directly with \code{type = "halfcauchy"}); larger \eqn{\nu} approaches a
+Half-Normal. The Half-t prior is represented by the inverse-gamma scale
+mixture of Wand et al. (2011), which keeps every Gibbs update closed-form via
+a single auxiliary variable per precision.
+
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
 \strong{Hyperparameter} \tab \strong{Function Argument} \cr
 \eqn{\mu_{01}} \tab \code{prior_theta01_mean} \cr
 \eqn{\tau_{01}} \tab \code{prior_theta01_prec} \cr
-\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
-\eqn{\eta_1} \tab \code{prior_prec1_rate} \cr
-\eqn{\nu_V} \tab \code{prior_prec_y_shape} \cr
-\eqn{\eta_V} \tab \code{prior_prec_y_rate}
+\eqn{\nu_1} (Gamma shape) \tab \code{prior_prec1_shape} \cr
+\eqn{\eta_1} (Gamma rate) \tab \code{prior_prec1_rate} \cr
+\eqn{A_1} (Half-t scale) \tab \code{prior_prec1_scale} \cr
+\eqn{\nu_1} (Half-t df) \tab \code{prior_prec1_df} \cr
+\eqn{\nu_V} (Gamma shape) \tab \code{prior_prec_y_shape} \cr
+\eqn{\eta_V} (Gamma rate) \tab \code{prior_prec_y_rate} \cr
+\eqn{A_V} (Half-t scale) \tab \code{prior_prec_y_scale} \cr
+\eqn{\nu_V} (Half-t df) \tab \code{prior_prec_y_df}
 }
 
-These conjugate priors enable efficient Gibbs sampling with closed-form
-conditional distributions. The parameterization uses precision (inverse
-variance) to maintain natural conjugacy and ensure numerical stability.
-The Gamma distribution uses shape-rate parameterization, where
-\eqn{E(X) = \nu/\eta} and \eqn{\text{Var}(X) = \nu/\eta^2}.
+The Gamma parameterization uses shape-rate, where \eqn{E(X) = \nu/\eta} and
+\eqn{\text{Var}(X) = \nu/\eta^2}. The Gamma shape/rate arguments are required
+only when the corresponding \verb{_type} is \code{"gamma"}; the Half-t scale/df
+arguments are required only when it is \code{"halft"} or \code{"halfcauchy"}. The prior
+choice is resolved once, before the sampler runs, and never re-evaluated
+inside the MCMC loop.
 
 Burn‐in and thinning are applied so that exactly \code{n_chain}
 posterior samples are returned.
@@ -370,6 +424,14 @@ out <- mcmc_normal_locallevel(
   )
 }
 
+}
+\references{
+Gelman, A. (2006). Prior distributions for variance parameters in
+hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
+
+Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+6(4), 847-900.
 }
 \seealso{
 \link[pdm]{mcmc_normal_localtrend}

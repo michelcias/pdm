@@ -541,7 +541,7 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
  *          below the bound (probit states rarely exceed ~4), so the guard is
  *          inert and does not alter the sampler.
  */
-#define PROBIT_THETA_CLAMP 8.0
+#define PROBIT_THETA_CLAMP 36.0
 
 static inline double clamp_probit_state(double theta) {
   if (theta >  PROBIT_THETA_CLAMP) return  PROBIT_THETA_CLAMP;

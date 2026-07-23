@@ -70,6 +70,8 @@
 #ifndef CONDITIONAL_MIXTURE_NORMAL_PARAMETERS_H
 #define CONDITIONAL_MIXTURE_NORMAL_PARAMETERS_H
 
+#include "prec_prior_dispatch.h"  /* prec_prior_t, pdm_draw_prec_suffstat */
+
 /**
  * @brief Generate component parameters for a two-component Gaussian mixture model
  *
@@ -162,18 +164,22 @@
  *                           Typical values: sample mean or domain knowledge.
  * @param prec_01            Prior precision for mu_1 (inverse of prior variance sigma^2_01).
  *                           Typical values: 0.01 for vague prior, higher for informative.
- * @param nu_01              Prior shape parameter for phi_1 (Gamma distribution).
- *                           Typical values: 0.01 for vague prior, higher for informative.
- * @param eta_01             Prior rate parameter for phi_1 (Gamma distribution).
- *                           Typical values: 0.01 for vague prior, higher for informative.
+ * @param phi1_kind          Prior-kind code for phi_1 (0 = Gamma on the
+ *                           precision, 1 = Half-t on sqrt(1/phi_1)).
+ * @param phi_prior_1        Hyperparameters for phi_1 (Gamma shape/rate, or
+ *                           Half-t df/scale) — see ::prec_prior_t.
+ * @param aux_phi1           In/out: Half-t auxiliary b = 1/a for phi_1, carried
+ *                           across iterations by the caller. Read as the Gamma
+ *                           rate scaler for the Half-t draw, then refreshed in
+ *                           place from the newly drawn phi_1 (after the label
+ *                           switch). Ignored under the Gamma prior.
  * @param mu_02              Prior mean for mu_2 (upper component).
  *                           Typical values: sample mean or domain knowledge.
  * @param prec_02            Prior precision for mu_2 (inverse of prior variance sigma^2_02).
  *                           Typical values: 0.01 for vague prior, higher for informative.
- * @param nu_02              Prior shape parameter for phi_2 (Gamma distribution).
- *                           Typical values: 0.01 for vague prior, higher for informative.
- * @param eta_02             Prior rate parameter for phi_2 (Gamma distribution).
- *                           Typical values: 0.01 for vague prior, higher for informative.
+ * @param phi2_kind          Prior-kind code for phi_2 (0 = Gamma, 1 = Half-t).
+ * @param phi_prior_2        Hyperparameters for phi_2 — see ::prec_prior_t.
+ * @param aux_phi2           In/out: Half-t auxiliary for phi_2 (see @p aux_phi1).
  * @param n                  Sample size (length of y and z vectors).
  *
  * @return None (results are written to params_current).
@@ -237,19 +243,21 @@
  *
  * @version 1.0
  */
-void conditional_mixture_normal_parameters_k2(const double *y,
-                                              const double *z,
-                                              const double *params_previous,
-                                              double       *params_current,
-                                              double        mu_01,
-                                              double        prec_01,
-                                              double        nu_01,
-                                              double        eta_01,
-                                              double        mu_02,
-                                              double        prec_02,
-                                              double        nu_02,
-                                              double        eta_02,
-                                              int           n);
+void conditional_mixture_normal_parameters_k2(const double       *y,
+                                              const double       *z,
+                                              const double       *params_previous,
+                                              double             *params_current,
+                                              double              mu_01,
+                                              double              prec_01,
+                                              int                 phi1_kind,
+                                              const prec_prior_t *phi_prior_1,
+                                              double             *aux_phi1,
+                                              double              mu_02,
+                                              double              prec_02,
+                                              int                 phi2_kind,
+                                              const prec_prior_t *phi_prior_2,
+                                              double             *aux_phi2,
+                                              int                 n);
 
 
 #endif /* CONDITIONAL_MIXTURE_NORMAL_PARAMETERS_H */

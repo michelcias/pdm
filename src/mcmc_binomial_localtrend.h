@@ -80,10 +80,16 @@
  * @param prior_theta01_prec_      Prior precision for theta_{0,1}.
  * @param prior_theta02_mean_      Prior mean for theta_{0,2}.
  * @param prior_theta02_prec_      Prior precision for theta_{0,2}.
- * @param prior_prec1_shape_       Gamma shape for 1/W_1.
- * @param prior_prec1_rate_        Gamma rate for 1/W_1.
- * @param prior_prec2_shape_       Gamma shape for 1/W_2.
- * @param prior_prec2_rate_        Gamma rate for 1/W_2.
+ * @param prior_prec1_type_        Integer prior kind on 1/W_1 (0 = Gamma, 1 = Half-t on sqrt(W_1)).
+ * @param prior_prec1_shape_       Gamma shape for 1/W_1 (Gamma kind).
+ * @param prior_prec1_rate_        Gamma rate for 1/W_1 (Gamma kind).
+ * @param prior_prec1_scale_       Half-t scale A_1 > 0 (Half-t kind).
+ * @param prior_prec1_df_          Half-t df nu_1 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec2_type_        Integer prior kind on 1/W_2 (0 = Gamma, 1 = Half-t on sqrt(W_2)).
+ * @param prior_prec2_shape_       Gamma shape for 1/W_2 (Gamma kind).
+ * @param prior_prec2_rate_        Gamma rate for 1/W_2 (Gamma kind).
+ * @param prior_prec2_scale_       Half-t scale A_2 > 0 (Half-t kind).
+ * @param prior_prec2_df_          Half-t df nu_2 > 0 (Half-t kind; 1 = Half-Cauchy).
  * @param lag_update_              Adaptation frequency (iterations).
  * @param max_step_size_           Maximum proposal step size.
  * @param base_adaptation_rate_    Base adaptation rate.
@@ -133,10 +139,16 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
                                       SEXP prior_theta01_prec_,
                                       SEXP prior_theta02_mean_,
                                       SEXP prior_theta02_prec_,
+                                      SEXP prior_prec1_type_,
                                       SEXP prior_prec1_shape_,
                                       SEXP prior_prec1_rate_,
+                                      SEXP prior_prec1_scale_,
+                                      SEXP prior_prec1_df_,
+                                      SEXP prior_prec2_type_,
                                       SEXP prior_prec2_shape_,
                                       SEXP prior_prec2_rate_,
+                                      SEXP prior_prec2_scale_,
+                                      SEXP prior_prec2_df_,
                                       SEXP lag_update_,
                                       SEXP max_step_size_,
                                       SEXP base_adaptation_rate_,
@@ -197,10 +209,16 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
  * @param prior_theta01_prec_ Prior precision for theta_{0,1}.
  * @param prior_theta02_mean_ Prior mean for theta_{0,2}.
  * @param prior_theta02_prec_ Prior precision for theta_{0,2}.
- * @param prior_prec1_shape_  Gamma shape for 1/W_1.
- * @param prior_prec1_rate_   Gamma rate for 1/W_1.
- * @param prior_prec2_shape_  Gamma shape for 1/W_2.
- * @param prior_prec2_rate_   Gamma rate for 1/W_2.
+ * @param prior_prec1_type_   Integer prior kind on 1/W_1 (0 = Gamma, 1 = Half-t on sqrt(W_1)).
+ * @param prior_prec1_shape_  Gamma shape for 1/W_1 (Gamma kind).
+ * @param prior_prec1_rate_   Gamma rate for 1/W_1 (Gamma kind).
+ * @param prior_prec1_scale_  Half-t scale A_1 > 0 (Half-t kind).
+ * @param prior_prec1_df_     Half-t df nu_1 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec2_type_   Integer prior kind on 1/W_2 (0 = Gamma, 1 = Half-t on sqrt(W_2)).
+ * @param prior_prec2_shape_  Gamma shape for 1/W_2 (Gamma kind).
+ * @param prior_prec2_rate_   Gamma rate for 1/W_2 (Gamma kind).
+ * @param prior_prec2_scale_  Half-t scale A_2 > 0 (Half-t kind).
+ * @param prior_prec2_df_     Half-t df nu_2 > 0 (Half-t kind; 1 = Half-Cauchy).
  * @param verbose_            Logical: display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_          Integer: width of progress bar in characters (10-120).
  *
@@ -240,10 +258,16 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
                                         SEXP prior_theta01_prec_,
                                         SEXP prior_theta02_mean_,
                                         SEXP prior_theta02_prec_,
+                                        SEXP prior_prec1_type_,
                                         SEXP prior_prec1_shape_,
                                         SEXP prior_prec1_rate_,
+                                        SEXP prior_prec1_scale_,
+                                        SEXP prior_prec1_df_,
+                                        SEXP prior_prec2_type_,
                                         SEXP prior_prec2_shape_,
                                         SEXP prior_prec2_rate_,
+                                        SEXP prior_prec2_scale_,
+                                        SEXP prior_prec2_df_,
                                         SEXP verbose_,
                                         SEXP bar_width_);
 

@@ -58,24 +58,39 @@
  * @param n_chain_                 Integer scalar, number of retained samples.
  * @param prior_mu01_mean_         Double scalar, prior mean for mu_1.
  * @param prior_mu01_prec_         Double scalar, prior precision for mu_1.
- * @param prior_prec01_shape_      Double scalar, Gamma shape for phi_1.
- * @param prior_prec01_rate_       Double scalar, Gamma rate for phi_1.
+ * @param prior_prec01_type_       Integer, prior kind on phi_1 (0 = Gamma, 1 = Half-t).
+ * @param prior_prec01_shape_      Double scalar, Gamma shape for phi_1 (Gamma kind).
+ * @param prior_prec01_rate_       Double scalar, Gamma rate for phi_1 (Gamma kind).
+ * @param prior_prec01_scale_      Double scalar, Half-t scale A > 0 for phi_1 (Half-t kind).
+ * @param prior_prec01_df_         Double scalar, Half-t df > 0 for phi_1 (Half-t kind; 1 = Half-Cauchy).
  * @param prior_mu02_mean_         Double scalar, prior mean for mu_2.
  * @param prior_mu02_prec_         Double scalar, prior precision for mu_2.
- * @param prior_prec02_shape_      Double scalar, Gamma shape for phi_2.
- * @param prior_prec02_rate_       Double scalar, Gamma rate for phi_2.
+ * @param prior_prec02_type_       Integer, prior kind on phi_2 (0 = Gamma, 1 = Half-t).
+ * @param prior_prec02_shape_      Double scalar, Gamma shape for phi_2 (Gamma kind).
+ * @param prior_prec02_rate_       Double scalar, Gamma rate for phi_2 (Gamma kind).
+ * @param prior_prec02_scale_      Double scalar, Half-t scale A > 0 for phi_2 (Half-t kind).
+ * @param prior_prec02_df_         Double scalar, Half-t df > 0 for phi_2 (Half-t kind; 1 = Half-Cauchy).
  * @param prior_theta01_mean_      Double scalar, prior mean for theta_{0,1}.
  * @param prior_theta01_prec_      Double scalar, prior precision for theta_{0,1}.
  * @param prior_theta02_mean_      Double scalar, prior mean for theta_{0,2}.
  * @param prior_theta02_prec_      Double scalar, prior precision for theta_{0,2}.
  * @param prior_theta03_mean_      Double scalar, prior mean for theta_{0,3}.
  * @param prior_theta03_prec_      Double scalar, prior precision for theta_{0,3}.
- * @param prior_prec1_shape_       Double scalar, Gamma shape for 1/W_1.
- * @param prior_prec1_rate_        Double scalar, Gamma rate for 1/W_1.
- * @param prior_prec2_shape_       Double scalar, Gamma shape for 1/W_2.
- * @param prior_prec2_rate_        Double scalar, Gamma rate for 1/W_2.
- * @param prior_prec3_shape_       Double scalar, Gamma shape for 1/W_3.
- * @param prior_prec3_rate_        Double scalar, Gamma rate for 1/W_3.
+ * @param prior_prec1_type_        Integer, prior kind on 1/W_1 (0 = Gamma, 1 = Half-t).
+ * @param prior_prec1_shape_       Double scalar, Gamma shape for 1/W_1 (Gamma kind).
+ * @param prior_prec1_rate_        Double scalar, Gamma rate for 1/W_1 (Gamma kind).
+ * @param prior_prec1_scale_       Double scalar, Half-t scale A_1 > 0 for 1/W_1 (Half-t kind).
+ * @param prior_prec1_df_          Double scalar, Half-t df nu_1 > 0 for 1/W_1 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec2_type_        Integer, prior kind on 1/W_2 (0 = Gamma, 1 = Half-t).
+ * @param prior_prec2_shape_       Double scalar, Gamma shape for 1/W_2 (Gamma kind).
+ * @param prior_prec2_rate_        Double scalar, Gamma rate for 1/W_2 (Gamma kind).
+ * @param prior_prec2_scale_       Double scalar, Half-t scale A_2 > 0 for 1/W_2 (Half-t kind).
+ * @param prior_prec2_df_          Double scalar, Half-t df nu_2 > 0 for 1/W_2 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec3_type_        Integer, prior kind on 1/W_3 (0 = Gamma, 1 = Half-t).
+ * @param prior_prec3_shape_       Double scalar, Gamma shape for 1/W_3 (Gamma kind).
+ * @param prior_prec3_rate_        Double scalar, Gamma rate for 1/W_3 (Gamma kind).
+ * @param prior_prec3_scale_       Double scalar, Half-t scale A_3 > 0 for 1/W_3 (Half-t kind).
+ * @param prior_prec3_df_          Double scalar, Half-t df nu_3 > 0 for 1/W_3 (Half-t kind; 1 = Half-Cauchy).
  * @param lag_update_              Integer scalar, adaptation frequency (logit only).
  * @param max_step_size_           Double scalar, max proposal step (logit only).
  * @param base_adaptation_rate_    Double scalar, base adaptation rate (logit only).
@@ -102,24 +117,39 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
                                              SEXP n_chain_,
                                              SEXP prior_mu01_mean_,
                                              SEXP prior_mu01_prec_,
+                                             SEXP prior_prec01_type_,
                                              SEXP prior_prec01_shape_,
                                              SEXP prior_prec01_rate_,
+                                             SEXP prior_prec01_scale_,
+                                             SEXP prior_prec01_df_,
                                              SEXP prior_mu02_mean_,
                                              SEXP prior_mu02_prec_,
+                                             SEXP prior_prec02_type_,
                                              SEXP prior_prec02_shape_,
                                              SEXP prior_prec02_rate_,
+                                             SEXP prior_prec02_scale_,
+                                             SEXP prior_prec02_df_,
                                              SEXP prior_theta01_mean_,
                                              SEXP prior_theta01_prec_,
                                              SEXP prior_theta02_mean_,
                                              SEXP prior_theta02_prec_,
                                              SEXP prior_theta03_mean_,
                                              SEXP prior_theta03_prec_,
+                                             SEXP prior_prec1_type_,
                                              SEXP prior_prec1_shape_,
                                              SEXP prior_prec1_rate_,
+                                             SEXP prior_prec1_scale_,
+                                             SEXP prior_prec1_df_,
+                                             SEXP prior_prec2_type_,
                                              SEXP prior_prec2_shape_,
                                              SEXP prior_prec2_rate_,
+                                             SEXP prior_prec2_scale_,
+                                             SEXP prior_prec2_df_,
+                                             SEXP prior_prec3_type_,
                                              SEXP prior_prec3_shape_,
                                              SEXP prior_prec3_rate_,
+                                             SEXP prior_prec3_scale_,
+                                             SEXP prior_prec3_df_,
                                              SEXP lag_update_,
                                              SEXP max_step_size_,
                                              SEXP base_adaptation_rate_,

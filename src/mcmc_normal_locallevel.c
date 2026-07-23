@@ -32,74 +32,9 @@
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
 #include "utils.h"          /* rgamma_positive */
+#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_*, pdm_init_prec_prior */
 #include "mcmc_progress_bar.h"
 #include "mcmc_normal_locallevel.h"
-
-/* =========================================================================
- * Innovation/observation precision prior dispatch
- *
- * The prior on each precision (Gamma on the precision, or Half-t on the
- * standard deviation) is chosen ONCE, before the Gibbs loop, by binding a
- * function pointer per precision. The per-iteration hot path then calls
- * through the pointer and never re-tests which prior is in force.
- *
- * The Half-t path uses the inverse-gamma scale-mixture representation
- * (Wand et al. 2011; Huang & Wand 2013): sqrt(W) ~ Half-t(df, A) is drawn via
- * an auxiliary b = 1/a, and the precision draw reuses the existing conjugate
- * Gamma sampler with shape df/2 and prior rate df * b. df = 1 is Half-Cauchy.
- * ========================================================================= */
-
-/* Prior-kind codes shared with the R wrapper (see mcmc_normal_locallevel.R). */
-#define PDM_PREC_PRIOR_GAMMA 0
-#define PDM_PREC_PRIOR_HALFT 1
-
-/* Hyperparameters for one precision prior. Only the fields relevant to the
- * selected kind are read by the corresponding step function. */
-typedef struct {
-  double shape;    /* Gamma prior shape nu    (Gamma kind)  */
-  double rate;     /* Gamma prior rate  eta   (Gamma kind)  */
-  double df;       /* Half-t degrees of freedom nu (Half-t kind) */
-  double hc_scale; /* Half-t scale A          (Half-t kind) */
-} prec_prior_t;
-
-/* Step signatures. `aux` points to the Half-t auxiliary b = 1/a, updated in
- * place; it is ignored by the Gamma steps. */
-typedef double (*prec_thetap_step_t)(double theta_0p, const double *theta_p,
-                                     int n, const prec_prior_t *pr, double *aux);
-typedef double (*prec_data_step_t)(const double *y, const double *theta_1,
-                                   int n, const prec_prior_t *pr, double *aux);
-
-/* --- Innovation precision W_1^{-1} (random-walk / terminal component) --- */
-static double step_prec_thetap_gamma(double theta_0p, const double *theta_p,
-                                     int n, const prec_prior_t *pr, double *aux) {
-  (void) aux;  /* Gamma prior carries no auxiliary variable */
-  return generate_precision_theta_p(theta_0p, theta_p, pr->shape, pr->rate, n);
-}
-
-static double step_prec_thetap_halft(double theta_0p, const double *theta_p,
-                                     int n, const prec_prior_t *pr, double *aux) {
-  /* Precision: conjugate Gamma sampler with shape df/2 and prior rate df * b. */
-  double prec = generate_precision_theta_p(theta_0p, theta_p,
-                                           0.5 * pr->df, pr->df * (*aux), n);
-  /* Auxiliary refresh: b | prec ~ Gamma((df+1)/2, rate = df*prec + 1/A^2). */
-  *aux = generate_halft_aux(prec, pr->hc_scale, pr->df);
-  return prec;
-}
-
-/* --- Observation precision V^{-1} --- */
-static double step_prec_data_gamma(const double *y, const double *theta_1,
-                                   int n, const prec_prior_t *pr, double *aux) {
-  (void) aux;
-  return generate_precision_data(y, theta_1, pr->shape, pr->rate, n);
-}
-
-static double step_prec_data_halft(const double *y, const double *theta_1,
-                                   int n, const prec_prior_t *pr, double *aux) {
-  double prec = generate_precision_data(y, theta_1,
-                                        0.5 * pr->df, pr->df * (*aux), n);
-  *aux = generate_halft_aux(prec, pr->hc_scale, pr->df);
-  return prec;
-}
 
 /**
  * @brief Gibbs sampler for local-level dynamic model with Gaussian observations
@@ -307,21 +242,8 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
    * These one-time branches are outside the Gibbs loop. */
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
 
-  if (prec1_kind == PDM_PREC_PRIOR_HALFT) {
-    aux_W1 = rgamma_positive(0.5, prior_W1.hc_scale * prior_W1.hc_scale);
-    prec_theta1_previous = rgamma_positive(0.5 * prior_W1.df,
-                                           1.0 / (prior_W1.df * aux_W1));
-  } else {
-    prec_theta1_previous = rgamma_positive(prior_W1.shape, 1.0 / prior_W1.rate);
-  }
-
-  if (precy_kind == PDM_PREC_PRIOR_HALFT) {
-    aux_V = rgamma_positive(0.5, prior_V.hc_scale * prior_V.hc_scale);
-    prec_y_previous = rgamma_positive(0.5 * prior_V.df,
-                                      1.0 / (prior_V.df * aux_V));
-  } else {
-    prec_y_previous = rgamma_positive(prior_V.shape, 1.0 / prior_V.rate);
-  }
+  prec_theta1_previous = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
+  prec_y_previous      = pdm_init_prec_prior(precy_kind, &prior_V,  &aux_V);
 
   /* Initialize theta_1 trajectory with neutral starting values */
   for (int j = 0; j < n; j++) {

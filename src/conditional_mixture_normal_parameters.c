@@ -237,19 +237,21 @@
  *
  * @version 1.0
  */
-void conditional_mixture_normal_parameters_k2(const double *y,
-                                              const double *z,
-                                              const double *params_previous,
-                                              double       *params_current,
-                                              double        mu_01,
-                                              double        prec_01,
-                                              double        nu_01,
-                                              double        eta_01,
-                                              double        mu_02,
-                                              double        prec_02,
-                                              double        nu_02,
-                                              double        eta_02,
-                                              int           n) {
+void conditional_mixture_normal_parameters_k2(const double       *y,
+                                              const double       *z,
+                                              const double       *params_previous,
+                                              double             *params_current,
+                                              double              mu_01,
+                                              double              prec_01,
+                                              int                 phi1_kind,
+                                              const prec_prior_t *phi_prior_1,
+                                              double             *aux_phi1,
+                                              double              mu_02,
+                                              double              prec_02,
+                                              int                 phi2_kind,
+                                              const prec_prior_t *phi_prior_2,
+                                              double             *aux_phi2,
+                                              int                 n) {
 
   int t;
   double T_0 = 0.0, T_1 = 0.0;
@@ -291,18 +293,8 @@ void conditional_mixture_normal_parameters_k2(const double *y,
   if (prec_02 <= 0.0 || !R_FINITE(prec_02)) {
     error("prec_02 must be positive and finite, got %f", prec_02);
   }
-  if (nu_01 <= 0.0 || !R_FINITE(nu_01)) {
-    error("nu_01 must be positive and finite, got %f", nu_01);
-  }
-  if (eta_01 <= 0.0 || !R_FINITE(eta_01)) {
-    error("eta_01 must be positive and finite, got %f", eta_01);
-  }
-  if (nu_02 <= 0.0 || !R_FINITE(nu_02)) {
-    error("nu_02 must be positive and finite, got %f", nu_02);
-  }
-  if (eta_02 <= 0.0 || !R_FINITE(eta_02)) {
-    error("eta_02 must be positive and finite, got %f", eta_02);
-  }
+  /* The phi_k prior hyperparameters (Gamma shape/rate or Half-t df/scale) are
+   * validated in R (resolve_prec_prior); the C layer receives finite values. */
 
   /* ========== Compute Sufficient Statistics ========== */
   /* First pass: compute counts (T_k) and sums (s_k) for each component.
@@ -369,28 +361,18 @@ void conditional_mixture_normal_parameters_k2(const double *y,
   }
 
   /* ========== Sample Precision of Component 1 (Lower) ========== */
-  /* Full conditional posterior:
-   * phi_1 | y, [...] ~ Gamma(nu_bar_1, eta_bar_1)
-   * where:
-   * nu_bar_1 = nu_01 + T_0 / 2
-   * eta_bar_1 = eta_01 + v_0 / 2
-   *
-   * This is the standard conjugate Gamma-Normal update where the posterior
-   * shape increases by the number of observations T_0/2 and the rate increases
-   * by half the sum of squared deviations v_0/2. */
-  double nu_bar_1 = nu_01 + T_0 / 2.0;
-  double eta_bar_1 = eta_01 + v_0 / 2.0;
-  double prec_1_curr = rgamma_positive(nu_bar_1, 1.0 / eta_bar_1);
+  /* Full conditional for phi_1 given sufficient statistics (T_0, v_0). Under the
+   * Gamma prior this is Gamma(nu_01 + T_0/2, eta_01 + v_0/2); under a Half-t
+   * prior on sqrt(1/phi_1) it is Gamma(df/2 + T_0/2, df*b_1 + v_0/2) via the
+   * scale mixture, using the auxiliary b_1 carried in *aux_phi1. The auxiliary
+   * is refreshed only AFTER the label switch below (see pdm_refresh_halft_aux),
+   * so it stays paired with the precision that ends up in this slot. */
+  double prec_1_curr =
+    pdm_draw_prec_suffstat(phi1_kind, phi_prior_1, T_0, v_0, *aux_phi1);
 
   /* ========== Sample Precision of Component 2 (Upper) ========== */
-  /* Full conditional posterior:
-   * phi_2 | y, [...] ~ Gamma(nu_bar_2, eta_bar_2)
-   * where:
-   * nu_bar_2 = nu_02 + T_1 / 2
-   * eta_bar_2 = eta_02 + v_1 / 2 */
-  double nu_bar_2 = nu_02 + T_1 / 2.0;
-  double eta_bar_2 = eta_02 + v_1 / 2.0;
-  double prec_2_curr = rgamma_positive(nu_bar_2, 1.0 / eta_bar_2);
+  double prec_2_curr =
+    pdm_draw_prec_suffstat(phi2_kind, phi_prior_2, T_1, v_1, *aux_phi2);
 
   /* ========== Enforce Label Switching Constraint ========== */
   /* To ensure identifiability, enforce mu_1 < mu_2 (ordering constraint).
@@ -413,6 +395,13 @@ void conditional_mixture_normal_parameters_k2(const double *y,
     prec_1_curr = prec_2_curr;
     prec_2_curr = temp_prec;
   }
+
+  /* ========== Refresh Half-t Auxiliaries (After the Label Switch) ========== */
+  /* Draw each auxiliary from the precision that now occupies its slot, under
+   * that slot's own Half-t hyperparameters, so aux_phi_k stays consistent with
+   * phi_k for the next iteration's rate (df_k * b_k). No-op under Gamma. */
+  pdm_refresh_halft_aux(phi1_kind, phi_prior_1, prec_1_curr, aux_phi1);
+  pdm_refresh_halft_aux(phi2_kind, phi_prior_2, prec_2_curr, aux_phi2);
 
   /* ========== Store Results in Output Vector ========== */
   /* Parameter vector structure for k=2 components:

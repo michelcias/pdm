@@ -42,6 +42,7 @@
 #include "conditional_theta0.h"
 #include "generate_alpha_binomial.h"
 #include "utils.h"
+#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_*, pdm_init_prec_prior */
 #include "mcmc_progress_bar.h"
 #include "mcmc_binomial_localacceleration.h"
 
@@ -97,12 +98,21 @@
  * @param prior_theta02_prec_      Prior precision for theta_{0,2}.
  * @param prior_theta03_mean_      Prior mean for theta_{0,3}.
  * @param prior_theta03_prec_      Prior precision for theta_{0,3}.
- * @param prior_prec1_shape_       Gamma shape for 1/W_1.
- * @param prior_prec1_rate_        Gamma rate for 1/W_1.
- * @param prior_prec2_shape_       Gamma shape for 1/W_2.
- * @param prior_prec2_rate_        Gamma rate for 1/W_2.
- * @param prior_prec3_shape_       Gamma shape for 1/W_3.
- * @param prior_prec3_rate_        Gamma rate for 1/W_3.
+ * @param prior_prec1_type_        Integer prior kind on 1/W_1 (0 = Gamma, 1 = Half-t on sqrt(W_1)).
+ * @param prior_prec1_shape_       Gamma shape for 1/W_1 (Gamma kind).
+ * @param prior_prec1_rate_        Gamma rate for 1/W_1 (Gamma kind).
+ * @param prior_prec1_scale_       Half-t scale A_1 > 0 (Half-t kind).
+ * @param prior_prec1_df_          Half-t df nu_1 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec2_type_        Integer prior kind on 1/W_2 (0 = Gamma, 1 = Half-t on sqrt(W_2)).
+ * @param prior_prec2_shape_       Gamma shape for 1/W_2 (Gamma kind).
+ * @param prior_prec2_rate_        Gamma rate for 1/W_2 (Gamma kind).
+ * @param prior_prec2_scale_       Half-t scale A_2 > 0 (Half-t kind).
+ * @param prior_prec2_df_          Half-t df nu_2 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec3_type_        Integer prior kind on 1/W_3 (0 = Gamma, 1 = Half-t on sqrt(W_3)).
+ * @param prior_prec3_shape_       Gamma shape for 1/W_3 (Gamma kind).
+ * @param prior_prec3_rate_        Gamma rate for 1/W_3 (Gamma kind).
+ * @param prior_prec3_scale_       Half-t scale A_3 > 0 (Half-t kind).
+ * @param prior_prec3_df_          Half-t df nu_3 > 0 (Half-t kind; 1 = Half-Cauchy).
  * @param lag_update_              Adaptation frequency (iterations).
  * @param max_step_size_           Maximum proposal step size.
  * @param base_adaptation_rate_    Base adaptation rate.
@@ -157,12 +167,21 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
                                              SEXP prior_theta02_prec_,
                                              SEXP prior_theta03_mean_,
                                              SEXP prior_theta03_prec_,
+                                             SEXP prior_prec1_type_,
                                              SEXP prior_prec1_shape_,
                                              SEXP prior_prec1_rate_,
+                                             SEXP prior_prec1_scale_,
+                                             SEXP prior_prec1_df_,
+                                             SEXP prior_prec2_type_,
                                              SEXP prior_prec2_shape_,
                                              SEXP prior_prec2_rate_,
+                                             SEXP prior_prec2_scale_,
+                                             SEXP prior_prec2_df_,
+                                             SEXP prior_prec3_type_,
                                              SEXP prior_prec3_shape_,
                                              SEXP prior_prec3_rate_,
+                                             SEXP prior_prec3_scale_,
+                                             SEXP prior_prec3_df_,
                                              SEXP lag_update_,
                                              SEXP max_step_size_,
                                              SEXP base_adaptation_rate_,
@@ -216,12 +235,42 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
   double prec_theta02 = REAL(prior_theta02_prec_)[0];
   double mean_theta03 = REAL(prior_theta03_mean_)[0];
   double prec_theta03 = REAL(prior_theta03_prec_)[0];
-  double nu_01        = REAL(prior_prec1_shape_)[0];
-  double eta_01       = REAL(prior_prec1_rate_)[0];
-  double nu_02        = REAL(prior_prec2_shape_)[0];
-  double eta_02       = REAL(prior_prec2_rate_)[0];
-  double nu_03        = REAL(prior_prec3_shape_)[0];
-  double eta_03       = REAL(prior_prec3_rate_)[0];
+  /* Precision priors (no observation precision V in this model). The R wrapper
+   * resolves the "halfcauchy" alias to Half-t(df = 1) and passes finite
+   * placeholders for the unused fields, so no field is ever NA. */
+  int          prec1_kind = asInteger(prior_prec1_type_);   /* prior on 1/W_1 */
+  prec_prior_t prior_W1   = {
+    .shape    = REAL(prior_prec1_shape_)[0],
+    .rate     = REAL(prior_prec1_rate_)[0],
+    .df       = REAL(prior_prec1_df_)[0],
+    .hc_scale = REAL(prior_prec1_scale_)[0]
+  };
+  int          prec2_kind = asInteger(prior_prec2_type_);   /* prior on 1/W_2 */
+  prec_prior_t prior_W2   = {
+    .shape    = REAL(prior_prec2_shape_)[0],
+    .rate     = REAL(prior_prec2_rate_)[0],
+    .df       = REAL(prior_prec2_df_)[0],
+    .hc_scale = REAL(prior_prec2_scale_)[0]
+  };
+  int          prec3_kind = asInteger(prior_prec3_type_);   /* prior on 1/W_3 */
+  prec_prior_t prior_W3   = {
+    .shape    = REAL(prior_prec3_shape_)[0],
+    .rate     = REAL(prior_prec3_rate_)[0],
+    .df       = REAL(prior_prec3_df_)[0],
+    .hc_scale = REAL(prior_prec3_scale_)[0]
+  };
+  /* Resolve the prior dispatch ONCE, before the Gibbs loop. W_1 and W_2 are
+   * intermediate components (theta_k sampler); W_3 is the terminal random-walk
+   * component (theta_p sampler). */
+  prec_thetak_step_t update_prec_W1 =
+    (prec1_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetak_halft
+                                         : step_prec_thetak_gamma;
+  prec_thetak_step_t update_prec_W2 =
+    (prec2_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetak_halft
+                                         : step_prec_thetak_gamma;
+  prec_thetap_step_t update_prec_W3 =
+    (prec3_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetap_halft
+                                         : step_prec_thetap_gamma;
 
   /* ========== Parse Adaptation Parameters ========== */
   int    lag_update              = INTEGER(lag_update_)[0];
@@ -289,6 +338,10 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
   double prec_theta2_current,   prec_theta2_previous;
   double prec_theta3_current,   prec_theta3_previous;
 
+  /* Half-t auxiliaries b = 1/a, one per precision (refreshed in place under a
+   * Half-t prior; left at 0 and never read under the Gamma prior). */
+  double aux_W1 = 0.0, aux_W2 = 0.0, aux_W3 = 0.0;
+
   /* Sliding window buffer for acceptance tracking */
   double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
 
@@ -311,9 +364,9 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
   theta_03_previous = rnorm(mean_theta03, sqrt(1.0 / prec_theta03));
-  prec_theta1_previous   = rgamma_positive(nu_01, 1.0 / eta_01);
-  prec_theta2_previous   = rgamma_positive(nu_02, 1.0 / eta_02);
-  prec_theta3_previous   = rgamma_positive(nu_03, 1.0 / eta_03);
+  prec_theta1_previous   = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
+  prec_theta2_previous   = pdm_init_prec_prior(prec2_kind, &prior_W2, &aux_W2);
+  prec_theta3_previous   = pdm_init_prec_prior(prec3_kind, &prior_W3, &aux_W3);
 
   /* Initialize state vectors with efficient neutral starting values */
   for (int t = 0; t < n; t++) {
@@ -347,12 +400,12 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
     /* ===== Step 2: Sample Acceleration Innovation Precision 1/W_3 ===== */
     /* Draw 1/W_3 | theta_3_current, theta_{0,3}_previous from Gamma posterior.
      * Uses current theta_3 (just sampled) and previous theta_{0,3}. */
-    prec_theta3_current = generate_precision_theta_p(
+    prec_theta3_current = update_prec_W3(
       theta_03_previous,  /* scalar: initial acceleration from previous iteration */
       theta_3_current,    /* vector: current theta_3 [n] */
-      nu_03,              /* prior shape */
-      eta_03,             /* prior rate */
-      n                   /* sample size */
+      n,                  /* sample size */
+      &prior_W3,          /* prior hyperparameters for the resolved kind */
+      &aux_W3             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 3: Sample Initial Acceleration State theta_{0,3} ===== */
@@ -390,14 +443,14 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
     /* Draw 1/W_2 | theta_{0,2}_previous, theta_{0,3}_current, theta_2_current,
      * theta_3_current from Gamma posterior.
      * Uses both trend and acceleration information to compute innovations. */
-    prec_theta2_current = generate_precision_theta_k(
+    prec_theta2_current = update_prec_W2(
       theta_02_previous,  /* scalar: initial trend from previous iteration */
       theta_03_current,   /* scalar: current initial acceleration */
       theta_2_current,    /* vector: current trend [n] */
       theta_3_current,    /* vector: current acceleration [n] */
-      nu_02,              /* prior shape */
-      eta_02,             /* prior rate */
-      n                   /* sample size */
+      n,                  /* sample size */
+      &prior_W2,          /* prior hyperparameters for the resolved kind */
+      &aux_W2             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 6: Sample Initial Trend State theta_{0,2} ===== */
@@ -448,14 +501,14 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
     /* Draw 1/W_1 | theta_{0,1}_previous, theta_{0,2}_current, theta_1_current,
      * theta_2_current from Gamma posterior.
      * Uses both level and trend information to compute innovations. */
-    prec_theta1_current = generate_precision_theta_k(
+    prec_theta1_current = update_prec_W1(
       theta_01_previous,  /* scalar: initial level from previous iteration */
       theta_02_current,   /* scalar: current initial trend */
       theta_1_current,    /* vector: current level [n] */
       theta_2_current,    /* vector: current trend [n] */
-      nu_01,              /* prior shape */
-      eta_01,             /* prior rate */
-      n                   /* sample size */
+      n,                  /* sample size */
+      &prior_W1,          /* prior hyperparameters for the resolved kind */
+      &aux_W1             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 9: Sample Initial Level State theta_{0,1} ===== */
@@ -639,12 +692,21 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @param prior_theta02_prec_ Prior precision for theta_{0,2}.
  * @param prior_theta03_mean_ Prior mean for theta_{0,3}.
  * @param prior_theta03_prec_ Prior precision for theta_{0,3}.
- * @param prior_prec1_shape_  Gamma shape for 1/W_1.
- * @param prior_prec1_rate_   Gamma rate for 1/W_1.
- * @param prior_prec2_shape_  Gamma shape for 1/W_2.
- * @param prior_prec2_rate_   Gamma rate for 1/W_2.
- * @param prior_prec3_shape_  Gamma shape for 1/W_3.
- * @param prior_prec3_rate_   Gamma rate for 1/W_3.
+ * @param prior_prec1_type_   Integer prior kind on 1/W_1 (0 = Gamma, 1 = Half-t on sqrt(W_1)).
+ * @param prior_prec1_shape_  Gamma shape for 1/W_1 (Gamma kind).
+ * @param prior_prec1_rate_   Gamma rate for 1/W_1 (Gamma kind).
+ * @param prior_prec1_scale_  Half-t scale A_1 > 0 (Half-t kind).
+ * @param prior_prec1_df_     Half-t df nu_1 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec2_type_   Integer prior kind on 1/W_2 (0 = Gamma, 1 = Half-t on sqrt(W_2)).
+ * @param prior_prec2_shape_  Gamma shape for 1/W_2 (Gamma kind).
+ * @param prior_prec2_rate_   Gamma rate for 1/W_2 (Gamma kind).
+ * @param prior_prec2_scale_  Half-t scale A_2 > 0 (Half-t kind).
+ * @param prior_prec2_df_     Half-t df nu_2 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec3_type_   Integer prior kind on 1/W_3 (0 = Gamma, 1 = Half-t on sqrt(W_3)).
+ * @param prior_prec3_shape_  Gamma shape for 1/W_3 (Gamma kind).
+ * @param prior_prec3_rate_   Gamma rate for 1/W_3 (Gamma kind).
+ * @param prior_prec3_scale_  Half-t scale A_3 > 0 (Half-t kind).
+ * @param prior_prec3_df_     Half-t df nu_3 > 0 (Half-t kind; 1 = Half-Cauchy).
  * @param verbose_            Logical: display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_          Integer: width of progress bar in characters (10-120).
  *
@@ -689,12 +751,21 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
                                                SEXP prior_theta02_prec_,
                                                SEXP prior_theta03_mean_,
                                                SEXP prior_theta03_prec_,
+                                               SEXP prior_prec1_type_,
                                                SEXP prior_prec1_shape_,
                                                SEXP prior_prec1_rate_,
+                                               SEXP prior_prec1_scale_,
+                                               SEXP prior_prec1_df_,
+                                               SEXP prior_prec2_type_,
                                                SEXP prior_prec2_shape_,
                                                SEXP prior_prec2_rate_,
+                                               SEXP prior_prec2_scale_,
+                                               SEXP prior_prec2_df_,
+                                               SEXP prior_prec3_type_,
                                                SEXP prior_prec3_shape_,
                                                SEXP prior_prec3_rate_,
+                                               SEXP prior_prec3_scale_,
+                                               SEXP prior_prec3_df_,
                                                SEXP verbose_,
                                                SEXP bar_width_) {
 
@@ -736,12 +807,42 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
   double prec_theta02 = REAL(prior_theta02_prec_)[0];
   double mean_theta03 = REAL(prior_theta03_mean_)[0];
   double prec_theta03 = REAL(prior_theta03_prec_)[0];
-  double nu_01        = REAL(prior_prec1_shape_)[0];
-  double eta_01       = REAL(prior_prec1_rate_)[0];
-  double nu_02        = REAL(prior_prec2_shape_)[0];
-  double eta_02       = REAL(prior_prec2_rate_)[0];
-  double nu_03        = REAL(prior_prec3_shape_)[0];
-  double eta_03       = REAL(prior_prec3_rate_)[0];
+  /* Precision priors (no observation precision V in this model). The R wrapper
+   * resolves the "halfcauchy" alias to Half-t(df = 1) and passes finite
+   * placeholders for the unused fields, so no field is ever NA. */
+  int          prec1_kind = asInteger(prior_prec1_type_);   /* prior on 1/W_1 */
+  prec_prior_t prior_W1   = {
+    .shape    = REAL(prior_prec1_shape_)[0],
+    .rate     = REAL(prior_prec1_rate_)[0],
+    .df       = REAL(prior_prec1_df_)[0],
+    .hc_scale = REAL(prior_prec1_scale_)[0]
+  };
+  int          prec2_kind = asInteger(prior_prec2_type_);   /* prior on 1/W_2 */
+  prec_prior_t prior_W2   = {
+    .shape    = REAL(prior_prec2_shape_)[0],
+    .rate     = REAL(prior_prec2_rate_)[0],
+    .df       = REAL(prior_prec2_df_)[0],
+    .hc_scale = REAL(prior_prec2_scale_)[0]
+  };
+  int          prec3_kind = asInteger(prior_prec3_type_);   /* prior on 1/W_3 */
+  prec_prior_t prior_W3   = {
+    .shape    = REAL(prior_prec3_shape_)[0],
+    .rate     = REAL(prior_prec3_rate_)[0],
+    .df       = REAL(prior_prec3_df_)[0],
+    .hc_scale = REAL(prior_prec3_scale_)[0]
+  };
+  /* Resolve the prior dispatch ONCE, before the Gibbs loop. W_1 and W_2 are
+   * intermediate components (theta_k sampler); W_3 is the terminal random-walk
+   * component (theta_p sampler). */
+  prec_thetak_step_t update_prec_W1 =
+    (prec1_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetak_halft
+                                         : step_prec_thetak_gamma;
+  prec_thetak_step_t update_prec_W2 =
+    (prec2_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetak_halft
+                                         : step_prec_thetak_gamma;
+  prec_thetap_step_t update_prec_W3 =
+    (prec3_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetap_halft
+                                         : step_prec_thetap_gamma;
 
   /* ========== Parse Progress Bar Parameters ========== */
   int verbose   = asLogical(verbose_);
@@ -782,6 +883,10 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
   double prec_theta2_current,   prec_theta2_previous;
   double prec_theta3_current,   prec_theta3_previous;
 
+  /* Half-t auxiliaries b = 1/a, one per precision (refreshed in place under a
+   * Half-t prior; left at 0 and never read under the Gamma prior). */
+  double aux_W1 = 0.0, aux_W2 = 0.0, aux_W3 = 0.0;
+
   /* Working array for right-hand side of linear system */
   double *rhs_vector = (double *) R_Calloc(n, double);
 
@@ -792,9 +897,9 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
   theta_03_previous = rnorm(mean_theta03, sqrt(1.0 / prec_theta03));
-  prec_theta1_previous   = rgamma_positive(nu_01, 1.0 / eta_01);
-  prec_theta2_previous   = rgamma_positive(nu_02, 1.0 / eta_02);
-  prec_theta3_previous   = rgamma_positive(nu_03, 1.0 / eta_03);
+  prec_theta1_previous   = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
+  prec_theta2_previous   = pdm_init_prec_prior(prec2_kind, &prior_W2, &aux_W2);
+  prec_theta3_previous   = pdm_init_prec_prior(prec3_kind, &prior_W3, &aux_W3);
 
   /* Initialize state vectors with efficient neutral starting values */
   for (int t = 0; t < n; t++) {
@@ -828,12 +933,12 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
     /* ===== Step 2: Sample Acceleration Innovation Precision 1/W_3 ===== */
     /* Draw 1/W_3 | theta_3_current, theta_{0,3}_previous from Gamma posterior.
      * Uses current theta_3 (just sampled) and previous theta_{0,3}. */
-    prec_theta3_current = generate_precision_theta_p(
+    prec_theta3_current = update_prec_W3(
       theta_03_previous,  /* scalar: initial acceleration from previous iteration */
       theta_3_current,    /* vector: current theta_3 [n] */
-      nu_03,              /* prior shape */
-      eta_03,             /* prior rate */
-      n                   /* sample size */
+      n,                  /* sample size */
+      &prior_W3,          /* prior hyperparameters for the resolved kind */
+      &aux_W3             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 3: Sample Initial Acceleration State theta_{0,3} ===== */
@@ -871,14 +976,14 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
     /* Draw 1/W_2 | theta_{0,2}_previous, theta_{0,3}_current, theta_2_current,
      * theta_3_current from Gamma posterior.
      * Uses both trend and acceleration information to compute innovations. */
-    prec_theta2_current = generate_precision_theta_k(
+    prec_theta2_current = update_prec_W2(
       theta_02_previous,  /* scalar: initial trend from previous iteration */
       theta_03_current,   /* scalar: current initial acceleration */
       theta_2_current,    /* vector: current trend [n] */
       theta_3_current,    /* vector: current acceleration [n] */
-      nu_02,              /* prior shape */
-      eta_02,             /* prior rate */
-      n                   /* sample size */
+      n,                  /* sample size */
+      &prior_W2,          /* prior hyperparameters for the resolved kind */
+      &aux_W2             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 6: Sample Initial Trend State theta_{0,2} ===== */
@@ -916,14 +1021,14 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
     /* Draw 1/W_1 | theta_{0,1}_previous, theta_{0,2}_current, theta_1_current,
      * theta_2_current from Gamma posterior.
      * Uses both level and trend information to compute innovations. */
-    prec_theta1_current = generate_precision_theta_k(
+    prec_theta1_current = update_prec_W1(
       theta_01_previous,  /* scalar: initial level from previous iteration */
       theta_02_current,   /* scalar: current initial trend */
       theta_1_current,    /* vector: current level [n] */
       theta_2_current,    /* vector: current trend [n] */
-      nu_01,              /* prior shape */
-      eta_01,             /* prior rate */
-      n                   /* sample size */
+      n,                  /* sample size */
+      &prior_W1,          /* prior hyperparameters for the resolved kind */
+      &aux_W1             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 9: Sample Initial Level State theta_{0,1} ===== */

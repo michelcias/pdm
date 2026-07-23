@@ -32,6 +32,7 @@
 #include "conditional_theta0.h"
 #include "generate_alpha_poisson.h"
 #include "utils.h"
+#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_*, pdm_init_prec_prior */
 #include "mcmc_progress_bar.h"
 #include "mcmc_poisson_locallevel.h"
 
@@ -74,8 +75,11 @@
  * @param n_chain_                 Number of retained posterior samples.
  * @param prior_theta01_mean_      Prior mean for theta_{0,1}.
  * @param prior_theta01_prec_      Prior precision for theta_{0,1}.
- * @param prior_prec1_shape_       Gamma shape for 1/W_1.
- * @param prior_prec1_rate_        Gamma rate for 1/W_1.
+ * @param prior_prec1_type_        Integer prior kind on 1/W_1 (0 = Gamma, 1 = Half-t on sqrt(W_1)).
+ * @param prior_prec1_shape_       Gamma shape for 1/W_1 (Gamma kind).
+ * @param prior_prec1_rate_        Gamma rate for 1/W_1 (Gamma kind).
+ * @param prior_prec1_scale_       Half-t scale A_1 > 0 (Half-t kind).
+ * @param prior_prec1_df_          Half-t df nu_1 > 0 (Half-t kind; 1 = Half-Cauchy).
  * @param lag_update_              Adaptation frequency (iterations).
  * @param max_step_size_           Maximum proposal step size.
  * @param base_adaptation_rate_    Base adaptation rate.
@@ -114,8 +118,11 @@ SEXP C_MCMC_log_poisson_locallevel(SEXP y_,
                                    SEXP n_chain_,
                                    SEXP prior_theta01_mean_,
                                    SEXP prior_theta01_prec_,
+                                   SEXP prior_prec1_type_,
                                    SEXP prior_prec1_shape_,
                                    SEXP prior_prec1_rate_,
+                                   SEXP prior_prec1_scale_,
+                                   SEXP prior_prec1_df_,
                                    SEXP lag_update_,
                                    SEXP max_step_size_,
                                    SEXP base_adaptation_rate_,
@@ -164,8 +171,21 @@ SEXP C_MCMC_log_poisson_locallevel(SEXP y_,
   /* ========== Parse Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
   double prec_theta01 = REAL(prior_theta01_prec_)[0]; /* Prior precision for theta_{0,1} */
-  double nu_01        = REAL(prior_prec1_shape_)[0];  /* Gamma shape for 1/W_1 */
-  double eta_01       = REAL(prior_prec1_rate_)[0];   /* Gamma rate for 1/W_1 */
+  /* Innovation precision 1/W_1 prior (no observation precision V in this model).
+   * The R wrapper resolves the "halfcauchy" alias to Half-t(df = 1) and passes
+   * finite placeholders for the unused fields, so no field is ever NA. */
+  int          prec1_kind = asInteger(prior_prec1_type_);   /* prior on 1/W_1 */
+  prec_prior_t prior_W1   = {
+    .shape    = REAL(prior_prec1_shape_)[0],
+    .rate     = REAL(prior_prec1_rate_)[0],
+    .df       = REAL(prior_prec1_df_)[0],
+    .hc_scale = REAL(prior_prec1_scale_)[0]
+  };
+  /* W_1 is the terminal random-walk component (theta_p sampler). Resolve the
+   * prior dispatch ONCE, before the Gibbs loop. */
+  prec_thetap_step_t update_prec_W1 =
+    (prec1_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetap_halft
+                                         : step_prec_thetap_gamma;
 
   /* ========== Parse Adaptation Parameters ========== */
   int    lag_update              = INTEGER(lag_update_)[0];
@@ -220,6 +240,10 @@ SEXP C_MCMC_log_poisson_locallevel(SEXP y_,
   double theta_01_current, theta_01_previous;
   double prec_theta1_current,   prec_theta1_previous;
 
+  /* Half-t auxiliary b = 1/a for the W_1 precision (refreshed in place when its
+   * prior is Half-t; left at 0 and never read under the Gamma prior). */
+  double aux_W1 = 0.0;
+
   /* Sliding window buffer for acceptance tracking (optimized) */
   double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
 
@@ -241,7 +265,7 @@ SEXP C_MCMC_log_poisson_locallevel(SEXP y_,
   /* ========== Initialize Parameters (Iteration 0) ========== */
   /* Draw initial values from priors to start the Markov chain */
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous   = rgamma_positive(nu_01, 1.0 / eta_01);
+  prec_theta1_previous   = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
 
   /* Initialize theta_1 and alpha with efficient neutral starting values */
   for (int t = 0; t < n; t++) {
@@ -288,12 +312,12 @@ SEXP C_MCMC_log_poisson_locallevel(SEXP y_,
 
     /* ===== Step 2: Sample Innovation Precision 1/W_1 ===== */
     /* Draw 1/W_1 | theta_1, theta_01 from Gamma posterior */
-    prec_theta1_current = generate_precision_theta_p(
+    prec_theta1_current = update_prec_W1(
       theta_01_previous,  /* theta_0p: initial level from previous iteration */
       theta_1_current,    /* theta_p_current: current level trajectory [n] */
-      nu_01,              /* nu_0p: prior shape parameter */
-      eta_01,             /* eta_0p:  prior rate parameter */
-      n                   /* n: number of time points */
+      n,                  /* n: number of time points */
+      &prior_W1,          /* prior hyperparameters for the resolved kind */
+      &aux_W1             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 3: Sample Initial State theta_{0,1} ===== */

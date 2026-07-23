@@ -27,9 +27,10 @@
  *          **Prior distributions:**
  *          - theta_{0,1} ~ N(mu_{0,1}, sigma_{0,1}^2)
  *          - theta_{0,2} ~ N(mu_{0,2}, sigma_{0,2}^2)
- *          - 1/W_1 ~ Gamma(nu_1, eta_1)
- *          - 1/W_2 ~ Gamma(nu_2, eta_2)
- *          - 1/V   ~ Gamma(nu_y, eta_y)
+ *          - each precision 1/W_1, 1/W_2, 1/V carries either a Gamma prior on
+ *            the precision or a Half-t prior on the corresponding standard
+ *            deviation, selected independently via the prior_prec*_type_ codes
+ *            (see prec_prior_dispatch.h).
  *
  *          **Gibbs sampling sequence:**
  *          1. theta_2 | theta_1, theta_{0,1}, theta_{0,2}, W_1, W_2 → Multivariate Normal
@@ -98,18 +99,22 @@
  *                              Typical value: 0 (vague prior).
  * @param prior_theta02_prec_   SEXP Double scalar, prior precision tau_{0,2} = 1/sigma_{0,2}^2
  *                              for initial trend. Typical value: 0.001 (vague prior).
- * @param prior_prec1_shape_    SEXP Double scalar, shape parameter nu_1 for Gamma(nu_1, eta_1)
- *                              prior on 1/W_1. Typical value: 0.001 (vague prior).
- * @param prior_prec1_rate_     SEXP Double scalar, rate parameter eta_1 for Gamma(nu_1, eta_1)
- *                              prior on 1/W_1. Typical value: 0.001 (vague prior).
- * @param prior_prec2_shape_    SEXP Double scalar, shape parameter nu_2 for Gamma(nu_2, eta_2)
- *                              prior on 1/W_2. Typical value: 0.001 (vague prior).
- * @param prior_prec2_rate_     SEXP Double scalar, rate parameter eta_2 for Gamma(nu_2, eta_2)
- *                              prior on 1/W_2. Typical value: 0.001 (vague prior).
- * @param prior_prec_y_shape_   SEXP Double scalar, shape parameter nu_y for Gamma(nu_y, eta_y)
- *                              prior on 1/V. Typical value: 0.001 (vague prior).
- * @param prior_prec_y_rate_    SEXP Double scalar, rate parameter eta_y for Gamma(nu_y, eta_y)
- *                              prior on 1/V. Typical value: 0.001 (vague prior).
+ * @param prior_prec1_type_     SEXP Integer scalar, prior kind on 1/W_1
+ *                              (0 = Gamma on the precision, 1 = Half-t on sqrt(W_1)).
+ * @param prior_prec1_shape_    SEXP Double scalar, Gamma shape nu_1 (Gamma kind).
+ * @param prior_prec1_rate_     SEXP Double scalar, Gamma rate eta_1 (Gamma kind).
+ * @param prior_prec1_scale_    SEXP Double scalar, Half-t scale A_1 > 0 (Half-t kind).
+ * @param prior_prec1_df_       SEXP Double scalar, Half-t df nu_1 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec2_type_     SEXP Integer scalar, prior kind on 1/W_2 (0 = Gamma, 1 = Half-t).
+ * @param prior_prec2_shape_    SEXP Double scalar, Gamma shape nu_2 (Gamma kind).
+ * @param prior_prec2_rate_     SEXP Double scalar, Gamma rate eta_2 (Gamma kind).
+ * @param prior_prec2_scale_    SEXP Double scalar, Half-t scale A_2 > 0 (Half-t kind).
+ * @param prior_prec2_df_       SEXP Double scalar, Half-t df nu_2 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param prior_prec_y_type_    SEXP Integer scalar, prior kind on 1/V (0 = Gamma, 1 = Half-t).
+ * @param prior_prec_y_shape_   SEXP Double scalar, Gamma shape nu_y (Gamma kind).
+ * @param prior_prec_y_rate_    SEXP Double scalar, Gamma rate eta_y (Gamma kind).
+ * @param prior_prec_y_scale_   SEXP Double scalar, Half-t scale A_V > 0 (Half-t kind).
+ * @param prior_prec_y_df_      SEXP Double scalar, Half-t df nu_y > 0 (Half-t kind; 1 = Half-Cauchy).
  * @param verbose_              Logical flag enabling progress bar display (0 = off, non-zero = on)
  * @param bar_width_            Integer controlling progress bar width (clamped to 10-120 characters)
  *
@@ -148,12 +153,21 @@ SEXP C_MCMC_normal_localtrend(SEXP y_,
                               SEXP prior_theta01_prec_,
                               SEXP prior_theta02_mean_,
                               SEXP prior_theta02_prec_,
+                              SEXP prior_prec1_type_,
                               SEXP prior_prec1_shape_,
                               SEXP prior_prec1_rate_,
+                              SEXP prior_prec1_scale_,
+                              SEXP prior_prec1_df_,
+                              SEXP prior_prec2_type_,
                               SEXP prior_prec2_shape_,
                               SEXP prior_prec2_rate_,
+                              SEXP prior_prec2_scale_,
+                              SEXP prior_prec2_df_,
+                              SEXP prior_prec_y_type_,
                               SEXP prior_prec_y_shape_,
                               SEXP prior_prec_y_rate_,
+                              SEXP prior_prec_y_scale_,
+                              SEXP prior_prec_y_df_,
                               SEXP verbose_,
                               SEXP bar_width_);
 

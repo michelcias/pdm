@@ -58,6 +58,7 @@
 #include "conditional_mixture_normal_indicators.h"
 #include "generate_alpha_binomial.h"
 #include "utils.h"
+#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_*, pdm_init_prec_prior */
 #include "mcmc_progress_bar.h"
 #include "mcmc_normal_mixture_locallevel.h"
 
@@ -76,16 +77,25 @@
  * @param n_chain_                 Number of retained posterior samples.
  * @param prior_mu01_mean_         Prior mean for mu_1.
  * @param prior_mu01_prec_         Prior precision for mu_1.
- * @param prior_prec01_shape_      Gamma shape for phi_1.
- * @param prior_prec01_rate_       Gamma rate for phi_1.
+ * @param prior_prec01_type_       Prior kind on phi_1 (0 = Gamma, 1 = Half-t on sqrt(1/phi_1)).
+ * @param prior_prec01_shape_      Gamma shape for phi_1 (Gamma kind).
+ * @param prior_prec01_rate_       Gamma rate for phi_1 (Gamma kind).
+ * @param prior_prec01_scale_      Half-t scale A > 0 for phi_1 (Half-t kind).
+ * @param prior_prec01_df_         Half-t df > 0 for phi_1 (Half-t kind; 1 = Half-Cauchy).
  * @param prior_mu02_mean_         Prior mean for mu_2.
  * @param prior_mu02_prec_         Prior precision for mu_2.
- * @param prior_prec02_shape_      Gamma shape for phi_2.
- * @param prior_prec02_rate_       Gamma rate for phi_2.
+ * @param prior_prec02_type_       Prior kind on phi_2 (0 = Gamma, 1 = Half-t).
+ * @param prior_prec02_shape_      Gamma shape for phi_2 (Gamma kind).
+ * @param prior_prec02_rate_       Gamma rate for phi_2 (Gamma kind).
+ * @param prior_prec02_scale_      Half-t scale A > 0 for phi_2 (Half-t kind).
+ * @param prior_prec02_df_         Half-t df > 0 for phi_2 (Half-t kind; 1 = Half-Cauchy).
  * @param prior_theta01_mean_      Prior mean for theta_{0,1}.
  * @param prior_theta01_prec_      Prior precision for theta_{0,1}.
- * @param prior_prec1_shape_       Gamma shape for 1/W_1.
- * @param prior_prec1_rate_        Gamma rate for 1/W_1.
+ * @param prior_prec1_type_        Prior kind on 1/W_1 (0 = Gamma, 1 = Half-t on sqrt(W_1)).
+ * @param prior_prec1_shape_       Gamma shape for 1/W_1 (Gamma kind).
+ * @param prior_prec1_rate_        Gamma rate for 1/W_1 (Gamma kind).
+ * @param prior_prec1_scale_       Half-t scale A_1 > 0 for 1/W_1 (Half-t kind).
+ * @param prior_prec1_df_          Half-t df nu_1 > 0 for 1/W_1 (Half-t kind; 1 = Half-Cauchy).
  * @param lag_update_              Adaptation frequency (logit only).
  * @param max_step_size_           Maximum proposal step size (logit only).
  * @param base_adaptation_rate_    Base adaptation rate (logit only).
@@ -124,16 +134,25 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
                                       SEXP n_chain_,
                                       SEXP prior_mu01_mean_,
                                       SEXP prior_mu01_prec_,
+                                      SEXP prior_prec01_type_,
                                       SEXP prior_prec01_shape_,
                                       SEXP prior_prec01_rate_,
+                                      SEXP prior_prec01_scale_,
+                                      SEXP prior_prec01_df_,
                                       SEXP prior_mu02_mean_,
                                       SEXP prior_mu02_prec_,
+                                      SEXP prior_prec02_type_,
                                       SEXP prior_prec02_shape_,
                                       SEXP prior_prec02_rate_,
+                                      SEXP prior_prec02_scale_,
+                                      SEXP prior_prec02_df_,
                                       SEXP prior_theta01_mean_,
                                       SEXP prior_theta01_prec_,
+                                      SEXP prior_prec1_type_,
                                       SEXP prior_prec1_shape_,
                                       SEXP prior_prec1_rate_,
+                                      SEXP prior_prec1_scale_,
+                                      SEXP prior_prec1_df_,
                                       SEXP lag_update_,
                                       SEXP max_step_size_,
                                       SEXP base_adaptation_rate_,
@@ -177,20 +196,42 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
   int n_iter   = burnin + (n_chain - 1) * thinning + 1;
 
   /* ========== Parse Mixture Component Prior Hyperparameters ========== */
+  /* Each component precision phi_k carries a Gamma or Half-t prior, resolved in
+   * R to an integer code plus finite hyperparameters (unused fields are finite
+   * placeholders). The mixture parameter sampler dispatches on the kind. */
   double mu_01_mean    = REAL(prior_mu01_mean_)[0];
   double mu_01_prec    = REAL(prior_mu01_prec_)[0];
-  double prec_01_shape = REAL(prior_prec01_shape_)[0];
-  double prec_01_rate  = REAL(prior_prec01_rate_)[0];
+  int          phi1_kind   = asInteger(prior_prec01_type_);
+  prec_prior_t phi_prior_1 = {
+    .shape    = REAL(prior_prec01_shape_)[0],
+    .rate     = REAL(prior_prec01_rate_)[0],
+    .df       = REAL(prior_prec01_df_)[0],
+    .hc_scale = REAL(prior_prec01_scale_)[0]
+  };
   double mu_02_mean    = REAL(prior_mu02_mean_)[0];
   double mu_02_prec    = REAL(prior_mu02_prec_)[0];
-  double prec_02_shape = REAL(prior_prec02_shape_)[0];
-  double prec_02_rate  = REAL(prior_prec02_rate_)[0];
+  int          phi2_kind   = asInteger(prior_prec02_type_);
+  prec_prior_t phi_prior_2 = {
+    .shape    = REAL(prior_prec02_shape_)[0],
+    .rate     = REAL(prior_prec02_rate_)[0],
+    .df       = REAL(prior_prec02_df_)[0],
+    .hc_scale = REAL(prior_prec02_scale_)[0]
+  };
 
   /* ========== Parse Dynamic State Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0];
   double prec_theta01 = REAL(prior_theta01_prec_)[0];
-  double nu_01        = REAL(prior_prec1_shape_)[0];
-  double eta_01       = REAL(prior_prec1_rate_)[0];
+  int          prec1_kind = asInteger(prior_prec1_type_);   /* prior on 1/W_1 */
+  prec_prior_t prior_W1   = {
+    .shape    = REAL(prior_prec1_shape_)[0],
+    .rate     = REAL(prior_prec1_rate_)[0],
+    .df       = REAL(prior_prec1_df_)[0],
+    .hc_scale = REAL(prior_prec1_scale_)[0]
+  };
+  /* W_1 is the terminal random-walk component (theta_p sampler). */
+  prec_thetap_step_t update_prec_W1 =
+    (prec1_kind == PDM_PREC_PRIOR_HALFT) ? step_prec_thetap_halft
+                                         : step_prec_thetap_gamma;
 
   /* ========== Parse Adaptation Parameters (Logit Only) ========== */
   int    lag_update              = 0;
@@ -266,6 +307,11 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
   double theta_01_current, theta_01_previous;
   double prec_theta1_current, prec_theta1_previous;
 
+  /* Half-t auxiliaries b = 1/a: one for the state precision W_1 and one per
+   * mixture component precision phi_k. Refreshed in place when the matching
+   * prior is Half-t; left at 0 and never read under the Gamma prior. */
+  double aux_W1 = 0.0, aux_phi1 = 0.0, aux_phi2 = 0.0;
+
   double *theta_1_updated = NULL;
   double *accept_prop     = NULL;
   double *log_sigma       = NULL;
@@ -294,9 +340,9 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
   params_previous[0] = rnorm(mu_01_mean, sqrt(1.0 / mu_01_prec));
-  params_previous[1] = rgamma_positive(prec_01_shape, 1.0 / prec_01_rate);
+  params_previous[1] = pdm_init_prec_prior(phi1_kind, &phi_prior_1, &aux_phi1);
   params_previous[2] = rnorm(mu_02_mean, sqrt(1.0 / mu_02_prec));
-  params_previous[3] = rgamma_positive(prec_02_shape, 1.0 / prec_02_rate);
+  params_previous[3] = pdm_init_prec_prior(phi2_kind, &phi_prior_2, &aux_phi2);
 
   if (params_previous[0] > params_previous[2]) {
     double temp_mu = params_previous[0];
@@ -305,10 +351,14 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
     double temp_prec = params_previous[1];
     params_previous[1] = params_previous[3];
     params_previous[3] = temp_prec;
+    /* Keep each Half-t auxiliary paired with its component precision. */
+    double temp_aux = aux_phi1;
+    aux_phi1 = aux_phi2;
+    aux_phi2 = temp_aux;
   }
 
   theta_01_previous    = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous = rgamma_positive(nu_01, 1.0 / eta_01);
+  prec_theta1_previous = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
 
   for (int t = 0; t < n; t++) {
     theta_1_previous[t] = 0.0;
@@ -333,12 +383,14 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
       params_current,     /* output: current [mu_1, prec_1, mu_2, prec_2] */
       mu_01_mean,         /* prior mean for mu_1 */
       mu_01_prec,         /* prior precision for mu_1 */
-      prec_01_shape,      /* prior shape for phi_1 */
-      prec_01_rate,       /* prior rate for phi_1 */
+      phi1_kind,          /* prior kind for phi_1 (Gamma / Half-t) */
+      &phi_prior_1,       /* phi_1 hyperparameters for the resolved kind */
+      &aux_phi1,          /* Half-t auxiliary for phi_1 (in/out; unused if Gamma) */
       mu_02_mean,         /* prior mean for mu_2 */
       mu_02_prec,         /* prior precision for mu_2 */
-      prec_02_shape,      /* prior shape for phi_2 */
-      prec_02_rate,       /* prior rate for phi_2 */
+      phi2_kind,          /* prior kind for phi_2 (Gamma / Half-t) */
+      &phi_prior_2,       /* phi_2 hyperparameters for the resolved kind */
+      &aux_phi2,          /* Half-t auxiliary for phi_2 (in/out; unused if Gamma) */
       n                   /* sample size */
     );
 
@@ -399,13 +451,15 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
     }
 
     /* ===== Step 4: Sample Innovation Precision 1/W_1 ===== */
-    /* Draw 1/W_1 | theta_1, theta_01 from Gamma posterior. */
-    prec_theta1_current = generate_precision_theta_p(
+    /* Draw 1/W_1 | theta_1, theta_01 through the prior chosen before the loop
+     * (Gamma posterior, or Half-t via its scale-mixture step, which also
+     * refreshes aux_W1). */
+    prec_theta1_current = update_prec_W1(
       theta_01_previous,  /* theta_0p: initial level from previous iteration */
       theta_1_current,    /* theta_p_current: current level trajectory [n] */
-      nu_01,              /* nu_0p: prior shape parameter */
-      eta_01,             /* eta_0p: prior rate parameter */
-      n                   /* n: number of time points */
+      n,                  /* n: number of time points */
+      &prior_W1,          /* prior hyperparameters for the resolved kind */
+      &aux_W1             /* Half-t auxiliary (updated in place; unused if Gamma) */
     );
 
     /* ===== Step 5: Sample Initial State theta_{0,1} ===== */

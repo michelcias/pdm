@@ -438,55 +438,11 @@ mcmc_normal_locallevel <- function(y,
     stop("`prior_theta01_prec` must be a single positive numeric value")
   }
   # --- Resolve each precision prior (Gamma or Half-t) ---
-  # Validation and the "halfcauchy" -> Half-t(df = 1) normalisation happen here,
-  # in R, so the C sampler receives an already-decided integer code (0 = Gamma,
-  # 1 = Half-t) plus finite numeric hyperparameters. The prior choice is never
-  # re-decided inside the MCMC loop.
-  resolve_prec_prior <- function(type, shape, rate, scale, df, df_user_set, label) {
-    if (type == "gamma") {
-      if (is.null(shape) || is.null(rate)) {
-        stop(sprintf(
-          "`%s_type = \"gamma\"` requires both `%s_shape` and `%s_rate`",
-          label, label, label
-        ))
-      }
-      if (!is.numeric(shape) || length(shape) != 1 || shape <= 0) {
-        stop(sprintf("`%s_shape` must be a single positive numeric value", label))
-      }
-      if (!is.numeric(rate) || length(rate) != 1 || rate <= 0) {
-        stop(sprintf("`%s_rate` must be a single positive numeric value", label))
-      }
-      return(list(code = 0L, type = "gamma",
-                  shape = as.numeric(shape), rate = as.numeric(rate),
-                  scale = 1, df = 1))
-    }
-
-    # type is "halfcauchy" (alias for Half-t with df = 1) or "halft"
-    if (type == "halfcauchy") {
-      if (df_user_set && !isTRUE(all.equal(df, 1))) {
-        stop(sprintf(
-          "`%s_type = \"halfcauchy\"` fixes df = 1; use `%s_type = \"halft\"` to set `%s_df`",
-          label, label, label
-        ))
-      }
-      df <- 1
-    }
-    if (is.null(scale)) {
-      stop(sprintf(
-        "A Half-t/Half-Cauchy prior requires `%s_scale` (the scale A > 0)", label
-      ))
-    }
-    if (!is.numeric(scale) || length(scale) != 1 || scale <= 0) {
-      stop(sprintf("`%s_scale` must be a single positive numeric value", label))
-    }
-    if (!is.numeric(df) || length(df) != 1 || df <= 0) {
-      stop(sprintf("`%s_df` must be a single positive numeric value", label))
-    }
-    list(code = 1L, type = type,
-         shape = 1, rate = 1,
-         scale = as.numeric(scale), df = as.numeric(df))
-  }
-
+  # Validation and the "halfcauchy" -> Half-t(df = 1) normalisation are handled
+  # by the shared internal helper `resolve_prec_prior()` (see R/prec_prior.R), so
+  # the C sampler receives an already-decided integer code (0 = Gamma, 1 = Half-t)
+  # plus finite numeric hyperparameters. The prior choice is never re-decided
+  # inside the MCMC loop.
   prec1_prior <- resolve_prec_prior(
     prior_prec1_type, prior_prec1_shape, prior_prec1_rate,
     prior_prec1_scale, prior_prec1_df, prec1_df_user_set, "prior_prec1"

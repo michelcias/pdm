@@ -285,6 +285,19 @@
 #'   `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is `NULL`, which does not set the seed.
+#' @param prior_prec01_type,prior_prec01_scale,prior_prec01_df Prior on the
+#'   component-1 precision \eqn{\phi_1}: `type` is `"gamma"` (default), `"halft"`,
+#'   or `"halfcauchy"` (a Half-t / Half-Cauchy prior on \eqn{\sqrt{1/\phi_1}};
+#'   Gelman, 2006); `scale` \eqn{> 0} is the Half-t scale (required for Half-t);
+#'   `df` \eqn{> 0} the Half-t degrees of freedom (default `1`, Half-Cauchy).
+#' @param prior_prec02_type,prior_prec02_scale,prior_prec02_df As above for the
+#'   component-2 precision \eqn{\phi_2}.
+#' @param prior_prec1_type,prior_prec1_scale,prior_prec1_df Prior on the level
+#'   innovation precision \eqn{1/W_1} (Half-t placed on \eqn{\sqrt{W_1}}).
+#' @param prior_prec2_type,prior_prec2_scale,prior_prec2_df Prior on the trend
+#'   innovation precision \eqn{1/W_2} (Half-t placed on \eqn{\sqrt{W_2}}).
+#' @param prior_prec3_type,prior_prec3_scale,prior_prec3_df Prior on the
+#'   acceleration innovation precision \eqn{1/W_3} (Half-t on \eqn{\sqrt{W_3}}).
 #'
 #' @return A list with components:
 #' \describe{
@@ -1522,7 +1535,34 @@ mcmc_normal_mixture_localacceleration <- function(y,
                                                   return_accept_prop = FALSE,
                                                   verbose = FALSE,
                                                   bar_width = 60,
-                                                  seed = NULL) {
+                                                  seed = NULL,
+                                                  prior_prec01_type = c("gamma", "halfcauchy", "halft"),
+                                                  prior_prec01_scale = NULL,
+                                                  prior_prec01_df = 1,
+                                                  prior_prec02_type = c("gamma", "halfcauchy", "halft"),
+                                                  prior_prec02_scale = NULL,
+                                                  prior_prec02_df = 1,
+                                                  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+                                                  prior_prec1_scale = NULL,
+                                                  prior_prec1_df = 1,
+                                                  prior_prec2_type = c("gamma", "halfcauchy", "halft"),
+                                                  prior_prec2_scale = NULL,
+                                                  prior_prec2_df = 1,
+                                                  prior_prec3_type = c("gamma", "halfcauchy", "halft"),
+                                                  prior_prec3_scale = NULL,
+                                                  prior_prec3_df = 1) {
+
+  # `missing()` must be read before these arguments are touched.
+  prec01_df_user_set <- !missing(prior_prec01_df)
+  prec02_df_user_set <- !missing(prior_prec02_df)
+  prec1_df_user_set  <- !missing(prior_prec1_df)
+  prec2_df_user_set  <- !missing(prior_prec2_df)
+  prec3_df_user_set  <- !missing(prior_prec3_df)
+  prior_prec01_type  <- match.arg(prior_prec01_type)
+  prior_prec02_type  <- match.arg(prior_prec02_type)
+  prior_prec1_type   <- match.arg(prior_prec1_type)
+  prior_prec2_type   <- match.arg(prior_prec2_type)
+  prior_prec3_type   <- match.arg(prior_prec3_type)
   # --- Input Validation ---
 
   # Validate y
@@ -1565,12 +1605,11 @@ mcmc_normal_mixture_localacceleration <- function(y,
   if (!is.numeric(prior_mu01_prec) || length(prior_mu01_prec) != 1 || prior_mu01_prec <= 0) {
     stop("`prior_mu01_prec` must be a single positive numeric value")
   }
-  if (!is.numeric(prior_prec01_shape) || length(prior_prec01_shape) != 1 || prior_prec01_shape <= 0) {
-    stop("`prior_prec01_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec01_rate) || length(prior_prec01_rate) != 1 || prior_prec01_rate <= 0) {
-    stop("`prior_prec01_rate` must be a single positive numeric value")
-  }
+  # Resolve the component-1 precision prior (Gamma or Half-t); see R/prec_prior.R.
+  prec01_prior <- resolve_prec_prior(
+    prior_prec01_type, prior_prec01_shape, prior_prec01_rate,
+    prior_prec01_scale, prior_prec01_df, prec01_df_user_set, "prior_prec01"
+  )
 
   if (!is.numeric(prior_mu02_mean) || length(prior_mu02_mean) != 1) {
     stop("`prior_mu02_mean` must be a single numeric value")
@@ -1578,12 +1617,11 @@ mcmc_normal_mixture_localacceleration <- function(y,
   if (!is.numeric(prior_mu02_prec) || length(prior_mu02_prec) != 1 || prior_mu02_prec <= 0) {
     stop("`prior_mu02_prec` must be a single positive numeric value")
   }
-  if (!is.numeric(prior_prec02_shape) || length(prior_prec02_shape) != 1 || prior_prec02_shape <= 0) {
-    stop("`prior_prec02_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec02_rate) || length(prior_prec02_rate) != 1 || prior_prec02_rate <= 0) {
-    stop("`prior_prec02_rate` must be a single positive numeric value")
-  }
+  # Resolve the component-2 precision prior (Gamma or Half-t).
+  prec02_prior <- resolve_prec_prior(
+    prior_prec02_type, prior_prec02_shape, prior_prec02_rate,
+    prior_prec02_scale, prior_prec02_df, prec02_df_user_set, "prior_prec02"
+  )
 
   # Validate dynamic state prior parameters
   if (!is.numeric(prior_theta01_mean) || length(prior_theta01_mean) != 1) {
@@ -1605,24 +1643,19 @@ mcmc_normal_mixture_localacceleration <- function(y,
     stop("`prior_theta03_prec` must be a single positive numeric value")
   }
 
-  if (!is.numeric(prior_prec1_shape) || length(prior_prec1_shape) != 1 || prior_prec1_shape <= 0) {
-    stop("`prior_prec1_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec1_rate) || length(prior_prec1_rate) != 1 || prior_prec1_rate <= 0) {
-    stop("`prior_prec1_rate` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec2_shape) || length(prior_prec2_shape) != 1 || prior_prec2_shape <= 0) {
-    stop("`prior_prec2_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec2_rate) || length(prior_prec2_rate) != 1 || prior_prec2_rate <= 0) {
-    stop("`prior_prec2_rate` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec3_shape) || length(prior_prec3_shape) != 1 || prior_prec3_shape <= 0) {
-    stop("`prior_prec3_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec3_rate) || length(prior_prec3_rate) != 1 || prior_prec3_rate <= 0) {
-    stop("`prior_prec3_rate` must be a single positive numeric value")
-  }
+  # Resolve the state innovation precision priors 1/W_1, 1/W_2, 1/W_3.
+  prec1_prior <- resolve_prec_prior(
+    prior_prec1_type, prior_prec1_shape, prior_prec1_rate,
+    prior_prec1_scale, prior_prec1_df, prec1_df_user_set, "prior_prec1"
+  )
+  prec2_prior <- resolve_prec_prior(
+    prior_prec2_type, prior_prec2_shape, prior_prec2_rate,
+    prior_prec2_scale, prior_prec2_df, prec2_df_user_set, "prior_prec2"
+  )
+  prec3_prior <- resolve_prec_prior(
+    prior_prec3_type, prior_prec3_shape, prior_prec3_rate,
+    prior_prec3_scale, prior_prec3_df, prec3_df_user_set, "prior_prec3"
+  )
 
   # Validate adaptation parameters (used only for logit link)
   if (!is.numeric(lag_update) || length(lag_update) != 1 || lag_update < 1 || lag_update != floor(lag_update)) {
@@ -1695,24 +1728,39 @@ mcmc_normal_mixture_localacceleration <- function(y,
     as.integer(n_chain),
     as.numeric(prior_mu01_mean),
     as.numeric(prior_mu01_prec),
-    as.numeric(prior_prec01_shape),
-    as.numeric(prior_prec01_rate),
+    as.integer(prec01_prior$code),
+    as.numeric(prec01_prior$shape),
+    as.numeric(prec01_prior$rate),
+    as.numeric(prec01_prior$scale),
+    as.numeric(prec01_prior$df),
     as.numeric(prior_mu02_mean),
     as.numeric(prior_mu02_prec),
-    as.numeric(prior_prec02_shape),
-    as.numeric(prior_prec02_rate),
+    as.integer(prec02_prior$code),
+    as.numeric(prec02_prior$shape),
+    as.numeric(prec02_prior$rate),
+    as.numeric(prec02_prior$scale),
+    as.numeric(prec02_prior$df),
     as.numeric(prior_theta01_mean),
     as.numeric(prior_theta01_prec),
     as.numeric(prior_theta02_mean),
     as.numeric(prior_theta02_prec),
     as.numeric(prior_theta03_mean),
     as.numeric(prior_theta03_prec),
-    as.numeric(prior_prec1_shape),
-    as.numeric(prior_prec1_rate),
-    as.numeric(prior_prec2_shape),
-    as.numeric(prior_prec2_rate),
-    as.numeric(prior_prec3_shape),
-    as.numeric(prior_prec3_rate),
+    as.integer(prec1_prior$code),
+    as.numeric(prec1_prior$shape),
+    as.numeric(prec1_prior$rate),
+    as.numeric(prec1_prior$scale),
+    as.numeric(prec1_prior$df),
+    as.integer(prec2_prior$code),
+    as.numeric(prec2_prior$shape),
+    as.numeric(prec2_prior$rate),
+    as.numeric(prec2_prior$scale),
+    as.numeric(prec2_prior$df),
+    as.integer(prec3_prior$code),
+    as.numeric(prec3_prior$shape),
+    as.numeric(prec3_prior$rate),
+    as.numeric(prec3_prior$scale),
+    as.numeric(prec3_prior$df),
     as.integer(lag_update),
     as.numeric(max_step_size),
     as.numeric(base_adaptation_rate),
@@ -1736,6 +1784,15 @@ mcmc_normal_mixture_localacceleration <- function(y,
   )
 
   result <- validate_normal_mixture_localacceleration(result)
+
+  # Record the priors used on the component precisions phi_k and the state
+  # innovation precisions 1/W_1, 1/W_2, 1/W_3 (auxiliary Half-t variables are
+  # nuisance parameters and are intentionally not returned).
+  attr(result, "prior_prec_phi1")   <- prec01_prior[c("type", "shape", "rate", "scale", "df")]
+  attr(result, "prior_prec_phi2")   <- prec02_prior[c("type", "shape", "rate", "scale", "df")]
+  attr(result, "prior_prec_theta1") <- prec1_prior[c("type", "shape", "rate", "scale", "df")]
+  attr(result, "prior_prec_theta2") <- prec2_prior[c("type", "shape", "rate", "scale", "df")]
+  attr(result, "prior_prec_theta3") <- prec3_prior[c("type", "shape", "rate", "scale", "df")]
 
   return(result)
 }

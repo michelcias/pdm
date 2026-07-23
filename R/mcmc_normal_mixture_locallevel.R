@@ -192,24 +192,28 @@
 #'   Default is 0.01 (vague prior).
 #' @param prior_prec01_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the precision of component 1 (\eqn{\phi_1}). Default is 0.01 (vague prior).
+#'   Used only when `prior_prec01_type = "gamma"`.
 #' @param prior_prec01_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_1}.
-#'   Default is 0.01 (vague prior).
+#'   Default is 0.01 (vague prior). Used only when `prior_prec01_type = "gamma"`.
 #' @param prior_mu02_mean Numeric, prior mean for the mean of component 2 (\eqn{\mu_2}).
 #'   If `NULL` (default), set to the 75th percentile of `y`.
 #' @param prior_mu02_prec Numeric > 0, prior precision (inverse variance) for \eqn{\mu_2}.
 #'   Default is 0.01 (vague prior).
 #' @param prior_prec02_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the precision of component 2 (\eqn{\phi_2}). Default is 0.01 (vague prior).
+#'   Used only when `prior_prec02_type = "gamma"`.
 #' @param prior_prec02_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_2}.
-#'   Default is 0.01 (vague prior).
+#'   Default is 0.01 (vague prior). Used only when `prior_prec02_type = "gamma"`.
 #' @param prior_theta01_mean Numeric, prior mean for the initial level state
 #'   \eqn{\theta_{0,1}}. Default is 0.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for
 #'   \eqn{\theta_{0,1}}. Default is 0.01 (vague prior).
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the level innovation precision \eqn{1/W_1}. Default is 0.01 (vague prior).
+#'   Used only when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for
-#'   \eqn{1/W_1}. Default is 0.01 (vague prior).
+#'   \eqn{1/W_1}. Default is 0.01 (vague prior). Used only when
+#'   `prior_prec1_type = "gamma"`.
 #' @param lag_update Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
 #'   computing acceptance proportions (logit link only). Adaptation occurs at MCMC iterations
 #'   \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Default is 50.
@@ -244,6 +248,29 @@
 #'   Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed for
 #'   reproducibility. Default is `NULL` (no seed set).
+#' @param prior_prec01_type Character, prior on the component-1 precision
+#'   \eqn{\phi_1}: `"gamma"` (default) for a Gamma prior on the precision, or
+#'   `"halft"` / `"halfcauchy"` for a Half-t / Half-Cauchy prior on the component
+#'   standard deviation \eqn{\sqrt{1/\phi_1}} (Gelman, 2006). `"halfcauchy"` is
+#'   Half-t with `df = 1`.
+#' @param prior_prec01_scale Numeric > 0, scale \eqn{A} of the Half-t prior for
+#'   \eqn{\sqrt{1/\phi_1}}. Required when `prior_prec01_type` is
+#'   `"halft"`/`"halfcauchy"`.
+#' @param prior_prec01_df Numeric > 0, degrees of freedom of the Half-t prior for
+#'   \eqn{\sqrt{1/\phi_1}}. Default `1` (Half-Cauchy).
+#' @param prior_prec02_type Character, prior on the component-2 precision
+#'   \eqn{\phi_2} (`"gamma"` default, or `"halft"` / `"halfcauchy"`).
+#' @param prior_prec02_scale Numeric > 0, Half-t scale for \eqn{\sqrt{1/\phi_2}}.
+#'   Required when `prior_prec02_type` is `"halft"`/`"halfcauchy"`.
+#' @param prior_prec02_df Numeric > 0, Half-t df for \eqn{\sqrt{1/\phi_2}}.
+#'   Default `1` (Half-Cauchy).
+#' @param prior_prec1_type Character, prior on the level innovation precision
+#'   \eqn{1/W_1} (`"gamma"` default, or `"halft"` / `"halfcauchy"` for a Half-t /
+#'   Half-Cauchy prior on \eqn{\sqrt{W_1}}).
+#' @param prior_prec1_scale Numeric > 0, Half-t scale \eqn{A_1} for \eqn{\sqrt{W_1}}.
+#'   Required when `prior_prec1_type` is `"halft"`/`"halfcauchy"`.
+#' @param prior_prec1_df Numeric > 0, Half-t df \eqn{\nu_1} for \eqn{\sqrt{W_1}}.
+#'   Default `1` (Half-Cauchy).
 #'
 #' @return A list with components:
 #' \describe{
@@ -1141,7 +1168,25 @@ mcmc_normal_mixture_locallevel <- function(y,
                                            return_accept_prop = FALSE,
                                            verbose = FALSE,
                                            bar_width = 60,
-                                           seed = NULL) {
+                                           seed = NULL,
+                                           prior_prec01_type = c("gamma", "halfcauchy", "halft"),
+                                           prior_prec01_scale = NULL,
+                                           prior_prec01_df = 1,
+                                           prior_prec02_type = c("gamma", "halfcauchy", "halft"),
+                                           prior_prec02_scale = NULL,
+                                           prior_prec02_df = 1,
+                                           prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+                                           prior_prec1_scale = NULL,
+                                           prior_prec1_df = 1) {
+
+  # Record whether each df was explicitly set (used to flag a contradictory
+  # `type = "halfcauchy"` + `df != 1`). `missing()` must be read before use.
+  prec01_df_user_set <- !missing(prior_prec01_df)
+  prec02_df_user_set <- !missing(prior_prec02_df)
+  prec1_df_user_set  <- !missing(prior_prec1_df)
+  prior_prec01_type  <- match.arg(prior_prec01_type)
+  prior_prec02_type  <- match.arg(prior_prec02_type)
+  prior_prec1_type   <- match.arg(prior_prec1_type)
   # --- Input Validation ---
 
   # Validate y
@@ -1188,14 +1233,13 @@ mcmc_normal_mixture_locallevel <- function(y,
       prior_mu01_prec <= 0) {
     stop("`prior_mu01_prec` must be a single positive numeric value")
   }
-  if (!is.numeric(prior_prec01_shape) || length(prior_prec01_shape) != 1 ||
-      prior_prec01_shape <= 0) {
-    stop("`prior_prec01_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec01_rate) || length(prior_prec01_rate) != 1 ||
-      prior_prec01_rate <= 0) {
-    stop("`prior_prec01_rate` must be a single positive numeric value")
-  }
+  # Resolve the phi_1 component precision prior (Gamma or Half-t); see
+  # R/prec_prior.R. A Half-t prior places Half-t(df, A) on the component standard
+  # deviation sqrt(1/phi_1).
+  prec01_prior <- resolve_prec_prior(
+    prior_prec01_type, prior_prec01_shape, prior_prec01_rate,
+    prior_prec01_scale, prior_prec01_df, prec01_df_user_set, "prior_prec01"
+  )
 
   if (!is.numeric(prior_mu02_mean) || length(prior_mu02_mean) != 1) {
     stop("`prior_mu02_mean` must be a single numeric value")
@@ -1204,14 +1248,11 @@ mcmc_normal_mixture_locallevel <- function(y,
       prior_mu02_prec <= 0) {
     stop("`prior_mu02_prec` must be a single positive numeric value")
   }
-  if (!is.numeric(prior_prec02_shape) || length(prior_prec02_shape) != 1 ||
-      prior_prec02_shape <= 0) {
-    stop("`prior_prec02_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec02_rate) || length(prior_prec02_rate) != 1 ||
-      prior_prec02_rate <= 0) {
-    stop("`prior_prec02_rate` must be a single positive numeric value")
-  }
+  # Resolve the phi_2 component precision prior (Gamma or Half-t).
+  prec02_prior <- resolve_prec_prior(
+    prior_prec02_type, prior_prec02_shape, prior_prec02_rate,
+    prior_prec02_scale, prior_prec02_df, prec02_df_user_set, "prior_prec02"
+  )
 
   # Validate dynamic state prior parameters
   if (!is.numeric(prior_theta01_mean) || length(prior_theta01_mean) != 1) {
@@ -1221,14 +1262,11 @@ mcmc_normal_mixture_locallevel <- function(y,
       prior_theta01_prec <= 0) {
     stop("`prior_theta01_prec` must be a single positive numeric value")
   }
-  if (!is.numeric(prior_prec1_shape) || length(prior_prec1_shape) != 1 ||
-      prior_prec1_shape <= 0) {
-    stop("`prior_prec1_shape` must be a single positive numeric value")
-  }
-  if (!is.numeric(prior_prec1_rate) || length(prior_prec1_rate) != 1 ||
-      prior_prec1_rate <= 0) {
-    stop("`prior_prec1_rate` must be a single positive numeric value")
-  }
+  # Resolve the state innovation precision 1/W_1 prior (Gamma or Half-t).
+  prec1_prior <- resolve_prec_prior(
+    prior_prec1_type, prior_prec1_shape, prior_prec1_rate,
+    prior_prec1_scale, prior_prec1_df, prec1_df_user_set, "prior_prec1"
+  )
 
   # Validate MCMC adaptation parameters
   if (!is.numeric(lag_update) || length(lag_update) != 1 || lag_update < 1 ||
@@ -1311,16 +1349,25 @@ mcmc_normal_mixture_locallevel <- function(y,
     as.integer(n_chain),
     as.numeric(prior_mu01_mean),
     as.numeric(prior_mu01_prec),
-    as.numeric(prior_prec01_shape),
-    as.numeric(prior_prec01_rate),
+    as.integer(prec01_prior$code),
+    as.numeric(prec01_prior$shape),
+    as.numeric(prec01_prior$rate),
+    as.numeric(prec01_prior$scale),
+    as.numeric(prec01_prior$df),
     as.numeric(prior_mu02_mean),
     as.numeric(prior_mu02_prec),
-    as.numeric(prior_prec02_shape),
-    as.numeric(prior_prec02_rate),
+    as.integer(prec02_prior$code),
+    as.numeric(prec02_prior$shape),
+    as.numeric(prec02_prior$rate),
+    as.numeric(prec02_prior$scale),
+    as.numeric(prec02_prior$df),
     as.numeric(prior_theta01_mean),
     as.numeric(prior_theta01_prec),
-    as.numeric(prior_prec1_shape),
-    as.numeric(prior_prec1_rate),
+    as.integer(prec1_prior$code),
+    as.numeric(prec1_prior$shape),
+    as.numeric(prec1_prior$rate),
+    as.numeric(prec1_prior$scale),
+    as.numeric(prec1_prior$df),
     as.integer(lag_update),
     as.numeric(max_step_size),
     as.numeric(base_adaptation_rate),
@@ -1344,6 +1391,13 @@ mcmc_normal_mixture_locallevel <- function(y,
   )
 
   result <- validate_normal_mixture_locallevel(result)
+
+  # Record the priors used on the component precisions phi_k and the state
+  # innovation precision 1/W_1 (auxiliary Half-t variables are nuisance
+  # parameters and are intentionally not returned).
+  attr(result, "prior_prec_phi1")   <- prec01_prior[c("type", "shape", "rate", "scale", "df")]
+  attr(result, "prior_prec_phi2")   <- prec02_prior[c("type", "shape", "rate", "scale", "df")]
+  attr(result, "prior_prec_theta1") <- prec1_prior[c("type", "shape", "rate", "scale", "df")]
 
   return(result)
 }

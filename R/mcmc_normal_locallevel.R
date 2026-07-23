@@ -81,18 +81,15 @@
 #' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_theta01_mean Numeric, prior mean for the initial state \eqn{\theta_{0,1}}.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,1}}.
-#' @param prior_prec1_shape Numeric > 0, shape parameter \eqn{\nu_1} of the Gamma prior for the innovation precision \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
-#' @param prior_prec1_rate Numeric > 0, rate parameter \eqn{\eta_1} of the Gamma prior for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
-#' @param prior_prec_y_shape Numeric > 0, shape parameter \eqn{\nu_V} of the Gamma prior for the data precision \eqn{1/V}. Required (and used) only when `prior_prec_y_type = "gamma"`.
-#' @param prior_prec_y_rate Numeric > 0, rate parameter \eqn{\eta_V} of the Gamma prior for \eqn{1/V}. Required (and used) only when `prior_prec_y_type = "gamma"`.
-#' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
-#' @param bar_width Integer in \[10, 120\], width of the progress bar when `verbose = TRUE`. Default is `60`.
-#' @param seed Optional integer used to set the random number generator seed.
-#'   Default is `NULL`, which does not set the seed.
-#' @param prior_prec1_type Character, prior on the innovation precision \eqn{1/W_1}:
-#'   `"gamma"` (default) for a Gamma prior on the precision, or `"halft"` /
-#'   `"halfcauchy"` for a Half-t / Half-Cauchy prior on the innovation standard
-#'   deviation \eqn{\sqrt{W_1}}. `"halfcauchy"` is Half-t with `df = 1`.
+#' @param prior_prec1_type Character, prior on the innovation precision
+#'   \eqn{1/W_1}: `"gamma"` (default) for a Gamma prior on the precision, or
+#'   `"halft"` / `"halfcauchy"` for a Half-t / Half-Cauchy prior on the innovation
+#'   standard deviation \eqn{\sqrt{W_1}} (Gelman, 2006). `"halfcauchy"` is Half-t
+#'   with `df = 1`.
+#' @param prior_prec1_shape Numeric > 0, shape parameter \eqn{\nu_1} of the Gamma
+#'   prior for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
+#' @param prior_prec1_rate Numeric > 0, rate parameter \eqn{\eta_1} of the Gamma
+#'   prior for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_scale Numeric > 0, scale \eqn{A_1} of the Half-t prior for
 #'   \eqn{\sqrt{W_1}}. Required when `prior_prec1_type` is `"halft"` or
 #'   `"halfcauchy"`; ignored otherwise.
@@ -102,12 +99,20 @@
 #' @param prior_prec_y_type Character, prior on the observation precision
 #'   \eqn{1/V}: `"gamma"` (default), or `"halft"` / `"halfcauchy"` for a Half-t /
 #'   Half-Cauchy prior on the observation standard deviation \eqn{\sqrt{V}}.
+#' @param prior_prec_y_shape Numeric > 0, shape parameter \eqn{\nu_V} of the Gamma
+#'   prior for \eqn{1/V}. Required (and used) only when `prior_prec_y_type = "gamma"`.
+#' @param prior_prec_y_rate Numeric > 0, rate parameter \eqn{\eta_V} of the Gamma
+#'   prior for \eqn{1/V}. Required (and used) only when `prior_prec_y_type = "gamma"`.
 #' @param prior_prec_y_scale Numeric > 0, scale \eqn{A_V} of the Half-t prior for
 #'   \eqn{\sqrt{V}}. Required when `prior_prec_y_type` is `"halft"` or
 #'   `"halfcauchy"`; ignored otherwise.
 #' @param prior_prec_y_df Numeric > 0, degrees of freedom \eqn{\nu_V} of the
 #'   Half-t prior for \eqn{\sqrt{V}}. Default `1` (Half-Cauchy). Must equal `1`
 #'   when `prior_prec_y_type = "halfcauchy"`.
+#' @param verbose Logical, whether to display a progress bar during sampling. Default is `FALSE`.
+#' @param bar_width Integer in \[10, 120\], width of the progress bar when `verbose = TRUE`. Default is `60`.
+#' @param seed Optional integer used to set the random number generator seed.
+#'   Default is `NULL`, which does not set the seed.
 #'
 #' @return An object of class `c("normal_locallevel", "pdm_mcmc", "list")`
 #'   containing the following components:
@@ -165,6 +170,26 @@
 #'   bar_width          = 60,
 #'   seed               = 456
 #' )
+#'
+#' ## Alternative: weakly-informative Half-Cauchy prior (Gelman, 2006)
+#' # Any precision can instead take a Half-t / Half-Cauchy prior on its standard
+#' # deviation. Here the innovation SD sqrt(W[1]) gets a Half-Cauchy(scale = 1)
+#' # prior (prior_prec1_type = "halfcauchy"), while the observation precision 1/V
+#' # keeps its Gamma prior. The Gamma shape/rate for W[1] are then unused.
+#' out_hc <- mcmc_normal_locallevel(
+#'   y,
+#'   burnin             = 1000,
+#'   thinning           = 10,
+#'   n_chain            = 1000,
+#'   prior_theta01_mean = y[1],
+#'   prior_theta01_prec = 1 / var(y),
+#'   prior_prec1_type   = "halfcauchy",  # Half-Cauchy on sqrt(W[1])
+#'   prior_prec1_scale  = 1,             # scale A_1 > 0
+#'   prior_prec_y_shape = 1e-2,          # 1/V keeps the Gamma prior
+#'   prior_prec_y_rate  = 1e-2,
+#'   seed               = 456
+#' )
+#' # Use prior_prec1_type = "halft" with prior_prec1_df > 1 for a general Half-t.
 #'
 #' ## Posterior analysis and visualization
 #' # The following plots show how to analyze the posterior distributions.

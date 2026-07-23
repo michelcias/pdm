@@ -194,13 +194,32 @@ The following conjugate and semi-conjugate prior distributions are employed:
 }
 
 \emph{Precision Parameters:}
-\deqn{
-\begin{aligned}
-W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1), \\
-W_2^{-1} &\sim \text{Gamma}(\nu_2, \eta_2), \\
-W_3^{-1} &\sim \text{Gamma}(\nu_3, \eta_3).
-\end{aligned}
-}
+
+Each innovation precision (\eqn{W_1^{-1}}, \eqn{W_2^{-1}}, \eqn{W_3^{-1}}) may
+take one of two priors, chosen independently through \code{prior_prec1_type},
+\code{prior_prec2_type} and \code{prior_prec3_type}:
+
+\emph{(a) Gamma prior on the precision} (default, semi-conjugate):
+\deqn{W_1^{-1} \sim \text{Gamma}(\nu_1, \eta_1), \quad
+      W_2^{-1} \sim \text{Gamma}(\nu_2, \eta_2), \quad
+      W_3^{-1} \sim \text{Gamma}(\nu_3, \eta_3).}
+
+\emph{(b) Half-t prior on the standard deviation} (Gelman, 2006):
+\deqn{\sqrt{W_1} \sim \text{Half-}t(\nu_1, A_1), \quad
+      \sqrt{W_2} \sim \text{Half-}t(\nu_2, A_2), \quad
+      \sqrt{W_3} \sim \text{Half-}t(\nu_3, A_3),}
+where \eqn{A > 0} is a scale hyperparameter and \eqn{\nu > 0} the degrees of
+freedom. Setting \eqn{\nu = 1} gives the Half-Cauchy prior (also selectable
+directly with \code{type = "halfcauchy"}); larger \eqn{\nu} approaches a
+Half-Normal. The Half-t prior is represented by the inverse-gamma scale
+mixture of Wand et al. (2011), which keeps each innovation-precision Gibbs
+update closed-form via a single auxiliary variable. This Poisson model has no
+Gaussian observation variance, so there is no observation precision \eqn{1/V}.
+
+The Gamma shape/rate arguments are required only when the corresponding
+\verb{_type} is \code{"gamma"}; the Half-t scale/df arguments only when it is \code{"halft"}
+or \code{"halfcauchy"}. The prior choice is resolved once, before the sampler runs,
+and never re-evaluated inside the MCMC loop.
 
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
@@ -211,12 +230,12 @@ The prior hyperparameters correspond to function arguments as follows:
 \eqn{\tau_{02}} \tab \code{prior_theta02_prec} \cr
 \eqn{\mu_{03}} \tab \code{prior_theta03_mean} \cr
 \eqn{\tau_{03}} \tab \code{prior_theta03_prec} \cr
-\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
-\eqn{\eta_1} \tab \code{prior_prec1_rate} \cr
-\eqn{\nu_2} \tab \code{prior_prec2_shape} \cr
-\eqn{\eta_2} \tab \code{prior_prec2_rate} \cr
-\eqn{\nu_3} \tab \code{prior_prec3_shape} \cr
-\eqn{\eta_3} \tab \code{prior_prec3_rate}
+\eqn{\nu_1} (shape), \eqn{A_1} (scale) \tab \code{prior_prec1_shape}, \code{prior_prec1_scale} \cr
+\eqn{\eta_1} (rate), \eqn{\nu_1} (df) \tab \code{prior_prec1_rate}, \code{prior_prec1_df} \cr
+\eqn{\nu_2} (shape), \eqn{A_2} (scale) \tab \code{prior_prec2_shape}, \code{prior_prec2_scale} \cr
+\eqn{\eta_2} (rate), \eqn{\nu_2} (df) \tab \code{prior_prec2_rate}, \code{prior_prec2_df} \cr
+\eqn{\nu_3} (shape), \eqn{A_3} (scale) \tab \code{prior_prec3_shape}, \code{prior_prec3_scale} \cr
+\eqn{\eta_3} (rate), \eqn{\nu_3} (df) \tab \code{prior_prec3_rate}, \code{prior_prec3_df}
 }
 
 \strong{Adaptive Metropolis-Hastings Algorithm:}
@@ -361,6 +380,24 @@ out <- mcmc_poisson_localacceleration(
   seed                    = 456
 )
 
+## Alternative: weakly-informative Half-Cauchy priors (Gelman, 2006)
+# Put a Half-Cauchy prior on the three innovation SDs sqrt(W[1]), sqrt(W[2]),
+# sqrt(W[3]); each precision's prior is chosen independently via its `*_type`.
+out_hc <- mcmc_poisson_localacceleration(
+  y,
+  burnin             = 1000,
+  thinning           = 50,
+  n_chain            = 1000,
+  prior_theta01_mean = 0, prior_theta01_prec = 1,
+  prior_theta02_mean = 0, prior_theta02_prec = 1,
+  prior_theta03_mean = 0, prior_theta03_prec = 1,
+  prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,  # sqrt(W[1])
+  prior_prec2_type   = "halfcauchy", prior_prec2_scale = 1,  # sqrt(W[2])
+  prior_prec3_type   = "halfcauchy", prior_prec3_scale = 1,  # sqrt(W[3])
+  verbose            = FALSE,
+  seed               = 456
+)
+
 ## Posterior analysis and visualization
 # Use the plot method for comprehensive diagnostics
 \donttest{
@@ -379,6 +416,13 @@ plot(out, type = "alpha", true_values = list(alpha = alpha_true))
 
 }
 \references{
+Gelman, A. (2006). Prior distributions for variance parameters in
+hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
+
+Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+6(4), 847-900.
+
 Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
 

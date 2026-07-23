@@ -36,41 +36,59 @@
 #'
 #' \strong{Prior Distributions:}
 #'
-#' The following conjugate prior distributions are employed:
-#'
-#' \emph{Mixture Component Parameters:}
+#' \emph{Mixture Component Means and Initial State:}
 #' \deqn{
 #' \begin{aligned}
 #' \mu_1 &\sim N(\mu_{01}, \tau_{01}^{-1}), \\
 #' \mu_2 &\sim N(\mu_{02}, \tau_{02}^{-1}), \\
-#' \phi_1 &\sim \text{Gamma}(\nu_{01}, \eta_{01}), \\
-#' \phi_2 &\sim \text{Gamma}(\nu_{02}, \eta_{02}).
+#' \theta_{0,1} &\sim N(\mu_{\theta_{01}}, \tau_{\theta_{01}}^{-1}).
 #' \end{aligned}
 #' }
 #'
-#' \emph{Dynamic State Parameters:}
-#' \deqn{
-#' \begin{aligned}
-#' \theta_{0,1} &\sim N(\mu_{\theta_{01}}, \tau_{\theta_{01}}^{-1}), \\
-#' W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1).
-#' \end{aligned}
-#' }
+#' \emph{Precision Parameters:}
+#'
+#' Every precision -- the two mixture component precisions \eqn{\phi_1},
+#' \eqn{\phi_2} and the state innovation precision \eqn{W_1^{-1}} -- may take one
+#' of two priors, chosen independently through the corresponding `*_type`
+#' argument:
+#'
+#' \emph{(a) Gamma prior on the precision} (default, conjugate):
+#' \deqn{\phi_1 \sim \text{Gamma}(\nu_{01}, \eta_{01}), \quad
+#'       \phi_2 \sim \text{Gamma}(\nu_{02}, \eta_{02}), \quad
+#'       W_1^{-1} \sim \text{Gamma}(\nu_1, \eta_1).}
+#'
+#' \emph{(b) Half-t prior on the standard deviation} (Gelman, 2006):
+#' \deqn{\sqrt{1/\phi_1} \sim \text{Half-}t(\nu_{01}, A_{01}), \quad
+#'       \sqrt{1/\phi_2} \sim \text{Half-}t(\nu_{02}, A_{02}), \quad
+#'       \sqrt{W_1} \sim \text{Half-}t(\nu_1, A_1),}
+#' i.e. a Half-t on each component standard deviation \eqn{\sqrt{1/\phi_k}} and on
+#' the innovation standard deviation \eqn{\sqrt{W_1}}. Here \eqn{A > 0} is a scale
+#' hyperparameter and \eqn{\nu > 0} the degrees of freedom; \eqn{\nu = 1} gives
+#' the Half-Cauchy prior (also selectable with `type = "halfcauchy"`), and larger
+#' \eqn{\nu} approaches a Half-Normal. The Half-t prior is represented by the
+#' inverse-gamma scale mixture of Wand et al. (2011), which keeps every Gibbs
+#' update closed-form via a single auxiliary variable per precision.
+#'
+#' The Gamma shape/rate arguments are required only when the corresponding
+#' `_type` is `"gamma"`; the Half-t scale/df arguments only when it is `"halft"`
+#' or `"halfcauchy"`. Each prior choice is resolved once, before the sampler
+#' runs, and never re-evaluated inside the MCMC loop.
 #'
 #' The prior hyperparameters correspond to function arguments as follows:
 #' \tabular{cc}{
 #'   \strong{Hyperparameter} \tab \strong{Function Argument} \cr
 #'   \eqn{\mu_{01}} \tab `prior_mu01_mean` \cr
 #'   \eqn{\tau_{01}} \tab `prior_mu01_prec` \cr
-#'   \eqn{\nu_{01}} \tab `prior_prec01_shape` \cr
-#'   \eqn{\eta_{01}} \tab `prior_prec01_rate` \cr
+#'   \eqn{\nu_{01}} (shape), \eqn{A_{01}} (scale) \tab `prior_prec01_shape`, `prior_prec01_scale` \cr
+#'   \eqn{\eta_{01}} (rate), \eqn{\nu_{01}} (df) \tab `prior_prec01_rate`, `prior_prec01_df` \cr
 #'   \eqn{\mu_{02}} \tab `prior_mu02_mean` \cr
 #'   \eqn{\tau_{02}} \tab `prior_mu02_prec` \cr
-#'   \eqn{\nu_{02}} \tab `prior_prec02_shape` \cr
-#'   \eqn{\eta_{02}} \tab `prior_prec02_rate` \cr
+#'   \eqn{\nu_{02}} (shape), \eqn{A_{02}} (scale) \tab `prior_prec02_shape`, `prior_prec02_scale` \cr
+#'   \eqn{\eta_{02}} (rate), \eqn{\nu_{02}} (df) \tab `prior_prec02_rate`, `prior_prec02_df` \cr
 #'   \eqn{\mu_{\theta_{01}}} \tab `prior_theta01_mean` \cr
 #'   \eqn{\tau_{\theta_{01}}} \tab `prior_theta01_prec` \cr
-#'   \eqn{\nu_1} \tab `prior_prec1_shape` \cr
-#'   \eqn{\eta_1} \tab `prior_prec1_rate`
+#'   \eqn{\nu_1} (shape), \eqn{A_1} (scale) \tab `prior_prec1_shape`, `prior_prec1_scale` \cr
+#'   \eqn{\eta_1} (rate), \eqn{\nu_1} (df) \tab `prior_prec1_rate`, `prior_prec1_df`
 #' }
 #'
 #' \strong{Label Switching:}
@@ -190,30 +208,54 @@
 #'   If `NULL` (default), set to the 25th percentile of `y`.
 #' @param prior_mu01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\mu_1}.
 #'   Default is 0.01 (vague prior).
+#' @param prior_prec01_type Character, prior on the component-1 precision
+#'   \eqn{\phi_1}: `"gamma"` (default) for a Gamma prior on the precision, or
+#'   `"halft"` / `"halfcauchy"` for a Half-t / Half-Cauchy prior on the component
+#'   standard deviation \eqn{\sqrt{1/\phi_1}} (Gelman, 2006). `"halfcauchy"` is
+#'   Half-t with `df = 1`.
 #' @param prior_prec01_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the precision of component 1 (\eqn{\phi_1}). Default is 0.01 (vague prior).
 #'   Used only when `prior_prec01_type = "gamma"`.
 #' @param prior_prec01_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_1}.
 #'   Default is 0.01 (vague prior). Used only when `prior_prec01_type = "gamma"`.
+#' @param prior_prec01_scale Numeric > 0, scale \eqn{A} of the Half-t prior for
+#'   \eqn{\sqrt{1/\phi_1}}. Required when `prior_prec01_type` is
+#'   `"halft"`/`"halfcauchy"`.
+#' @param prior_prec01_df Numeric > 0, degrees of freedom of the Half-t prior for
+#'   \eqn{\sqrt{1/\phi_1}}. Default `1` (Half-Cauchy).
 #' @param prior_mu02_mean Numeric, prior mean for the mean of component 2 (\eqn{\mu_2}).
 #'   If `NULL` (default), set to the 75th percentile of `y`.
 #' @param prior_mu02_prec Numeric > 0, prior precision (inverse variance) for \eqn{\mu_2}.
 #'   Default is 0.01 (vague prior).
+#' @param prior_prec02_type Character, prior on the component-2 precision
+#'   \eqn{\phi_2} (`"gamma"` default, or `"halft"` / `"halfcauchy"` for a Half-t /
+#'   Half-Cauchy prior on \eqn{\sqrt{1/\phi_2}}).
 #' @param prior_prec02_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the precision of component 2 (\eqn{\phi_2}). Default is 0.01 (vague prior).
 #'   Used only when `prior_prec02_type = "gamma"`.
 #' @param prior_prec02_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_2}.
 #'   Default is 0.01 (vague prior). Used only when `prior_prec02_type = "gamma"`.
+#' @param prior_prec02_scale Numeric > 0, Half-t scale for \eqn{\sqrt{1/\phi_2}}.
+#'   Required when `prior_prec02_type` is `"halft"`/`"halfcauchy"`.
+#' @param prior_prec02_df Numeric > 0, Half-t df for \eqn{\sqrt{1/\phi_2}}.
+#'   Default `1` (Half-Cauchy).
 #' @param prior_theta01_mean Numeric, prior mean for the initial level state
 #'   \eqn{\theta_{0,1}}. Default is 0.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for
 #'   \eqn{\theta_{0,1}}. Default is 0.01 (vague prior).
+#' @param prior_prec1_type Character, prior on the level innovation precision
+#'   \eqn{1/W_1} (`"gamma"` default, or `"halft"` / `"halfcauchy"` for a Half-t /
+#'   Half-Cauchy prior on \eqn{\sqrt{W_1}}).
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the level innovation precision \eqn{1/W_1}. Default is 0.01 (vague prior).
 #'   Used only when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for
 #'   \eqn{1/W_1}. Default is 0.01 (vague prior). Used only when
 #'   `prior_prec1_type = "gamma"`.
+#' @param prior_prec1_scale Numeric > 0, Half-t scale \eqn{A_1} for \eqn{\sqrt{W_1}}.
+#'   Required when `prior_prec1_type` is `"halft"`/`"halfcauchy"`.
+#' @param prior_prec1_df Numeric > 0, Half-t df \eqn{\nu_1} for \eqn{\sqrt{W_1}}.
+#'   Default `1` (Half-Cauchy).
 #' @param lag_update Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
 #'   computing acceptance proportions (logit link only). Adaptation occurs at MCMC iterations
 #'   \eqn{m = k \cdot \text{lag\_update}} for \eqn{k = 1, 2, 3, \ldots}. Default is 50.
@@ -248,29 +290,6 @@
 #'   Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed for
 #'   reproducibility. Default is `NULL` (no seed set).
-#' @param prior_prec01_type Character, prior on the component-1 precision
-#'   \eqn{\phi_1}: `"gamma"` (default) for a Gamma prior on the precision, or
-#'   `"halft"` / `"halfcauchy"` for a Half-t / Half-Cauchy prior on the component
-#'   standard deviation \eqn{\sqrt{1/\phi_1}} (Gelman, 2006). `"halfcauchy"` is
-#'   Half-t with `df = 1`.
-#' @param prior_prec01_scale Numeric > 0, scale \eqn{A} of the Half-t prior for
-#'   \eqn{\sqrt{1/\phi_1}}. Required when `prior_prec01_type` is
-#'   `"halft"`/`"halfcauchy"`.
-#' @param prior_prec01_df Numeric > 0, degrees of freedom of the Half-t prior for
-#'   \eqn{\sqrt{1/\phi_1}}. Default `1` (Half-Cauchy).
-#' @param prior_prec02_type Character, prior on the component-2 precision
-#'   \eqn{\phi_2} (`"gamma"` default, or `"halft"` / `"halfcauchy"`).
-#' @param prior_prec02_scale Numeric > 0, Half-t scale for \eqn{\sqrt{1/\phi_2}}.
-#'   Required when `prior_prec02_type` is `"halft"`/`"halfcauchy"`.
-#' @param prior_prec02_df Numeric > 0, Half-t df for \eqn{\sqrt{1/\phi_2}}.
-#'   Default `1` (Half-Cauchy).
-#' @param prior_prec1_type Character, prior on the level innovation precision
-#'   \eqn{1/W_1} (`"gamma"` default, or `"halft"` / `"halfcauchy"` for a Half-t /
-#'   Half-Cauchy prior on \eqn{\sqrt{W_1}}).
-#' @param prior_prec1_scale Numeric > 0, Half-t scale \eqn{A_1} for \eqn{\sqrt{W_1}}.
-#'   Required when `prior_prec1_type` is `"halft"`/`"halfcauchy"`.
-#' @param prior_prec1_df Numeric > 0, Half-t df \eqn{\nu_1} for \eqn{\sqrt{W_1}}.
-#'   Default `1` (Half-Cauchy).
 #'
 #' @return A list with components:
 #' \describe{
@@ -389,6 +408,25 @@
 #'   prior_prec1_rate   = 1,
 #'   verbose            = TRUE,
 #'   bar_width          = 60,
+#'   seed               = 789
+#' )
+#'
+#' ## Alternative: weakly-informative Half-Cauchy priors (Gelman, 2006)
+#' # Put a Half-Cauchy prior on every precision: the two component standard
+#' # deviations sqrt(1/phi[1]), sqrt(1/phi[2]) and the weight-innovation SD
+#' # sqrt(W[1]). Component SDs live on the data scale (scale ~ sd(y)); the
+#' # weight-innovation SD lives on the probit latent scale (scale ~ 1).
+#' out_hc <- mcmc_normal_mixture_locallevel(
+#'   y,
+#'   link               = "probit",
+#'   burnin             = 2000,
+#'   thinning           = 10,
+#'   n_chain            = 1000,
+#'   prior_prec01_type  = "halfcauchy", prior_prec01_scale = sd(y),
+#'   prior_prec02_type  = "halfcauchy", prior_prec02_scale = sd(y),
+#'   prior_theta01_mean = 0, prior_theta01_prec = 1,
+#'   prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,
+#'   verbose            = FALSE,
 #'   seed               = 789
 #' )
 #'
@@ -1119,6 +1157,13 @@
 #' }
 #'
 #' @references
+#' Gelman, A. (2006). Prior distributions for variance parameters in
+#' hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
+#'
+#' Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+#' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+#' 6(4), 847-900.
+#'
 #' Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 #' Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
 #'

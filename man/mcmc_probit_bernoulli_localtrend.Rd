@@ -132,12 +132,30 @@ The following conjugate prior distributions are employed:
 }
 
 \emph{Precision Parameters:}
-\deqn{
-\begin{aligned}
-W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1), \\
-W_2^{-1} &\sim \text{Gamma}(\nu_2, \eta_2).
-\end{aligned}
-}
+
+Each innovation precision (\eqn{W_1^{-1}}, \eqn{W_2^{-1}}) may take one of two
+priors, chosen independently through \code{prior_prec1_type} and \code{prior_prec2_type}:
+
+\emph{(a) Gamma prior on the precision} (default, semi-conjugate):
+\deqn{W_1^{-1} \sim \text{Gamma}(\nu_1, \eta_1), \qquad
+      W_2^{-1} \sim \text{Gamma}(\nu_2, \eta_2).}
+
+\emph{(b) Half-t prior on the standard deviation} (Gelman, 2006):
+\deqn{\sqrt{W_1} \sim \text{Half-}t(\nu_1, A_1), \qquad
+      \sqrt{W_2} \sim \text{Half-}t(\nu_2, A_2),}
+where \eqn{A > 0} is a scale hyperparameter and \eqn{\nu > 0} the degrees of
+freedom. Setting \eqn{\nu = 1} gives the Half-Cauchy prior (also selectable
+directly with \code{type = "halfcauchy"}); larger \eqn{\nu} approaches a
+Half-Normal. The Half-t prior is represented by the inverse-gamma scale
+mixture of Wand et al. (2011), which keeps each innovation-precision Gibbs
+update closed-form via a single auxiliary variable. This probit-Bernoulli
+model has no Gaussian observation variance, so there is no observation
+precision \eqn{1/V}.
+
+The Gamma shape/rate arguments are required only when the corresponding
+\verb{_type} is \code{"gamma"}; the Half-t scale/df arguments only when it is \code{"halft"}
+or \code{"halfcauchy"}. The prior choice is resolved once, before the sampler runs,
+and never re-evaluated inside the MCMC loop.
 
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
@@ -146,10 +164,10 @@ The prior hyperparameters correspond to function arguments as follows:
 \eqn{\tau_{01}} \tab \code{prior_theta01_prec} \cr
 \eqn{\mu_{02}} \tab \code{prior_theta02_mean} \cr
 \eqn{\tau_{02}} \tab \code{prior_theta02_prec} \cr
-\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
-\eqn{\eta_1} \tab \code{prior_prec1_rate} \cr
-\eqn{\nu_2} \tab \code{prior_prec2_shape} \cr
-\eqn{\eta_2} \tab \code{prior_prec2_rate}
+\eqn{\nu_1} (Gamma shape), \eqn{A_1} (Half-t scale) \tab \code{prior_prec1_shape}, \code{prior_prec1_scale} \cr
+\eqn{\eta_1} (Gamma rate), \eqn{\nu_1} (Half-t df) \tab \code{prior_prec1_rate}, \code{prior_prec1_df} \cr
+\eqn{\nu_2} (Gamma shape), \eqn{A_2} (Half-t scale) \tab \code{prior_prec2_shape}, \code{prior_prec2_scale} \cr
+\eqn{\eta_2} (Gamma rate), \eqn{\nu_2} (Half-t df) \tab \code{prior_prec2_rate}, \code{prior_prec2_df}
 }
 
 The algorithm employs the Albert-Chib (1993) latent variable augmentation
@@ -217,6 +235,23 @@ out <- mcmc_probit_bernoulli_localtrend(
   prior_prec2_rate   = 1,
   verbose            = TRUE,
   bar_width          = 60,
+  seed               = 456
+)
+
+## Alternative: weakly-informative Half-Cauchy priors (Gelman, 2006)
+# Put a Half-Cauchy prior on the level and trend innovation SDs sqrt(W[1]),
+# sqrt(W[2]). Each precision's prior is chosen independently via its `*_type`.
+out_hc <- mcmc_probit_bernoulli_localtrend(
+  y,
+  burnin             = 1000,
+  thinning           = 50,
+  n_chain            = 1000,
+  prior_theta01_mean = 0,
+  prior_theta01_prec = 1,
+  prior_theta02_mean = 0,
+  prior_theta02_prec = 1,
+  prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,  # sqrt(W[1])
+  prior_prec2_type   = "halfcauchy", prior_prec2_scale = 1,  # sqrt(W[2])
   seed               = 456
 )
 
@@ -635,6 +670,13 @@ out <- mcmc_probit_bernoulli_localtrend(
 Albert, J. H., & Chib, S. (1993). Bayesian Analysis of Binary and Polychotomous
 Response Data. \emph{Journal of the American Statistical Association}, 88(422), 669-679.
 https://doi.org/10.1080/01621459.1993.10476321
+
+Gelman, A. (2006). Prior distributions for variance parameters in
+hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
+
+Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+6(4), 847-900.
 }
 \seealso{
 \link[pdm]{mcmc_binomial_localtrend}, \link[pdm]{mcmc_probit_bernoulli_locallevel}

@@ -61,21 +61,29 @@ mcmc_normal_localacceleration(
 
 \item{prior_theta03_prec}{Numeric > 0, prior precision for \eqn{\theta_{0,3}}.}
 
-\item{prior_prec1_shape}{Numeric > 0, shape parameter \eqn{\nu_1} of the Gamma prior for the level innovation precision \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
+\item{prior_prec1_shape}{Numeric > 0, shape parameter \eqn{\nu_1} of the Gamma
+prior for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
-\item{prior_prec1_rate}{Numeric > 0, rate parameter \eqn{\eta_1} of the Gamma prior for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
+\item{prior_prec1_rate}{Numeric > 0, rate parameter \eqn{\eta_1} of the Gamma
+prior for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
-\item{prior_prec2_shape}{Numeric > 0, shape parameter \eqn{\nu_2} of the Gamma prior for the trend innovation precision \eqn{1/W_2}. Required (and used) only when \code{prior_prec2_type = "gamma"}.}
+\item{prior_prec2_shape}{Numeric > 0, shape parameter \eqn{\nu_2} of the Gamma
+prior for \eqn{1/W_2}. Required (and used) only when \code{prior_prec2_type = "gamma"}.}
 
-\item{prior_prec2_rate}{Numeric > 0, rate parameter \eqn{\eta_2} of the Gamma prior for \eqn{1/W_2}. Required (and used) only when \code{prior_prec2_type = "gamma"}.}
+\item{prior_prec2_rate}{Numeric > 0, rate parameter \eqn{\eta_2} of the Gamma
+prior for \eqn{1/W_2}. Required (and used) only when \code{prior_prec2_type = "gamma"}.}
 
-\item{prior_prec3_shape}{Numeric > 0, shape parameter \eqn{\nu_3} of the Gamma prior for the acceleration innovation precision \eqn{1/W_3}. Required (and used) only when \code{prior_prec3_type = "gamma"}.}
+\item{prior_prec3_shape}{Numeric > 0, shape parameter \eqn{\nu_3} of the Gamma
+prior for \eqn{1/W_3}. Required (and used) only when \code{prior_prec3_type = "gamma"}.}
 
-\item{prior_prec3_rate}{Numeric > 0, rate parameter \eqn{\eta_3} of the Gamma prior for \eqn{1/W_3}. Required (and used) only when \code{prior_prec3_type = "gamma"}.}
+\item{prior_prec3_rate}{Numeric > 0, rate parameter \eqn{\eta_3} of the Gamma
+prior for \eqn{1/W_3}. Required (and used) only when \code{prior_prec3_type = "gamma"}.}
 
-\item{prior_prec_y_shape}{Numeric > 0, shape parameter \eqn{\nu_V} of the Gamma prior for the data precision \eqn{1/V}. Required (and used) only when \code{prior_prec_y_type = "gamma"}.}
+\item{prior_prec_y_shape}{Numeric > 0, shape parameter \eqn{\nu_V} of the Gamma
+prior for \eqn{1/V}. Required (and used) only when \code{prior_prec_y_type = "gamma"}.}
 
-\item{prior_prec_y_rate}{Numeric > 0, rate parameter \eqn{\eta_V} of the Gamma prior for \eqn{1/V}. Required (and used) only when \code{prior_prec_y_type = "gamma"}.}
+\item{prior_prec_y_rate}{Numeric > 0, rate parameter \eqn{\eta_V} of the Gamma
+prior for \eqn{1/V}. Required (and used) only when \code{prior_prec_y_type = "gamma"}.}
 
 \item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{FALSE}.}
 
@@ -87,7 +95,7 @@ Default is \code{NULL}, which does not set the seed.}
 \item{prior_prec1_type}{Character, prior on the level innovation precision
 \eqn{1/W_1}: \code{"gamma"} (default) for a Gamma prior on the precision, or
 \code{"halft"} / \code{"halfcauchy"} for a Half-t / Half-Cauchy prior on
-\eqn{\sqrt{W_1}}. \code{"halfcauchy"} is Half-t with \code{df = 1}.}
+\eqn{\sqrt{W_1}} (Gelman, 2006). \code{"halfcauchy"} is Half-t with \code{df = 1}.}
 
 \item{prior_prec1_scale}{Numeric > 0, scale \eqn{A_1} of the Half-t prior for
 \eqn{\sqrt{W_1}}. Required when \code{prior_prec1_type} is \code{"halft"} or
@@ -284,6 +292,28 @@ out <- mcmc_normal_localacceleration(
   prior_prec_y_rate  = 1e-1,
   verbose            = TRUE,
   bar_width          = 60,
+  seed               = 456
+)
+
+## Alternative: weakly-informative Half-Cauchy priors (Gelman, 2006)
+# Put a Half-Cauchy prior on the three innovation SDs sqrt(W[1]), sqrt(W[2]),
+# sqrt(W[3]); the observation precision 1/V keeps its Gamma prior. Each
+# precision's prior is selected independently via its `*_type` argument.
+out_hc <- mcmc_normal_localacceleration(
+  y,
+  burnin             = 2000,
+  thinning           = 100,
+  n_chain            = 1000,
+  prior_theta01_mean = y[1],
+  prior_theta01_prec = 1 / var(y),
+  prior_theta02_mean = y[1] / 2,
+  prior_theta02_prec = 1 / var(y),
+  prior_theta03_mean = 0,
+  prior_theta03_prec = 1e-3,
+  prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,  # sqrt(W[1])
+  prior_prec2_type   = "halfcauchy", prior_prec2_scale = 1,  # sqrt(W[2])
+  prior_prec3_type   = "halfcauchy", prior_prec3_scale = 1,  # sqrt(W[3])
+  prior_prec_y_shape = 1e-1, prior_prec_y_rate = 1e-1,       # 1/V keeps Gamma
   seed               = 456
 )
 

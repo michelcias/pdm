@@ -28,19 +28,37 @@
 #' }
 #'
 #' \emph{Precision Parameters:}
-#' \deqn{
-#' \begin{aligned}
-#' W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1).
-#' \end{aligned}
-#' }
+#'
+#' The innovation precision \eqn{W_1^{-1}} may take one of two priors, chosen
+#' through `prior_prec1_type`:
+#'
+#' \emph{(a) Gamma prior on the precision} (default, semi-conjugate):
+#' \deqn{W_1^{-1} \sim \text{Gamma}(\nu_1, \eta_1).}
+#'
+#' \emph{(b) Half-t prior on the standard deviation} (Gelman, 2006):
+#' \deqn{\sqrt{W_1} \sim \text{Half-}t(\nu_1, A_1),}
+#' where \eqn{A_1 > 0} is a scale hyperparameter and \eqn{\nu_1 > 0} the degrees
+#' of freedom. Setting \eqn{\nu_1 = 1} gives the Half-Cauchy prior (also
+#' selectable directly with `type = "halfcauchy"`); larger \eqn{\nu_1} approaches
+#' a Half-Normal. The Half-t prior is represented by the inverse-gamma scale
+#' mixture of Wand et al. (2011), which keeps the innovation-precision Gibbs
+#' update closed-form via a single auxiliary variable. This binomial model has no
+#' Gaussian observation variance, so there is no observation precision \eqn{1/V}.
+#'
+#' The Gamma shape/rate arguments are required only when
+#' `prior_prec1_type = "gamma"`; the Half-t scale/df arguments only when it is
+#' `"halft"` or `"halfcauchy"`. The prior choice is resolved once, before the
+#' sampler runs, and never re-evaluated inside the MCMC loop.
 #'
 #' The prior hyperparameters correspond to function arguments as follows:
 #' \tabular{cc}{
 #'   \strong{Hyperparameter} \tab \strong{Function Argument} \cr
 #'   \eqn{\mu_{01}} \tab `prior_theta01_mean` \cr
 #'   \eqn{\tau_{01}} \tab `prior_theta01_prec` \cr
-#'   \eqn{\nu_1} \tab `prior_prec1_shape` \cr
-#'   \eqn{\eta_1} \tab `prior_prec1_rate`
+#'   \eqn{\nu_1} (Gamma shape) \tab `prior_prec1_shape` \cr
+#'   \eqn{\eta_1} (Gamma rate) \tab `prior_prec1_rate` \cr
+#'   \eqn{A_1} (Half-t scale) \tab `prior_prec1_scale` \cr
+#'   \eqn{\nu_1} (Half-t df) \tab `prior_prec1_df`
 #' }
 #'
 #' \strong{Adaptive Metropolis-Hastings Algorithm:}
@@ -145,11 +163,21 @@
 #'   \eqn{\theta_{0,1}}.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance)
 #'   for \eqn{\theta_{0,1}}.
+#' @param prior_prec1_type Character, prior on the innovation precision
+#'   \eqn{1/W_1}: `"gamma"` (default) for a Gamma prior on the precision, or
+#'   `"halft"` / `"halfcauchy"` for a Half-t / Half-Cauchy prior on the
+#'   innovation standard deviation \eqn{\sqrt{W_1}} (Gelman, 2006). `"halfcauchy"`
+#'   is Half-t with `df = 1`.
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior
-#'   for the innovation precision \eqn{1/W_1}. Required (and used) only when
-#'   `prior_prec1_type = "gamma"`.
+#'   for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior
 #'   for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
+#' @param prior_prec1_scale Numeric > 0, scale \eqn{A_1} of the Half-t prior for
+#'   \eqn{\sqrt{W_1}}. Required when `prior_prec1_type` is `"halft"` or
+#'   `"halfcauchy"`; ignored otherwise.
+#' @param prior_prec1_df Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
+#'   prior for \eqn{\sqrt{W_1}}. Default `1` (Half-Cauchy). Must equal `1` when
+#'   `prior_prec1_type = "halfcauchy"`.
 #' @param lag_update Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
 #'   computing acceptance proportions. Default is 50.
 #' @param max_step_size Numeric > 0, maximum allowed change in log-scale proposal variance
@@ -173,17 +201,6 @@
 #'   Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed for
 #'   reproducibility. Default is `NULL` (no seed set).
-#' @param prior_prec1_type Character, prior on the innovation precision
-#'   \eqn{1/W_1}: `"gamma"` (default) for a Gamma prior on the precision, or
-#'   `"halft"` / `"halfcauchy"` for a Half-t / Half-Cauchy prior on the
-#'   innovation standard deviation \eqn{\sqrt{W_1}} (Gelman, 2006).
-#'   `"halfcauchy"` is Half-t with `df = 1`.
-#' @param prior_prec1_scale Numeric > 0, scale \eqn{A_1} of the Half-t prior for
-#'   \eqn{\sqrt{W_1}}. Required when `prior_prec1_type` is `"halft"` or
-#'   `"halfcauchy"`; ignored otherwise.
-#' @param prior_prec1_df Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
-#'   prior for \eqn{\sqrt{W_1}}. Default `1` (Half-Cauchy). Must equal `1` when
-#'   `prior_prec1_type = "halfcauchy"`.
 #'
 #' @return An object of class `c("binomial_locallevel", "pdm_mcmc", "list")`
 #'   with components:
@@ -199,6 +216,13 @@
 #' }
 #'
 #' @references
+#' Gelman, A. (2006). Prior distributions for variance parameters in
+#' hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
+#'
+#' Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+#' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+#' 6(4), 847-900.
+#'
 #' Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 #' Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
 #'
@@ -250,6 +274,23 @@
 #'   verbose                 = TRUE,  # Enable progress bar
 #'   bar_width               = 60,    # Progress bar width
 #'   seed                    = 456
+#' )
+#'
+#' ## Alternative: weakly-informative Half-Cauchy prior (Gelman, 2006)
+#' # Replace the Gamma prior on the innovation precision with a Half-Cauchy on
+#' # the innovation SD sqrt(W[1]); the Gamma shape/rate are then unused.
+#' out_hc <- mcmc_binomial_locallevel(
+#'   y,
+#'   n_trials           = n_trials,
+#'   burnin             = 1000,
+#'   thinning           = 50,
+#'   n_chain            = 1000,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_prec1_type   = "halfcauchy",  # Half-Cauchy on sqrt(W[1])
+#'   prior_prec1_scale  = 1,             # scale A_1 > 0
+#'   verbose            = FALSE,
+#'   seed               = 456
 #' )
 #'
 #' ## Posterior analysis and visualization

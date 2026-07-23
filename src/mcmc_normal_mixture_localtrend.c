@@ -43,6 +43,9 @@
  * - theta_{0,2} ~ N(mu_{0,2}, sigma^2_{0,2})
  * - 1/W_1 ~ Gamma(nu_1, eta_1)
  * - 1/W_2 ~ Gamma(nu_2, eta_2)
+ * - every precision (phi_1, phi_2, 1/W_1, 1/W_2) may instead take a Half-t prior
+ *   on its standard deviation (Gelman, 2006), selected independently via the
+ *   prior_prec*_type_ codes (see prec_prior_dispatch.h)
  *
  * **Sampling sequence per iteration:**
  * 1. (mu_1, phi_1, mu_2, phi_2) | y, z -> Conjugate Normal-Gamma posteriors
@@ -110,6 +113,9 @@
  * - phi_k ~ Gamma(nu_0k, eta_0k),             k=1,2
  * - theta_{0,j} ~ N(mu_{0,j}, sigma^2_{0,j}), j=1,2
  * - 1/W_j ~ Gamma(nu_j, eta_j),               j=1,2
+ * - every precision (phi_k, 1/W_j) may instead take a Half-t prior on its
+ *   standard deviation (Gelman, 2006), selected independently via the
+ *   prior_prec*_type_ codes (see prec_prior_dispatch.h)
  *
  * **Optimizations implemented:**
  * - Memory-efficient current/previous iteration buffers (O(n) storage)

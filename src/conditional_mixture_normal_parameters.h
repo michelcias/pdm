@@ -25,12 +25,16 @@
  *          separately.
  *
  *          Prior distributions:
- *          mu_k ~ N(mu_0k, sigma^2_0k)  <=>  mu_k ~ N(mu_0k, (prec_0k)^{-1})
- *          phi_k ~ Gamma(nu_0k, eta_0k)
+ *          mu_k  ~ N(mu_0k, sigma^2_0k)  <=>  mu_k ~ N(mu_0k, (prec_0k)^{-1})
+ *          phi_k ~ Gamma(nu_0k, eta_0k)      (default), OR
+ *          sqrt(1/phi_k) ~ Half-t(nu_0k, A_0k)  (Half-t on the component SD;
+ *                Gelman, 2006), selected per component via `phi{1,2}_kind`.
  *
  *          Full conditional posteriors:
- *          mu_k | y, [...] ~ N(mu_bar_k, sigma_bar^2_k)
- *          phi_k | y, [...] ~ Gamma(nu_bar_k, eta_bar_k)
+ *          mu_k  | y, [...] ~ N(mu_bar_k, sigma_bar^2_k)
+ *          phi_k | y, [...] ~ Gamma(nu_bar_k, eta_bar_k)   (both prior kinds; the
+ *                Half-t case uses shape nu/2 and rate nu*b_k via the scale
+ *                mixture -- see pdm_draw_prec_suffstat / pdm_refresh_halft_aux).
  *
  *          where:
  *          sigma_bar^2_k = (T_k * phi_k + prec_0k)^{-1}

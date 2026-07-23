@@ -29,10 +29,10 @@
  *          - theta_{0,1} ~ N(mu_{0,1}, sigma_{0,1}^2)
  *          - theta_{0,2} ~ N(mu_{0,2}, sigma_{0,2}^2)
  *          - theta_{0,3} ~ N(mu_{0,3}, sigma_{0,3}^2)
- *          - 1/W_1 ~ Gamma(nu_1, eta_1)
- *          - 1/W_2 ~ Gamma(nu_2, eta_2)
- *          - 1/W_3 ~ Gamma(nu_3, eta_3)
- *          - 1/V ~ Gamma(nu_y, eta_y)
+ *          - each precision 1/W_1, 1/W_2, 1/W_3, 1/V carries either a Gamma prior
+ *            on the precision (default) or a Half-t prior on the corresponding
+ *            standard deviation (Gelman, 2006), selected independently via the
+ *            prior_prec*_type_ codes (see prec_prior_dispatch.h).
  *
  *          **Gibbs sampling sequence:**
  *          1. theta_3 | theta_2, theta_{0,2}, theta_{0,3}, W_2, W_3 → Multivariate Normal

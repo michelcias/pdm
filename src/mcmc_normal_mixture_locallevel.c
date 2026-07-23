@@ -37,6 +37,9 @@
  * - phi_k ~ Gamma(nu_0k, eta_0k),         k = 1, 2
  * - theta_{0,1} ~ N(mu_{0,1}, sigma^2_{0,1})
  * - 1/W_1 ~ Gamma(nu_1, eta_1)
+ * - every precision (phi_1, phi_2, 1/W_1) may instead take a Half-t prior on its
+ *   standard deviation (Gelman, 2006), selected independently via the
+ *   prior_prec*_type_ codes (see prec_prior_dispatch.h)
  *
  * **Sampling sequence per iteration:**
  * 1. (mu_1, phi_1, mu_2, phi_2) | y, z -> Conjugate Normal-Gamma updates

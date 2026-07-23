@@ -47,6 +47,8 @@
  *          - theta_{0,2} ~ N(mu_{0,2}, sigma_{0,2}^2)
  *          - 1/W_1 ~ Gamma(nu_1, eta_1)
  *          - 1/W_2 ~ Gamma(nu_2, eta_2)
+ *          - each 1/W_k may instead use a Half-t prior on sqrt(W_k) (Gelman,
+ *            2006), selected via prior_prec{1,2}_type (see prec_prior_dispatch.h)
  *
  *          The algorithm employs component-wise Metropolis-Hastings for the non-linear
  *          observation model with adaptive proposal tuning based on acceptance proportions.

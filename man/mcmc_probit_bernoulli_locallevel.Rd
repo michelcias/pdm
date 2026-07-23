@@ -38,8 +38,7 @@ element must be either 0 or 1.}
 for \eqn{\theta_{0,1}}.}
 
 \item{prior_prec1_shape}{Numeric > 0, shape parameter of the Gamma prior
-for the innovation precision \eqn{1/W_1}. Required (and used) only when
-\code{prior_prec1_type = "gamma"}.}
+for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
 \item{prior_prec1_rate}{Numeric > 0, rate parameter of the Gamma prior
 for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
@@ -107,19 +106,38 @@ The following conjugate prior distributions are employed:
 }
 
 \emph{Precision Parameters:}
-\deqn{
-\begin{aligned}
-W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1).
-\end{aligned}
-}
+
+The innovation precision \eqn{W_1^{-1}} may take one of two priors, chosen
+through \code{prior_prec1_type}:
+
+\emph{(a) Gamma prior on the precision} (default, semi-conjugate):
+\deqn{W_1^{-1} \sim \text{Gamma}(\nu_1, \eta_1).}
+
+\emph{(b) Half-t prior on the standard deviation} (Gelman, 2006):
+\deqn{\sqrt{W_1} \sim \text{Half-}t(\nu_1, A_1),}
+where \eqn{A_1 > 0} is a scale hyperparameter and \eqn{\nu_1 > 0} the degrees
+of freedom. Setting \eqn{\nu_1 = 1} gives the Half-Cauchy prior (also
+selectable directly with \code{type = "halfcauchy"}); larger \eqn{\nu_1} approaches
+a Half-Normal. The Half-t prior is represented by the inverse-gamma scale
+mixture of Wand et al. (2011), which keeps the innovation-precision Gibbs
+update closed-form via a single auxiliary variable. This probit-Bernoulli
+model has no Gaussian observation variance, so there is no observation
+precision \eqn{1/V}.
+
+The Gamma shape/rate arguments are required only when
+\code{prior_prec1_type = "gamma"}; the Half-t scale/df arguments only when it is
+\code{"halft"} or \code{"halfcauchy"}. The prior choice is resolved once, before the
+sampler runs, and never re-evaluated inside the MCMC loop.
 
 The prior hyperparameters correspond to function arguments as follows:
 \tabular{cc}{
 \strong{Hyperparameter} \tab \strong{Function Argument} \cr
 \eqn{\mu_{01}} \tab \code{prior_theta01_mean} \cr
 \eqn{\tau_{01}} \tab \code{prior_theta01_prec} \cr
-\eqn{\nu_1} \tab \code{prior_prec1_shape} \cr
-\eqn{\eta_1} \tab \code{prior_prec1_rate}
+\eqn{\nu_1} (Gamma shape) \tab \code{prior_prec1_shape} \cr
+\eqn{\eta_1} (Gamma rate) \tab \code{prior_prec1_rate} \cr
+\eqn{A_1} (Half-t scale) \tab \code{prior_prec1_scale} \cr
+\eqn{\nu_1} (Half-t df) \tab \code{prior_prec1_df}
 }
 
 The algorithm employs the Albert-Chib (1993) latent variable augmentation
@@ -180,6 +198,21 @@ out <- mcmc_probit_bernoulli_locallevel(
   prior_prec1_rate   = 1,
   verbose            = TRUE,
   bar_width          = 60,
+  seed               = 456
+)
+
+## Alternative: weakly-informative Half-Cauchy prior (Gelman, 2006)
+# Replace the Gamma prior on the innovation precision with a Half-Cauchy on
+# the innovation SD sqrt(W[1]); the Gamma shape/rate are then unused.
+out_hc <- mcmc_probit_bernoulli_locallevel(
+  y,
+  burnin             = 1000,
+  thinning           = 50,
+  n_chain            = 1000,
+  prior_theta01_mean = 0,
+  prior_theta01_prec = 1,
+  prior_prec1_type   = "halfcauchy",  # Half-Cauchy on sqrt(W[1])
+  prior_prec1_scale  = 1,             # scale A_1 > 0
   seed               = 456
 )
 
@@ -437,6 +470,13 @@ out <- mcmc_probit_bernoulli_locallevel(
 Albert, J. H., & Chib, S. (1993). Bayesian Analysis of Binary and Polychotomous
 Response Data. \emph{Journal of the American Statistical Association}, 88(422), 669-679.
 https://doi.org/10.1080/01621459.1993.10476321
+
+Gelman, A. (2006). Prior distributions for variance parameters in
+hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
+
+Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+6(4), 847-900.
 }
 \seealso{
 \link[pdm]{mcmc_binomial_locallevel}

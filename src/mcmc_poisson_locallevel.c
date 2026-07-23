@@ -49,7 +49,9 @@
  *
  *          **Prior distributions:**
  *          - theta_{0,1} ~ N(mu_{0,1}, sigma_{0,1}^2)
- *          - 1/W_1       ~ Gamma(nu_1, eta_1)
+ *          - 1/W_1       ~ Gamma(nu_1, eta_1)  (default), or a Half-t prior on
+ *            the innovation SD sqrt(W_1) (Gelman, 2006), selected via
+ *            prior_prec1_type (see prec_prior_dispatch.h)
  *
  *          The algorithm employs component-wise Metropolis-Hastings for the non-linear
  *          observation model with adaptive proposal tuning based on acceptance proportions.

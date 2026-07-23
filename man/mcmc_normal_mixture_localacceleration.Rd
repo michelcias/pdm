@@ -40,7 +40,22 @@ mcmc_normal_mixture_localacceleration(
   return_accept_prop = FALSE,
   verbose = FALSE,
   bar_width = 60,
-  seed = NULL
+  seed = NULL,
+  prior_prec01_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec01_scale = NULL,
+  prior_prec01_df = 1,
+  prior_prec02_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec02_scale = NULL,
+  prior_prec02_df = 1,
+  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec1_scale = NULL,
+  prior_prec1_df = 1,
+  prior_prec2_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec2_scale = NULL,
+  prior_prec2_df = 1,
+  prior_prec3_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec3_scale = NULL,
+  prior_prec3_df = 1
 )
 }
 \arguments{
@@ -169,6 +184,24 @@ Default is \code{FALSE}.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
 Default is \code{NULL}, which does not set the seed.}
+
+\item{prior_prec01_type, prior_prec01_scale, prior_prec01_df}{Prior on the
+component-1 precision \eqn{\phi_1}: \code{type} is \code{"gamma"} (default), \code{"halft"},
+or \code{"halfcauchy"} (a Half-t / Half-Cauchy prior on \eqn{\sqrt{1/\phi_1}};
+Gelman, 2006); \code{scale} \eqn{> 0} is the Half-t scale (required for Half-t);
+\code{df} \eqn{> 0} the Half-t degrees of freedom (default \code{1}, Half-Cauchy).}
+
+\item{prior_prec02_type, prior_prec02_scale, prior_prec02_df}{As above for the
+component-2 precision \eqn{\phi_2}.}
+
+\item{prior_prec1_type, prior_prec1_scale, prior_prec1_df}{Prior on the level
+innovation precision \eqn{1/W_1} (Half-t placed on \eqn{\sqrt{W_1}}).}
+
+\item{prior_prec2_type, prior_prec2_scale, prior_prec2_df}{Prior on the trend
+innovation precision \eqn{1/W_2} (Half-t placed on \eqn{\sqrt{W_2}}).}
+
+\item{prior_prec3_type, prior_prec3_scale, prior_prec3_df}{Prior on the
+acceleration innovation precision \eqn{1/W_3} (Half-t on \eqn{\sqrt{W_3}}).}
 }
 \value{
 A list with components:

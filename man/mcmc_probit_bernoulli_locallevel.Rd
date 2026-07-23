@@ -11,11 +11,14 @@ mcmc_probit_bernoulli_locallevel(
   n_chain,
   prior_theta01_mean,
   prior_theta01_prec,
-  prior_prec1_shape,
-  prior_prec1_rate,
+  prior_prec1_shape = NULL,
+  prior_prec1_rate = NULL,
   verbose = FALSE,
   bar_width = 60,
-  seed = NULL
+  seed = NULL,
+  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec1_scale = NULL,
+  prior_prec1_df = 1
 )
 }
 \arguments{
@@ -35,10 +38,11 @@ element must be either 0 or 1.}
 for \eqn{\theta_{0,1}}.}
 
 \item{prior_prec1_shape}{Numeric > 0, shape parameter of the Gamma prior
-for the innovation precision \eqn{1/W_1}.}
+for the innovation precision \eqn{1/W_1}. Required (and used) only when
+\code{prior_prec1_type = "gamma"}.}
 
 \item{prior_prec1_rate}{Numeric > 0, rate parameter of the Gamma prior
-for \eqn{1/W_1}.}
+for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
 \item{verbose}{Logical, whether to display a progress bar during sampling. Default is \code{FALSE}.}
 
@@ -46,6 +50,19 @@ for \eqn{1/W_1}.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
 Default is \code{NULL}, which does not set the seed.}
+
+\item{prior_prec1_type}{Character, prior on the innovation precision
+\eqn{1/W_1}: \code{"gamma"} (default) for a Gamma prior on the precision, or
+\code{"halft"} / \code{"halfcauchy"} for a Half-t / Half-Cauchy prior on
+\eqn{\sqrt{W_1}} (Gelman, 2006). \code{"halfcauchy"} is Half-t with \code{df = 1}.}
+
+\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A_1} of the Half-t prior for
+\eqn{\sqrt{W_1}}. Required when \code{prior_prec1_type} is \code{"halft"} or
+\code{"halfcauchy"}; ignored otherwise.}
+
+\item{prior_prec1_df}{Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
+prior for \eqn{\sqrt{W_1}}. Default \code{1} (Half-Cauchy). Must equal \code{1} when
+\code{prior_prec1_type = "halfcauchy"}.}
 }
 \value{
 A list with components:

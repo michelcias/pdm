@@ -13,10 +13,10 @@ mcmc_poisson_localtrend(
   prior_theta01_prec,
   prior_theta02_mean,
   prior_theta02_prec,
-  prior_prec1_shape,
-  prior_prec1_rate,
-  prior_prec2_shape,
-  prior_prec2_rate,
+  prior_prec1_shape = NULL,
+  prior_prec1_rate = NULL,
+  prior_prec2_shape = NULL,
+  prior_prec2_rate = NULL,
   lag_update = 50,
   max_step_size = 0.1,
   base_adaptation_rate = 1,
@@ -27,7 +27,13 @@ mcmc_poisson_localtrend(
   return_accept_prop = FALSE,
   verbose = TRUE,
   bar_width = 60,
-  seed = NULL
+  seed = NULL,
+  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec1_scale = NULL,
+  prior_prec1_df = 1,
+  prior_prec2_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec2_scale = NULL,
+  prior_prec2_df = 1
 )
 }
 \arguments{
@@ -48,13 +54,13 @@ element must be a non-negative integer.}
 
 \item{prior_theta02_prec}{Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,2}}.}
 
-\item{prior_prec1_shape}{Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_1}.}
+\item{prior_prec1_shape}{Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
-\item{prior_prec1_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}.}
+\item{prior_prec1_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
-\item{prior_prec2_shape}{Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_2}.}
+\item{prior_prec2_shape}{Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_2}. Required (and used) only when \code{prior_prec2_type = "gamma"}.}
 
-\item{prior_prec2_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_2}.}
+\item{prior_prec2_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_2}. Required (and used) only when \code{prior_prec2_type = "gamma"}.}
 
 \item{lag_update}{Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
 computing acceptance proportions. Default is 50.}
@@ -89,6 +95,26 @@ Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed for
 reproducibility. Default is \code{NULL} (no seed set).}
+
+\item{prior_prec1_type}{Character, prior on the level innovation precision
+\eqn{1/W_1}: \code{"gamma"} (default), or \code{"halft"} / \code{"halfcauchy"} for a Half-t
+/ Half-Cauchy prior on \eqn{\sqrt{W_1}} (Gelman, 2006). \code{"halfcauchy"} is
+Half-t with \code{df = 1}.}
+
+\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A_1} of the Half-t prior for
+\eqn{\sqrt{W_1}}. Required when \code{prior_prec1_type} is \code{"halft"}/\code{"halfcauchy"}.}
+
+\item{prior_prec1_df}{Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
+prior for \eqn{\sqrt{W_1}}. Default \code{1} (Half-Cauchy).}
+
+\item{prior_prec2_type}{Character, prior on the trend innovation precision
+\eqn{1/W_2}: \code{"gamma"} (default), or \code{"halft"} / \code{"halfcauchy"}.}
+
+\item{prior_prec2_scale}{Numeric > 0, scale \eqn{A_2} of the Half-t prior for
+\eqn{\sqrt{W_2}}. Required when \code{prior_prec2_type} is \code{"halft"}/\code{"halfcauchy"}.}
+
+\item{prior_prec2_df}{Numeric > 0, degrees of freedom \eqn{\nu_2} of the Half-t
+prior for \eqn{\sqrt{W_2}}. Default \code{1} (Half-Cauchy).}
 }
 \value{
 An object of class \code{c("poisson_localtrend", "pdm_mcmc", "list")}

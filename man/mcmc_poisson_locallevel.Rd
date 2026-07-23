@@ -11,8 +11,8 @@ mcmc_poisson_locallevel(
   n_chain,
   prior_theta01_mean,
   prior_theta01_prec,
-  prior_prec1_shape,
-  prior_prec1_rate,
+  prior_prec1_shape = NULL,
+  prior_prec1_rate = NULL,
   lag_update = 50,
   max_step_size = 0.1,
   base_adaptation_rate = 1,
@@ -23,7 +23,10 @@ mcmc_poisson_locallevel(
   return_accept_prop = FALSE,
   verbose = TRUE,
   bar_width = 60,
-  seed = NULL
+  seed = NULL,
+  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec1_scale = NULL,
+  prior_prec1_df = 1
 )
 }
 \arguments{
@@ -43,10 +46,11 @@ element must be a non-negative integer.}
 for \eqn{\theta_{0,1}}.}
 
 \item{prior_prec1_shape}{Numeric > 0, shape parameter of the Gamma prior
-for the innovation precision \eqn{1/W_1}.}
+for the innovation precision \eqn{1/W_1}. Required (and used) only when
+\code{prior_prec1_type = "gamma"}.}
 
 \item{prior_prec1_rate}{Numeric > 0, rate parameter of the Gamma prior
-for \eqn{1/W_1}.}
+for \eqn{1/W_1}. Required (and used) only when \code{prior_prec1_type = "gamma"}.}
 
 \item{lag_update}{Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
 computing acceptance proportions. Default is 50.}
@@ -81,6 +85,19 @@ Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed for
 reproducibility. Default is \code{NULL} (no seed set).}
+
+\item{prior_prec1_type}{Character, prior on the innovation precision
+\eqn{1/W_1}: \code{"gamma"} (default) for a Gamma prior on the precision, or
+\code{"halft"} / \code{"halfcauchy"} for a Half-t / Half-Cauchy prior on
+\eqn{\sqrt{W_1}} (Gelman, 2006). \code{"halfcauchy"} is Half-t with \code{df = 1}.}
+
+\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A_1} of the Half-t prior for
+\eqn{\sqrt{W_1}}. Required when \code{prior_prec1_type} is \code{"halft"} or
+\code{"halfcauchy"}; ignored otherwise.}
+
+\item{prior_prec1_df}{Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
+prior for \eqn{\sqrt{W_1}}. Default \code{1} (Half-Cauchy). Must equal \code{1} when
+\code{prior_prec1_type = "halfcauchy"}.}
 }
 \value{
 An object of class \code{c("poisson_locallevel", "pdm_mcmc", "list")}

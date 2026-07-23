@@ -32,7 +32,16 @@ mcmc_normal_mixture_locallevel(
   return_accept_prop = FALSE,
   verbose = FALSE,
   bar_width = 60,
-  seed = NULL
+  seed = NULL,
+  prior_prec01_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec01_scale = NULL,
+  prior_prec01_df = 1,
+  prior_prec02_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec02_scale = NULL,
+  prior_prec02_df = 1,
+  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec1_scale = NULL,
+  prior_prec1_df = 1
 )
 }
 \arguments{
@@ -54,10 +63,11 @@ If \code{NULL} (default), set to the 25th percentile of \code{y}.}
 Default is 0.01 (vague prior).}
 
 \item{prior_prec01_shape}{Numeric > 0, shape parameter of the Gamma prior for
-the precision of component 1 (\eqn{\phi_1}). Default is 0.01 (vague prior).}
+the precision of component 1 (\eqn{\phi_1}). Default is 0.01 (vague prior).
+Used only when \code{prior_prec01_type = "gamma"}.}
 
 \item{prior_prec01_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_1}.
-Default is 0.01 (vague prior).}
+Default is 0.01 (vague prior). Used only when \code{prior_prec01_type = "gamma"}.}
 
 \item{prior_mu02_mean}{Numeric, prior mean for the mean of component 2 (\eqn{\mu_2}).
 If \code{NULL} (default), set to the 75th percentile of \code{y}.}
@@ -66,10 +76,11 @@ If \code{NULL} (default), set to the 75th percentile of \code{y}.}
 Default is 0.01 (vague prior).}
 
 \item{prior_prec02_shape}{Numeric > 0, shape parameter of the Gamma prior for
-the precision of component 2 (\eqn{\phi_2}). Default is 0.01 (vague prior).}
+the precision of component 2 (\eqn{\phi_2}). Default is 0.01 (vague prior).
+Used only when \code{prior_prec02_type = "gamma"}.}
 
 \item{prior_prec02_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_2}.
-Default is 0.01 (vague prior).}
+Default is 0.01 (vague prior). Used only when \code{prior_prec02_type = "gamma"}.}
 
 \item{prior_theta01_mean}{Numeric, prior mean for the initial level state
 \eqn{\theta_{0,1}}. Default is 0.}
@@ -78,10 +89,12 @@ Default is 0.01 (vague prior).}
 \eqn{\theta_{0,1}}. Default is 0.01 (vague prior).}
 
 \item{prior_prec1_shape}{Numeric > 0, shape parameter of the Gamma prior for
-the level innovation precision \eqn{1/W_1}. Default is 0.01 (vague prior).}
+the level innovation precision \eqn{1/W_1}. Default is 0.01 (vague prior).
+Used only when \code{prior_prec1_type = "gamma"}.}
 
 \item{prior_prec1_rate}{Numeric > 0, rate parameter of the Gamma prior for
-\eqn{1/W_1}. Default is 0.01 (vague prior).}
+\eqn{1/W_1}. Default is 0.01 (vague prior). Used only when
+\code{prior_prec1_type = "gamma"}.}
 
 \item{lag_update}{Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
 computing acceptance proportions (logit link only). Adaptation occurs at MCMC iterations
@@ -127,6 +140,38 @@ Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed for
 reproducibility. Default is \code{NULL} (no seed set).}
+
+\item{prior_prec01_type}{Character, prior on the component-1 precision
+\eqn{\phi_1}: \code{"gamma"} (default) for a Gamma prior on the precision, or
+\code{"halft"} / \code{"halfcauchy"} for a Half-t / Half-Cauchy prior on the component
+standard deviation \eqn{\sqrt{1/\phi_1}} (Gelman, 2006). \code{"halfcauchy"} is
+Half-t with \code{df = 1}.}
+
+\item{prior_prec01_scale}{Numeric > 0, scale \eqn{A} of the Half-t prior for
+\eqn{\sqrt{1/\phi_1}}. Required when \code{prior_prec01_type} is
+\code{"halft"}/\code{"halfcauchy"}.}
+
+\item{prior_prec01_df}{Numeric > 0, degrees of freedom of the Half-t prior for
+\eqn{\sqrt{1/\phi_1}}. Default \code{1} (Half-Cauchy).}
+
+\item{prior_prec02_type}{Character, prior on the component-2 precision
+\eqn{\phi_2} (\code{"gamma"} default, or \code{"halft"} / \code{"halfcauchy"}).}
+
+\item{prior_prec02_scale}{Numeric > 0, Half-t scale for \eqn{\sqrt{1/\phi_2}}.
+Required when \code{prior_prec02_type} is \code{"halft"}/\code{"halfcauchy"}.}
+
+\item{prior_prec02_df}{Numeric > 0, Half-t df for \eqn{\sqrt{1/\phi_2}}.
+Default \code{1} (Half-Cauchy).}
+
+\item{prior_prec1_type}{Character, prior on the level innovation precision
+\eqn{1/W_1} (\code{"gamma"} default, or \code{"halft"} / \code{"halfcauchy"} for a Half-t /
+Half-Cauchy prior on \eqn{\sqrt{W_1}}).}
+
+\item{prior_prec1_scale}{Numeric > 0, Half-t scale \eqn{A_1} for \eqn{\sqrt{W_1}}.
+Required when \code{prior_prec1_type} is \code{"halft"}/\code{"halfcauchy"}.}
+
+\item{prior_prec1_df}{Numeric > 0, Half-t df \eqn{\nu_1} for \eqn{\sqrt{W_1}}.
+Default \code{1} (Half-Cauchy).}
 }
 \value{
 A list with components:

@@ -82,19 +82,25 @@ test_that("generate_alpha_logit_binomial (local trend) runs and is reproducible"
 
 
 
-test_that("logit CWMH state update clamps a runaway latent state", {
+test_that("logit CWMH alpha stays inside the guarded band for a saturated state", {
 
-  # Regression test for the logit saturation guard (clamp_logit_state /
-  # LOGIT_THETA_CLAMP in src/cwmh_binomial.c), the symmetric counterpart of the
-  # probit guard. From a saturated state (theta ~ 50, all-success data) the
-  # likelihood is flat, so without the guard theta_1 could random-walk into the
-  # tail; the guard must keep it inside the [-36, 36] band and alpha in (0, 1).
+  # Regression test for the logit probability guard (clamp_link_alpha /
+  # ilogit_guarded in src/cwmh_binomial.c), the counterpart of the probit guard.
+  # From a saturated state (theta ~ 50, all-success data) the likelihood is flat
+  # and the latent state is left unclamped, so theta_1 may stay large; the guard
+  # constrains only the probability alpha = ilogit(theta_1) to stay strictly
+  # inside (0, 1), within [2e-16, 1 - 2.3e-16], and equal to the clamped
+  # plogis(theta_1). It also keeps ilogit finite inside the likelihood, so the
+  # accept/reject step never sees an exact 0 or 1 (which would give dbinom = -Inf).
+  link_alpha_min <- 2e-16
+  link_alpha_max <- 1 - 2.3e-16
+  clamp_link_alpha <- function(p) pmin(pmax(p, link_alpha_min), link_alpha_max)
+
   test_C <- function(theta_1_in, theta_01_in, prec_theta1_in, y, n_trials) {
     .Call("_pdm_test_generate_alpha_logit_binomial_locallevel",
           theta_1_in, theta_01_in, prec_theta1_in, y, n_trials)
   }
 
-  n <- 6
   theta_1_in <- c(50, 55, 60, -50, -55, -60)
   n_trials <- 10
   y <- c(10, 10, 10, 0, 0, 0)   # data agrees with the saturated states
@@ -103,9 +109,9 @@ test_that("logit CWMH state update clamps a runaway latent state", {
   res <- test_C(theta_1_in, 0.0, 5.0, y, n_trials)
 
   expect_true(all(is.finite(res$theta_1)))
-  expect_true(all(abs(res$theta_1) <= 36 + 1e-9),
-              info = "latent state must be clamped to the [-36, 36] band")
   expect_true(all(res$alpha > 0 & res$alpha < 1),
               info = "alpha must be strictly inside (0, 1)")
-  expect_equal(res$alpha, plogis(res$theta_1), tolerance = 1e-12)
+  expect_true(all(res$alpha >= link_alpha_min & res$alpha <= link_alpha_max),
+              info = "alpha must stay within [2e-16, 1 - 2.3e-16]")
+  expect_equal(res$alpha, clamp_link_alpha(plogis(res$theta_1)), tolerance = 1e-12)
 })

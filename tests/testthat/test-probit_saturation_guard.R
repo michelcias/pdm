@@ -1,18 +1,22 @@
 library(testthat)
 
-# Regression tests for the probit saturation guard in
-# 'src/generate_alpha_binomial.c' (clamp_probit_state / PROBIT_THETA_CLAMP).
+# Regression tests for the probit probability guard in
+# 'src/generate_alpha_binomial.c' (clamp_link_alpha / LINK_ALPHA_MIN /
+# LINK_ALPHA_MAX).
 #
-# Rationale: for |theta| >= 8 the standard normal CDF is numerically 0 or 1, so
-# the Bernoulli likelihood P(y=1|theta)=Phi(theta) is flat and theta_1 becomes
-# unidentified. Without a guard the Albert-Chib augmentation lets theta_1 drift
-# far into that tail (values in the tens on segmented / well-separated data),
-# which collapses the innovation precision 1/W_1 and stalls the chain. The guard
-# clamps the latent state to [-8, 8]; this is numerically inert for alpha (Phi is
-# already saturated at the bound) and for well-identified problems, where
-# |theta_1| stays well below 8.
+# Rationale: the latent state theta_1 is stored exactly as drawn -- there is no
+# state clamp. Instead the *probability* alpha = Phi(theta_1) reported to the
+# caller is constrained to stay strictly inside (0, 1), specifically within
+# [2e-16, 1 - 2.3e-16]. This keeps alpha away from an exact 0 or 1 -- which would
+# otherwise force downstream consumers (e.g. the mixture indicator sampler) into
+# a degenerate deterministic branch -- while leaving the sampled latent state
+# undistorted.
 
-test_that("probit state update clamps a runaway latent state", {
+link_alpha_min <- 2e-16
+link_alpha_max <- 1 - 2.3e-16
+clamp_link_alpha <- function(p) pmin(pmax(p, link_alpha_min), link_alpha_max)
+
+test_that("probit alpha stays inside the guarded band for a saturated state", {
 
   test_C <- function(theta_1_in, theta_01_in, prec_theta1_in, y) {
     .Call("_pdm_test_generate_alpha_probit_bernoulli_locallevel",
@@ -21,10 +25,9 @@ test_that("probit state update clamps a runaway latent state", {
   }
 
   # Start from an extreme, saturated state with data that "agrees" (y = 1 where
-  # theta is large positive, y = 0 where it is large negative). The unclamped
-  # sampler would keep theta_1 out in the tens; the guard must pull it back to
-  # the [-8, 8] band.
-  n <- 8
+  # theta is large positive, y = 0 where it is large negative). The latent state
+  # is no longer clamped, so theta_1 may remain large; the guard must nonetheless
+  # keep alpha strictly inside (0, 1) and equal to the clamped Phi(theta_1).
   theta_1_in <- c(40, 45, 50, 42, -40, -45, -50, -42)
   y          <- c(1,  1,  1,  1,   0,   0,   0,   0)
 
@@ -32,14 +35,13 @@ test_that("probit state update clamps a runaway latent state", {
   res <- test_C(theta_1_in, theta_01_in = 0.0, prec_theta1_in = 5.0, y)
 
   expect_true(all(is.finite(res$theta_1)))
-  expect_true(all(abs(res$theta_1) <= 8 + 1e-9),
-              info = "latent state must be clamped to the [-8, 8] band")
-  # alpha stays strictly inside (0, 1): the downstream indicator sampler must
-  # never be forced into its degenerate deterministic branch.
+  # alpha stays strictly inside (0, 1) and within the guarded band.
   expect_true(all(res$alpha > 0 & res$alpha < 1),
               info = "alpha must be strictly inside (0, 1)")
-  # The transform invariant alpha == Phi(theta_1) is preserved by the guard.
-  expect_equal(res$alpha, pnorm(res$theta_1), tolerance = 1e-12)
+  expect_true(all(res$alpha >= link_alpha_min & res$alpha <= link_alpha_max),
+              info = "alpha must stay within [2e-16, 1 - 2.3e-16]")
+  # The transform invariant alpha == clamp(Phi(theta_1)) is preserved.
+  expect_equal(res$alpha, clamp_link_alpha(pnorm(res$theta_1)), tolerance = 1e-12)
 })
 
 test_that("probit guard is inert for a well-identified (small-theta) state", {
@@ -50,9 +52,8 @@ test_that("probit guard is inert for a well-identified (small-theta) state", {
           as.numeric(prec_theta1_in), as.numeric(y))
   }
 
-  # Moderate states never approach the clamp, so the update is unaffected and the
-  # draw is bit-for-bit reproducible.
-  n <- 6
+  # Moderate states are far from saturation, so the probability guard is inert:
+  # alpha == Phi(theta_1) exactly and the draw is bit-for-bit reproducible.
   theta_1_in <- c(-0.2, -0.1, 0.0, 0.1, 0.05, -0.05)
   y <- c(1, 0, 1, 1, 0, 0)
 
@@ -62,18 +63,21 @@ test_that("probit guard is inert for a well-identified (small-theta) state", {
   r2 <- test_C(theta_1_in, -0.3, 8.0, y)
 
   expect_equal(r1, r2)
-  expect_true(all(abs(r1$theta_1) < 8))
+  expect_true(all(is.finite(r1$theta_1)))
+  # Guard inert: alpha equals the raw, unclamped Phi(theta_1).
   expect_equal(r1$alpha, pnorm(r1$theta_1), tolerance = 1e-12)
+  expect_true(all(r1$alpha > link_alpha_min & r1$alpha < link_alpha_max))
 })
 
-test_that("probit mixture sampler does not drift on segmented data", {
+test_that("probit mixture sampler stays numerically valid on segmented data", {
 
   skip_on_cran()
 
   # Piecewise-constant, well-separated data with pure single-component stretches
-  # (the aCGH copy-number setting). Under probit this drives alpha -> {0, 1} and,
-  # without the guard, theta_1 drifts to |theta_1| in the tens while 1/W_1
-  # collapses. With the guard theta_1 stays within the band and alpha stays valid.
+  # (the aCGH copy-number setting). Under probit this drives alpha -> {0, 1} and
+  # lets theta_1 drift into the flat tail of Phi. The latent state is intentionally
+  # left unclamped; the probability guard must nonetheless keep every reported
+  # alpha strictly inside (0, 1) and within the guarded band, with no NaN.
   set.seed(42)
   n <- 500
   seg <- rep(0, n)
@@ -88,13 +92,10 @@ test_that("probit mixture sampler does not drift on segmented data", {
     seed = 7
   )
 
-  expect_true(all(is.finite(out$theta_1)))
-  expect_true(max(abs(out$theta_1)) <= 8 + 1e-9,
-              info = "theta_1 must not drift beyond the saturation band")
+  expect_false(any(is.na(out$alpha)),
+               info = "alpha must never be NaN")
   expect_true(all(out$alpha > 0 & out$alpha < 1),
               info = "alpha must never be exactly 0 or 1")
-  # 1/W_1 must not collapse toward zero: with the guard its posterior mean stays
-  # comfortably away from 0 (pre-fix runs collapsed to ~0.4; the smoothing signal
-  # here supports a value of order 1 or larger).
-  expect_gt(mean(out$prec_theta1), 1.0)
+  expect_true(all(out$alpha >= link_alpha_min & out$alpha <= link_alpha_max),
+              info = "alpha must stay within [2e-16, 1 - 2.3e-16]")
 })

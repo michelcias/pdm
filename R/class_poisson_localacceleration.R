@@ -481,7 +481,10 @@ is.poisson_localacceleration <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_poisson_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_poisson_localacceleration}} (model generator),
+#'   \code{\link{plot.poisson_localacceleration}}, \code{\link{summary.poisson_localacceleration}}.
+#'
 #' @export
 print.poisson_localacceleration <- function(x, digits = 3, ...) {
 

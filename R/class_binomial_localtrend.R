@@ -489,7 +489,10 @@ is.binomial_localtrend <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_binomial_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_binomial_localtrend}} (model generator),
+#'   \code{\link{plot.binomial_localtrend}}, \code{\link{summary.binomial_localtrend}}.
+#'
 #' @export
 print.binomial_localtrend <- function(x, digits = 3, ...) {
 

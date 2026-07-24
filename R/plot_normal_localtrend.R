@@ -317,8 +317,9 @@
 #'
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_localtrend}},
-#'   \code{\link{summary.normal_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_normal_localtrend}} (model generator),
+#'   \code{\link{print.normal_localtrend}}, \code{\link{summary.normal_localtrend}}.
 #'
 #' @export
 plot.normal_localtrend <- function(x,

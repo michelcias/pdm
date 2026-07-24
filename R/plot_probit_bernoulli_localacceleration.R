@@ -377,8 +377,9 @@
 #'
 #' }
 #'
-#' @seealso \code{\link{mcmc_probit_bernoulli_localacceleration}},
-#'   \code{\link{summary.probit_bernoulli_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_probit_bernoulli_localacceleration}} (model generator),
+#'   \code{\link{print.probit_bernoulli_localacceleration}}, \code{\link{summary.probit_bernoulli_localacceleration}}.
 #'
 #' @export
 plot.probit_bernoulli_localacceleration <- function(x,

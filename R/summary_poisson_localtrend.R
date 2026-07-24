@@ -114,8 +114,9 @@
 #' summary(out, ci_level = 0.80)  # 80% HPD interval
 #' }
 #'
-#' @seealso \code{\link{mcmc_poisson_localtrend}},
-#'   \code{\link{print.poisson_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_poisson_localtrend}} (model generator),
+#'   \code{\link{plot.poisson_localtrend}}, \code{\link{print.poisson_localtrend}}.
 #'
 #' @export
 summary.poisson_localtrend <- function(object,

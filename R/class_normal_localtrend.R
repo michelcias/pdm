@@ -380,7 +380,10 @@ is.normal_localtrend <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_normal_localtrend}} (model generator),
+#'   \code{\link{plot.normal_localtrend}}, \code{\link{summary.normal_localtrend}}.
+#'
 #' @export
 print.normal_localtrend <- function(x, digits = 3, ...) {
 

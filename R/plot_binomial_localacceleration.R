@@ -408,8 +408,9 @@
 #'
 #' }
 #'
-#' @seealso \code{\link{mcmc_binomial_localacceleration}},
-#'   \code{\link{summary.binomial_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_binomial_localacceleration}} (model generator),
+#'   \code{\link{print.binomial_localacceleration}}, \code{\link{summary.binomial_localacceleration}}.
 #'
 #' @export
 plot.binomial_localacceleration <- function(x,

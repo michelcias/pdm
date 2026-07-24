@@ -373,7 +373,10 @@ is.probit_bernoulli_localtrend <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_probit_bernoulli_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_probit_bernoulli_localtrend}} (model generator),
+#'   \code{\link{plot.probit_bernoulli_localtrend}}, \code{\link{summary.probit_bernoulli_localtrend}}.
+#'
 #' @export
 print.probit_bernoulli_localtrend <- function(x, digits = 3, ...) {
 

@@ -516,7 +516,10 @@ is.normal_mixture_locallevel <- function(x) {
 #' summary(out_logit)
 #' }
 #'
-#' @seealso \code{\link{summary.normal_mixture_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_normal_mixture_locallevel}} (model generator),
+#'   \code{\link{plot.normal_mixture_locallevel}}, \code{\link{summary.normal_mixture_locallevel}}.
+#'
 #' @export
 print.normal_mixture_locallevel <- function(x, digits = 3, ...) {
 

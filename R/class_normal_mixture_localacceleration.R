@@ -540,7 +540,10 @@ is.normal_mixture_localacceleration <- function(x) {
 #' summary(out_logit)
 #' }
 #'
-#' @seealso \code{\link{summary.normal_mixture_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_normal_mixture_localacceleration}} (model generator),
+#'   \code{\link{plot.normal_mixture_localacceleration}}, \code{\link{summary.normal_mixture_localacceleration}}.
+#'
 #' @export
 print.normal_mixture_localacceleration <- function(x, digits = 3, ...) {
 

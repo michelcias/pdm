@@ -473,7 +473,10 @@ is.poisson_localtrend <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_poisson_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_poisson_localtrend}} (model generator),
+#'   \code{\link{plot.poisson_localtrend}}, \code{\link{summary.poisson_localtrend}}.
+#'
 #' @export
 print.poisson_localtrend <- function(x, digits = 3, ...) {
 

@@ -282,8 +282,9 @@
 #'
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_locallevel}},
-#'   \code{\link{summary.normal_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_normal_locallevel}} (model generator),
+#'   \code{\link{print.normal_locallevel}}, \code{\link{summary.normal_locallevel}}.
 #'
 #' @export
 plot.normal_locallevel <- function(x,

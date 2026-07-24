@@ -235,463 +235,47 @@
 #'   prior_theta02_prec = 1 / var(y),
 #'   prior_theta03_mean = 0,
 #'   prior_theta03_prec = 1e-3,
-#'   prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,  # sqrt(W[1])
-#'   prior_prec2_type   = "halfcauchy", prior_prec2_scale = 1,  # sqrt(W[2])
-#'   prior_prec3_type   = "halfcauchy", prior_prec3_scale = 1,  # sqrt(W[3])
-#'   prior_prec_y_shape = 1e-1, prior_prec_y_rate = 1e-1,       # 1/V keeps Gamma
+#'   prior_prec1_type   = "halfcauchy",
+#'   prior_prec1_scale  = 1,     # sqrt(W[1])
+#'   prior_prec2_type   = "halfcauchy",
+#'   prior_prec2_scale  = 1,     # sqrt(W[2])
+#'   prior_prec3_type   = "halfcauchy",
+#'   prior_prec3_scale  = 1,     # sqrt(W[3])
+#'   prior_prec_y_shape = 1e-1,
+#'   prior_prec_y_rate  = 1e-1,  # 1/V keeps Gamma
 #'   seed               = 456
 #' )
 #'
 #' ## Posterior analysis and visualization
-#' # The following plots show how to analyze the posterior distributions.
-#' # Point estimates are based on the median of posterior samples.
+#' # Use the plot method for comprehensive diagnostics
 #' \donttest{
-#'   # --- 0. Plot the simulated data ---
-#'   plot.ts(
-#'     y,
-#'     main = "Simulated data",
-#'     ylab = expression(y[t]),
-#'     xlab = "t"
-#'   )
+#'   # --- Gamma-prior fit (`out`) ---
+#'   # Complete dashboard with all diagnostics
+#'   plot(out, type = "all")
 #'
-#'   # --- 1. Latent Level (theta[t,1]) ---
+#'   # Individual diagnostic types
+#'   plot(out, type = "mcmc", which = 1)      # Observation precision (V^-1)
+#'   plot(out, type = "mcmc", which = 2:4)    # Initial states (theta_0)
+#'   plot(out, type = "mcmc", which = 5:7)    # Innovation precisions (W^-1)
+#'   plot(out, type = "states")               # Dynamic states
 #'
-#'   # Visualize trajectories from the first few posterior samples
-#'   num_traj_to_plot <- 20
-#'   matplot(
-#'     t(out$theta_1[1:num_traj_to_plot, ]),
-#'     type = "l",
-#'     lty = 1,
-#'     col = grDevices::rainbow(num_traj_to_plot, alpha = 0.5),
-#'     xlab = "t",
-#'     ylab = expression(theta["t,1"]),
-#'     main = "Sampled trajectories for latent level"
-#'   )
+#'   # Plot with true states for comparison
+#'   plot(out, type = "states",
+#'        true_values = list(theta_1 = theta1_true,
+#'                           theta_2 = theta2_true,
+#'                           theta_3 = theta3_true))
 #'
-#'   # Plot true and estimated (median) latent level
-#'   theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
-#'   range_theta_1 <- range(theta_1_estimate, theta1_true)
-#'   r1_theta1 <- range_theta_1[1]
-#'   r2_theta1 <- range_theta_1[2] + 0.25 * diff(range_theta_1)
+#'   # --- Half-Cauchy-prior fit (`out_hc`) ---
+#'   # The same diagnostics for the weakly-informative Half-Cauchy fit.
+#'   plot(out_hc, type = "all")
 #'
-#'   plot.ts(
-#'     theta1_true,
-#'     col = "red",
-#'     type = "l",
-#'     xlab = "t",
-#'     ylim = c(r1_theta1, r2_theta1),
-#'     lty = 2,
-#'     ylab = expression(theta["t,1"]),
-#'     main = "Latent level"
-#'   )
-#'   points(theta_1_estimate, type = "l")
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["t,1"]), expression(hat(theta)["t,1"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n"
-#'   )
+#'   plot(out_hc, type = "mcmc", which = 2:4)  # Initial states (theta_0)
+#'   plot(out_hc, type = "states")             # Dynamic states
 #'
-#'   # --- 2. Latent Trend (theta[t,2]) ---
-#'   theta_2_estimate <- apply(X = out$theta_2, MARGIN = 2, FUN = median)
-#'   range_theta_2 <- range(theta_2_estimate, theta2_true)
-#'   r1_theta2 <- range_theta_2[1]
-#'   r2_theta2 <- range_theta_2[2] + 0.25 * diff(range_theta_2)
-#'
-#'   plot.ts(
-#'     theta2_true,
-#'     col = "red",
-#'     type = "l",
-#'     xlab = "t",
-#'     ylim = c(r1_theta2, r2_theta2),
-#'     lty = 2,
-#'     ylab = expression(theta["t,2"]),
-#'     main = "Latent trend"
-#'   )
-#'   points(theta_2_estimate, type = "l")
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["t,2"]), expression(hat(theta)["t,2"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 3. Latent Acceleration (theta[t,3]) ---
-#'   theta_3_estimate <- apply(X = out$theta_3, MARGIN = 2, FUN = median)
-#'   range_theta_3 <- range(theta_3_estimate, theta3_true)
-#'   r1_theta3 <- range_theta_3[1]
-#'   r2_theta3 <- range_theta_3[2] + 0.25 * diff(range_theta_3)
-#'
-#'   plot.ts(
-#'     theta3_true,
-#'     col = "red",
-#'     type = "l",
-#'     xlab = "t",
-#'     ylim = c(r1_theta3, r2_theta3),
-#'     lty = 2,
-#'     ylab = expression(theta["t,3"]),
-#'     main = "Latent acceleration"
-#'   )
-#'   points(theta_3_estimate, type = "l")
-#'   legend(
-#'     "topright",
-#'     legend = c(expression(theta["t,3"]), expression(hat(theta)["t,3"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 4. Initial Level (theta[0,1]) ---
-#'   # Trace plot
-#'   range_theta_01 <- range(out$theta_01, theta01_true)
-#'   r1_theta01 <- range_theta_01[1]
-#'   r2_theta01 <- range_theta_01[2] + 0.25 * diff(range_theta_01)
-#'
-#'   plot.ts(
-#'     out$theta_01,
-#'     col = "gray",
-#'     xlab = "Iterations",
-#'     ylab = expression(theta["0,1"]),
-#'     main = "Trace Plot of Initial Level",
-#'     ylim = c(r1_theta01, r2_theta01)
-#'   )
-#'   abline(
-#'     h = c(theta01_true, median(out$theta_01)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # Density plot
-#'   plot(
-#'     density(out$theta_01),
-#'     main = "Posterior Density of Initial Level",
-#'     xlab = expression(theta["0,1"])
-#'   )
-#'   abline(
-#'     v = c(theta01_true, median(out$theta_01)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(theta["0,1"]), expression(hat(theta)["0,1"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 5. Initial Trend (theta[0,2]) ---
-#'   # Trace plot
-#'   range_theta_02 <- range(out$theta_02, theta02_true)
-#'   r1_theta02 <- range_theta_02[1]
-#'   r2_theta02 <- range_theta_02[2] + 0.25 * diff(range_theta_02)
-#'
-#'   plot.ts(
-#'     out$theta_02,
-#'     col = "gray",
-#'     xlab = "Iterations",
-#'     ylab = expression(theta["0,2"]),
-#'     main = "Trace Plot of Initial Trend",
-#'     ylim = c(r1_theta02, r2_theta02)
-#'   )
-#'   abline(
-#'     h = c(theta02_true, median(out$theta_02)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(theta["0,2"]), expression(hat(theta)["0,2"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # Density plot
-#'   plot(
-#'     density(out$theta_02),
-#'     main = "Posterior Density of Initial Trend",
-#'     xlab = expression(theta["0,2"])
-#'   )
-#'   abline(
-#'     v = c(theta02_true, median(out$theta_02)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(theta["0,2"]), expression(hat(theta)["0,2"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 6. Initial Acceleration (theta[0,3]) ---
-#'   # Trace plot
-#'   range_theta_03 <- range(out$theta_03, theta03_true)
-#'   r1_theta03 <- range_theta_03[1]
-#'   r2_theta03 <- range_theta_03[2] + 0.25 * diff(range_theta_03)
-#'
-#'   plot.ts(
-#'     out$theta_03,
-#'     col = "gray",
-#'     xlab = "Iterations",
-#'     ylab = expression(theta["0,3"]),
-#'     main = "Trace Plot of Initial Acceleration",
-#'     ylim = c(r1_theta03, r2_theta03)
-#'   )
-#'   abline(
-#'     h = c(theta03_true, median(out$theta_03)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(theta["0,3"]), expression(hat(theta)["0,3"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # Density plot
-#'   plot(
-#'     density(out$theta_03),
-#'     main = "Posterior Density of Initial Acceleration",
-#'     xlab = expression(theta["0,3"])
-#'   )
-#'   abline(
-#'     v = c(theta03_true, median(out$theta_03)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(theta["0,3"]), expression(hat(theta)["0,3"])),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 7. Level Precision (1/W_1) ---
-#'   # Trace plot
-#'   range_prec_theta1 <- range(out$prec_theta1, prec1_true)
-#'   r1_prec1 <- range_prec_theta1[1]
-#'   r2_prec1 <- range_prec_theta1[2] + 0.25 * diff(range_prec_theta1)
-#'
-#'   plot.ts(
-#'     out$prec_theta1,
-#'     col = "gray",
-#'     xlab = "Iterations",
-#'     ylab = expression(1/W[1]),
-#'     main = "Trace Plot of Level Precision",
-#'     ylim = c(r1_prec1, r2_prec1)
-#'   )
-#'   abline(
-#'     h = c(prec1_true, median(out$prec_theta1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # Density plot
-#'   plot(
-#'     density(out$prec_theta1),
-#'     main = "Posterior Density of Level Precision",
-#'     xlab = expression(W[1]^-1)
-#'   )
-#'   abline(
-#'     v = c(prec1_true, median(out$prec_theta1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(W[1]^-1), expression(hat(W)[1]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 8. Trend Precision (1/W_2) ---
-#'   # Trace plot
-#'   range_prec_theta2 <- range(out$prec_theta2, prec2_true)
-#'   r1_prec2 <- range_prec_theta2[1]
-#'   r2_prec2 <- range_prec_theta2[2] + 0.25 * diff(range_prec_theta2)
-#'
-#'   plot.ts(
-#'     out$prec_theta2,
-#'     col = "gray",
-#'     xlab = "Iterations",
-#'     ylab = expression(1/W[2]),
-#'     main = "Trace Plot of Trend Precision",
-#'     ylim = c(r1_prec2, r2_prec2)
-#'   )
-#'   abline(
-#'     h = c(prec2_true, median(out$prec_theta2)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(W[2]^-1), expression(hat(W)[2]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # Density plot
-#'   plot(
-#'     density(out$prec_theta2),
-#'     main = "Posterior Density of Trend Precision",
-#'     xlab = expression(W[2]^-1)
-#'   )
-#'   abline(
-#'     v = c(prec2_true, median(out$prec_theta2)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(W[2]^-1), expression(hat(W)[2]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 9. Acceleration Precision (1/W_3) ---
-#'   # Trace plot
-#'   range_prec_theta3 <- range(out$prec_theta3, prec3_true)
-#'   r1_prec3 <- range_prec_theta3[1]
-#'   r2_prec3 <- range_prec_theta3[2] + 0.25 * diff(range_prec_theta3)
-#'
-#'   plot.ts(
-#'     out$prec_theta3,
-#'     col = "gray",
-#'     xlab = "Iterations",
-#'     ylab = expression(1/W[3]),
-#'     main = "Trace Plot of Acceleration Precision",
-#'     ylim = c(r1_prec3, r2_prec3)
-#'   )
-#'   abline(
-#'     h = c(prec3_true, median(out$prec_theta3)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(W[3]^-1), expression(hat(W)[3]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # Density plot
-#'   plot(
-#'     density(out$prec_theta3),
-#'     main = "Posterior Density of Acceleration Precision",
-#'     xlab = expression(W[3]^-1)
-#'   )
-#'   abline(
-#'     v = c(prec3_true, median(out$prec_theta3)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(W[3]^-1), expression(hat(W)[3]^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # --- 10. Observation Precision (1/V) ---
-#'   # Trace plot
-#'   range_prec_y <- range(out$prec_y, prec_y_true)
-#'   r1_prec_y <- range_prec_y[1]
-#'   r2_prec_y <- range_prec_y[2] + 0.25 * diff(range_prec_y)
-#'
-#'   plot.ts(
-#'     out$prec_y,
-#'     col = "gray",
-#'     xlab = "Iterations",
-#'     ylab = expression(1/V),
-#'     main = "Trace Plot of Observation Precision",
-#'     ylim = c(r1_prec_y, r2_prec_y)
-#'   )
-#'   abline(
-#'     h = c(prec_y_true, median(out$prec_y)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(V^-1), expression(hat(V)^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'
-#'   # Density plot
-#'   plot(
-#'     density(out$prec_y),
-#'     main = "Posterior Density of Observation Precision",
-#'     xlab = expression(V^-1)
-#'   )
-#'   abline(
-#'     v = c(prec_y_true, median(out$prec_y)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
-#'   legend(
-#'     "topright",
-#'     bty = "n",
-#'     legend = c(expression(V^-1), expression(hat(V)^-1)),
-#'     col = c("red", "black"),
-#'     lty = c(2, 1),
-#'     lwd = 2
-#'   )
+#'   plot(out_hc, type = "states",
+#'        true_values = list(theta_1 = theta1_true,
+#'                           theta_2 = theta2_true,
+#'                           theta_3 = theta3_true))
 #' }
 #'
 #' @references
@@ -702,7 +286,13 @@
 #' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
 #' 6(4), 847-900.
 #'
-#' @seealso \link[pdm]{mcmc_normal_locallevel}, \link[pdm]{mcmc_normal_localtrend}
+#' @seealso
+#'   \code{\link{plot.normal_localacceleration}},
+#'   \code{\link{print.normal_localacceleration}},
+#'   \code{\link{summary.normal_localacceleration}} for methods on the fitted object;
+#'   \code{\link{mcmc_normal_locallevel}} and
+#'   \code{\link{mcmc_normal_localtrend}} for the other dynamic orders.
+#'
 #' @export
 #'
 mcmc_normal_localacceleration <- function(y,

@@ -434,910 +434,68 @@
 #'   burnin             = 2000,
 #'   thinning           = 10,
 #'   n_chain            = 1000,
-#'   prior_prec01_type  = "halfcauchy", prior_prec01_scale = sd(y),
-#'   prior_prec02_type  = "halfcauchy", prior_prec02_scale = sd(y),
-#'   prior_theta01_mean = 0, prior_theta01_prec = 1,
-#'   prior_theta02_mean = 0, prior_theta02_prec = 1,
-#'   prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,
-#'   prior_prec2_type   = "halfcauchy", prior_prec2_scale = 1,
+#'   prior_prec01_type  = "halfcauchy",
+#'   prior_prec01_scale = sd(y),
+#'   prior_prec02_type  = "halfcauchy",
+#'   prior_prec02_scale = sd(y),
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_theta02_mean = 0,
+#'   prior_theta02_prec = 1,
+#'   prior_prec1_type   = "halfcauchy",
+#'   prior_prec1_scale  = 1,
+#'   prior_prec2_type   = "halfcauchy",
+#'   prior_prec2_scale  = 1,
 #'   verbose            = FALSE,
 #'   seed               = 789
 #' )
 #'
 #' ## Posterior analysis and visualization
-#' # The following plots show how to analyze the posterior distributions.
-#' # Point estimates are based on the median of posterior samples.
+#' # Use the plot method for comprehensive diagnostics
 #' \donttest{
-#'   # --- 0. Plot the simulated data with true components ---
-#'
-#'   range_y <- range(y)
-#'   r1_y <- range_y[1] - 0.1 * diff(range_y)
-#'   r2_y <- range_y[2] + 0.1 * diff(range_y)
-#'
-#'   plot(
-#'     y,
-#'     main = "Simulated Gaussian mixture data",
-#'     ylab = expression(y[t]),
-#'     xlab = "t",
-#'     type = "p",
-#'     pch = 16,
-#'     cex = 0.6,
-#'     ylim = c(r1_y, r2_y),
-#'     col = ifelse(z_true == 1, "red", "blue")
-#'   )
-#'   # Overlay the true component means
-#'   abline(h = mu_1_true, col = "blue", lwd = 2, lty = 2)
-#'   abline(h = mu_2_true, col = "red", lwd = 2, lty = 2)
-#'   legend(
-#'     "topleft",
-#'     legend = c(
-#'       "Component 1",
-#'       "Component 2"
-#'     ),
-#'     col = c("blue", "red"),
-#'     lty = c(NA, NA),
-#'     pch = c(16, 16),
-#'     lwd = c(NA, NA),
-#'     bty = "n"
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(mu[1]),
-#'       expression(mu[2])
-#'     ),
-#'     col = c("blue", "red"),
-#'     lty = c(2, 2),
-#'     pch = c(NA, NA),
-#'     lwd = c(2, 2),
-#'     bty = "n"
-#'   )
-#'
-#'   # --- 1. Mixture Weights (alpha[t]) - Logit vs Probit (side by side) ---
-#'   alpha_logit_estimate <- apply(X = out_logit$alpha, MARGIN = 2, FUN = median)
-#'   alpha_probit_estimate <- apply(X = out_probit$alpha, MARGIN = 2, FUN = median)
-#'   alpha_logit_q025 <- apply(X = out_logit$alpha, MARGIN = 2, FUN = quantile, probs = 0.025)
-#'   alpha_logit_q975 <- apply(X = out_logit$alpha, MARGIN = 2, FUN = quantile, probs = 0.975)
-#'   alpha_probit_q025 <- apply(X = out_probit$alpha, MARGIN = 2, FUN = quantile, probs = 0.025)
-#'   alpha_probit_q975 <- apply(X = out_probit$alpha, MARGIN = 2, FUN = quantile, probs = 0.975)
-#'
-#'   par(mfrow = c(1, 2))
-#'
-#'   # Logit
-#'   range_alpha_logit <- range(alpha_true, alpha_logit_estimate,
-#'                              alpha_logit_q025, alpha_logit_q975)
-#'   r1_alpha_logit <- range_alpha_logit[1] - 0.05
-#'   r2_alpha_logit <- range_alpha_logit[2] + 0.30 * diff(range_alpha_logit)
-#'
-#'   plot(
-#'     alpha_true,
-#'     col = "black",
-#'     type = "l",
-#'     lwd = 3,
-#'     xlab = "t",
-#'     ylim = c(r1_alpha_logit, r2_alpha_logit),
-#'     lty = 1,
-#'     ylab = expression(alpha[t]),
-#'     main = "Mixture weights: logit link"
-#'   )
-#'   polygon(
-#'     c(1:length(alpha_logit_estimate), rev(1:length(alpha_logit_estimate))),
-#'     c(alpha_logit_q025, rev(alpha_logit_q975)),
-#'     col = rgb(0.2, 0.5, 0.8, alpha = 0.2),
-#'     border = NA
-#'   )
-#'   lines(alpha_logit_estimate, col = "blue", lwd = 2, lty = 2)
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(alpha[t]),
-#'       expression(hat(alpha)[t]),
-#'       "95% CI"
-#'     ),
-#'     col = c("black", "blue", rgb(0.2, 0.5, 0.8, alpha = 0.5)),
-#'     lty = c(1, 2, 1),
-#'     lwd = c(3, 2, 8),
-#'     bty = "n"
-#'   )
-#'
-#'   # Probit
-#'   range_alpha_probit <- range(alpha_true, alpha_probit_estimate,
-#'                               alpha_probit_q025, alpha_probit_q975)
-#'   r1_alpha_probit <- range_alpha_probit[1] - 0.05
-#'   r2_alpha_probit <- range_alpha_probit[2] + 0.25 * diff(range_alpha_probit)
-#'
-#'   plot(
-#'     alpha_true,
-#'     col = "black",
-#'     type = "l",
-#'     lwd = 3,
-#'     xlab = "t",
-#'     ylim = c(r1_alpha_probit, r2_alpha_probit),
-#'     lty = 1,
-#'     ylab = expression(alpha[t]),
-#'     main = "Mixture weights: probit link"
-#'   )
-#'   polygon(
-#'     c(1:length(alpha_probit_estimate), rev(1:length(alpha_probit_estimate))),
-#'     c(alpha_probit_q025, rev(alpha_probit_q975)),
-#'     col = rgb(0.8, 0.2, 0.5, alpha = 0.2),
-#'     border = NA
-#'   )
-#'   lines(alpha_probit_estimate, col = "red", lwd = 2, lty = 2)
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(alpha[t]),
-#'       expression(hat(alpha)[t]),
-#'       "95% CI"
-#'     ),
-#'     col = c("black", "red", rgb(0.8, 0.2, 0.5, alpha = 0.5)),
-#'     lty = c(1, 2, 1),
-#'     lwd = c(3, 2, 8),
-#'     bty = "n"
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 2. Latent Indicators (z[t]) - Logit vs Probit (side by side) ---
-#'   z_prob_logit <- apply(X = out_logit$z, MARGIN = 2, FUN = median)
-#'   z_prob_probit <- apply(X = out_probit$z, MARGIN = 2, FUN = median)
-#'
-#'   par(mfrow = c(1, 2))
-#'
-#'   # Logit
-#'   plot(
-#'     z_true,
-#'     col = "black",
-#'     type = "p",
-#'     pch = 16,
-#'     cex = 0.8,
-#'     xlab = "t",
-#'     ylim = c(-0.1, 1.35),
-#'     ylab = expression(P(z[t] == 1)),
-#'     main = "Latent indicators: logit link"
-#'   )
-#'   lines(z_prob_logit, col = rgb(0.2, 0.5, 0.8, alpha = 0.2), lwd = 2)
-#'   lines(alpha_true, col = "black", lwd = 2, lty = 2)
-#'   legend(
-#'     x = 0,
-#'     y = 1.35,
-#'     legend = "True z",
-#'     col = 1,
-#'     lty = NA,
-#'     pch = 16,
-#'     lwd = NA,
-#'     bty = "n"
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(hat(P)(z[t] == 1*" | "*data)),
-#'       expression(alpha[t])
-#'     ),
-#'     col = c(rgb(0.2, 0.5, 0.8, alpha = 0.2), "black"),
-#'     lty = c(1, 2),
-#'     pch = c(NA, NA),
-#'     lwd = c(2, 2),
-#'     bty = "n"
-#'   )
-#'
-#'   # Probit
-#'   plot(
-#'     z_true,
-#'     col = "black",
-#'     type = "p",
-#'     pch = 16,
-#'     cex = 0.8,
-#'     xlab = "t",
-#'     ylim = c(-0.1, 1.35),
-#'     ylab = expression(P(z[t] == 1)),
-#'     main = "Latent indicators: probit link"
-#'   )
-#'   lines(z_prob_probit, col = rgb(0.8, 0.2, 0.5, alpha = 0.2), lwd = 2)
-#'   lines(alpha_true, col = "black", lwd = 2, lty = 2)
-#'   legend(
-#'     x = 0,
-#'     y = 1.35,
-#'     legend = "True z",
-#'     col = 1,
-#'     lty = NA,
-#'     pch = 16,
-#'     lwd = NA,
-#'     bty = "n"
-#'   )
-#'   legend(
-#'     "topright",
-#'     legend = c(
-#'       expression(hat(P)(z[t] == 1*" | "*data)),
-#'       expression(alpha[t])
-#'     ),
-#'     col = c(rgb(0.8, 0.2, 0.5, alpha = 0.2), "black"),
-#'     lty = c(1, 2),
-#'     pch = c(NA, NA),
-#'     lwd = c(2, 2),
-#'     bty = "n"
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 3. Component Mean mu[1]: Trace, Density, ACF (Logit top, Probit bottom) ---
-#'   par(mfrow = c(2, 3))
-#'
-#'   # Logit - Trace
-#'   range_mu1_logit <- range(out_logit$mu_1)
-#'   r1_mu1_logit <- range_mu1_logit[1] - 0.1 * diff(range_mu1_logit)
-#'   r2_mu1_logit <- range_mu1_logit[2] + 0.1 * diff(range_mu1_logit)
-#'   plot.ts(
-#'     out_logit$mu_1,
-#'     ylab = expression(mu[1]),
-#'     main = expression(paste("Trace plot: ", mu[1], " (Logit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_mu1_logit, r2_mu1_logit)
-#'   )
-#'   abline(h = mu_1_true, col = "black", lty = 2, lwd = 2)
-#'   abline(h = median(out_logit$mu_1), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - Density
-#'   plot(
-#'     density(out_logit$mu_1),
-#'     main = expression(paste("Density: ", mu[1], " (Logit)")),
-#'     xlab = expression(mu[1]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "blue"
-#'   )
-#'   abline(v = mu_1_true, col = "black", lty = 2, lwd = 2)
-#'   abline(v = median(out_logit$mu_1), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - ACF
-#'   acf(
-#'     out_logit$mu_1,
-#'     main = expression(paste("ACF: ", mu[1], " (Logit)")),
-#'     col = "blue",
-#'     lwd = 2
-#'   )
-#'
-#'   # Probit - Trace
-#'   range_mu1_probit <- range(out_probit$mu_1)
-#'   r1_mu1_probit <- range_mu1_probit[1] - 0.1 * diff(range_mu1_probit)
-#'   r2_mu1_probit <- range_mu1_probit[2] + 0.1 * diff(range_mu1_probit)
-#'   plot.ts(
-#'     out_probit$mu_1,
-#'     ylab = expression(mu[1]),
-#'     main = expression(paste("Trace plot: ", mu[1], " (Probit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_mu1_probit, r2_mu1_probit)
-#'   )
-#'   abline(h = mu_1_true, col = "black", lty = 2, lwd = 2)
-#'   abline(h = median(out_probit$mu_1), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - Density
-#'   plot(
-#'     density(out_probit$mu_1),
-#'     main = expression(paste("Density: ", mu[1], " (Probit)")),
-#'     xlab = expression(mu[1]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "red"
-#'   )
-#'   abline(v = mu_1_true, col = "black", lty = 2, lwd = 2)
-#'   abline(v = median(out_probit$mu_1), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - ACF
-#'   acf(
-#'     out_probit$mu_1,
-#'     main = expression(paste("ACF: ", mu[1], " (Probit)")),
-#'     col = "red",
-#'     lwd = 2
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 4. Component Mean mu[2]: Trace, Density, ACF (Logit top, Probit bottom) ---
-#'   par(mfrow = c(2, 3))
-#'
-#'   # Logit - Trace
-#'   range_mu2_logit <- range(out_logit$mu_2)
-#'   r1_mu2_logit <- range_mu2_logit[1] - 0.1 * diff(range_mu2_logit)
-#'   r2_mu2_logit <- range_mu2_logit[2] + 0.1 * diff(range_mu2_logit)
-#'   plot.ts(
-#'     out_logit$mu_2,
-#'     ylab = expression(mu[2]),
-#'     main = expression(paste("Trace plot: ", mu[2], " (Logit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_mu2_logit, r2_mu2_logit)
-#'   )
-#'   abline(h = mu_2_true, col = "black", lty = 2, lwd = 2)
-#'   abline(h = median(out_logit$mu_2), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - Density
-#'   plot(
-#'     density(out_logit$mu_2),
-#'     main = expression(paste("Density: ", mu[2], " (Logit)")),
-#'     xlab = expression(mu[2]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "blue"
-#'   )
-#'   abline(v = mu_2_true, col = "black", lty = 2, lwd = 2)
-#'   abline(v = median(out_logit$mu_2), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - ACF
-#'   acf(
-#'     out_logit$mu_2,
-#'     main = expression(paste("ACF: ", mu[2], " (Logit)")),
-#'     col = "blue",
-#'     lwd = 2
-#'   )
-#'
-#'   # Probit - Trace
-#'   range_mu2_probit <- range(out_probit$mu_2)
-#'   r1_mu2_probit <- range_mu2_probit[1] - 0.1 * diff(range_mu2_probit)
-#'   r2_mu2_probit <- range_mu2_probit[2] + 0.1 * diff(range_mu2_probit)
-#'   plot.ts(
-#'     out_probit$mu_2,
-#'     ylab = expression(mu[2]),
-#'     main = expression(paste("Trace plot: ", mu[2], " (Probit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_mu2_probit, r2_mu2_probit)
-#'   )
-#'   abline(h = mu_2_true, col = "black", lty = 2, lwd = 2)
-#'   abline(h = median(out_probit$mu_2), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - Density
-#'   plot(
-#'     density(out_probit$mu_2),
-#'     main = expression(paste("Density: ", mu[2], " (Probit)")),
-#'     xlab = expression(mu[2]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "red"
-#'   )
-#'   abline(v = mu_2_true, col = "black", lty = 2, lwd = 2)
-#'   abline(v = median(out_probit$mu_2), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - ACF
-#'   acf(
-#'     out_probit$mu_2,
-#'     main = expression(paste("ACF: ", mu[2], " (Probit)")),
-#'     col = "red",
-#'     lwd = 2
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 5. Component Precision phi[1]: Trace, Density, ACF (Logit top, Probit bottom) ---
-#'   phi_1_true <- 1 / (sigma_1_true^2)
-#'
-#'   par(mfrow = c(2, 3))
-#'
-#'   # Logit - Trace
-#'   range_phi1_logit <- range(out_logit$prec_1)
-#'   r1_phi1_logit <- range_phi1_logit[1] - 0.1 * diff(range_phi1_logit)
-#'   r2_phi1_logit <- range_phi1_logit[2] + 0.1 * diff(range_phi1_logit)
-#'   plot.ts(
-#'     out_logit$prec_1,
-#'     ylab = expression(phi[1]),
-#'     main = expression(paste("Trace plot: ", phi[1], " (Logit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_phi1_logit, r2_phi1_logit)
-#'   )
-#'   abline(h = phi_1_true, col = "black", lty = 2, lwd = 2)
-#'   abline(h = median(out_logit$prec_1), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - Density
-#'   plot(
-#'     density(out_logit$prec_1),
-#'     main = expression(paste("Density: ", phi[1], " (Logit)")),
-#'     xlab = expression(phi[1]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "blue"
-#'   )
-#'   abline(v = phi_1_true, col = "black", lty = 2, lwd = 2)
-#'   abline(v = median(out_logit$prec_1), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - ACF
-#'   acf(
-#'     out_logit$prec_1,
-#'     main = expression(paste("ACF: ", phi[1], " (Logit)")),
-#'     col = "blue",
-#'     lwd = 2
-#'   )
-#'
-#'   # Probit - Trace
-#'   range_phi1_probit <- range(out_probit$prec_1)
-#'   r1_phi1_probit <- range_phi1_probit[1] - 0.1 * diff(range_phi1_probit)
-#'   r2_phi1_probit <- range_phi1_probit[2] + 0.1 * diff(range_phi1_probit)
-#'   plot.ts(
-#'     out_probit$prec_1,
-#'     ylab = expression(phi[1]),
-#'     main = expression(paste("Trace plot: ", phi[1], " (Probit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_phi1_probit, r2_phi1_probit)
-#'   )
-#'   abline(h = phi_1_true, col = "black", lty = 2, lwd = 2)
-#'   abline(h = median(out_probit$prec_1), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - Density
-#'   plot(
-#'     density(out_probit$prec_1),
-#'     main = expression(paste("Density: ", phi[1], " (Probit)")),
-#'     xlab = expression(phi[1]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "red"
-#'   )
-#'   abline(v = phi_1_true, col = "black", lty = 2, lwd = 2)
-#'   abline(v = median(out_probit$prec_1), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - ACF
-#'   acf(
-#'     out_probit$prec_1,
-#'     main = expression(paste("ACF: ", phi[1], " (Probit)")),
-#'     col = "red",
-#'     lwd = 2
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 6. Component Precision phi[2]: Trace, Density, ACF (Logit top, Probit bottom) ---
-#'   phi_2_true <- 1 / (sigma_2_true^2)
-#'
-#'   par(mfrow = c(2, 3))
-#'
-#'   # Logit - Trace
-#'   range_phi2_logit <- range(out_logit$prec_2)
-#'   r1_phi2_logit <- range_phi2_logit[1] - 0.1 * diff(range_phi2_logit)
-#'   r2_phi2_logit <- range_phi2_logit[2] + 0.1 * diff(range_phi2_logit)
-#'   plot.ts(
-#'     out_logit$prec_2,
-#'     ylab = expression(phi[2]),
-#'     main = expression(paste("Trace plot: ", phi[2], " (Logit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_phi2_logit, r2_phi2_logit)
-#'   )
-#'   abline(h = phi_2_true, col = "black", lty = 2, lwd = 2)
-#'   abline(h = median(out_logit$prec_2), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - Density
-#'   plot(
-#'     density(out_logit$prec_2),
-#'     main = expression(paste("Density: ", phi[2], " (Logit)")),
-#'     xlab = expression(phi[2]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "blue"
-#'   )
-#'   abline(v = phi_2_true, col = "black", lty = 2, lwd = 2)
-#'   abline(v = median(out_logit$prec_2), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - ACF
-#'   acf(
-#'     out_logit$prec_2,
-#'     main = expression(paste("ACF: ", phi[2], " (Logit)")),
-#'     col = "blue",
-#'     lwd = 2
-#'   )
-#'
-#'   # Probit - Trace
-#'   range_phi2_probit <- range(out_probit$prec_2)
-#'   r1_phi2_probit <- range_phi2_probit[1] - 0.1 * diff(range_phi2_probit)
-#'   r2_phi2_probit <- range_phi2_probit[2] + 0.1 * diff(range_phi2_probit)
-#'   plot.ts(
-#'     out_probit$prec_2,
-#'     ylab = expression(phi[2]),
-#'     main = expression(paste("Trace plot: ", phi[2], " (Probit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_phi2_probit, r2_phi2_probit)
-#'   )
-#'   abline(h = phi_2_true, col = "black", lty = 2, lwd = 2)
-#'   abline(h = median(out_probit$prec_2), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - Density
-#'   plot(
-#'     density(out_probit$prec_2),
-#'     main = expression(paste("Density: ", phi[2], " (Probit)")),
-#'     xlab = expression(phi[2]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "red"
-#'   )
-#'   abline(v = phi_2_true, col = "black", lty = 2, lwd = 2)
-#'   abline(v = median(out_probit$prec_2), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - ACF
-#'   acf(
-#'     out_probit$prec_2,
-#'     main = expression(paste("ACF: ", phi[2], " (Probit)")),
-#'     col = "red",
-#'     lwd = 2
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 7. Initial Level State (theta[0,1]): Trace, Density, ACF (Logit top, Probit bottom) ---
-#'   par(mfrow = c(2, 3))
-#'
-#'   # Logit - Trace
-#'   range_theta_01_logit <- range(out_logit$theta_01)
-#'   r1_theta01_logit <- range_theta_01_logit[1] - 0.1 * diff(range_theta_01_logit)
-#'   r2_theta01_logit <- range_theta_01_logit[2] + 0.3 * diff(range_theta_01_logit)
-#'
-#'   plot.ts(
-#'     out_logit$theta_01,
-#'     ylab = expression(theta["0,1"]),
-#'     main = expression(paste("Trace plot: ", theta["0,1"], " (Logit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_theta01_logit, r2_theta01_logit)
-#'   )
-#'   abline(h = median(out_logit$theta_01), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - Density
-#'   plot(
-#'     density(out_logit$theta_01),
-#'     main = expression(paste("Density: ", theta["0,1"], " (Logit)")),
-#'     xlab = expression(theta["0,1"]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "blue"
-#'   )
-#'   abline(v = median(out_logit$theta_01), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - ACF
-#'   acf(
-#'     out_logit$theta_01,
-#'     main = expression(paste("ACF: ", theta["0,1"], " (Logit)")),
-#'     col = "blue",
-#'     lwd = 2
-#'   )
-#'
-#'   # Probit - Trace
-#'   range_theta_01_probit <- range(out_probit$theta_01)
-#'   r1_theta01_probit <- range_theta_01_probit[1] - 0.1 * diff(range_theta_01_probit)
-#'   r2_theta01_probit <- range_theta_01_probit[2] + 0.3 * diff(range_theta_01_probit)
-#'
-#'   plot.ts(
-#'     out_probit$theta_01,
-#'     ylab = expression(theta["0,1"]),
-#'     main = expression(paste("Trace plot: ", theta["0,1"], " (Probit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_theta01_probit, r2_theta01_probit)
-#'   )
-#'   abline(h = median(out_probit$theta_01), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - Density
-#'   plot(
-#'     density(out_probit$theta_01),
-#'     main = expression(paste("Density: ", theta["0,1"], " (Probit)")),
-#'     xlab = expression(theta["0,1"]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "red"
-#'   )
-#'   abline(v = median(out_probit$theta_01), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - ACF
-#'   acf(
-#'     out_probit$theta_01,
-#'     main = expression(paste("ACF: ", theta["0,1"], " (Probit)")),
-#'     col = "red",
-#'     lwd = 2
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 8. Initial Trend State (theta[0,2]): Trace, Density, ACF (Logit top, Probit bottom) ---
-#'   par(mfrow = c(2, 3))
-#'
-#'   # Logit - Trace
-#'   range_theta_02_logit <- range(out_logit$theta_02)
-#'   r1_theta02_logit <- range_theta_02_logit[1] - 0.1 * diff(range_theta_02_logit)
-#'   r2_theta02_logit <- range_theta_02_logit[2] + 0.3 * diff(range_theta_02_logit)
-#'
-#'   plot.ts(
-#'     out_logit$theta_02,
-#'     ylab = expression(theta["0,2"]),
-#'     main = expression(paste("Trace plot: ", theta["0,2"], " (Logit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_theta02_logit, r2_theta02_logit)
-#'   )
-#'   abline(h = median(out_logit$theta_02), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - Density
-#'   plot(
-#'     density(out_logit$theta_02),
-#'     main = expression(paste("Density: ", theta["0,2"], " (Logit)")),
-#'     xlab = expression(theta["0,2"]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "blue"
-#'   )
-#'   abline(v = median(out_logit$theta_02), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - ACF
-#'   acf(
-#'     out_logit$theta_02,
-#'     main = expression(paste("ACF: ", theta["0,2"], " (Logit)")),
-#'     col = "blue",
-#'     lwd = 2
-#'   )
-#'
-#'   # Probit - Trace
-#'   range_theta_02_probit <- range(out_probit$theta_02)
-#'   r1_theta02_probit <- range_theta_02_probit[1] - 0.1 * diff(range_theta_02_probit)
-#'   r2_theta02_probit <- range_theta_02_probit[2] + 0.3 * diff(range_theta_02_probit)
-#'
-#'   plot.ts(
-#'     out_probit$theta_02,
-#'     ylab = expression(theta["0,2"]),
-#'     main = expression(paste("Trace plot: ", theta["0,2"], " (Probit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_theta02_probit, r2_theta02_probit)
-#'   )
-#'   abline(h = median(out_probit$theta_02), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - Density
-#'   plot(
-#'     density(out_probit$theta_02),
-#'     main = expression(paste("Density: ", theta["0,2"], " (Probit)")),
-#'     xlab = expression(theta["0,2"]),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "red"
-#'   )
-#'   abline(v = median(out_probit$theta_02), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - ACF
-#'   acf(
-#'     out_probit$theta_02,
-#'     main = expression(paste("ACF: ", theta["0,2"], " (Probit)")),
-#'     col = "red",
-#'     lwd = 2
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 9. Level Innovation Precision (1/W[1]): Trace, Density, ACF (Logit top, Probit bottom) ---
-#'   par(mfrow = c(2, 3))
-#'
-#'   # Logit - Trace
-#'   range_prec_1_logit <- range(out_logit$prec_theta1)
-#'   r1_prec1_logit <- range_prec_1_logit[1] - 0.1 * diff(range_prec_1_logit)
-#'   r2_prec1_logit <- range_prec_1_logit[2] + 0.25 * diff(range_prec_1_logit)
-#'
-#'   plot.ts(
-#'     out_logit$prec_theta1,
-#'     ylab = expression(W[1]^-1),
-#'     main = expression(paste("Trace plot: ", W[1]^-1, " (Logit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_prec1_logit, r2_prec1_logit)
-#'   )
-#'   abline(h = median(out_logit$prec_theta1), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - Density
-#'   plot(
-#'     density(out_logit$prec_theta1),
-#'     main = expression(paste("Density: ", W[1]^-1, " (Logit)")),
-#'     xlab = expression(W[1]^-1),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "blue"
-#'   )
-#'   abline(v = median(out_logit$prec_theta1), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - ACF
-#'   acf(
-#'     out_logit$prec_theta1,
-#'     main = expression(paste("ACF: ", W[1]^-1, " (Logit)")),
-#'     col = "blue",
-#'     lwd = 2
-#'   )
-#'
-#'   # Probit - Trace
-#'   range_prec_1_probit <- range(out_probit$prec_theta1)
-#'   r1_prec1_probit <- range_prec_1_probit[1] - 0.1 * diff(range_prec_1_probit)
-#'   r2_prec1_probit <- range_prec_1_probit[2] + 0.25 * diff(range_prec_1_probit)
-#'
-#'   plot.ts(
-#'     out_probit$prec_theta1,
-#'     ylab = expression(W[1]^-1),
-#'     main = expression(paste("Trace plot: ", W[1]^-1, " (Probit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_prec1_probit, r2_prec1_probit)
-#'   )
-#'   abline(h = median(out_probit$prec_theta1), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - Density
-#'   plot(
-#'     density(out_probit$prec_theta1),
-#'     main = expression(paste("Density: ", W[1]^-1, " (Probit)")),
-#'     xlab = expression(W[1]^-1),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "red"
-#'   )
-#'   abline(v = median(out_probit$prec_theta1), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - ACF
-#'   acf(
-#'     out_probit$prec_theta1,
-#'     main = expression(paste("ACF: ", W[1]^-1, " (Probit)")),
-#'     col = "red",
-#'     lwd = 2
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 10. Trend Innovation Precision (1/W[2]): Trace, Density, ACF (Logit top, Probit bottom) ---
-#'   par(mfrow = c(2, 3))
-#'
-#'   # Logit - Trace
-#'   range_prec_2_logit <- range(out_logit$prec_theta2)
-#'   r1_prec2_logit <- range_prec_2_logit[1] - 0.1 * diff(range_prec_2_logit)
-#'   r2_prec2_logit <- range_prec_2_logit[2] + 0.25 * diff(range_prec_2_logit)
-#'
-#'   plot.ts(
-#'     out_logit$prec_theta2,
-#'     ylab = expression(W[2]^-1),
-#'     main = expression(paste("Trace plot: ", W[2]^-1, " (Logit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_prec2_logit, r2_prec2_logit)
-#'   )
-#'   abline(h = median(out_logit$prec_theta2), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - Density
-#'   plot(
-#'     density(out_logit$prec_theta2),
-#'     main = expression(paste("Density: ", W[2]^-1, " (Logit)")),
-#'     xlab = expression(W[2]^-1),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "blue"
-#'   )
-#'   abline(v = median(out_logit$prec_theta2), col = "blue", lty = 1, lwd = 2)
-#'
-#'   # Logit - ACF
-#'   acf(
-#'     out_logit$prec_theta2,
-#'     main = expression(paste("ACF: ", W[2]^-1, " (Logit)")),
-#'     col = "blue",
-#'     lwd = 2
-#'   )
-#'
-#'   # Probit - Trace
-#'   range_prec_2_probit <- range(out_probit$prec_theta2)
-#'   r1_prec2_probit <- range_prec_2_probit[1] - 0.1 * diff(range_prec_2_probit)
-#'   r2_prec2_probit <- range_prec_2_probit[2] + 0.25 * diff(range_prec_2_probit)
-#'
-#'   plot.ts(
-#'     out_probit$prec_theta2,
-#'     ylab = expression(W[2]^-1),
-#'     main = expression(paste("Trace plot: ", W[2]^-1, " (Probit)")),
-#'     xlab = "Iteration",
-#'     col = "gray",
-#'     ylim = c(r1_prec2_probit, r2_prec2_probit)
-#'   )
-#'   abline(h = median(out_probit$prec_theta2), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - Density
-#'   plot(
-#'     density(out_probit$prec_theta2),
-#'     main = expression(paste("Density: ", W[2]^-1, " (Probit)")),
-#'     xlab = expression(W[2]^-1),
-#'     ylab = "Density",
-#'     lwd = 2,
-#'     col = "red"
-#'   )
-#'   abline(v = median(out_probit$prec_theta2), col = "red", lty = 1, lwd = 2)
-#'
-#'   # Probit - ACF
-#'   acf(
-#'     out_probit$prec_theta2,
-#'     main = expression(paste("ACF: ", W[2]^-1, " (Probit)")),
-#'     col = "red",
-#'     lwd = 2
-#'   )
-#'
-#'   par(mfrow = c(1, 1))
-#'
-#'   # --- 11. Summary Statistics ---
-#'   # Create a comprehensive summary table comparing Logit and Probit results
-#'   cat("\n=== Summary Statistics ===\n\n")
-#'
-#'   # Create summary data frame
-#'   summary_df <- data.frame(
-#'     Parameter = c(
-#'       "mu_1   (Logit)", "mu_1  (Probit)",
-#'       "mu_2   (Logit)", "mu_2  (Probit)",
-#'       "phi_1  (Logit)", "phi_1 (Probit)",
-#'       "phi_2  (Logit)", "phi_2 (Probit)"
-#'     ),
-#'     True_Value = c(
-#'       mu_1_true, mu_1_true,
-#'       mu_2_true, mu_2_true,
-#'       phi_1_true, phi_1_true,
-#'       phi_2_true, phi_2_true
-#'     ),
-#'     Estimate = c(
-#'       median(out_logit$mu_1), median(out_probit$mu_1),
-#'       median(out_logit$mu_2), median(out_probit$mu_2),
-#'       median(out_logit$prec_1), median(out_probit$prec_1),
-#'       median(out_logit$prec_2), median(out_probit$prec_2)
-#'     ),
-#'     CI_Lower = c(
-#'       quantile(out_logit$mu_1, 0.025), quantile(out_probit$mu_1, 0.025),
-#'       quantile(out_logit$mu_2, 0.025), quantile(out_probit$mu_2, 0.025),
-#'       quantile(out_logit$prec_1, 0.025), quantile(out_probit$prec_1, 0.025),
-#'       quantile(out_logit$prec_2, 0.025), quantile(out_probit$prec_2, 0.025)
-#'     ),
-#'     CI_Upper = c(
-#'       quantile(out_logit$mu_1, 0.975), quantile(out_probit$mu_1, 0.975),
-#'       quantile(out_logit$mu_2, 0.975), quantile(out_probit$mu_2, 0.975),
-#'       quantile(out_logit$prec_1, 0.975), quantile(out_probit$prec_1, 0.975),
-#'       quantile(out_logit$prec_2, 0.975), quantile(out_probit$prec_2, 0.975)
-#'     ),
-#'     stringsAsFactors = FALSE
-#'   )
-#'
-#'   # Add a column for the 95% CI as a formatted string
-#'   summary_df$CI_95 <- sprintf("(%.3f, %.3f)", summary_df$CI_Lower, summary_df$CI_Upper)
-#'
-#'   # Create final display table
-#'   display_table <- data.frame(
-#'     Parameter = summary_df$Parameter,
-#'     True_Value = sprintf("%.3f", summary_df$True_Value),
-#'     Estimate = sprintf("%.3f", summary_df$Estimate),
-#'     CI_95 = summary_df$CI_95,
-#'     stringsAsFactors = FALSE
-#'   )
-#'
-#'   # Print the table
-#'   print(display_table, row.names = FALSE, right = TRUE)
-#'
-#'   cat("\nNote: CI_95 represents the 95% credible interval (2.5% and 97.5% quantiles)\n")
-#'
-#'   # --- 16. Model Comparison: Logit vs Probit ---
-#'   # Compare RMSE for mixture weight estimation
-#'   rmse_logit <- sqrt(mean((alpha_logit_estimate - alpha_true)^2))
-#'   rmse_probit <- sqrt(mean((alpha_probit_estimate - alpha_true)^2))
-#'
-#'   cat("\n=== Model Comparison ===\n\n")
-#'   cat(sprintf("RMSE for alpha (Logit):  %.4f\n", rmse_logit))
-#'   cat(sprintf("RMSE for alpha (Probit): %.4f\n", rmse_probit))
-#'
-#'   # Correlation between estimates
-#'   cor_estimates <- cor(alpha_logit_estimate, alpha_probit_estimate)
-#'   cat(sprintf("\nCorrelation between Logit and Probit estimates: %.4f\n", cor_estimates))
+#'   # --- Logit-link fit (`out_logit`) ---
+#'   # Complete dashboard with all diagnostics
+#'   plot(out_logit, type = "all")
+#'
+#'   # Individual diagnostic types
+#'   plot(out_logit, type = "mcmc", which = 1:4)   # Mixture params (mu, phi)
+#'   plot(out_logit, type = "mcmc", which = 5:8)   # Dynamic-state params
+#'   plot(out_logit, type = "params")              # Mixture components
+#'   plot(out_logit, type = "states")              # Dynamic states
+#'   plot(out_logit, type = "alpha")               # Mixture weights
+#'
+#'   # Plot with true values for comparison
+#'   plot(out_logit, type = "params",
+#'        true_values = list(mu_1 = mu_1_true, mu_2 = mu_2_true,
+#'                           prec_1 = 1 / sigma_1_true^2,
+#'                           prec_2 = 1 / sigma_2_true^2))
+#'   plot(out_logit, type = "alpha",
+#'        true_values = list(alpha = alpha_true, z = z_true))
+#'
+#'   # --- Probit-link fit (`out_probit`) ---
+#'   # The same diagnostics for the probit-link fit, for comparison.
+#'   plot(out_probit, type = "all")
+#'
+#'   plot(out_probit, type = "params")             # Mixture components
+#'   plot(out_probit, type = "states")             # Dynamic states
+#'   plot(out_probit, type = "alpha",
+#'        true_values = list(alpha = alpha_true, z = z_true))
+#'
+#'   # --- Half-Cauchy-prior fit (`out_hc`) ---
+#'   # The same diagnostics for the weakly-informative Half-Cauchy fit.
+#'   plot(out_hc, type = "all")
+#'
+#'   plot(out_hc, type = "alpha",
+#'        true_values = list(alpha = alpha_true, z = z_true))
 #' }
 #'
 #' @references
+#' Albert, J. H., & Chib, S. (1993). Bayesian analysis of binary and polychotomous
+#' response data. \emph{Journal of the American Statistical Association}, 88(422),
+#' 669-679. \doi{10.1080/01621459.1993.10476321}
+#'
 #' Gelman, A. (2006). Prior distributions for variance parameters in
 #' hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
-#'
-#' Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
-#' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
-#' 6(4), 847-900.
-#'
-#' Albert, J. H., & Chib, S. (1993). Bayesian Analysis of Binary and Polychotomous
-#' Response Data. \emph{Journal of the American Statistical Association}, 88(422), 669-679.
-#' https://doi.org/10.1080/01621459.1993.10476321
 #'
 #' Montoril, M. H., Correia, L. T., & Migon, H. S. (2021). Bayesian estimation of
 #' dynamic weights in Gaussian mixture models. arXiv:2104.03395.
@@ -1348,14 +506,21 @@
 #' Roberts, G. O., & Rosenthal, J. S. (2007). Coupling and ergodicity of adaptive MCMC.
 #' \emph{Journal of Applied Probability}, 44(2), 458-475.
 #'
-#' Roberts, G. O., & Rosenthal, J. S. (2009). Examples of Adaptive MCMC.
+#' Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
 #' \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
-#' https://doi.org/10.1198/jcgs.2009.06134
+#' \doi{10.1198/jcgs.2009.06134}
 #'
-#' @seealso \code{\link{mcmc_probit_bernoulli_localtrend}},
-#'  \code{\link{mcmc_binomial_localtrend}},
-#'  \code{\link{mcmc_normal_mixture_locallevel}},
-#'  \code{\link{mcmc_normal_mixture_localacceleration}}
+#' Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+#' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+#' 6(4), 847-900.
+#'
+#' @seealso
+#'   \code{\link{plot.normal_mixture_localtrend}},
+#'   \code{\link{print.normal_mixture_localtrend}},
+#'   \code{\link{summary.normal_mixture_localtrend}} for methods on the fitted object;
+#'   \code{\link{mcmc_normal_mixture_locallevel}} and
+#'   \code{\link{mcmc_normal_mixture_localacceleration}} for the other dynamic orders.
+#'
 #' @export
 mcmc_normal_mixture_localtrend <- function(y,
                                            link = c("logit", "probit"),
@@ -1639,6 +804,10 @@ mcmc_normal_mixture_localtrend <- function(y,
   attr(result, "prior_prec_phi2")   <- prec02_prior[c("type", "shape", "rate", "scale", "df")]
   attr(result, "prior_prec_theta1") <- prec1_prior[c("type", "shape", "rate", "scale", "df")]
   attr(result, "prior_prec_theta2") <- prec2_prior[c("type", "shape", "rate", "scale", "df")]
+
+  # Record the RWMH target acceptance rate so plot(type = "acceptance") can draw
+  # the correct reference line (logit link only; unused under the probit sampler).
+  attr(result, "target_acceptance") <- as.numeric(target_acceptance)
 
   return(result)
 }

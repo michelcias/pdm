@@ -317,8 +317,9 @@
 #'
 #' }
 #'
-#' @seealso \code{\link{mcmc_probit_bernoulli_locallevel}},
-#'   \code{\link{summary.probit_bernoulli_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_probit_bernoulli_locallevel}} (model generator),
+#'   \code{\link{print.probit_bernoulli_locallevel}}, \code{\link{summary.probit_bernoulli_locallevel}}.
 #'
 #' @export
 plot.probit_bernoulli_locallevel <- function(x,

@@ -322,7 +322,12 @@
 #'      xlab = "Time", ylab = expression(theta["t,1"]))
 #' plot(alpha_true, type = "l", main = "True Mixture Weights",
 #'      xlab = "Time", ylab = expression(alpha[t]), ylim = c(0, 1))
-#' points(z_true, col = "red", pch = 16, cex = 0.5)
+#' points(
+#'   z_true,
+#'   col = "red",
+#'   pch = 16,
+#'   cex = 0.5
+#' )
 #' plot(y, type = "p", main = "Observations", xlab = "Time", ylab = "y",
 #'      pch = 16, col = ifelse(z_true == 1, "blue", "red"))
 #' legend("topright", legend = c("Component 1", "Component 2"),
@@ -441,8 +446,9 @@
 #'      true_values = list(z = z_true))
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_mixture_locallevel}},
-#'   \code{\link{summary.normal_mixture_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_normal_mixture_locallevel}} (model generator),
+#'   \code{\link{print.normal_mixture_locallevel}}, \code{\link{summary.normal_mixture_locallevel}}.
 #'
 #' @export
 plot.normal_mixture_locallevel <- function(x,
@@ -460,6 +466,11 @@ plot.normal_mixture_locallevel <- function(x,
 
   # Check if acceptance proportions are available only when specifically requested
   if (type == "acceptance" && is.null(x$accept_prop)) {
+    if (identical(attr(x, "link"), "probit")) {
+      stop("Acceptance proportions are not available for the probit link, ",
+           "which uses a data-augmentation Gibbs sampler with no ",
+           "Metropolis-Hastings step. They are produced only for link = \"logit\".")
+    }
     stop("Acceptance proportions are not available. ",
          "Re-run mcmc_normal_mixture_locallevel() with return_accept_prop = TRUE.")
   }

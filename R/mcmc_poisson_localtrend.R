@@ -229,10 +229,6 @@
 #' Gelman, A. (2006). Prior distributions for variance parameters in
 #' hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
 #'
-#' Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
-#' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
-#' 6(4), 847-900.
-#'
 #' Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 #' Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
 #'
@@ -241,6 +237,11 @@
 #'
 #' Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
 #' \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
+#' \doi{10.1198/jcgs.2009.06134}
+#'
+#' Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+#' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+#' 6(4), 847-900.
 #'
 #' @examples
 #' ## Description
@@ -301,8 +302,10 @@
 #'   prior_theta01_prec = 1,
 #'   prior_theta02_mean = 0,
 #'   prior_theta02_prec = 1,
-#'   prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,  # sqrt(W[1])
-#'   prior_prec2_type   = "halfcauchy", prior_prec2_scale = 1,  # sqrt(W[2])
+#'   prior_prec1_type   = "halfcauchy",
+#'   prior_prec1_scale  = 1,  # sqrt(W[1])
+#'   prior_prec2_type   = "halfcauchy",
+#'   prior_prec2_scale  = 1,  # sqrt(W[2])
 #'   verbose            = FALSE,
 #'   seed               = 456
 #' )
@@ -323,9 +326,13 @@
 #'   plot(out, type = "alpha", true_values = list(alpha = alpha_true))
 #' }
 #'
-#' @seealso \code{\link{plot.poisson_localtrend}},
+#' @seealso
+#'   \code{\link{plot.poisson_localtrend}},
 #'   \code{\link{print.poisson_localtrend}},
-#'   \link[pdm]{mcmc_normal_localtrend}
+#'   \code{\link{summary.poisson_localtrend}} for methods on the fitted object;
+#'   \code{\link{mcmc_poisson_locallevel}} and
+#'   \code{\link{mcmc_poisson_localacceleration}} for the other dynamic orders.
+#'
 #' @export
 mcmc_poisson_localtrend <- function(y,
                                     burnin,

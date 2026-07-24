@@ -524,7 +524,10 @@ is.normal_mixture_localtrend <- function(x) {
 #' summary(out_logit)
 #' }
 #'
-#' @seealso \code{\link{summary.normal_mixture_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_normal_mixture_localtrend}} (model generator),
+#'   \code{\link{plot.normal_mixture_localtrend}}, \code{\link{summary.normal_mixture_localtrend}}.
+#'
 #' @export
 print.normal_mixture_localtrend <- function(x, digits = 3, ...) {
 

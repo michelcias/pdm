@@ -345,7 +345,10 @@ is.normal_locallevel <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_normal_locallevel}} (model generator),
+#'   \code{\link{plot.normal_locallevel}}, \code{\link{summary.normal_locallevel}}.
+#'
 #' @export
 print.normal_locallevel <- function(x, digits = 3, ...) {
 

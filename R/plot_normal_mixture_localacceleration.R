@@ -361,7 +361,12 @@
 #'      xlab = "Time", ylab = expression(theta["t,3"]))
 #' plot(alpha_true, type = "l", main = "True Mixture Weights",
 #'      xlab = "Time", ylab = expression(alpha[t]), ylim = c(0, 1))
-#' points(z_true, col = "red", pch = 16, cex = 0.5)
+#' points(
+#'   z_true,
+#'   col = "red",
+#'   pch = 16,
+#'   cex = 0.5
+#' )
 #' par(mfrow = c(1, 1))
 #'
 #' # --- Step 4: Fit the model with informative priors ---
@@ -505,8 +510,9 @@
 #'      true_values = list(z = z_true))
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_mixture_localacceleration}},
-#'   \code{\link{summary.normal_mixture_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_normal_mixture_localacceleration}} (model generator),
+#'   \code{\link{print.normal_mixture_localacceleration}}, \code{\link{summary.normal_mixture_localacceleration}}.
 #'
 #' @export
 plot.normal_mixture_localacceleration <- function(x,
@@ -524,6 +530,11 @@ plot.normal_mixture_localacceleration <- function(x,
 
   # Check if acceptance proportions are available only when specifically requested
   if (type == "acceptance" && is.null(x$accept_prop)) {
+    if (identical(attr(x, "link"), "probit")) {
+      stop("Acceptance proportions are not available for the probit link, ",
+           "which uses a data-augmentation Gibbs sampler with no ",
+           "Metropolis-Hastings step. They are produced only for link = \"logit\".")
+    }
     stop("Acceptance proportions are not available. ",
          "Re-run mcmc_normal_mixture_localacceleration() with return_accept_prop = TRUE.")
   }

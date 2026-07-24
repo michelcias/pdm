@@ -98,8 +98,9 @@
 #' summary(out, ci_level = 0.80)  # 80% HPD interval
 #' }
 #'
-#' @seealso \code{\link{mcmc_poisson_locallevel}},
-#'   \code{\link{print.poisson_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_poisson_locallevel}} (model generator),
+#'   \code{\link{plot.poisson_locallevel}}, \code{\link{print.poisson_locallevel}}.
 #'
 #' @export
 summary.poisson_locallevel <- function(object,

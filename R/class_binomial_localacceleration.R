@@ -533,7 +533,10 @@ is.binomial_localacceleration <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_binomial_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_binomial_localacceleration}} (model generator),
+#'   \code{\link{plot.binomial_localacceleration}}, \code{\link{summary.binomial_localacceleration}}.
+#'
 #' @export
 print.binomial_localacceleration <- function(x, digits = 3, ...) {
 

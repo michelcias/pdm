@@ -111,9 +111,9 @@
 #' summary(out_logit, ci_level = 0.80)  # 80% HPD interval
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_mixture_locallevel}},
-#'   \code{\link{print.normal_mixture_locallevel}},
-#'   \code{\link{plot.normal_mixture_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_normal_mixture_locallevel}} (model generator),
+#'   \code{\link{plot.normal_mixture_locallevel}}, \code{\link{print.normal_mixture_locallevel}}.
 #'
 #' @export
 summary.normal_mixture_locallevel <- function(object,

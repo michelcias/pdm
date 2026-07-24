@@ -344,8 +344,9 @@
 #'
 #' }
 #'
-#' @seealso \code{\link{mcmc_poisson_locallevel}},
-#'   \code{\link{summary.poisson_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_poisson_locallevel}} (model generator),
+#'   \code{\link{print.poisson_locallevel}}, \code{\link{summary.poisson_locallevel}}.
 #'
 #' @export
 plot.poisson_locallevel <- function(x,

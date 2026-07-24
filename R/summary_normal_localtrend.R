@@ -106,8 +106,9 @@
 #' summary(out, ci_level = 0.80)  # 80% HPD interval
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_localtrend}},
-#'   \code{\link{print.normal_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_normal_localtrend}} (model generator),
+#'   \code{\link{plot.normal_localtrend}}, \code{\link{print.normal_localtrend}}.
 #'
 #' @export
 summary.normal_localtrend <- function(object,

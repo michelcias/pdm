@@ -474,7 +474,10 @@ is.binomial_locallevel <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_binomial_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_binomial_locallevel}} (model generator),
+#'   \code{\link{plot.binomial_locallevel}}, \code{\link{summary.binomial_locallevel}}.
+#'
 #' @export
 print.binomial_locallevel <- function(x, digits = 3, ...) {
 

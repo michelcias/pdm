@@ -82,8 +82,9 @@
 #' summary(out, ci_level = 0.80)  # 80% HPD interval
 #' }
 #'
-#' @seealso \code{\link{mcmc_probit_bernoulli_locallevel}},
-#'   \code{\link{print.probit_bernoulli_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_probit_bernoulli_locallevel}} (model generator),
+#'   \code{\link{plot.probit_bernoulli_locallevel}}, \code{\link{print.probit_bernoulli_locallevel}}.
 #'
 #' @export
 summary.probit_bernoulli_locallevel <- function(object,

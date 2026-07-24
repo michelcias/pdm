@@ -118,8 +118,9 @@
 #' summary(out, ci_level = 0.80)  # 80% HPD interval
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_localacceleration}},
-#'   \code{\link{print.normal_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_normal_localacceleration}} (model generator),
+#'   \code{\link{plot.normal_localacceleration}}, \code{\link{print.normal_localacceleration}}.
 #'
 #' @export
 summary.normal_localacceleration <- function(object,

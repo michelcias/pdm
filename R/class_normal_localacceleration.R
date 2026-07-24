@@ -403,7 +403,10 @@ is.normal_localacceleration <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_normal_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_normal_localacceleration}} (model generator),
+#'   \code{\link{plot.normal_localacceleration}}, \code{\link{summary.normal_localacceleration}}.
+#'
 #' @export
 print.normal_localacceleration <- function(x, digits = 3, ...) {
 

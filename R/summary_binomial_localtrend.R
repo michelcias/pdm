@@ -115,8 +115,9 @@
 #' summary(out, ci_level = 0.80)  # 80% HPD interval
 #' }
 #'
-#' @seealso \code{\link{mcmc_binomial_localtrend}},
-#'   \code{\link{print.binomial_localtrend}}
+#' @seealso
+#'   \code{\link{mcmc_binomial_localtrend}} (model generator),
+#'   \code{\link{plot.binomial_localtrend}}, \code{\link{print.binomial_localtrend}}.
 #'
 #' @export
 summary.binomial_localtrend <- function(object,

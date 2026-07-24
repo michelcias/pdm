@@ -348,8 +348,9 @@
 #'
 #' }
 #'
-#' @seealso \code{\link{mcmc_binomial_locallevel}},
-#'   \code{\link{summary.binomial_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_binomial_locallevel}} (model generator),
+#'   \code{\link{print.binomial_locallevel}}, \code{\link{summary.binomial_locallevel}}.
 #'
 #' @export
 plot.binomial_locallevel <- function(x,

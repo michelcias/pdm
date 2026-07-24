@@ -119,14 +119,14 @@
 #' }
 #'
 #' @references
-#' Geyer, C. J. (1992). Practical Markov chain Monte Carlo.
-#'   \emph{Statistical Science}, \strong{7}(4), 473--483.
-#'   \doi{10.1214/ss/1177011137}
-#'
 #' Geweke, J. (1992). Evaluating the accuracy of sampling-based approaches to
 #'   the calculation of posterior moments. In J. M. Bernardo, J. O. Berger,
 #'   A. P. Dawid, & A. F. M. Smith (Eds.), \emph{Bayesian Statistics 4}
 #'   (pp. 169--193). Oxford University Press.
+#'
+#' Geyer, C. J. (1992). Practical Markov chain Monte Carlo.
+#'   \emph{Statistical Science}, \strong{7}(4), 473--483.
+#'   \doi{10.1214/ss/1177011137}
 #'
 #' Heidelberger, P., & Welch, P. D. (1983). Simulation run length control in the
 #'   presence of an initial transient. \emph{Operations Research},

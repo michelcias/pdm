@@ -382,7 +382,10 @@ is.probit_bernoulli_localacceleration <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_probit_bernoulli_localacceleration}}
+#' @seealso
+#'   \code{\link{mcmc_probit_bernoulli_localacceleration}} (model generator),
+#'   \code{\link{plot.probit_bernoulli_localacceleration}}, \code{\link{summary.probit_bernoulli_localacceleration}}.
+#'
 #' @export
 print.probit_bernoulli_localacceleration <- function(x, digits = 3, ...) {
 

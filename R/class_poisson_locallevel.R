@@ -458,7 +458,10 @@ is.poisson_locallevel <- function(x) {
 #' print(out)
 #' }
 #'
-#' @seealso \code{\link{mcmc_poisson_locallevel}}
+#' @seealso
+#'   \code{\link{mcmc_poisson_locallevel}} (model generator),
+#'   \code{\link{plot.poisson_locallevel}}, \code{\link{summary.poisson_locallevel}}.
+#'
 #' @export
 print.poisson_locallevel <- function(x, digits = 3, ...) {
 

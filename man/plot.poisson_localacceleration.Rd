@@ -437,6 +437,6 @@ plot(out, type = "alpha",
 
 }
 \seealso{
-\code{\link{mcmc_poisson_localacceleration}},
-\code{\link{summary.poisson_localacceleration}}
+\code{\link{mcmc_poisson_localacceleration}} (model generator),
+\code{\link{print.poisson_localacceleration}}, \code{\link{summary.poisson_localacceleration}}.
 }

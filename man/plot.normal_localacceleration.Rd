@@ -376,6 +376,6 @@ plot(out, type = "states",
 
 }
 \seealso{
-\code{\link{mcmc_normal_localacceleration}},
-\code{\link{summary.normal_localacceleration}}
+\code{\link{mcmc_normal_localacceleration}} (model generator),
+\code{\link{print.normal_localacceleration}}, \code{\link{summary.normal_localacceleration}}.
 }

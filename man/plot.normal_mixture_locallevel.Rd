@@ -353,7 +353,12 @@ plot(theta1_true, type = "l", main = "True Level State",
      xlab = "Time", ylab = expression(theta["t,1"]))
 plot(alpha_true, type = "l", main = "True Mixture Weights",
      xlab = "Time", ylab = expression(alpha[t]), ylim = c(0, 1))
-points(z_true, col = "red", pch = 16, cex = 0.5)
+points(
+  z_true,
+  col = "red",
+  pch = 16,
+  cex = 0.5
+)
 plot(y, type = "p", main = "Observations", xlab = "Time", ylab = "y",
      pch = 16, col = ifelse(z_true == 1, "blue", "red"))
 legend("topright", legend = c("Component 1", "Component 2"),
@@ -474,6 +479,6 @@ plot(out, type = "alpha",
 
 }
 \seealso{
-\code{\link{mcmc_normal_mixture_locallevel}},
-\code{\link{summary.normal_mixture_locallevel}}
+\code{\link{mcmc_normal_mixture_locallevel}} (model generator),
+\code{\link{print.normal_mixture_locallevel}}, \code{\link{summary.normal_mixture_locallevel}}.
 }

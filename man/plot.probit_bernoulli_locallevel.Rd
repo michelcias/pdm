@@ -348,6 +348,6 @@ plot(out, type = "alpha",
 
 }
 \seealso{
-\code{\link{mcmc_probit_bernoulli_locallevel}},
-\code{\link{summary.probit_bernoulli_locallevel}}
+\code{\link{mcmc_probit_bernoulli_locallevel}} (model generator),
+\code{\link{print.probit_bernoulli_locallevel}}, \code{\link{summary.probit_bernoulli_locallevel}}.
 }

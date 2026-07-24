@@ -111,5 +111,6 @@ summary(out_logit)
 
 }
 \seealso{
-\code{\link{summary.normal_mixture_localacceleration}}
+\code{\link{mcmc_normal_mixture_localacceleration}} (model generator),
+\code{\link{plot.normal_mixture_localacceleration}}, \code{\link{summary.normal_mixture_localacceleration}}.
 }

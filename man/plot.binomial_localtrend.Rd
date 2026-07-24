@@ -413,6 +413,6 @@ plot(out, type = "alpha",
 
 }
 \seealso{
-\code{\link{mcmc_binomial_localtrend}},
-\code{\link{summary.binomial_localtrend}}
+\code{\link{mcmc_binomial_localtrend}} (model generator),
+\code{\link{print.binomial_localtrend}}, \code{\link{summary.binomial_localtrend}}.
 }

@@ -141,6 +141,6 @@ summary(out, ci_level = 0.80)  # 80\% HPD interval
 
 }
 \seealso{
-\code{\link{mcmc_binomial_localacceleration}},
-\code{\link{print.binomial_localacceleration}}
+\code{\link{mcmc_binomial_localacceleration}} (model generator),
+\code{\link{plot.binomial_localacceleration}}, \code{\link{print.binomial_localacceleration}}.
 }

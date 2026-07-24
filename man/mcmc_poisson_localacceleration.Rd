@@ -388,12 +388,18 @@ out_hc <- mcmc_poisson_localacceleration(
   burnin             = 1000,
   thinning           = 50,
   n_chain            = 1000,
-  prior_theta01_mean = 0, prior_theta01_prec = 1,
-  prior_theta02_mean = 0, prior_theta02_prec = 1,
-  prior_theta03_mean = 0, prior_theta03_prec = 1,
-  prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,  # sqrt(W[1])
-  prior_prec2_type   = "halfcauchy", prior_prec2_scale = 1,  # sqrt(W[2])
-  prior_prec3_type   = "halfcauchy", prior_prec3_scale = 1,  # sqrt(W[3])
+  prior_theta01_mean = 0,
+  prior_theta01_prec = 1,
+  prior_theta02_mean = 0,
+  prior_theta02_prec = 1,
+  prior_theta03_mean = 0,
+  prior_theta03_prec = 1,
+  prior_prec1_type   = "halfcauchy",
+  prior_prec1_scale  = 1,  # sqrt(W[1])
+  prior_prec2_type   = "halfcauchy",
+  prior_prec2_scale  = 1,  # sqrt(W[2])
+  prior_prec3_type   = "halfcauchy",
+  prior_prec3_scale  = 1,  # sqrt(W[3])
   verbose            = FALSE,
   seed               = 456
 )
@@ -401,6 +407,7 @@ out_hc <- mcmc_poisson_localacceleration(
 ## Posterior analysis and visualization
 # Use the plot method for comprehensive diagnostics
 \donttest{
+  # --- Gamma-prior fit (`out`) ---
   # Complete dashboard with all diagnostics
   plot(out, type = "all")
 
@@ -410,18 +417,27 @@ out_hc <- mcmc_poisson_localacceleration(
   plot(out, type = "alpha")                # Poisson rates
   plot(out, type = "acceptance")           # Acceptance rates
 
-# Plot with true alpha for comparison
-plot(out, type = "alpha", true_values = list(alpha = alpha_true))
+  # Plot with true alpha for comparison
+  plot(out, type = "alpha", true_values = list(alpha = alpha_true))
+
+  # --- Half-Cauchy-prior fit (`out_hc`) ---
+  # The same diagnostics for the weakly-informative Half-Cauchy fit.
+  # (`out_hc` was run with return_accept_prop = FALSE, so the acceptance
+  # diagnostic is unavailable for it and is omitted below.)
+  plot(out_hc, type = "all")
+
+  plot(out_hc, type = "mcmc", which = 1:3)  # Parameter diagnostics
+  plot(out_hc, type = "states")             # Dynamic states
+  plot(out_hc, type = "alpha")              # Poisson rates
+
+  # Plot with true alpha for comparison
+  plot(out_hc, type = "alpha", true_values = list(alpha = alpha_true))
 }
 
 }
 \references{
 Gelman, A. (2006). Prior distributions for variance parameters in
 hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
-
-Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
-variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
-6(4), 847-900.
 
 Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
@@ -431,9 +447,16 @@ Roberts, G. O., & Rosenthal, J. S. (2007). Coupling and ergodicity of adaptive M
 
 Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
 \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
+\doi{10.1198/jcgs.2009.06134}
+
+Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+6(4), 847-900.
 }
 \seealso{
 \code{\link{plot.poisson_localacceleration}},
 \code{\link{print.poisson_localacceleration}},
-\link[pdm]{mcmc_normal_localacceleration}
+\code{\link{summary.poisson_localacceleration}} for methods on the fitted object;
+\code{\link{mcmc_poisson_locallevel}} and
+\code{\link{mcmc_poisson_localtrend}} for the other dynamic orders.
 }

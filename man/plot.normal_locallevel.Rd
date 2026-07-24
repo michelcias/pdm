@@ -309,6 +309,6 @@ plot(out, type = "states",
 
 }
 \seealso{
-\code{\link{mcmc_normal_locallevel}},
-\code{\link{summary.normal_locallevel}}
+\code{\link{mcmc_normal_locallevel}} (model generator),
+\code{\link{print.normal_locallevel}}, \code{\link{summary.normal_locallevel}}.
 }

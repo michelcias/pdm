@@ -92,5 +92,6 @@ print(out)
 
 }
 \seealso{
-\code{\link{mcmc_binomial_localacceleration}}
+\code{\link{mcmc_binomial_localacceleration}} (model generator),
+\code{\link{plot.binomial_localacceleration}}, \code{\link{summary.binomial_localacceleration}}.
 }

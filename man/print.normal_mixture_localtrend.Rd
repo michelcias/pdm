@@ -107,5 +107,6 @@ summary(out_logit)
 
 }
 \seealso{
-\code{\link{summary.normal_mixture_localtrend}}
+\code{\link{mcmc_normal_mixture_localtrend}} (model generator),
+\code{\link{plot.normal_mixture_localtrend}}, \code{\link{summary.normal_mixture_localtrend}}.
 }

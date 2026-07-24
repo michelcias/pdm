@@ -8,6 +8,25 @@
 \description{
 Provides tools for estimating polynomial dynamic models, which are formulated as Bayesian regressions with a specific prior. The package leverages the Markovian structure of these models, enabling efficient treatment of higher-orderstates as hyperparameters.
 }
+\details{
+\pkg{pdm} provides Gibbs/MCMC samplers for Bayesian dynamic models built from
+a polynomial latent structure, spanning five observation families and three
+latent-dynamic orders. Each sampler \code{mcmc_<family>_<order>()} returns a
+fitted object with \code{plot()}, \code{print()} and \code{summary()} methods.
+
+\strong{Model catalog} (rows: observation family; columns: latent dynamics):
+\tabular{llll}{
+\strong{Family} \tab \strong{Local level} \tab \strong{Local trend} \tab \strong{Local acceleration} \cr
+Normal \tab \code{\link{mcmc_normal_locallevel}} \tab \code{\link{mcmc_normal_localtrend}} \tab \code{\link{mcmc_normal_localacceleration}} \cr
+Normal mixture \tab \code{\link{mcmc_normal_mixture_locallevel}} \tab \code{\link{mcmc_normal_mixture_localtrend}} \tab \code{\link{mcmc_normal_mixture_localacceleration}} \cr
+Poisson \tab \code{\link{mcmc_poisson_locallevel}} \tab \code{\link{mcmc_poisson_localtrend}} \tab \code{\link{mcmc_poisson_localacceleration}} \cr
+Binomial \tab \code{\link{mcmc_binomial_locallevel}} \tab \code{\link{mcmc_binomial_localtrend}} \tab \code{\link{mcmc_binomial_localacceleration}} \cr
+Probit-Bernoulli \tab \code{\link{mcmc_probit_bernoulli_locallevel}} \tab \code{\link{mcmc_probit_bernoulli_localtrend}} \tab \code{\link{mcmc_probit_bernoulli_localacceleration}} \cr
+}
+
+Convergence diagnostics across fitted models are available via
+\code{\link{mcmc_convergence}}.
+}
 \author{
 \strong{Maintainer}: Michel H. Montoril \email{michel@ufscar.br}
 

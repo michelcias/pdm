@@ -394,12 +394,18 @@ out_hc <- mcmc_binomial_localacceleration(
   burnin             = 1000,
   thinning           = 50,
   n_chain            = 1000,
-  prior_theta01_mean = 0, prior_theta01_prec = 1,
-  prior_theta02_mean = 0, prior_theta02_prec = 1,
-  prior_theta03_mean = 0, prior_theta03_prec = 1,
-  prior_prec1_type   = "halfcauchy", prior_prec1_scale = 1,  # sqrt(W[1])
-  prior_prec2_type   = "halfcauchy", prior_prec2_scale = 1,  # sqrt(W[2])
-  prior_prec3_type   = "halfcauchy", prior_prec3_scale = 1,  # sqrt(W[3])
+  prior_theta01_mean = 0,
+  prior_theta01_prec = 1,
+  prior_theta02_mean = 0,
+  prior_theta02_prec = 1,
+  prior_theta03_mean = 0,
+  prior_theta03_prec = 1,
+  prior_prec1_type   = "halfcauchy",
+  prior_prec1_scale  = 1,  # sqrt(W[1])
+  prior_prec2_type   = "halfcauchy",
+  prior_prec2_scale  = 1,  # sqrt(W[2])
+  prior_prec3_type   = "halfcauchy",
+  prior_prec3_scale  = 1,  # sqrt(W[3])
   verbose            = FALSE,
   seed               = 456
 )
@@ -425,10 +431,6 @@ plot(out, type = "alpha", true_values = list(alpha = alpha_true))
 Gelman, A. (2006). Prior distributions for variance parameters in
 hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
 
-Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
-variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
-6(4), 847-900.
-
 Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
 
@@ -437,9 +439,16 @@ Roberts, G. O., & Rosenthal, J. S. (2007). Coupling and ergodicity of adaptive M
 
 Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
 \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
+\doi{10.1198/jcgs.2009.06134}
+
+Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+6(4), 847-900.
 }
 \seealso{
 \code{\link{plot.binomial_localacceleration}},
 \code{\link{print.binomial_localacceleration}},
-\link[pdm]{mcmc_normal_localacceleration}
+\code{\link{summary.binomial_localacceleration}} for methods on the fitted object;
+\code{\link{mcmc_binomial_locallevel}} and
+\code{\link{mcmc_binomial_localtrend}} for the other dynamic orders.
 }

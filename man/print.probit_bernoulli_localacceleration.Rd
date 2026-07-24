@@ -61,5 +61,6 @@ print(out)
 
 }
 \seealso{
-\code{\link{mcmc_probit_bernoulli_localacceleration}}
+\code{\link{mcmc_probit_bernoulli_localacceleration}} (model generator),
+\code{\link{plot.probit_bernoulli_localacceleration}}, \code{\link{summary.probit_bernoulli_localacceleration}}.
 }

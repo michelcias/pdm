@@ -380,6 +380,6 @@ plot(out, type = "alpha",
 
 }
 \seealso{
-\code{\link{mcmc_probit_bernoulli_localtrend}},
-\code{\link{summary.probit_bernoulli_localtrend}}
+\code{\link{mcmc_probit_bernoulli_localtrend}} (model generator),
+\code{\link{print.probit_bernoulli_localtrend}}, \code{\link{summary.probit_bernoulli_localtrend}}.
 }

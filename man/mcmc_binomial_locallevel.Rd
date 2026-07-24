@@ -353,10 +353,6 @@ out_hc <- mcmc_binomial_locallevel(
 Gelman, A. (2006). Prior distributions for variance parameters in
 hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
 
-Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
-variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
-6(4), 847-900.
-
 Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
 
@@ -365,9 +361,16 @@ Roberts, G. O., & Rosenthal, J. S. (2007). Coupling and ergodicity of adaptive M
 
 Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
 \emph{Journal of Computational and Graphical Statistics}, 18(2), 349-367.
+\doi{10.1198/jcgs.2009.06134}
+
+Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
+variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
+6(4), 847-900.
 }
 \seealso{
 \code{\link{plot.binomial_locallevel}},
 \code{\link{print.binomial_locallevel}},
-\link[pdm]{mcmc_normal_locallevel}
+\code{\link{summary.binomial_locallevel}} for methods on the fitted object;
+\code{\link{mcmc_binomial_localtrend}} and
+\code{\link{mcmc_binomial_localacceleration}} for the other dynamic orders.
 }

@@ -111,6 +111,6 @@ summary(out, ci_level = 0.80)  # 80\% HPD interval
 
 }
 \seealso{
-\code{\link{mcmc_normal_locallevel}},
-\code{\link{print.normal_locallevel}}
+\code{\link{mcmc_normal_locallevel}} (model generator),
+\code{\link{plot.normal_locallevel}}, \code{\link{print.normal_locallevel}}.
 }

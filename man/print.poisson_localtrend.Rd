@@ -68,5 +68,6 @@ print(out)
 
 }
 \seealso{
-\code{\link{mcmc_poisson_localtrend}}
+\code{\link{mcmc_poisson_localtrend}} (model generator),
+\code{\link{plot.poisson_localtrend}}, \code{\link{summary.poisson_localtrend}}.
 }

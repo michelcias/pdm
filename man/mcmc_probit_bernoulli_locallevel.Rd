@@ -217,259 +217,35 @@ out_hc <- mcmc_probit_bernoulli_locallevel(
 )
 
 ## Posterior analysis and visualization
-# The following plots show how to analyze the posterior distributions.
-# Point estimates are based on the median of posterior samples.
+# Use the plot method for comprehensive diagnostics
 \donttest{
-  # --- 0. Plot the simulated data ---
-  plot(
-    y,
-    main = "Simulated Bernoulli outcomes",
-    ylab = expression(y[t]),
-    xlab = "t",
-    type = "p",
-    pch = 16,
-    cex = 0.5,
-    col = ifelse(y == 1, "blue", "red")
-  )
-  # Overlay the true probability curve
-  lines(alpha_true, col = "black", lwd = 2)
-  legend(
-    "topright",
-    legend = c(expression(alpha[t]), "y = 1", "y = 0"),
-    col = c("black", "blue", "red"),
-    lty = c(1, NA, NA),
-    pch = c(NA, 16, 16),
-    lwd = c(2, NA, NA),
-    bty = "n"
-  )
+  # --- Gamma-prior fit (`out`) ---
+  # Complete dashboard with all diagnostics
+  plot(out, type = "all")
 
-  # --- 1. Latent State Trajectories (theta[t1]) on probit scale ---
-  # Visualize uncertainty by plotting multiple posterior trajectory samples
-  num_traj_to_plot <- 20
+  # Individual diagnostic types
+  plot(out, type = "mcmc", which = 1)      # Initial level (theta_01)
+  plot(out, type = "mcmc", which = 2)      # Innovation precision (W_1^-1)
+  plot(out, type = "states")               # Dynamic level state
+  plot(out, type = "alpha")                # Bernoulli probabilities
 
-  # Compute true theta values (inverse probit of alpha)
-  theta1_true <- qnorm(alpha_true)
+  # Plot with true probabilities for comparison
+  plot(out, type = "alpha", true_values = list(alpha = alpha_true))
 
-  # Calculate y-axis range for optimal legend positioning
-  range_traj <- range(out$theta_1[1:num_traj_to_plot, ], theta1_true)
-  r1_traj <- range_traj[1] - 0.1 * diff(range_traj)
-  r2_traj <- range_traj[2] + 0.1 * diff(range_traj)
+  # --- Half-Cauchy-prior fit (`out_hc`) ---
+  # The same diagnostics for the weakly-informative Half-Cauchy fit.
+  plot(out_hc, type = "all")
 
-  matplot(
-    t(out$theta_1[1:num_traj_to_plot, ]),
-    type = "l",
-    lty = 1,
-    col = grDevices::rainbow(num_traj_to_plot, alpha = 0.3),
-    xlab = "t",
-    ylab = expression(theta["t,1"]),
-    main = "Posterior trajectory samples for latent state (probit scale)",
-    ylim = c(r1_traj, r2_traj)
-  )
-  # Overlay the true trajectory
-  lines(theta1_true, col = "black", lwd = 3, lty = 2)
-  legend(
-    "topright",
-    legend = expression(theta["t,1"]),
-    col = "black",
-    lty = 2,
-    lwd = 3,
-    bty = "n"
-  )
+  plot(out_hc, type = "states")            # Dynamic level state
 
-  # --- 2. Latent State Point Estimates (theta[t1]) ---
-  # Plot true and estimated (median) latent state with credible intervals
-  theta_1_estimate <- apply(X = out$theta_1, MARGIN = 2, FUN = median)
-  theta_1_q025 <- apply(X = out$theta_1, MARGIN = 2, FUN = quantile, probs = 0.025)
-  theta_1_q975 <- apply(X = out$theta_1, MARGIN = 2, FUN = quantile, probs = 0.975)
-
-  range_theta_1 <- range(theta_1_estimate, theta1_true, theta_1_q025, theta_1_q975)
-  r1_theta1 <- range_theta_1[1] - 0.1 * diff(range_theta_1)
-  r2_theta1 <- range_theta_1[2] + 0.3 * diff(range_theta_1)
-
-  plot(
-    theta1_true,
-    col = "red",
-    type = "l",
-    lwd = 3,
-    xlab = "t",
-    ylim = c(r1_theta1, r2_theta1),
-    lty = 2,
-    ylab = expression(theta["t,1"]),
-    main = "Latent state estimation (probit scale)"
-  )
-
-  # Add 95\% credible intervals
-  polygon(
-    c(1:length(theta_1_estimate), rev(1:length(theta_1_estimate))),
-    c(theta_1_q025, rev(theta_1_q975)),
-    col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
-    border = NA
-  )
-
-  # Add point estimate
-  lines(theta_1_estimate, col = "black", lwd = 2)
-
-  legend(
-    "topright",
-    legend = c(
-      expression(theta["t,1"]),
-      expression(hat(theta)["t,1"]),
-      "95\% Credible Interval"
-    ),
-    col = c("red", "black", "gray"),
-    lty = c(2, 1, 1),
-    lwd = c(3, 2, 8),
-    bty = "n"
-  )
-
-  # --- 3. Bernoulli Probabilities (alpha[t]) ---
-  # Plot true and estimated (median) probabilities with uncertainty
-  alpha_estimate <- apply(X = out$alpha, MARGIN = 2, FUN = median)
-  alpha_q025 <- apply(X = out$alpha, MARGIN = 2, FUN = quantile, probs = 0.025)
-  alpha_q975 <- apply(X = out$alpha, MARGIN = 2, FUN = quantile, probs = 0.975)
-
-  # Calculate y-axis range for optimal legend positioning
-  range_alpha <- range(alpha_true, alpha_estimate, alpha_q025, alpha_q975)
-  r1_alpha <- max(0, range_alpha[1] - 0.05)  # Ensure lower bound is at least 0
-  r2_alpha <- min(1, range_alpha[2] + 0.3 * diff(range_alpha))  # Ensure upper bound is at most 1
-
-  plot(
-    alpha_true,
-    col = "red",
-    type = "l",
-    lwd = 3,
-    xlab = "t",
-    ylim = c(r1_alpha, r2_alpha),
-    lty = 2,
-    ylab = expression(alpha[t]),
-    main = "Bernoulli probabilities"
-  )
-
-  # Add 95\% credible intervals
-  polygon(
-    c(1:length(alpha_estimate), rev(1:length(alpha_estimate))),
-    c(alpha_q025, rev(alpha_q975)),
-    col = rgb(0.7, 0.7, 0.7, alpha = 0.3),
-    border = NA
-  )
-
-  # Add point estimate
-  lines(alpha_estimate, col = "black", lwd = 2)
-
-  legend(
-    "topright",
-    legend = c(
-      expression(alpha[t]),
-      expression(hat(alpha)[t]),
-      "95\% Credible Interval"
-    ),
-    col = c("red", "black", "gray"),
-    lty = c(2, 1, 1),
-    lwd = c(3, 2, 8),
-    bty = "n"
-  )
-
-  # --- 4. Initial State (theta[01]) Diagnostics ---
-  # Trace plot for theta[01] to assess MCMC convergence
-  range_theta_01 <- range(out$theta_01)
-  r1_theta01 <- range_theta_01[1] - 0.1 * diff(range_theta_01)
-  r2_theta01 <- range_theta_01[2] + 0.3 * diff(range_theta_01)
-
-  plot.ts(
-    out$theta_01,
-    ylab = expression(theta["0,1"]),
-    main = "Trace plot of initial state",
-    xlab = "Iterations",
-    col = "gray",
-    ylim = c(r1_theta01, r2_theta01)
-  )
-  # Note: No true theta_01 value in this simulation as data is generated from sinusoidal pattern
-  abline(h = median(out$theta_01), col = "black", lty = 1, lwd = 2)
-  legend(
-    "topright",
-    legend = expression(hat(theta)["0,1"]),
-    col = "black",
-    lty = 1,
-    bty = "n",
-    lwd = 2
-  )
-
-  # Posterior density estimate for theta[01]
-  range_dens_theta01 <- range(out$theta_01)
-  r1_dens_theta01 <- range_dens_theta01[1] - 0.1 * diff(range_dens_theta01)
-  r2_dens_theta01 <- range_dens_theta01[2] + 0.25 * diff(range_dens_theta01)
-
-  plot(
-    density(out$theta_01),
-    main = "Posterior density estimate of initial state",
-    xlab = expression(theta["0,1"]),
-    ylab = "Density",
-    lwd = 2,
-    xlim = c(r1_dens_theta01, r2_dens_theta01)
-  )
-  abline(v = median(out$theta_01), col = "black", lty = 1, lwd = 2)
-  legend(
-    "topright",
-    legend = expression(hat(theta)["0,1"]),
-    col = "black",
-    lty = 1,
-    bty = "n",
-    lwd = 2
-  )
-
-  # --- 5. Innovation Precision (1/W[1]) Diagnostics ---
-  # Trace plot for 1/W[1] to assess parameter convergence
-  range_prec_theta1 <- range(out$prec_theta1)
-  r1_prec1 <- range_prec_theta1[1] - 0.1 * diff(range_prec_theta1)
-  r2_prec1 <- range_prec_theta1[2] + 0.25 * diff(range_prec_theta1)
-
-  plot.ts(
-    out$prec_theta1,
-    ylab = expression(1/W[1]),
-    main = "Trace plot of innovation precision",
-    xlab = "Iterations",
-    col = "gray",
-    ylim = c(r1_prec1, r2_prec1)
-  )
-  abline(h = median(out$prec_theta1), col = "black", lty = 1, lwd = 2)
-  legend(
-    "topright",
-    legend = expression(hat(W)[1]^-1),
-    col = "black",
-    lty = 1,
-    bty = "n",
-    lwd = 2
-  )
-
-  # Posterior density estimate for 1/W[1]
-  range_dens_prec1 <- range(out$prec_theta1)
-  r1_dens_prec1 <- range_dens_prec1[1] - 0.1 * diff(range_dens_prec1)
-  r2_dens_prec1 <- range_dens_prec1[2] + 0.25 * diff(range_dens_prec1)
-
-  plot(
-    density(out$prec_theta1),
-    main = "Posterior density estimate of innovation precision",
-    xlab = expression(W[1]^-1),
-    ylab = "Density",
-    lwd = 2,
-    xlim = c(r1_dens_prec1, r2_dens_prec1)
-  )
-  abline(v = median(out$prec_theta1), col = "black", lty = 1, lwd = 2)
-  legend(
-    "topright",
-    legend = expression(hat(W)[1]^-1),
-    col = "black",
-    lty = 1,
-    bty = "n",
-    lwd = 2
-  )
+  plot(out_hc, type = "alpha", true_values = list(alpha = alpha_true))
 }
 
 }
 \references{
-Albert, J. H., & Chib, S. (1993). Bayesian Analysis of Binary and Polychotomous
-Response Data. \emph{Journal of the American Statistical Association}, 88(422), 669-679.
-https://doi.org/10.1080/01621459.1993.10476321
+Albert, J. H., & Chib, S. (1993). Bayesian analysis of binary and polychotomous
+response data. \emph{Journal of the American Statistical Association}, 88(422),
+669-679. \doi{10.1080/01621459.1993.10476321}
 
 Gelman, A. (2006). Prior distributions for variance parameters in
 hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
@@ -479,5 +255,9 @@ variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
 6(4), 847-900.
 }
 \seealso{
-\link[pdm]{mcmc_binomial_locallevel}
+\code{\link{plot.probit_bernoulli_locallevel}},
+\code{\link{print.probit_bernoulli_locallevel}},
+\code{\link{summary.probit_bernoulli_locallevel}} for methods on the fitted object;
+\code{\link{mcmc_probit_bernoulli_localtrend}} and
+\code{\link{mcmc_probit_bernoulli_localacceleration}} for the other dynamic orders.
 }

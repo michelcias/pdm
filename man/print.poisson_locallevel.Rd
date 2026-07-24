@@ -63,5 +63,6 @@ print(out)
 
 }
 \seealso{
-\code{\link{mcmc_poisson_locallevel}}
+\code{\link{mcmc_poisson_locallevel}} (model generator),
+\code{\link{plot.poisson_locallevel}}, \code{\link{summary.poisson_locallevel}}.
 }

@@ -103,5 +103,6 @@ summary(out_logit)
 
 }
 \seealso{
-\code{\link{summary.normal_mixture_locallevel}}
+\code{\link{mcmc_normal_mixture_locallevel}} (model generator),
+\code{\link{plot.normal_mixture_locallevel}}, \code{\link{summary.normal_mixture_locallevel}}.
 }

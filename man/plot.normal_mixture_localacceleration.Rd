@@ -392,7 +392,12 @@ plot(theta3_true, type = "l", main = "True Acceleration State",
      xlab = "Time", ylab = expression(theta["t,3"]))
 plot(alpha_true, type = "l", main = "True Mixture Weights",
      xlab = "Time", ylab = expression(alpha[t]), ylim = c(0, 1))
-points(z_true, col = "red", pch = 16, cex = 0.5)
+points(
+  z_true,
+  col = "red",
+  pch = 16,
+  cex = 0.5
+)
 par(mfrow = c(1, 1))
 
 # --- Step 4: Fit the model with informative priors ---
@@ -538,6 +543,6 @@ plot(out, type = "alpha",
 
 }
 \seealso{
-\code{\link{mcmc_normal_mixture_localacceleration}},
-\code{\link{summary.normal_mixture_localacceleration}}
+\code{\link{mcmc_normal_mixture_localacceleration}} (model generator),
+\code{\link{print.normal_mixture_localacceleration}}, \code{\link{summary.normal_mixture_localacceleration}}.
 }

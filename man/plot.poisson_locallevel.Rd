@@ -377,6 +377,6 @@ plot(out, type = "alpha",
 
 }
 \seealso{
-\code{\link{mcmc_poisson_locallevel}},
-\code{\link{summary.poisson_locallevel}}
+\code{\link{mcmc_poisson_locallevel}} (model generator),
+\code{\link{print.poisson_locallevel}}, \code{\link{summary.poisson_locallevel}}.
 }

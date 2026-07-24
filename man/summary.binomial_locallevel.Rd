@@ -112,6 +112,6 @@ summary(out, ci_level = 0.80)  # 80\% HPD interval
 
 }
 \seealso{
-\code{\link{mcmc_binomial_locallevel}},
-\code{\link{print.binomial_locallevel}}
+\code{\link{mcmc_binomial_locallevel}} (model generator),
+\code{\link{plot.binomial_locallevel}}, \code{\link{print.binomial_locallevel}}.
 }

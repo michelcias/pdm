@@ -70,5 +70,6 @@ print(out)
 
 }
 \seealso{
-\code{\link{mcmc_binomial_localtrend}}
+\code{\link{mcmc_binomial_localtrend}} (model generator),
+\code{\link{plot.binomial_localtrend}}, \code{\link{summary.binomial_localtrend}}.
 }

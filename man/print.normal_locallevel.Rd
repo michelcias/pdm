@@ -60,5 +60,6 @@ print(out)
 
 }
 \seealso{
-\code{\link{mcmc_normal_locallevel}}
+\code{\link{mcmc_normal_locallevel}} (model generator),
+\code{\link{plot.normal_locallevel}}, \code{\link{summary.normal_locallevel}}.
 }

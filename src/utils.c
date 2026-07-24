@@ -33,12 +33,31 @@ double ilogit(double x) {
 //----------------------------------------------------------------------
 
 /**
+ * @brief Absolute floor applied to precision draws by rgamma_positive().
+ *
+ * @details Chosen for numerical headroom, not statistical reasons: the floored
+ *          precision feeds 1/prec, sqrt(1/prec) and sums of squared innovations
+ *          Sum(z^2 / prec), and this bound keeps all of them finite with a wide
+ *          margin below DBL_MAX (1/prec ~ 4.5e15 here, ~290 orders of magnitude
+ *          of slack). A much smaller floor such as DBL_MIN would keep 1/prec
+ *          finite yet still let the squared-innovation sums overflow, so the
+ *          floor is deliberately kept well above the subnormal range rather
+ *          than at the smallest representable positive double. At DBL_EPSILON
+ *          the implied variance ceiling (~4.5e15) is indistinguishable from a
+ *          flat prior for any real dataset, so the guard is statistically
+ *          inert. DBL_EPSILON is reused here only as a conveniently small
+ *          constant; the name documents that it is an absolute precision floor,
+ *          not the relative epsilon its usual role implies.
+ */
+#define RGAMMA_PREC_FLOOR DBL_EPSILON
+
+/**
  * @brief Draw a Gamma variate guaranteed to be strictly positive.
  *
  * @details See utils.h for the full rationale. In short: with small shape
  *          parameters rgamma can underflow to a subnormal value or exactly
  *          0.0, and a zero precision poisons the MCMC (Inf/NaN via 1/prec,
- *          sqrt(1/prec) and zero Cholesky pivots). Flooring at DBL_EPSILON
+ *          sqrt(1/prec) and zero Cholesky pivots). Flooring at RGAMMA_PREC_FLOOR
  *          is statistically inert (variance ~4.5e15) and keeps every
  *          downstream computation finite. The negated comparison also traps
  *          NaN, so a degenerate draw resets to the floor instead of
@@ -46,14 +65,14 @@ double ilogit(double x) {
  *
  * @param shape  Gamma shape parameter (> 0).
  * @param scale  Gamma scale parameter (> 0). Note: scale = 1/rate.
- * @return       Gamma(shape, scale) draw, floored at DBL_EPSILON.
+ * @return       Gamma(shape, scale) draw, floored at RGAMMA_PREC_FLOOR.
  */
 double rgamma_positive(double shape, double scale) {
   double x = rgamma(shape, scale);
 
   /* !(x > floor) is true for x <= floor AND for NaN */
-  if (!(x > DBL_EPSILON)) {
-    x = DBL_EPSILON;
+  if (!(x > RGAMMA_PREC_FLOOR)) {
+    x = RGAMMA_PREC_FLOOR;
   }
 
   return x;

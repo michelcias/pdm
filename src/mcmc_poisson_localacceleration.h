@@ -1,12 +1,12 @@
 /**
- * @file mcmc_poisson_localacceleration. h
+ * @file mcmc_poisson_localacceleration.h
  * @brief Header for MCMC sampling in local-acceleration Poisson dynamic models
  * @author Michel H. Montoril
  * @date 2025-12-20
  * @version 1.0
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
- *          Poisson dynamic models with local-acceleration structure. 
+ *          Poisson dynamic models with local-acceleration structure.
  *
  *          **Key features:**
  *          - Log-Poisson:  Component-wise MH with adaptive tuning
@@ -34,7 +34,7 @@
 /**
  * @brief Gibbs sampler for local-acceleration Poisson dynamic model with log link
  *
- * @details Complete Gibbs MCMC for Poisson observations with log link. 
+ * @details Complete Gibbs MCMC for Poisson observations with log link.
  *          Uses component-wise Metropolis-Hastings for non-linear observation model
  *          with adaptive proposal tuning.
  *

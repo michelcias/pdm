@@ -6,7 +6,7 @@
  * @version 1.0
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of Poisson
- *          dynamic models with log link and local-trend structure: 
+ *          dynamic models with log link and local-trend structure:
  *          - Log-Poisson:  Component-wise Metropolis-Hastings with adaptive tuning
  *
  *          All implementations utilize memory-efficient current/previous iteration buffers
@@ -42,7 +42,7 @@
 /**
  * @brief Gibbs sampler for local-trend Poisson dynamic model with log link
  *
- * @details Implements a complete Gibbs MCMC algorithm for the local-trend Poisson model: 
+ * @details Implements a complete Gibbs MCMC algorithm for the local-trend Poisson model:
  *
  *          **Observation equation:**
  *          y_t ~ Poisson(alpha_t), where alpha_t = exp(theta_{t,1})
@@ -80,12 +80,12 @@
  *
  *          Total iterations: burnin + (n_chain - 1) * thinning + 1
  *
- * @param y_                       Numeric vector [n] of observed Poisson counts. 
+ * @param y_                       Numeric vector [n] of observed Poisson counts.
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for autocorrelation reduction.
  * @param n_chain_                 Number of retained posterior samples.
- * @param prior_theta01_mean_      Prior mean for theta_{0,1}. 
- * @param prior_theta01_prec_      Prior precision for theta_{0,1}. 
+ * @param prior_theta01_mean_      Prior mean for theta_{0,1}.
+ * @param prior_theta01_prec_      Prior precision for theta_{0,1}.
  * @param prior_theta02_mean_      Prior mean for theta_{0,2}.
  * @param prior_theta02_prec_      Prior precision for theta_{0,2}.
  * @param prior_prec1_type_        Integer prior kind on 1/W_1 (0 = Gamma, 1 = Half-t on sqrt(W_1)).
@@ -100,7 +100,7 @@
  * @param prior_prec2_df_          Half-t df nu_2 > 0 (Half-t kind; 1 = Half-Cauchy).
  * @param lag_update_              Adaptation frequency (iterations).
  * @param max_step_size_           Maximum proposal step size.
- * @param base_adaptation_rate_    Base adaptation rate. 
+ * @param base_adaptation_rate_    Base adaptation rate.
  * @param decay_exponent_          Adaptation decay exponent.
  * @param target_acceptance_       Target acceptance proportion.
  * @param min_deviation_threshold_ Minimum deviation to trigger adaptation (>= 0).
@@ -253,13 +253,13 @@ SEXP C_MCMC_log_poisson_localtrend(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_2_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_02_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta2_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_2_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_02_samples    = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta2_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_chain, n));
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples   = R_NilValue;
@@ -329,7 +329,7 @@ SEXP C_MCMC_log_poisson_localtrend(SEXP y_,
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */
-  /* Uses current/previous buffers for memory efficiency. 
+  /* Uses current/previous buffers for memory efficiency.
    * Only retained samples are copied to output (post burn-in, thinned). */
   int chain_idx = 0;
 
@@ -352,7 +352,7 @@ SEXP C_MCMC_log_poisson_localtrend(SEXP y_,
     );
 
     /* ===== Step 2: Sample Trend Innovation Precision 1/W_2 ===== */
-    /* Draw 1/W_2 | theta_2_current, theta_{0,2}_previous from Gamma posterior. 
+    /* Draw 1/W_2 | theta_2_current, theta_{0,2}_previous from Gamma posterior.
      * Uses current theta_2 (just sampled) and previous theta_{0,2}. */
     prec_theta2_current = update_prec_W2(
       theta_02_previous,  /* scalar: initial trend from previous iteration */
@@ -378,7 +378,7 @@ SEXP C_MCMC_log_poisson_localtrend(SEXP y_,
     );
 
     /* ===== Step 4: Sample Level State Vector theta_1 and Rates alpha ===== */
-    /* Draw theta_1 | y, theta_2, theta_01, W_1 using component-wise Metropolis-Hastings. 
+    /* Draw theta_1 | y, theta_2, theta_01, W_1 using component-wise Metropolis-Hastings.
      * Alpha is computed conditionally based on whether this iteration will be retained.  */
     generate_alpha_log_poisson(
       theta_1_previous,       /* theta_1_previous: level from previous iteration [n] */
@@ -408,7 +408,7 @@ SEXP C_MCMC_log_poisson_localtrend(SEXP y_,
 
     /* ===== Step 5: Sample Level Innovation Precision 1/W_1 ===== */
     /* Draw 1/W_1 | theta_{0,1}_previous, theta_{0,2}_current, theta_1_current,
-     * theta_2_current from Gamma posterior. 
+     * theta_2_current from Gamma posterior.
      * Uses both level and trend information to compute innovations. */
     prec_theta1_current = update_prec_W1(
       theta_01_previous,  /* scalar: initial level from previous iteration */
@@ -422,7 +422,7 @@ SEXP C_MCMC_log_poisson_localtrend(SEXP y_,
 
     /* ===== Step 6: Sample Initial Level State theta_{0,1} ===== */
     /* Draw theta_{0,1} | theta_1_current, theta_{0,2}_current, prec_theta1_current
-     * from Normal posterior. 
+     * from Normal posterior.
      * Uses current level and trend information. */
     theta_01_current = generate_theta_01(
       theta_1_current,    /* vector: current level [n] */

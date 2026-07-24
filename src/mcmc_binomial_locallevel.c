@@ -221,10 +221,10 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_chain, n));
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples   = R_NilValue;
@@ -581,10 +581,10 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP alpha_samples    = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_chain, n));
   int n_outputs = 4;
   int n_protect = 4;
 

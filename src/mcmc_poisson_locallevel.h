@@ -6,7 +6,7 @@
  * @version 1.0
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
- *          Poisson dynamic models with local-level structure. 
+ *          Poisson dynamic models with local-level structure.
  *
  *          **Key features:**
  *          - Log-Poisson:  Component-wise MH with adaptive tuning

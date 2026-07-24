@@ -6,7 +6,7 @@
  * @version 1.0
  *
  * @details This file contains optimized functions for MCMC sampling in Poisson
- *          state-space models with log link function: 
+ *          state-space models with log link function:
  *          - Log-Poisson models: Component-wise Metropolis-Hastings with adaptive tuning
  *          - Memory-efficient implementations using current/previous iteration buffers
  *          - Integration with configurable adaptive threshold parameters
@@ -14,7 +14,7 @@
  *
  *          **Log-Poisson models:**
  *          Use component-wise Metropolis-Hastings updates for the level state vector
- *          with adaptive proposal tuning based on acceptance rates. 
+ *          with adaptive proposal tuning based on acceptance rates.
  */
 
 #include <R.h>
@@ -28,7 +28,7 @@
  *        local level model with adaptive tuning
  *
  * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
- *          level state vector theta_1 in a Poisson observation model with log link: 
+ *          level state vector theta_1 in a Poisson observation model with log link:
  *
  *          **Observation equation:**
  *          y_t ~ Poisson(alpha_t), where alpha_t = exp(theta_{t,1})
@@ -36,7 +36,7 @@
  *          **State equation (random walk):**
  *          theta_{t,1} = theta_{t-1,1} + u_{t,1}, u_{t,1} ~ N(0, W_1)
  *
- *          This routine integrates: 
+ *          This routine integrates:
  *          - Adaptive proposal tuning (log_sigma) via recent acceptance proportions (accept_prop)
  *          - Component-wise Metropolis-Hastings update for theta_1 (nonlinear observation
  *            with log link)
@@ -45,11 +45,11 @@
  *          The adaptation follows a diminishing adaptation schedule and is executed
  *          periodically over a sliding window of size lag_update.  The actual state
  *          update is delegated to cwmh_alpha_log_poisson_locallevel, which handles boundary
- *          conditions and log-acceptance. 
+ *          conditions and log-acceptance.
  *
  *          **Adaptation cadence:**
  *          Performed when iter >= lag_update and (iter % lag_update == 0), i.e.,
- *          at iterations lag_update, 2*lag_update, 3*lag_update, ... 
+ *          at iterations lag_update, 2*lag_update, 3*lag_update, ...
  *
  *          **Memory efficiency:**
  *          Uses current/previous iteration buffers instead of full trajectory storage,
@@ -60,7 +60,7 @@
  * @param alpha_current           Output rate vector [n] for current iteration.
  *                                Can be NULL if compute_alpha = 0.
  * @param theta_01_previous       Scalar initial level state from previous iteration.
- * @param prec_theta1_previous    Scalar level precision from previous iteration. 
+ * @param prec_theta1_previous    Scalar level precision from previous iteration.
  * @param theta_1_updated         Sliding window matrix [lag_update * n] of acceptance indicators.
  * @param y                       Observed Poisson counts vector [n] (const, read-only).
  *                                Each y[t] must be a non-negative integer.
@@ -68,9 +68,9 @@
  * @param log_sigma               Input/output vector [n] of log proposal standard deviations.
  * @param hat_theta_1             Workspace vector [n] for conditional means.
  * @param theta_1_new             Workspace vector [n] for proposed values.
- * @param log_accept_prob         Workspace vector [n] for log acceptance probabilities. 
+ * @param log_accept_prob         Workspace vector [n] for log acceptance probabilities.
  * @param lag_update              Sliding window size for adaptation frequency (> 0).
- *                                Set to 0 to disable adaptation. 
+ *                                Set to 0 to disable adaptation.
  * @param n                       Length of the time series.
  * @param iter                    Current MCMC iteration (0-based, must be >= 1).
  * @param max_step_size           Maximum adaptation step size for log_sigma updates.
@@ -88,10 +88,10 @@
  * @note Memory optimization: uses current/previous buffers instead of full trajectory.
  * @note Performance:  Skipping alpha computation provides 10-30% speedup during burn-in/thinning.
  *
- * @warning Each y[t] must be non-negative. 
+ * @warning Each y[t] must be non-negative.
  * @warning iter must be >= 1 for valid theta_1_previous access.
  * @warning lag_update must be > 0 for theta_1_updated indexing.
- * @warning min_deviation_threshold must be >= 0.0. 
+ * @warning min_deviation_threshold must be >= 0.0.
  * @warning If compute_alpha = 1, alpha_current must be a valid pointer.
  * @warning If compute_alpha = 0, alpha_current can be NULL.
  *
@@ -147,7 +147,7 @@ void generate_alpha_log_poisson_locallevel(const double *theta_1_previous,
   }
 
   /* ========== CWMH Update for Current Iteration ========== */
-  /* Updates theta_1 for current iteration, logs acceptance, and optionally stores alpha. 
+  /* Updates theta_1 for current iteration, logs acceptance, and optionally stores alpha.
    * Uses memory-efficient current/previous buffers instead of full trajectory storage.  */
   cwmh_alpha_log_poisson_locallevel(
     theta_1_previous,     /* theta_1_previous: state from previous iteration [n] */
@@ -176,7 +176,7 @@ void generate_alpha_log_poisson_locallevel(const double *theta_1_previous,
  *
  * @details Implements an optimized component-wise Metropolis-Hastings algorithm to sample the
  *          level state vector theta_1 with a Poisson observation model and local
- *          trend state-space evolution: 
+ *          trend state-space evolution:
  *
  *          **Observation equation:**
  *          y_t ~ Poisson(alpha_t), where alpha_t = exp(theta_{t,1})
@@ -206,17 +206,17 @@ void generate_alpha_log_poisson_locallevel(const double *theta_1_previous,
  *
  * @param theta_1_previous        Level state vector [n] from previous iteration (const).
  * @param theta_1_current         Output level state vector [n] for current iteration.
- * @param alpha_current           Output rate vector [n] for current iteration. 
+ * @param alpha_current           Output rate vector [n] for current iteration.
  *                                Can be NULL if compute_alpha = 0.
  * @param theta_2_current         Trend state vector [n] from current iteration (const).
  *                                Must be sampled before calling this function.
  * @param theta_01_previous       Scalar initial level state from previous iteration.
  * @param theta_02_previous       Scalar initial trend state from previous iteration.
  * @param prec_theta1_previous    Scalar level precision from previous iteration.
- * @param theta_1_updated         Sliding window matrix [lag_update * n] of acceptance indicators. 
+ * @param theta_1_updated         Sliding window matrix [lag_update * n] of acceptance indicators.
  * @param y                       Observed Poisson counts vector [n] (const, read-only).
  * @param accept_prop             Workspace vector [n] for acceptance proportions.
- * @param log_sigma               Input/output vector [n] of log proposal standard deviations. 
+ * @param log_sigma               Input/output vector [n] of log proposal standard deviations.
  * @param hat_theta_1             Workspace vector [n] for conditional means.
  * @param theta_1_new             Workspace vector [n] for proposed values.
  * @param log_accept_prob         Workspace vector [n] for log acceptance probabilities.
@@ -226,12 +226,12 @@ void generate_alpha_log_poisson_locallevel(const double *theta_1_previous,
  * @param max_step_size           Maximum adaptation step size for log_sigma updates.
  * @param base_adaptation_rate    Base adaptation rate before decay.
  * @param decay_exponent          Exponent for diminishing adaptation schedule.
- * @param target_acceptance       Target acceptance rate for adaptive tuning. 
+ * @param target_acceptance       Target acceptance rate for adaptive tuning.
  * @param min_deviation_threshold Minimum deviation from target to trigger updates (>= 0).
  * @param compute_alpha           Flag to control alpha computation (0 = skip, 1 = compute).
  *
  * @note Complexity: O(n) per iteration (component-wise updates).
- * @note Uses log-probabilities for numerical stability. 
+ * @note Uses log-probabilities for numerical stability.
  * @note Forward sampling for better mixing.
  * @note Model is local trend (random walk + trend).
  * @note Adaptive tuning performed every lag_update iterations if iter >= lag_update.
@@ -243,7 +243,7 @@ void generate_alpha_log_poisson_locallevel(const double *theta_1_previous,
  * @warning lag_update must be > 0 for theta_1_updated indexing.
  * @warning min_deviation_threshold must be >= 0.0.
  * @warning theta_2_current must contain valid values from current iteration.
- * @warning If compute_alpha = 1, alpha_current must be a valid pointer. 
+ * @warning If compute_alpha = 1, alpha_current must be a valid pointer.
  * @warning If compute_alpha = 0, alpha_current can be NULL.
  *
  * @see adapt_cwmh_parameters
@@ -300,7 +300,7 @@ void generate_alpha_log_poisson(const double *theta_1_previous,
   }
 
   /* ========== CWMH Update for Current Iteration ========== */
-  /* Updates theta_1 for current iteration, logs acceptance, and optionally stores alpha. 
+  /* Updates theta_1 for current iteration, logs acceptance, and optionally stores alpha.
    * Uses memory-efficient current/previous buffers instead of full trajectory storage. */
   cwmh_alpha_log_poisson(
     theta_1_previous,     /* theta_1_previous:  level from previous iteration [n] */

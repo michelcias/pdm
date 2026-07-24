@@ -29,12 +29,15 @@
  * @param lower  Output: lower end of the shortest window.
  * @param upper  Output: upper end of the shortest window.
  */
-static void shortest_window(const double *sorted, int n, int m,
-                            double *lower, double *upper)
+static void shortest_window(const double *sorted,
+                            int           n,
+                            int           m,
+                            double       *lower,
+                            double       *upper)
 {
-  int n_windows = n - m;
-  double best = sorted[m] - sorted[0];
-  int best_i = 0;
+  int    n_windows = n - m;
+  double best      = sorted[m] - sorted[0];
+  int    best_i    = 0;
   for (int i = 1; i < n_windows; i++) {
     double w = sorted[i + m] - sorted[i];
     if (w < best) {

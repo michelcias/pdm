@@ -1,5 +1,5 @@
 /**
- * @file generate_alpha_poisson. h
+ * @file generate_alpha_poisson.h
  * @brief Header for sampling in Poisson state-space models
  * @author Michel H. Montoril
  * @date 2025-12-20

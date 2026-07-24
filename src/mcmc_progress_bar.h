@@ -1,5 +1,5 @@
 /**
- * @file progress_bar.h
+ * @file mcmc_progress_bar.h
  * @brief Efficient progress bar interface for MCMC samplers
  * @author Michel H. Montoril
  * @date 2025-01-16

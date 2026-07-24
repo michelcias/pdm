@@ -156,71 +156,71 @@ double generate_precision_theta_k(double        theta_0k,
                                   double        eta_0k,
                                   int           n);
 
-  /**
-   * @brief Sample final innovation precision 1/W_p from Gamma posterior
-   *        (k=p)
-   *
-   * @details Generates sample from the conditional posterior of innovation precision
-   *          for the highest-order polynomial component. This is a boundary case handling
-   *          the final component following a random walk structure.
-   *
-   *          **Model structure:**
-   *          theta_{t,p} = theta_{t-1,p} + u_{t,p},  u_{t,p} ~ N(0, W_p)
-   *          theta_{1,p} = theta_{0,p} + u_{1,p}
-   *          1/W_p ~ Gamma(nu_p, eta_p)
-   *
-   *          **Innovation calculation (random walk):**
-   *          For t=1: u_{1,p} = theta_{1,p} - theta_{0,p}
-   *          For t>1: u_{t,p} = theta_{t,p} - theta_{t-1,p}
-   *
-   *          **Conditional posterior:**
-   *          1/W_p | theta_p, theta_{0,p} ~ Gamma(nu_post, eta_post)
-   *          where nu_post = nu_p + n/2
-   *                eta_post = eta_p + (1/2) * sum_{t=1}^n u_{t,p}^2
-   *
-   *          **Algorithm:**
-   *          1. Compute first innovation from initial state (boundary condition)
-   *          2. Accumulate squared increments for random walk component
-   *          3. Update Gamma parameters and sample precision
-   *
-   *          **Notation:**
-   *          p represents the polynomial order (final/highest-order component).
-   *
-   * @param theta_0p        Scalar initial state theta_{0,p}.
-   *                        Starting value for highest-order polynomial component.
-   * @param theta_p_current Current p-th component state vector [n] (const).
-   *                        Contains theta_{1,p}, ..., theta_{n,p} from current iteration.
-   * @param nu_0p           Prior shape parameter (nu_p > 0).
-   *                        Controls prior precision about innovation variance.
-   * @param eta_0p          Prior rate parameter (eta_p > 0).
-   *                        Together with nu_p defines prior mean = nu_p / eta_p.
-   * @param n               Sample size (number of observations).
-   *
-   * @return Sampled precision value 1/W_p from Gamma posterior.
-   *
-   * @note Computational complexity: O(n) for sum of squared innovations calculation.
-   * @note Numerical stability: Uses double precision accumulation for sum of squares.
-   * @note Memory access: Sequential reads from state vector (cache-friendly).
-   * @note Algorithm: Gamma-Normal conjugate updating for random walk boundary case.
-   * @note Notation: p represents polynomial order (final component).
-   * @note Boundary condition: First innovation explicitly accounts for initial state.
-   * @note Typical values: nu_p = 0.001, eta_p = 0.001 (vague prior on innovation variance).
-   * @note Special case: For p=1 (local level model), this samples the only innovation precision.
-   *
-   * @warning No validation of prior parameter positivity (nu_0p > 0, eta_0p > 0).
-   *          Caller must ensure valid inputs to avoid NaN/Inf propagation.
-   * @warning Requires GetRNGstate()/PutRNGstate() bracket in calling function.
-   * @warning For n = 0, behavior is undefined (should never occur in practice).
-   *
-   * @see generate_precision_data
-   * @see generate_precision_theta_k
-   * @see rgamma
-   */
-  double generate_precision_theta_p(double        theta_0p,
-                                    const double *theta_p_current,
-                                    double        nu_0p,
-                                    double        eta_0p,
-                                    int           n);
+/**
+ * @brief Sample final innovation precision 1/W_p from Gamma posterior
+ *        (k=p)
+ *
+ * @details Generates sample from the conditional posterior of innovation precision
+ *          for the highest-order polynomial component. This is a boundary case handling
+ *          the final component following a random walk structure.
+ *
+ *          **Model structure:**
+ *          theta_{t,p} = theta_{t-1,p} + u_{t,p},  u_{t,p} ~ N(0, W_p)
+ *          theta_{1,p} = theta_{0,p} + u_{1,p}
+ *          1/W_p ~ Gamma(nu_p, eta_p)
+ *
+ *          **Innovation calculation (random walk):**
+ *          For t=1: u_{1,p} = theta_{1,p} - theta_{0,p}
+ *          For t>1: u_{t,p} = theta_{t,p} - theta_{t-1,p}
+ *
+ *          **Conditional posterior:**
+ *          1/W_p | theta_p, theta_{0,p} ~ Gamma(nu_post, eta_post)
+ *          where nu_post = nu_p + n/2
+ *                eta_post = eta_p + (1/2) * sum_{t=1}^n u_{t,p}^2
+ *
+ *          **Algorithm:**
+ *          1. Compute first innovation from initial state (boundary condition)
+ *          2. Accumulate squared increments for random walk component
+ *          3. Update Gamma parameters and sample precision
+ *
+ *          **Notation:**
+ *          p represents the polynomial order (final/highest-order component).
+ *
+ * @param theta_0p        Scalar initial state theta_{0,p}.
+ *                        Starting value for highest-order polynomial component.
+ * @param theta_p_current Current p-th component state vector [n] (const).
+ *                        Contains theta_{1,p}, ..., theta_{n,p} from current iteration.
+ * @param nu_0p           Prior shape parameter (nu_p > 0).
+ *                        Controls prior precision about innovation variance.
+ * @param eta_0p          Prior rate parameter (eta_p > 0).
+ *                        Together with nu_p defines prior mean = nu_p / eta_p.
+ * @param n               Sample size (number of observations).
+ *
+ * @return Sampled precision value 1/W_p from Gamma posterior.
+ *
+ * @note Computational complexity: O(n) for sum of squared innovations calculation.
+ * @note Numerical stability: Uses double precision accumulation for sum of squares.
+ * @note Memory access: Sequential reads from state vector (cache-friendly).
+ * @note Algorithm: Gamma-Normal conjugate updating for random walk boundary case.
+ * @note Notation: p represents polynomial order (final component).
+ * @note Boundary condition: First innovation explicitly accounts for initial state.
+ * @note Typical values: nu_p = 0.001, eta_p = 0.001 (vague prior on innovation variance).
+ * @note Special case: For p=1 (local level model), this samples the only innovation precision.
+ *
+ * @warning No validation of prior parameter positivity (nu_0p > 0, eta_0p > 0).
+ *          Caller must ensure valid inputs to avoid NaN/Inf propagation.
+ * @warning Requires GetRNGstate()/PutRNGstate() bracket in calling function.
+ * @warning For n = 0, behavior is undefined (should never occur in practice).
+ *
+ * @see generate_precision_data
+ * @see generate_precision_theta_k
+ * @see rgamma
+ */
+double generate_precision_theta_p(double        theta_0p,
+                                  const double *theta_p_current,
+                                  double        nu_0p,
+                                  double        eta_0p,
+                                  int           n);
 
 /**
  * @brief Update the auxiliary variable of a Half-t scale-mixture prior.

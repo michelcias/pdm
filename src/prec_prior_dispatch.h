@@ -71,25 +71,39 @@ typedef struct {
 /* Step signatures — one per precision-sampler kind. `aux` points to the Half-t
  * auxiliary b = 1/a, updated in place by the Half-t steps and ignored by the
  * Gamma steps. */
-typedef double (*prec_thetap_step_t)(double theta_0p, const double *theta_p,
-                                     int n, const prec_prior_t *pr, double *aux);
-typedef double (*prec_thetak_step_t)(double theta_0k, double theta_0kp1,
-                                     const double *theta_k, const double *theta_kp1,
-                                     int n, const prec_prior_t *pr, double *aux);
-typedef double (*prec_data_step_t)(const double *y, const double *theta_1,
-                                   int n, const prec_prior_t *pr, double *aux);
+typedef double (*prec_thetap_step_t)(double              theta_0p,
+                                     const double       *theta_p,
+                                     int                 n,
+                                     const prec_prior_t *pr,
+                                     double             *aux);
+typedef double (*prec_thetak_step_t)(double              theta_0k,
+                                     double              theta_0kp1,
+                                     const double       *theta_k,
+                                     const double       *theta_kp1,
+                                     int                 n,
+                                     const prec_prior_t *pr,
+                                     double             *aux);
+typedef double (*prec_data_step_t)(const double       *y,
+                                   const double       *theta_1,
+                                   int                 n,
+                                   const prec_prior_t *pr,
+                                   double             *aux);
 
 /* --- Terminal innovation precision W_p^{-1} (random-walk boundary component) --- */
-static inline double step_prec_thetap_gamma(double theta_0p, const double *theta_p,
-                                            int n, const prec_prior_t *pr,
-                                            double *aux) {
+static inline double step_prec_thetap_gamma(double              theta_0p,
+                                            const double       *theta_p,
+                                            int                 n,
+                                            const prec_prior_t *pr,
+                                            double             *aux) {
   (void) aux;  /* Gamma prior carries no auxiliary variable */
   return generate_precision_theta_p(theta_0p, theta_p, pr->shape, pr->rate, n);
 }
 
-static inline double step_prec_thetap_halft(double theta_0p, const double *theta_p,
-                                            int n, const prec_prior_t *pr,
-                                            double *aux) {
+static inline double step_prec_thetap_halft(double              theta_0p,
+                                            const double       *theta_p,
+                                            int                 n,
+                                            const prec_prior_t *pr,
+                                            double             *aux) {
   /* Precision: conjugate Gamma sampler with shape df/2 and prior rate df * b. */
   double prec = generate_precision_theta_p(theta_0p, theta_p,
                                            0.5 * pr->df, pr->df * (*aux), n);
@@ -99,21 +113,25 @@ static inline double step_prec_thetap_halft(double theta_0p, const double *theta
 }
 
 /* --- Intermediate innovation precision W_k^{-1} (k < p) --- */
-static inline double step_prec_thetak_gamma(double theta_0k, double theta_0kp1,
-                                            const double *theta_k,
-                                            const double *theta_kp1,
-                                            int n, const prec_prior_t *pr,
-                                            double *aux) {
+static inline double step_prec_thetak_gamma(double              theta_0k,
+                                            double              theta_0kp1,
+                                            const double       *theta_k,
+                                            const double       *theta_kp1,
+                                            int                 n,
+                                            const prec_prior_t *pr,
+                                            double             *aux) {
   (void) aux;
   return generate_precision_theta_k(theta_0k, theta_0kp1, theta_k, theta_kp1,
                                     pr->shape, pr->rate, n);
 }
 
-static inline double step_prec_thetak_halft(double theta_0k, double theta_0kp1,
-                                            const double *theta_k,
-                                            const double *theta_kp1,
-                                            int n, const prec_prior_t *pr,
-                                            double *aux) {
+static inline double step_prec_thetak_halft(double              theta_0k,
+                                            double              theta_0kp1,
+                                            const double       *theta_k,
+                                            const double       *theta_kp1,
+                                            int                 n,
+                                            const prec_prior_t *pr,
+                                            double             *aux) {
   double prec = generate_precision_theta_k(theta_0k, theta_0kp1,
                                            theta_k, theta_kp1,
                                            0.5 * pr->df, pr->df * (*aux), n);
@@ -122,16 +140,20 @@ static inline double step_prec_thetak_halft(double theta_0k, double theta_0kp1,
 }
 
 /* --- Observation precision V^{-1} --- */
-static inline double step_prec_data_gamma(const double *y, const double *theta_1,
-                                         int n, const prec_prior_t *pr,
-                                         double *aux) {
+static inline double step_prec_data_gamma(const double       *y,
+                                          const double       *theta_1,
+                                          int                 n,
+                                          const prec_prior_t *pr,
+                                          double             *aux) {
   (void) aux;
   return generate_precision_data(y, theta_1, pr->shape, pr->rate, n);
 }
 
-static inline double step_prec_data_halft(const double *y, const double *theta_1,
-                                         int n, const prec_prior_t *pr,
-                                         double *aux) {
+static inline double step_prec_data_halft(const double       *y,
+                                          const double       *theta_1,
+                                          int                 n,
+                                          const prec_prior_t *pr,
+                                          double             *aux) {
   double prec = generate_precision_data(y, theta_1,
                                         0.5 * pr->df, pr->df * (*aux), n);
   *aux = generate_halft_aux(prec, pr->hc_scale, pr->df);
@@ -160,9 +182,11 @@ static inline double step_prec_data_halft(const double *y, const double *theta_1
  * @param aux    Current Half-t auxiliary b = 1/a (read-only; ignored for Gamma).
  * @return Sampled precision (> 0), floored via ::rgamma_positive.
  */
-static inline double pdm_draw_prec_suffstat(int kind, const prec_prior_t *pr,
-                                            double count, double sumsq,
-                                            double aux) {
+static inline double pdm_draw_prec_suffstat(int                 kind,
+                                            const prec_prior_t *pr,
+                                            double              count,
+                                            double              sumsq,
+                                            double              aux) {
   double shape, rate;
   if (kind == PDM_PREC_PRIOR_HALFT) {
     shape = 0.5 * pr->df + 0.5 * count;
@@ -188,8 +212,10 @@ static inline double pdm_draw_prec_suffstat(int kind, const prec_prior_t *pr,
  * @param prec  Current precision (> 0) to condition on.
  * @param aux   Out-parameter receiving the refreshed auxiliary; untouched for Gamma.
  */
-static inline void pdm_refresh_halft_aux(int kind, const prec_prior_t *pr,
-                                         double prec, double *aux) {
+static inline void pdm_refresh_halft_aux(int                 kind,
+                                         const prec_prior_t *pr,
+                                         double              prec,
+                                         double             *aux) {
   if (kind == PDM_PREC_PRIOR_HALFT) {
     *aux = generate_halft_aux(prec, pr->hc_scale, pr->df);
   }
@@ -213,8 +239,9 @@ static inline void pdm_refresh_halft_aux(int kind, const prec_prior_t *pr,
  *
  * @note Requires GetRNGstate()/PutRNGstate() bracket in the calling function.
  */
-static inline double pdm_init_prec_prior(int kind, const prec_prior_t *pr,
-                                         double *aux) {
+static inline double pdm_init_prec_prior(int                 kind,
+                                         const prec_prior_t *pr,
+                                         double             *aux) {
   if (kind == PDM_PREC_PRIOR_HALFT) {
     *aux = rgamma_positive(0.5, pr->hc_scale * pr->hc_scale);
     return rgamma_positive(0.5 * pr->df, 1.0 / (pr->df * (*aux)));

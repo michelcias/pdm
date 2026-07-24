@@ -204,7 +204,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
    * placeholders). The mixture parameter sampler dispatches on the kind. */
   double mu_01_mean    = REAL(prior_mu01_mean_)[0];
   double mu_01_prec    = REAL(prior_mu01_prec_)[0];
-  int          phi1_kind   = asInteger(prior_prec01_type_);
+  int    phi1_kind     = asInteger(prior_prec01_type_);
   prec_prior_t phi_prior_1 = {
     .shape    = REAL(prior_prec01_shape_)[0],
     .rate     = REAL(prior_prec01_rate_)[0],
@@ -213,7 +213,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
   };
   double mu_02_mean    = REAL(prior_mu02_mean_)[0];
   double mu_02_prec    = REAL(prior_mu02_prec_)[0];
-  int          phi2_kind   = asInteger(prior_prec02_type_);
+  int    phi2_kind     = asInteger(prior_prec02_type_);
   prec_prior_t phi_prior_2 = {
     .shape    = REAL(prior_prec02_shape_)[0],
     .rate     = REAL(prior_prec02_rate_)[0],
@@ -224,7 +224,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
   /* ========== Parse Dynamic State Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0];
   double prec_theta01 = REAL(prior_theta01_prec_)[0];
-  int          prec1_kind = asInteger(prior_prec1_type_);   /* prior on 1/W_1 */
+  int    prec1_kind   = asInteger(prior_prec1_type_);   /* prior on 1/W_1 */
   prec_prior_t prior_W1   = {
     .shape    = REAL(prior_prec1_shape_)[0],
     .rate     = REAL(prior_prec1_rate_)[0],

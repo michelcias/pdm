@@ -1,3 +1,18 @@
+/**
+ * @file test_helpers.h
+ * @brief Header declaring R-accessible wrappers for internal C functions used in testing
+ * @author Michel H. Montoril
+ * @date 2025-10-12
+ * @version 1.6
+ *
+ * @details Declares the @c .Call entry points implemented in test_helpers.c that
+ *          bridge internal C routines with R so that unit tests (e.g., via
+ *          testthat) can validate numerical correctness and edge-case behaviour.
+ *          The wrappers expose otherwise-internal helpers (transforms, precision
+ *          and state samplers, and fixed-parameter MCMC drivers) without leaking
+ *          implementation details into the production interface.
+ */
+
 #ifndef TEST_HELPERS_H
 #define TEST_HELPERS_H
 

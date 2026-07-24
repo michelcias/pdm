@@ -294,7 +294,7 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
    * R to an integer code plus finite hyperparameters). */
   double mu_01_mean    = REAL(prior_mu01_mean_)[0];
   double mu_01_prec    = REAL(prior_mu01_prec_)[0];
-  int          phi1_kind   = asInteger(prior_prec01_type_);
+  int    phi1_kind     = asInteger(prior_prec01_type_);
   prec_prior_t phi_prior_1 = {
     .shape    = REAL(prior_prec01_shape_)[0],
     .rate     = REAL(prior_prec01_rate_)[0],
@@ -303,7 +303,7 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
   };
   double mu_02_mean    = REAL(prior_mu02_mean_)[0];
   double mu_02_prec    = REAL(prior_mu02_prec_)[0];
-  int          phi2_kind   = asInteger(prior_prec02_type_);
+  int    phi2_kind     = asInteger(prior_prec02_type_);
   prec_prior_t phi_prior_2 = {
     .shape    = REAL(prior_prec02_shape_)[0],
     .rate     = REAL(prior_prec02_rate_)[0],

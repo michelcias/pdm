@@ -2,7 +2,7 @@
  * @file init.c
  * @brief R package initialization and function registration
  * @details Handles dynamic loading and registration of C functions for the pdm package.
- *          Registers . Call entry points for MCMC algorithms and utility functions,
+ *          Registers .Call entry points for MCMC algorithms and utility functions,
  *          ensuring proper interface between R and C code.  Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
@@ -70,11 +70,11 @@
 //==============================================================================
 
 /**
- * @brief Static table defining . Call method entries for R-C interface
+ * @brief Static table defining .Call method entries for R-C interface
  *
  * @details Maps R function names to their corresponding C implementations with
  *          argument counts.  This table is used by R's dynamic loading system
- *          to properly route . Call() invocations to the correct C functions.
+ *          to properly route .Call() invocations to the correct C functions.
  *
  *          **Registered Functions:**
  *
@@ -166,7 +166,7 @@
  *          - v1.8 (2025-12-21): Added Poisson model test helpers (CWMH, alpha generation, fixed-param MCMC)
  *
  * @note Function pointers must be cast to DL_FUNC for R compatibility
- * @note Argument counts are enforced by R's . Call() mechanism at runtime
+ * @note Argument counts are enforced by R's .Call() mechanism at runtime
  * @note NULL terminator is required for proper array traversal by R
  * @note Names must match exactly those used in R wrapper functions
  * @note Test functions enable comprehensive unit testing of internal algorithms
@@ -311,7 +311,7 @@ void R_init_pdm(DllInfo *dll)
   R_registerRoutines(
     dll,         /* dll: package DLL information */
     NULL,        /* cMethods: no . C registrations */
-    CallEntries, /* callMethods: . Call registration table */
+    CallEntries, /* callMethods: .Call registration table */
     NULL,        /* fMethods: no . Fortran registrations */
     NULL         /* rMethods: no . External registrations */
   );

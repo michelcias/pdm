@@ -6,7 +6,7 @@
  * @version 1.0
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
- *          Poisson dynamic models with local-trend structure. 
+ *          Poisson dynamic models with local-trend structure.
  *
  *          **Key features:**
  *          - Log-Poisson:  Component-wise MH with adaptive tuning
@@ -33,7 +33,7 @@
 /**
  * @brief Gibbs sampler for local-trend Poisson dynamic model with log link
  *
- * @details Implements a complete Gibbs MCMC algorithm for the local-trend Poisson model: 
+ * @details Implements a complete Gibbs MCMC algorithm for the local-trend Poisson model:
  *
  *          **Observation equation:**
  *          y_t ~ Poisson(alpha_t), where alpha_t = exp(theta_{t,1})
@@ -71,12 +71,12 @@
  *
  *          Total iterations: burnin + (n_chain - 1) * thinning + 1
  *
- * @param y_                       Numeric vector [n] of observed Poisson counts. 
+ * @param y_                       Numeric vector [n] of observed Poisson counts.
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for autocorrelation reduction.
  * @param n_chain_                 Number of retained posterior samples.
- * @param prior_theta01_mean_      Prior mean for theta_{0,1}. 
- * @param prior_theta01_prec_      Prior precision for theta_{0,1}. 
+ * @param prior_theta01_mean_      Prior mean for theta_{0,1}.
+ * @param prior_theta01_prec_      Prior precision for theta_{0,1}.
  * @param prior_theta02_mean_      Prior mean for theta_{0,2}.
  * @param prior_theta02_prec_      Prior precision for theta_{0,2}.
  * @param prior_prec1_type_        Integer prior kind on 1/W_1 (0 = Gamma, 1 = Half-t)
@@ -91,7 +91,7 @@
  * @param prior_prec2_df_          Half-t df nu_2 > 0 (Half-t kind; 1 = Half-Cauchy)
  * @param lag_update_              Adaptation frequency (iterations).
  * @param max_step_size_           Maximum proposal step size.
- * @param base_adaptation_rate_    Base adaptation rate. 
+ * @param base_adaptation_rate_    Base adaptation rate.
  * @param decay_exponent_          Adaptation decay exponent.
  * @param target_acceptance_       Target acceptance proportion.
  * @param min_deviation_threshold_ Minimum deviation to trigger adaptation (>= 0).

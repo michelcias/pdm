@@ -283,16 +283,16 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_2_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_3_samples  = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_02_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_03_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta2_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta3_samples   = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_y_samples   = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_2_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_3_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_02_samples    = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_03_samples    = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta2_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta3_samples = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_y_samples      = PROTECT(allocVector(REALSXP, n_chain));
 
   /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
   /* Uses current/previous iteration buffers for efficient memory management.

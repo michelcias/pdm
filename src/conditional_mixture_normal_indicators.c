@@ -174,9 +174,9 @@ void conditional_mixture_normal_indicators_k2(const double *y,
   int t;
 
   /* Extract parameters for readability */
-  double mu_1 = params[0];
+  double mu_1   = params[0];
   double prec_1 = params[1];
-  double mu_2 = params[2];
+  double mu_2   = params[2];
   double prec_2 = params[3];
 
   /* Compute standard deviations from precisions */

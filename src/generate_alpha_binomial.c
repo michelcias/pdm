@@ -516,37 +516,37 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
 //----------------------------------------------------------------------
 
 /**
- * @brief Numerical saturation bound for the probit latent state theta_1.
+ * @brief Numerical guard bounds for the probit success probability alpha = g(theta).
  *
- * @details For |theta| >= PROBIT_THETA_CLAMP the standard normal CDF is within
- *          ~7e-16 of 0 or 1, i.e. numerically indistinguishable from the
- *          boundary in IEEE double precision (Phi(8) = 1 - 6.7e-16, Phi(-8) =
- *          6.7e-16). Beyond this point the Bernoulli likelihood
- *          P(y_t = 1 | theta_t) = Phi(theta_t) is completely flat, so theta_1
- *          becomes unidentified by the data: the Albert-Chib augmentation
- *          (v_t ~ N(theta_t, 1)) then lets theta_1 random-walk with no
- *          likelihood restoring force. That drift inflates the sampled state
- *          innovations and drags the innovation precision 1/W_1 toward zero, a
- *          positive-feedback loop that stalls the chain (|theta_1| in the tens
- *          is common on segmented data with pure, well-separated stretches such
- *          as aCGH copy-number profiles). The logit link does not suffer this
- *          as readily because its inverse saturates only near |theta| ~ 37.
+ * @details Instead of clamping the latent state theta_1, the sampler constrains
+ *          the *probability* alpha = Phi(theta) to stay strictly inside (0, 1)
+ *          when it is transformed for output. Under the probit link the latent
+ *          state is sampled directly via Albert-Chib augmentation (the latent
+ *          v_t use theta as their mean, not Phi(theta)), so Phi is evaluated only
+ *          when the probability scale is reported. Constraining that output keeps
+ *          alpha away from an exact 0 or 1, which would otherwise force downstream
+ *          consumers (e.g. mixture indicator samplers) into a degenerate
+ *          deterministic branch.
  *
- *          Clamping the latent state to [-PROBIT_THETA_CLAMP, PROBIT_THETA_CLAMP]
- *          breaks the feedback while leaving the mixture weight
- *          alpha = Phi(theta) numerically unchanged (Phi is already saturated at
- *          the bound) and, as a side effect, keeps alpha strictly inside (0, 1)
- *          so downstream indicator samplers are never forced into a degenerate
- *          deterministic branch. In well-identified problems |theta_1| stays far
- *          below the bound (probit states rarely exceed ~4), so the guard is
- *          inert and does not alter the sampler.
+ *          The bounds match the resolution of the links at their numerical
+ *          saturation point: ilogit(-36) = 2.3e-16 and ilogit(36) = 1 - 2.3e-16
+ *          (Phi saturates even earlier, near |theta| ~ 8). Beyond that point the
+ *          transform is already numerically indistinguishable from the boundary,
+ *          so constraining the probability there leaves alpha essentially
+ *          unchanged. The lower floor is set to 2e-16 for symmetry with the logit
+ *          guard in cwmh_binomial.c.
+ *
+ *          Unlike a state clamp, this guard never distorts the sampled latent
+ *          state theta_1: theta_1 is stored exactly as drawn, and only the derived
+ *          probability is protected.
  */
-#define PROBIT_THETA_CLAMP 36.0
+#define LINK_ALPHA_MIN 2e-16
+#define LINK_ALPHA_MAX (1.0 - 2.3e-16)
 
-static inline double clamp_probit_state(double theta) {
-  if (theta >  PROBIT_THETA_CLAMP) return  PROBIT_THETA_CLAMP;
-  if (theta < -PROBIT_THETA_CLAMP) return -PROBIT_THETA_CLAMP;
-  return theta;
+static inline double clamp_link_alpha(double p) {
+  if (p < LINK_ALPHA_MIN) return LINK_ALPHA_MIN;
+  if (p > LINK_ALPHA_MAX) return LINK_ALPHA_MAX;
+  return p;
 }
 
 //----------------------------------------------------------------------
@@ -667,25 +667,15 @@ void generate_alpha_probit_bernoulli_locallevel(const double *theta_1_previous,
     1                   /* add_a: use (a + b) for last diagonal element */
   );
 
-  /* ========== Guard Against Probit Saturation Drift ========== */
-  /* Clamp the latent state to the region where Phi is not numerically
-   * saturated. This is inert whenever |theta_1| < PROBIT_THETA_CLAMP (the norm
-   * in well-identified problems) and, on pure/well-separated stretches, stops
-   * theta_1 from random-walking into the flat tail of Phi and collapsing the
-   * innovation precision 1/W_1. See clamp_probit_state for the full rationale.
-   * Applied unconditionally (not only for retained draws) so the guard also
-   * holds during burn-in, where the drift would otherwise build up. */
-  for (int t = 0; t < n; t++) {
-    theta_1_current[t] = clamp_probit_state(theta_1_current[t]);
-  }
-
   /* ========== Transform to Probability Scale ========== */
-  /* Compute alpha_t = Phi(theta_{t,1}) for all t if requested.
+  /* Compute alpha_t = Phi(theta_{t,1}) for all t if requested. The latent state
+   * theta_1 is stored exactly as drawn (no state clamp); the guard keeps only the
+   * derived probability alpha strictly inside (0, 1) via clamp_link_alpha.
    * This transformation is needed for posterior summaries and diagnostics
    * but can be skipped during burn-in to save computational cost. */
   if (compute_alpha) {
     for (int t = 0; t < n; t++) {
-      alpha_current[t] = pnorm(theta_1_current[t], 0.0, 1.0, 1, 0);
+      alpha_current[t] = clamp_link_alpha(pnorm(theta_1_current[t], 0.0, 1.0, 1, 0));
     }
   }
 }
@@ -839,22 +829,15 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
     1                   /* add_a: use (a + b) for last diagonal element */
   );
 
-  /* ========== Guard Against Probit Saturation Drift ========== */
-  /* Clamp the latent state to the region where Phi is not numerically
-   * saturated. Inert when |theta_1| < PROBIT_THETA_CLAMP; on pure/well-separated
-   * stretches it stops theta_1 from random-walking into the flat tail of Phi and
-   * collapsing 1/W_1. See clamp_probit_state for the full rationale. */
-  for (int t = 0; t < n; t++) {
-    theta_1_current[t] = clamp_probit_state(theta_1_current[t]);
-  }
-
   /* ========== Transform to Probability Scale ========== */
-  /* Compute alpha_t = Phi(theta_{t,1}) for all t if requested.
+  /* Compute alpha_t = Phi(theta_{t,1}) for all t if requested. The latent state
+   * theta_1 is stored exactly as drawn (no state clamp); the guard keeps only the
+   * derived probability alpha strictly inside (0, 1) via clamp_link_alpha.
    * This transformation is needed for posterior summaries and diagnostics
    * but can be skipped during burn-in to save computational cost. */
   if (compute_alpha) {
     for (int t = 0; t < n; t++) {
-      alpha_current[t] = pnorm(theta_1_current[t], 0.0, 1.0, 1, 0);
+      alpha_current[t] = clamp_link_alpha(pnorm(theta_1_current[t], 0.0, 1.0, 1, 0));
     }
   }
 }

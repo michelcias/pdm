@@ -40,35 +40,51 @@ static inline double stable_log_accept_prob(double lp1n,
 }
 
 /**
- * @brief Numerical saturation bound for the logit latent state theta_1.
+ * @brief Numerical guard bounds for the logit success probability alpha = g(theta).
  *
- * @details Symmetric counterpart of the probit guard in generate_alpha_binomial.c
- *          (see clamp_probit_state). It addresses the same failure mode: once the
- *          inverse link saturates, the Binomial/Bernoulli likelihood
- *          P(y | theta) becomes flat, theta_1 is no longer identified by the
- *          data, and a random walk of the state can drift into that tail,
- *          inflating the sampled innovations and dragging the innovation
- *          precision 1/W_1 toward zero.
+ * @details Instead of clamping the latent state theta_1, the sampler constrains
+ *          the *probability* alpha = ilogit(theta) to stay strictly inside (0, 1).
+ *          alpha is the quantity that actually enters the binomial likelihood
+ *          dbinom(y, n_trials, alpha, ...) and is reported to the caller. If alpha
+ *          were allowed to reach exactly 0 or 1, then dbinom(y, n_trials, {0, 1})
+ *          would be -Inf whenever 0 < y < n_trials, and that -Inf/NaN would
+ *          propagate into the Metropolis-Hastings acceptance ratio and stall the
+ *          chain.
  *
- *          The logistic transform saturates far later than the probit one: for
- *          |theta| >= LOGIT_THETA_CLAMP = 36, ilogit(theta) is within ~2e-16 of 0
- *          or 1 (ilogit(36) = 1 - 2.3e-16), i.e. numerically at the boundary,
- *          whereas Phi reaches that point already near |theta| ~ 8. Because the
- *          bound is so large and the component-wise random-walk proposals move in
- *          small steps, this guard essentially never binds in practice; it is a
- *          defensive, symmetric safeguard that keeps alpha = ilogit(theta)
- *          strictly inside (0, 1) (so the mixture indicator sampler never hits its
- *          degenerate deterministic branch) and rules out the runaway drift by
- *          construction. Since ilogit is already saturated at the bound, clamping
- *          leaves alpha numerically unchanged, and for well-identified problems
- *          |theta_1| stays far below 36, so the guard is inert.
+ *          The bounds are placed at the resolution of the logit link at its
+ *          numerical saturation point: ilogit(-36) = 2.3e-16 and
+ *          ilogit(36) = 1 - 2.3e-16. Beyond |theta| ~ 36 the transform is already
+ *          numerically indistinguishable from the boundary, so constraining the
+ *          probability there leaves alpha essentially unchanged while removing the
+ *          exact-boundary hazard. The lower floor is set marginally wider (2e-16)
+ *          for symmetry with the probit guard in generate_alpha_binomial.c.
+ *
+ *          Unlike a state clamp, this guard never distorts the sampled latent
+ *          state theta_1: theta_1 is stored exactly as drawn, and only the derived
+ *          probability is protected.
  */
-#define LOGIT_THETA_CLAMP 36.0
+#define LINK_ALPHA_MIN 2e-16
+#define LINK_ALPHA_MAX (1.0 - 2.3e-16)
 
-static inline double clamp_logit_state(double theta) {
-  if (theta >  LOGIT_THETA_CLAMP) return  LOGIT_THETA_CLAMP;
-  if (theta < -LOGIT_THETA_CLAMP) return -LOGIT_THETA_CLAMP;
-  return theta;
+static inline double clamp_link_alpha(double p) {
+  if (p < LINK_ALPHA_MIN) return LINK_ALPHA_MIN;
+  if (p > LINK_ALPHA_MAX) return LINK_ALPHA_MAX;
+  return p;
+}
+
+/**
+ * @brief Inverse-logit transform with the probability guard applied.
+ *
+ * @details Computes alpha = ilogit(theta) and constrains it to
+ *          [LINK_ALPHA_MIN, LINK_ALPHA_MAX], so that neither the binomial
+ *          likelihood nor the reported success probability ever sees an exact
+ *          0 or 1. Invoked at every point where the link g(theta) is evaluated.
+ *
+ * @param theta Latent state value.
+ * @return Guarded success probability in [LINK_ALPHA_MIN, LINK_ALPHA_MAX].
+ */
+static inline double ilogit_guarded(double theta) {
+  return clamp_link_alpha(ilogit(theta));
 }
 
 /**
@@ -233,9 +249,9 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
    * lp1 = log prior density, lp2 = log likelihood
    * Subscripts: n = new (proposed), o = old (current) */
   double lp1n = dnorm(theta_1_new[0], hat_theta_1[0], sd_regular, 1);
-  double lp2n = dbinom(y[0], n_trials, ilogit(theta_1_new[0]), 1);
+  double lp2n = dbinom(y[0], n_trials, ilogit_guarded(theta_1_new[0]), 1);
   double lp1o = dnorm(theta_1_previous[0], hat_theta_1[0], sd_regular, 1);
-  double lp2o = dbinom(y[0], n_trials, ilogit(theta_1_previous[0]), 1);
+  double lp2o = dbinom(y[0], n_trials, ilogit_guarded(theta_1_previous[0]), 1);
 
   log_accept_prob[0] = stable_log_accept_prob(
     lp1n, /* lp1n: log-density of new state w.r.t. prior */
@@ -271,9 +287,9 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
 
     /* Compute log densities using cached precision values */
     lp1n = dnorm(theta_1_new[t], hat_theta_1[t], sd_regular, 1);
-    lp2n = dbinom(y[t], n_trials, ilogit(theta_1_new[t]), 1);
+    lp2n = dbinom(y[t], n_trials, ilogit_guarded(theta_1_new[t]), 1);
     lp1o = dnorm(theta_1_previous[t], hat_theta_1[t], sd_regular, 1);
-    lp2o = dbinom(y[t], n_trials, ilogit(theta_1_previous[t]), 1);
+    lp2o = dbinom(y[t], n_trials, ilogit_guarded(theta_1_previous[t]), 1);
 
     log_accept_prob[t] = stable_log_accept_prob(
       lp1n, /* lp1n: log-density of new state w.r.t. prior */
@@ -307,9 +323,9 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
 
   /* Compute log densities using cached precision (boundary variance structure) */
   lp1n = dnorm(theta_1_new[n - 1], hat_theta_1[n - 1], sd_last, 1);
-  lp2n = dbinom(y[n - 1], n_trials, ilogit(theta_1_new[n - 1]), 1);
+  lp2n = dbinom(y[n - 1], n_trials, ilogit_guarded(theta_1_new[n - 1]), 1);
   lp1o = dnorm(theta_1_previous[n - 1], hat_theta_1[n - 1], sd_last, 1);
-  lp2o = dbinom(y[n - 1], n_trials, ilogit(theta_1_previous[n - 1]), 1);
+  lp2o = dbinom(y[n - 1], n_trials, ilogit_guarded(theta_1_previous[n - 1]), 1);
 
   log_accept_prob[n - 1] = stable_log_accept_prob(
     lp1n, /* lp1n: log-density of new state w.r.t. prior */
@@ -328,20 +344,14 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
   /* Store acceptance indicator in sliding window */
   theta_1_updated[window_idx + (n - 1)] = accepted_last;
 
-  /* ========== Guard Against Logit Saturation Drift ========== */
-  /* Clamp the accepted states to the band where ilogit is not numerically
-   * saturated (see clamp_logit_state). Inert whenever |theta_1| < LOGIT_THETA_CLAMP,
-   * which is the norm for the small-step random walk; it defends against the same
-   * runaway drift / 1/W_1 collapse guarded against in the probit sampler and keeps
-   * alpha = ilogit(theta) strictly inside (0, 1). */
-  for (t = 0; t < n; t++) {
-    theta_1_new[t] = clamp_logit_state(theta_1_new[t]);
-  }
-
   /* ========== Update Output Arrays with Branch Hoisting Optimization ========== */
   /* Branch hoisting: test compute_alpha once outside loop instead of n times inside.
    * This enables better CPU pipelining, potential auto-vectorization by compiler,
    * and eliminates ~500+ branch mispredictions per call.
+   *
+   * The latent states theta_1 are stored exactly as drawn (no state clamp); the
+   * success probability alpha = ilogit_guarded(theta_1) is what stays strictly
+   * inside (0, 1) via the probability guard (see clamp_link_alpha).
    *
    * Performance impact:
    * - compute_alpha = 0: Fast memcpy path (2-3x faster than manual loop)
@@ -351,7 +361,7 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
     /* Path 1: Compute both theta_1 and alpha transformations */
     for (t = 0; t < n; t++) {
       theta_1_current[t] = theta_1_new[t];          /* Store sampled states */
-      alpha_current[t] = ilogit(theta_1_new[t]);   /* Store transformed probabilities */
+      alpha_current[t] = ilogit_guarded(theta_1_new[t]);   /* Store transformed probabilities */
     }
   } else {
     /* Path 2: Fast bulk copy without transformation (optimized in assembly/SIMD) */
@@ -505,9 +515,9 @@ void cwmh_alpha_logit_binomial(const double *theta_1_previous,
 
   /* Calculate log acceptance probability using cached precision values */
   double lp1n = dnorm(theta_1_new[0], hat_theta_1[0], sd_regular, 1);
-  double lp2n = dbinom(y[0], n_trials, ilogit(theta_1_new[0]), 1);
+  double lp2n = dbinom(y[0], n_trials, ilogit_guarded(theta_1_new[0]), 1);
   double lp1o = dnorm(theta_1_previous[0], hat_theta_1[0], sd_regular, 1);
-  double lp2o = dbinom(y[0], n_trials, ilogit(theta_1_previous[0]), 1);
+  double lp2o = dbinom(y[0], n_trials, ilogit_guarded(theta_1_previous[0]), 1);
 
   log_accept_prob[0] = stable_log_accept_prob(
     lp1n, /* lp1n: log-density of new state w.r.t. prior */
@@ -544,9 +554,9 @@ void cwmh_alpha_logit_binomial(const double *theta_1_previous,
 
     /* Compute log densities using cached precision values */
     lp1n = dnorm(theta_1_new[t], hat_theta_1[t], sd_regular, 1);
-    lp2n = dbinom(y[t], n_trials, ilogit(theta_1_new[t]), 1);
+    lp2n = dbinom(y[t], n_trials, ilogit_guarded(theta_1_new[t]), 1);
     lp1o = dnorm(theta_1_previous[t], hat_theta_1[t], sd_regular, 1);
-    lp2o = dbinom(y[t], n_trials, ilogit(theta_1_previous[t]), 1);
+    lp2o = dbinom(y[t], n_trials, ilogit_guarded(theta_1_previous[t]), 1);
 
     log_accept_prob[t] = stable_log_accept_prob(
       lp1n, /* lp1n: log-density of new state w.r.t. prior */
@@ -581,9 +591,9 @@ void cwmh_alpha_logit_binomial(const double *theta_1_previous,
 
   /* Compute log densities using cached precision (boundary variance structure) */
   lp1n = dnorm(theta_1_new[n - 1], hat_theta_1[n - 1], sd_last, 1);
-  lp2n = dbinom(y[n - 1], n_trials, ilogit(theta_1_new[n - 1]), 1);
+  lp2n = dbinom(y[n - 1], n_trials, ilogit_guarded(theta_1_new[n - 1]), 1);
   lp1o = dnorm(theta_1_previous[n - 1], hat_theta_1[n - 1], sd_last, 1);
-  lp2o = dbinom(y[n - 1], n_trials, ilogit(theta_1_previous[n - 1]), 1);
+  lp2o = dbinom(y[n - 1], n_trials, ilogit_guarded(theta_1_previous[n - 1]), 1);
 
   log_accept_prob[n - 1] = stable_log_accept_prob(
     lp1n, /* lp1n: log-density of new state w.r.t. prior */
@@ -602,25 +612,19 @@ void cwmh_alpha_logit_binomial(const double *theta_1_previous,
   /* Store acceptance indicator in sliding window */
   theta_1_updated[window_idx + (n - 1)] = accepted_last;
 
-  /* ========== Guard Against Logit Saturation Drift ========== */
-  /* Clamp the accepted states to the band where ilogit is not numerically
-   * saturated (see clamp_logit_state). Inert whenever |theta_1| < LOGIT_THETA_CLAMP,
-   * which is the norm for the small-step random walk; it defends against the same
-   * runaway drift / 1/W_1 collapse guarded against in the probit sampler and keeps
-   * alpha = ilogit(theta) strictly inside (0, 1). */
-  for (t = 0; t < n; t++) {
-    theta_1_new[t] = clamp_logit_state(theta_1_new[t]);
-  }
-
   /* ========== Update Output Arrays with Branch Hoisting Optimization ========== */
   /* Branch hoisting: test compute_alpha once outside loop instead of n times inside.
    * This enables better CPU pipelining, potential auto-vectorization by compiler,
-   * and eliminates ~500+ branch mispredictions per call. */
+   * and eliminates ~500+ branch mispredictions per call.
+   *
+   * The latent states theta_1 are stored exactly as drawn (no state clamp); the
+   * success probability alpha = ilogit_guarded(theta_1) is what stays strictly
+   * inside (0, 1) via the probability guard (see clamp_link_alpha). */
   if (compute_alpha) {
     /* Path 1: Compute both theta_1 and alpha transformations */
     for (t = 0; t < n; t++) {
       theta_1_current[t] = theta_1_new[t];          /* Store sampled states */
-      alpha_current[t] = ilogit(theta_1_new[t]);   /* Store transformed probabilities */
+      alpha_current[t] = ilogit_guarded(theta_1_new[t]);   /* Store transformed probabilities */
     }
   } else {
     /* Path 2: Fast bulk copy without transformation (optimized in assembly/SIMD) */

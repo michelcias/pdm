@@ -88,6 +88,31 @@ static inline double ilogit_guarded(double theta) {
 }
 
 /**
+ * @brief Numerical saturation bound for the logit latent state theta_1.
+ *
+ * @details Complements the alpha probability guard above, which only protects
+ *          the *reported/likelihood* probability. This state clamp instead
+ *          protects the *sampler dynamics*: once ilogit saturates the
+ *          Binomial/Bernoulli likelihood P(y | theta) becomes flat, theta_1 is
+ *          no longer identified by the data, and a random walk of the state can
+ *          drift into that tail, inflating the sampled innovations and dragging
+ *          the innovation precision 1/W_1 toward zero. Symmetric counterpart of
+ *          clamp_probit_state in generate_alpha_binomial.c.
+ *
+ *          For |theta| >= LOGIT_THETA_CLAMP = 36, ilogit(theta) is within
+ *          ~2e-16 of 0 or 1, so clamping leaves alpha numerically unchanged; for
+ *          well-identified problems |theta_1| stays far below 36 and the guard
+ *          is inert.
+ */
+#define LOGIT_THETA_CLAMP 36.0
+
+static inline double clamp_logit_state(double theta) {
+  if (theta >  LOGIT_THETA_CLAMP) return  LOGIT_THETA_CLAMP;
+  if (theta < -LOGIT_THETA_CLAMP) return -LOGIT_THETA_CLAMP;
+  return theta;
+}
+
+/**
  * @brief Cache structure for expensive precision computations
  */
 typedef struct {
@@ -344,13 +369,23 @@ void cwmh_alpha_logit_binomial_locallevel(const double *theta_1_previous,
   /* Store acceptance indicator in sliding window */
   theta_1_updated[window_idx + (n - 1)] = accepted_last;
 
+  /* ========== Guard Against Logit Saturation Drift ========== */
+  /* Clamp the accepted states to the band where ilogit is not numerically
+   * saturated (see clamp_logit_state). Inert whenever |theta_1| < LOGIT_THETA_CLAMP,
+   * which is the norm for the small-step random walk; it defends against the
+   * runaway drift / 1/W_1 collapse and is complementary to the alpha probability
+   * guard (clamp_link_alpha), which only protects the reported/likelihood alpha. */
+  for (t = 0; t < n; t++) {
+    theta_1_new[t] = clamp_logit_state(theta_1_new[t]);
+  }
+
   /* ========== Update Output Arrays with Branch Hoisting Optimization ========== */
   /* Branch hoisting: test compute_alpha once outside loop instead of n times inside.
    * This enables better CPU pipelining, potential auto-vectorization by compiler,
    * and eliminates ~500+ branch mispredictions per call.
    *
-   * The latent states theta_1 are stored exactly as drawn (no state clamp); the
-   * success probability alpha = ilogit_guarded(theta_1) is what stays strictly
+   * The accepted latent states theta_1 are clamped by clamp_logit_state above; the
+   * success probability alpha = ilogit_guarded(theta_1) additionally stays strictly
    * inside (0, 1) via the probability guard (see clamp_link_alpha).
    *
    * Performance impact:
@@ -612,13 +647,23 @@ void cwmh_alpha_logit_binomial(const double *theta_1_previous,
   /* Store acceptance indicator in sliding window */
   theta_1_updated[window_idx + (n - 1)] = accepted_last;
 
+  /* ========== Guard Against Logit Saturation Drift ========== */
+  /* Clamp the accepted states to the band where ilogit is not numerically
+   * saturated (see clamp_logit_state). Inert whenever |theta_1| < LOGIT_THETA_CLAMP,
+   * which is the norm for the small-step random walk; it defends against the
+   * runaway drift / 1/W_1 collapse and is complementary to the alpha probability
+   * guard (clamp_link_alpha), which only protects the reported/likelihood alpha. */
+  for (t = 0; t < n; t++) {
+    theta_1_new[t] = clamp_logit_state(theta_1_new[t]);
+  }
+
   /* ========== Update Output Arrays with Branch Hoisting Optimization ========== */
   /* Branch hoisting: test compute_alpha once outside loop instead of n times inside.
    * This enables better CPU pipelining, potential auto-vectorization by compiler,
    * and eliminates ~500+ branch mispredictions per call.
    *
-   * The latent states theta_1 are stored exactly as drawn (no state clamp); the
-   * success probability alpha = ilogit_guarded(theta_1) is what stays strictly
+   * The accepted latent states theta_1 are clamped by clamp_logit_state above; the
+   * success probability alpha = ilogit_guarded(theta_1) additionally stays strictly
    * inside (0, 1) via the probability guard (see clamp_link_alpha). */
   if (compute_alpha) {
     /* Path 1: Compute both theta_1 and alpha transformations */

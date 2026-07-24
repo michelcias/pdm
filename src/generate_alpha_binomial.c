@@ -549,6 +549,34 @@ static inline double clamp_link_alpha(double p) {
   return p;
 }
 
+/**
+ * @brief Numerical saturation bound for the probit latent state theta_1.
+ *
+ * @details Complements the alpha probability guard above, which only protects
+ *          the *reported* probability. This state clamp instead protects the
+ *          *sampler dynamics*: for |theta| >= PROBIT_THETA_CLAMP the standard
+ *          normal CDF is numerically indistinguishable from 0 or 1, so the
+ *          Bernoulli likelihood P(y_t = 1 | theta_t) = Phi(theta_t) is flat and
+ *          theta_1 becomes unidentified. The Albert-Chib augmentation
+ *          (v_t ~ N(theta_t, 1)) then lets theta_1 random-walk with no
+ *          likelihood restoring force, inflating the state innovations and
+ *          dragging the innovation precision 1/W_1 toward zero — a
+ *          positive-feedback loop that stalls the chain (|theta_1| in the tens
+ *          is common on segmented data such as aCGH copy-number profiles).
+ *
+ *          Clamping to [-PROBIT_THETA_CLAMP, PROBIT_THETA_CLAMP] breaks the
+ *          feedback while leaving alpha = Phi(theta) numerically unchanged. In
+ *          well-identified problems |theta_1| stays far below the bound (probit
+ *          states rarely exceed ~4), so the guard is inert.
+ */
+#define PROBIT_THETA_CLAMP 36.0
+
+static inline double clamp_probit_state(double theta) {
+  if (theta >  PROBIT_THETA_CLAMP) return  PROBIT_THETA_CLAMP;
+  if (theta < -PROBIT_THETA_CLAMP) return -PROBIT_THETA_CLAMP;
+  return theta;
+}
+
 //----------------------------------------------------------------------
 
 /**
@@ -667,10 +695,23 @@ void generate_alpha_probit_bernoulli_locallevel(const double *theta_1_previous,
     1                   /* add_a: use (a + b) for last diagonal element */
   );
 
+  /* ========== Guard Against Probit Saturation Drift ========== */
+  /* Clamp the latent state to the region where Phi is not numerically
+   * saturated (see clamp_probit_state). Inert whenever |theta_1| < PROBIT_THETA_CLAMP
+   * (the norm in well-identified problems); on pure/well-separated stretches it
+   * stops theta_1 from random-walking into the flat tail of Phi and collapsing
+   * the innovation precision 1/W_1. Applied unconditionally (not only for retained
+   * draws) so the guard also holds during burn-in, where the drift would otherwise
+   * build up. Complementary to the alpha probability guard (clamp_link_alpha),
+   * which only protects the reported probability. */
+  for (int t = 0; t < n; t++) {
+    theta_1_current[t] = clamp_probit_state(theta_1_current[t]);
+  }
+
   /* ========== Transform to Probability Scale ========== */
   /* Compute alpha_t = Phi(theta_{t,1}) for all t if requested. The latent state
-   * theta_1 is stored exactly as drawn (no state clamp); the guard keeps only the
-   * derived probability alpha strictly inside (0, 1) via clamp_link_alpha.
+   * theta_1 is clamped by clamp_probit_state above; the guard additionally keeps
+   * the derived probability alpha strictly inside (0, 1) via clamp_link_alpha.
    * This transformation is needed for posterior summaries and diagnostics
    * but can be skipped during burn-in to save computational cost. */
   if (compute_alpha) {
@@ -829,10 +870,23 @@ void generate_alpha_probit_bernoulli(const double *theta_1_previous,
     1                   /* add_a: use (a + b) for last diagonal element */
   );
 
+  /* ========== Guard Against Probit Saturation Drift ========== */
+  /* Clamp the latent state to the region where Phi is not numerically
+   * saturated (see clamp_probit_state). Inert whenever |theta_1| < PROBIT_THETA_CLAMP
+   * (the norm in well-identified problems); on pure/well-separated stretches it
+   * stops theta_1 from random-walking into the flat tail of Phi and collapsing
+   * the innovation precision 1/W_1. Applied unconditionally (not only for retained
+   * draws) so the guard also holds during burn-in, where the drift would otherwise
+   * build up. Complementary to the alpha probability guard (clamp_link_alpha),
+   * which only protects the reported probability. */
+  for (int t = 0; t < n; t++) {
+    theta_1_current[t] = clamp_probit_state(theta_1_current[t]);
+  }
+
   /* ========== Transform to Probability Scale ========== */
   /* Compute alpha_t = Phi(theta_{t,1}) for all t if requested. The latent state
-   * theta_1 is stored exactly as drawn (no state clamp); the guard keeps only the
-   * derived probability alpha strictly inside (0, 1) via clamp_link_alpha.
+   * theta_1 is clamped by clamp_probit_state above; the guard additionally keeps
+   * the derived probability alpha strictly inside (0, 1) via clamp_link_alpha.
    * This transformation is needed for posterior summaries and diagnostics
    * but can be skipped during burn-in to save computational cost. */
   if (compute_alpha) {

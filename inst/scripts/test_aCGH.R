@@ -102,19 +102,19 @@ cat("\n=== Running Local Trend Model with Logit Link ===\n")
 out_logit_trend <- mcmc_normal_mixture_localtrend(
   y,
   link                    = "logit",
-  burnin                  = 50000,       # Increased burn-in for more complex model
-  thinning                = 200,
+  burnin                  = 20000,       # Increased burn-in for more complex model
+  thinning                = 600,
   n_chain                 = 1000,
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile
   prior_mu01_prec         = 1 / (1 * var(y)),
-  prior_prec01_shape      = 0.1,
-  prior_prec01_rate       = 0.1,
+  prior_prec01_shape      = 0.01,
+  prior_prec01_rate       = 0.01,
   # Prior for mean of second mixture component
   prior_mu02_mean         = NULL,         # Default: 75th percentile
   prior_mu02_prec         = 1 / (1 * var(y)),
-  prior_prec02_shape      = 0.1,
-  prior_prec02_rate       = 0.1,
+  prior_prec02_shape      = 0.01,
+  prior_prec02_rate       = 0.01,
   # Prior for state equation - level
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
@@ -140,36 +140,36 @@ out_logit_trend <- mcmc_normal_mixture_localtrend(
   verbose                 = TRUE,
   bar_width               = 60,
   seed                    = 456
-);plot(out_logit_trend, ask = FALSE)
+);plot(out_logit_trend, ask = FALSE);mcmc_convergence(out_logit_trend)
 
 ## 2.2 Local Trend with Probit Link
 cat("\n=== Running Local Trend Model with Probit Link ===\n")
 out_probit_trend <- mcmc_normal_mixture_localtrend(
   y,
   link               = "probit",
-  burnin             = 50000,
-  thinning           = 200,
+  burnin             = 20000,
+  thinning           = 600,
   n_chain            = 1000,
   prior_mu01_mean    = NULL,
   prior_mu01_prec    = 1 / (1 * var(y)),
-  prior_prec01_shape = 0.1,
-  prior_prec01_rate  = 0.1,
+  prior_prec01_shape = 0.01,
+  prior_prec01_rate  = 0.01,
   prior_mu02_mean    = NULL,
   prior_mu02_prec    = 1 / (1 * var(y)),
-  prior_prec02_shape = 0.1,
-  prior_prec02_rate  = 0.1,
+  prior_prec02_shape = 0.01,
+  prior_prec02_rate  = 0.01,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_theta02_mean = 0,
   prior_theta02_prec = 1,
-  prior_prec1_shape  = 01,
-  prior_prec1_rate   = 01,
-  prior_prec2_shape  = 01,
-  prior_prec2_rate   = 01,
+  prior_prec1_shape  = 0.1,
+  prior_prec1_rate   = 0.1,
+  prior_prec2_shape  = 0.1,
+  prior_prec2_rate   = 0.1,
   verbose            = TRUE,
   bar_width          = 60,
   seed               = 789
-);plot(out_probit_trend, ask = FALSE)
+);plot(out_probit_trend, ask = FALSE);mcmc_convergence(out_probit_trend)
 
 ################################################################################
 # 3. LOCAL ACCELERATION MODEL

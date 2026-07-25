@@ -1,8 +1,13 @@
 # =============================================================================
-# Script de Teste: Extensões de R/plot_utils_ggplot.R
+# Script de Teste: Extensões de inst/prototype/plot_utils_ggplot.R
 # =============================================================================
 # Testa as novas funções genéricas ggplot2: plot_all_mixture_generic_ggplot()
 # e plot_dynamic_states_generic_ggplot()
+#
+# ATENÇÃO: o backend ggplot2 é um protótipo parado fora de R/ (veja
+# inst/prototype/README.md). Ele não está ligado a nenhum método plot.*, e o
+# seletor engine = c("base", "ggplot2") foi removido em #53. Este script só
+# faz sentido se/quando aquele trabalho for retomado.
 
 # Limpar ambiente
 rm(list = ls())
@@ -12,7 +17,7 @@ rm(list = ls())
 # -----------------------------------------------------------------------------
 
 source("R/plot_utils_base.R")
-source("R/plot_utils_ggplot.R")
+source("inst/prototype/plot_utils_ggplot.R")
 source("R/plot_utils_mcmc.R")
 source("R/plot_utils_states.R")
 
@@ -379,5 +384,5 @@ if (has_patchwork) {
 }
 cat("\n")
 
-cat("As extensões de R/plot_utils_ggplot.R estão funcionando corretamente.\n")
-cat("Você pode prosseguir para a Fase 2: Refatorar os arquivos mixture existentes.\n")
+cat("As extensões de inst/prototype/plot_utils_ggplot.R estão funcionando corretamente.\n")
+cat("Para reintegrar o backend ao pacote, siga inst/prototype/README.md.\n")

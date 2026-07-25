@@ -13,7 +13,6 @@ rm(list = ls())
 
 # Source dos arquivos necessários
 source("R/plot_utils_base.R")
-source("R/plot_utils_ggplot.R")
 source("R/plot_utils_mcmc.R")
 source("R/plot_utils_states.R")
 

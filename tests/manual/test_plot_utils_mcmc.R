@@ -13,7 +13,6 @@ rm(list = ls())
 
 # Source dos arquivos necessários (simula carregamento do pacote)
 source("R/plot_utils_base.R")
-source("R/plot_utils_ggplot.R")
 source("R/plot_utils_mcmc.R")
 
 cat("✓ Arquivos carregados com sucesso\n\n")
@@ -336,7 +335,7 @@ cat("  Pressione ENTER para ver os plots...\n")
 readline()
 
 par(ask = FALSE)  # Não perguntar entre plots
-plot_mcmc_diagnostics_generic(obj_mix_ll, which = 1:2, engine = "base")
+plot_mcmc_diagnostics_generic(obj_mix_ll, which = 1:2)
 
 cat("  ✓ Plots gerados (verifique visualmente)\n\n")
 
@@ -349,19 +348,12 @@ cat("===========================================================================
 cat("TESTE 6: plot_mcmc_diagnostics_generic() - GGPLOT2\n")
 cat("=============================================================================\n\n")
 
-if (requireNamespace("ggplot2", quietly = TRUE)) {
-
-  cat("Teste 6.1 - Plotando mu_1 e mu_2 (ggplot2):\n")
-  cat("  Pressione ENTER para ver os plots...\n")
-  readline()
-
-  plot_mcmc_diagnostics_generic(obj_mix_ll, which = 1:2, engine = "ggplot2")
-
-  cat("  ✓ Plots gerados (verifique visualmente)\n\n")
-
-} else {
-  cat("  ⊘ PULADO (ggplot2 não instalado)\n\n")
-}
+# O argumento engine = c("base", "ggplot2") foi removido dos helpers em #53
+# (529d837); plot_mcmc_diagnostics_generic() hoje só produz base graphics. O
+# backend ggplot2 está parado em inst/prototype/plot_utils_ggplot.R e não está
+# ligado a nenhum método plot.*, então não há nada para testar aqui.
+cat("  ⊘ NÃO APLICÁVEL (seletor engine removido em #53)\n")
+cat("    Veja inst/prototype/README.md para retomar o backend ggplot2.\n\n")
 
 
 # -----------------------------------------------------------------------------
@@ -375,7 +367,7 @@ cat("===========================================================================
 # Teste 7.1: which fora do intervalo
 cat("Teste 7.1 - which fora do intervalo:\n")
 tryCatch({
-  plot_mcmc_diagnostics_generic(obj_mix_ll, which = 99, engine = "base")
+  plot_mcmc_diagnostics_generic(obj_mix_ll, which = 99)
   cat("  ✗ FALHOU (deveria dar erro)\n")
 }, error = function(e) {
   cat("  Erro esperado:", conditionMessage(e), "\n")
@@ -409,11 +401,7 @@ cat("✓ TESTE 2: get_n_params() - 6/6 testes passaram\n")
 cat("✓ TESTE 3: get_param_config() - 5/5 testes passaram\n")
 cat("✓ TESTE 4: validate_param_config() - 2/2 testes passaram\n")
 cat("✓ TESTE 5: plot_mcmc_diagnostics_generic() BASE - OK\n")
-if (requireNamespace("ggplot2", quietly = TRUE)) {
-  cat("✓ TESTE 6: plot_mcmc_diagnostics_generic() GGPLOT2 - OK\n")
-} else {
-  cat("⊘ TESTE 6: plot_mcmc_diagnostics_generic() GGPLOT2 - PULADO\n")
-}
+cat("⊘ TESTE 6: plot_mcmc_diagnostics_generic() GGPLOT2 - NÃO APLICÁVEL\n")
 cat("✓ TESTE 7: Validação de Erros - 2/2 testes passaram\n\n")
 
 cat("=============================================================================\n")

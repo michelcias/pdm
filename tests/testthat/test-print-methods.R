@@ -121,7 +121,7 @@ test_that("print() shows model and MCMC metadata", {
 
   # MCMC information
   expect_true(any(grepl("Observations:", output)))
-  expect_true(any(grepl("Samples retained:", output)))
+  expect_true(any(grepl("Draws retained:", output)))
   expect_true(any(grepl("Burn-in:", output)))
   expect_true(any(grepl("Thinning:", output)))
 

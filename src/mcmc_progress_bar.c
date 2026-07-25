@@ -3,7 +3,7 @@
  * @brief Implementation of efficient progress bar for MCMC samplers
  * @author Michel H. Montoril
  * @date 2026-07-25
- * @version 1.1
+ * @version 1.2
  */
 
 #include "mcmc_progress_bar.h"
@@ -153,7 +153,7 @@ void progress_bar_finish(const ProgressBar *pb, int n_draws) {
                              total_hrs, total_min, total_sec, iter_per_sec);
 
   int samples_length = snprintf(samples_buffer, sizeof(samples_buffer),
-                                "  Samples retained (n_draws): %d", n_draws);
+                                "  Draws retained (n_draws): %d", n_draws);
 
   /* Use maximum length for separator */
   int sep_length = pb->separator_length;

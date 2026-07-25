@@ -423,7 +423,7 @@ print.pdm_convergence <- function(x, digits = 3L, ...) {
   cat("MCMC Convergence Diagnostics\n")
   cat(strrep("=", 70), "\n\n", sep = "")
   cat("Model:         ", x$model_type, "\n", sep = "")
-  cat("Chain samples: ", x$n_draws, "\n", sep = "")
+  cat("Draws:         ", x$n_draws, "\n", sep = "")
 
   # Show active settings only when non-default
   thr <- x$ess_thresholds

@@ -299,7 +299,7 @@ print.pdm_convergence_multi <- function(x, digits = 4L, ...) {
   cat(strrep("=", 70), "\n\n", sep = "")
   cat("Model:         ", x$model_type, "\n", sep = "")
   cat("Chains:        ", x$chains, "\n", sep = "")
-  cat("Samples/chain: ", x$n_draws, "\n", sep = "")
+  cat("Draws/chain:   ", x$n_draws, "\n", sep = "")
   cat("\n")
 
   df <- x$table

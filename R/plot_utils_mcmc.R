@@ -419,11 +419,11 @@ validate_param_config <- function(config) {
 
     # Validate samples
     if (!is.numeric(param_info$samples)) {
-      stop("Parameter '", param_name, "': samples must be numeric")
+      stop("Parameter '", param_name, "': draws must be numeric")
     }
 
     if (any(!is.finite(param_info$samples))) {
-      stop("Parameter '", param_name, "': samples contain non-finite values")
+      stop("Parameter '", param_name, "': draws contain non-finite values")
     }
   }
 

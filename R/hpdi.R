@@ -1,6 +1,6 @@
 #' Highest Posterior Density Interval (HPDI)
 #'
-#' Computes the Highest Posterior Density Interval (HPDI) of MCMC samples: the
+#' Computes the Highest Posterior Density Interval (HPDI) of MCMC draws: the
 #' shortest contiguous interval that contains a proportion `prob` of the
 #' draws. Unlike an equal-tailed (quantile) interval, the HPDI is the shortest
 #' such interval and may be asymmetric for skewed posteriors.

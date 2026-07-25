@@ -209,7 +209,7 @@ validate_binomial_localacceleration <- function(x) {
 
     if (dims[1] != n_draws || dims[2] != n_obs) {
       stop(sprintf(
-        "Component '%s' has incorrect dimensions [%d x %d], expected [%d x %d].\n  Each row should be one MCMC sample, each column one time point.",
+        "Component '%s' has incorrect dimensions [%d x %d], expected [%d x %d].\n  Each row should be one MCMC draw, each column one time point.",
         param, dims[1], dims[2], n_draws, n_obs
       ))
     }
@@ -532,7 +532,7 @@ print.binomial_localacceleration <- function(x, digits = 3, ...) {
   # MCMC metadata
   cat("MCMC:\n")
   cat("  Observations:      ", attr(x, "n_obs"), "\n", sep = "")
-  cat("  Samples retained:  ", attr(x, "n_draws"), "\n", sep = "")
+  cat("  Draws retained:    ", attr(x, "n_draws"), "\n", sep = "")
   cat("  Burn-in:           ", attr(x, "burnin"), "\n", sep = "")
   cat("  Thinning:          ", attr(x, "thinning"), "\n", sep = "")
   # Which version and seed produced this fit. Several defaults have moved

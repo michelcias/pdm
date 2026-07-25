@@ -172,7 +172,7 @@ validate_pdm_mcmc_list <- function(x) {
 
   n_draws <- vapply(x, function(ch) attr(ch, "n_draws"), integer(1L))
   if (length(unique(n_draws)) != 1L) {
-    stop("Internal error: all chains must retain the same number of samples")
+    stop("Internal error: all chains must retain the same number of draws")
   }
 
   nms <- lapply(x, names)
@@ -302,7 +302,7 @@ print.pdm_mcmc_list <- function(x, ...) {
   cat(strrep("=", 70), "\n\n", sep = "")
   cat("Model:         ", class(x[[1L]])[1L], "\n", sep = "")
   cat("Chains:        ", attr(x, "chains"), "\n", sep = "")
-  cat("Samples/chain: ", attr(x, "n_draws"), "\n", sep = "")
+  cat("Draws/chain:   ", attr(x, "n_draws"), "\n", sep = "")
   cat("Burn-in:       ", attr(x, "burnin"), "\n", sep = "")
   cat("Thinning:      ", attr(x, "thinning"), "\n", sep = "")
   cat("Observations:  ", attr(x, "n_obs"), "\n", sep = "")

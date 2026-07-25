@@ -383,13 +383,13 @@ plot_mixture_params_base <- function(mu_1,
   # Validate MCMC samples
   if (!is.numeric(mu_1) || !is.numeric(mu_2) ||
       !is.numeric(prec_1) || !is.numeric(prec_2)) {
-    stop("All MCMC sample arguments must be numeric vectors")
+    stop("All MCMC draw arguments must be numeric vectors")
   }
 
   n_samples <- length(mu_1)
   if (length(mu_2) != n_samples || length(prec_1) != n_samples ||
       length(prec_2) != n_samples) {
-    stop("All MCMC sample vectors must have the same length")
+    stop("All MCMC draw vectors must have the same length")
   }
 
   # Validate which parameter

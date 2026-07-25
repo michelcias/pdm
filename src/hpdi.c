@@ -2,8 +2,8 @@
  * @file hpdi.c
  * @brief Highest Posterior Density Interval (HPDI) computation in C.
  * @author Michel H. Montoril
- * @date 2026-06-18
- * @version 1.0
+ * @date 2026-07-25
+ * @version 1.1
  *
  * @details Implements the shortest-interval HPDI estimator for MCMC output.
  *          The hot path is a per-column quicksort (R_qsort) followed by a single
@@ -73,7 +73,7 @@ SEXP C_hpdi(SEXP data, SEXP prob)
   }
 
   if (n < 2) {
-    Rf_error("Need at least 2 samples to compute an HPD interval.");
+    Rf_error("Need at least 2 draws to compute an HPD interval.");
   }
 
   /* Index span of each candidate window. Clamp to keep at least one window

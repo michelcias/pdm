@@ -216,7 +216,7 @@ print.summary.probit_bernoulli_localacceleration <- function(x, digits = 3, ...)
   cat("Model Information:\n")
   cat("  Type:              ", x$model_type, "\n", sep = "")
   cat("  Observations:      ", x$n_obs, "\n", sep = "")
-  cat("  MCMC samples:      ", x$n_draws, "\n", sep = "")
+  cat("  MCMC draws:        ", x$n_draws, "\n", sep = "")
   cat("  Burn-in:           ", x$burnin, "\n", sep = "")
   cat("  Thinning:          ", x$thinning, "\n\n", sep = "")
 

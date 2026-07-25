@@ -92,6 +92,7 @@
 #' @references
 #' Gelman, A., & Rubin, D. B. (1992). Inference from iterative simulation using
 #'   multiple sequences. \emph{Statistical Science}, \strong{7}(4), 457--472.
+#'   \doi{10.1214/ss/1177011136}
 #'
 #' Geyer, C. J. (1992). Practical Markov chain Monte Carlo.
 #'   \emph{Statistical Science}, \strong{7}(4), 473--483.
@@ -101,6 +102,7 @@
 #'   Rank-normalization, folding, and localization: An improved \eqn{\hat{R}}
 #'   for assessing convergence of MCMC (with discussion).
 #'   \emph{Bayesian Analysis}, \strong{16}(2), 667--718.
+#'   \doi{10.1214/20-BA1221}
 #'
 #' @examples
 #' \donttest{

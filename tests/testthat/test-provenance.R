@@ -138,3 +138,71 @@ test_that("provenance travels through a multi-chain fit", {
                as.character(utils::packageVersion("pdm")))
   expect_equal(attr(pooled, "priors"), attr(fits[[1L]], "priors"))
 })
+
+
+test_that("every prior argument of every wrapper reaches the record", {
+  # record_provenance() collects by naming convention: `prior_*` variables in
+  # the wrapper's frame. A future prior argument named something else would
+  # vanish from the record silently, and the round trip would still pass,
+  # because it splices back whatever was recorded. This is the check that
+  # would fail instead.
+  skip_on_cran()
+
+  set.seed(1)
+  n  <- 50
+  p  <- plogis(cumsum(rnorm(n, sd = 0.2)))
+  yg <- cumsum(c(10, rnorm(n)))[-1] + rnorm(n, sd = 0.4)
+  ym <- ifelse(rbinom(n, 1, p) == 1, rnorm(n, 3, 0.5), rnorm(n, 0, 0.5))
+
+  # Initial-state priors are required arguments, so they must be supplied; the
+  # precision priors are left at their defaults, which is the case under test.
+  th <- function(order, mean1, prec1) {
+    out <- list(prior_theta01_mean = mean1, prior_theta01_prec = prec1)
+    if (order >= 2) out <- c(out, list(prior_theta02_mean = 0, prior_theta02_prec = prec1))
+    if (order >= 3) out <- c(out, list(prior_theta03_mean = 0, prior_theta03_prec = prec1))
+    out
+  }
+  ctrl <- list(80, 1, 60, verbose = FALSE, seed = 1)
+
+  cases <- list()
+  for (o in 1:3) {
+    suf <- c("locallevel", "localtrend", "localacceleration")[o]
+    cases[[paste0("normal_", suf)]] <- list(
+      fun = get(paste0("mcmc_normal_", suf)),
+      args = c(list(yg), ctrl, th(o, yg[1], 1 / var(yg))))
+    cases[[paste0("binomial_", suf)]] <- list(
+      fun = get(paste0("mcmc_binomial_", suf)),
+      args = c(list(rbinom(n, 15, p), n_trials = 15), ctrl, th(o, 0, 1)))
+    cases[[paste0("poisson_", suf)]] <- list(
+      fun = get(paste0("mcmc_poisson_", suf)),
+      args = c(list(rpois(n, exp(0.5 + cumsum(rnorm(n, sd = 0.1))))), ctrl, th(o, 0, 1)))
+    cases[[paste0("probit_", suf)]] <- list(
+      fun = get(paste0("mcmc_probit_bernoulli_", suf)),
+      args = c(list(rbinom(n, 1, p)), ctrl, th(o, 0, 1)))
+    cases[[paste0("mixture_", suf)]] <- list(
+      fun = get(paste0("mcmc_normal_mixture_", suf)),
+      args = c(list(ym, link = "logit"), ctrl))
+  }
+
+  expect_equal(length(cases), 15L)
+
+  for (nm in names(cases)) {
+    fit      <- do.call(cases[[nm]]$fun, cases[[nm]]$args)
+    recorded <- names(attr(fit, "priors"))
+    formals_ <- grep("^prior_", names(formals(cases[[nm]]$fun)), value = TRUE)
+
+    # Nothing recorded that is not an argument of this wrapper.
+    expect_true(all(recorded %in% formals_),
+                info = paste(nm, ": stray", toString(setdiff(recorded, formals_))))
+
+    # Everything missing must be an argument the resolved type does not use:
+    # shape/rate under a Half-t, scale/df under a Gamma.
+    for (miss in setdiff(formals_, recorded)) {
+      stem <- sub("_(shape|rate|scale|df|type|mean|prec)$", "", miss)
+      type <- attr(fit, "priors")[[paste0(stem, "_type")]]
+      unused <- if (identical(type, "gamma")) c("scale", "df") else c("shape", "rate")
+      expect_true(grepl(paste0("_(", paste(unused, collapse = "|"), ")$"), miss),
+                  info = paste(nm, ": unexplained missing", miss))
+    }
+  }
+})

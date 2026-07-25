@@ -17,9 +17,22 @@
 #'   The exception is anything that reads the draws as a *sequence*. A pooled
 #'   trace plot splices chain 2 onto the end of chain 1 and shows a jump that
 #'   means nothing, so `plot(type = "mcmc")` keeps the chains apart and draws
-#'   one series per chain. Check convergence before trusting the pooled
-#'   summaries: \code{\link{mcmc_convergence}} is the numerical counterpart of
-#'   that plot.
+#'   one series per chain.
+#' }
+#'
+#' \subsection{`summary()` carries its own convergence evidence}{
+#'   Pooling is only meaningful once the chains agree, and a pooled summary
+#'   looks exactly the same whether they do or not. `summary()` therefore
+#'   computes the rank-normalized split-\eqn{\hat{R}} of every scalar parameter,
+#'   stores it on the returned object, and prints it underneath the usual
+#'   tables. When the largest exceeds `rhat_threshold` it also raises a
+#'   warning at call time, so the caveat survives being scrolled past or
+#'   captured.
+#'
+#'   Only the scalar parameters are checked: they are cheap, and across the
+#'   families they are the slowest-mixing part of these models, so they are what
+#'   a convergence problem shows up in first. For the latent state trajectories
+#'   as well, use \code{\link{mcmc_convergence}}.
 #' }
 #'
 #' \subsection{`loo()` uses the chain structure}{
@@ -31,7 +44,8 @@
 #'   diagnostics — rest on a better estimate.
 #' }
 #'
-#' @param x,object An object of class `"pdm_mcmc_list"`.
+#' @param x,object An object of class `"pdm_mcmc_list"` — except in
+#'   `print.summary.pdm_mcmc_list()`, where `x` is what `summary()` returned.
 #' @param type Character, which diagnostic to draw. Accepts the same values as
 #'   the plot method of the underlying model family (see
 #'   \code{\link{plot.normal_locallevel}} and its siblings). Default `"mcmc"`.
@@ -42,12 +56,18 @@
 #'   single-chain plot methods.
 #' @param ask Logical, whether to pause between pages. Defaults to
 #'   `interactive()` when more than one page will be drawn.
+#' @param rhat_threshold Numeric > 1, the \eqn{\hat{R}} above which `summary()`
+#'   warns that the chains have not converged. Default `1.01`, matching
+#'   \code{\link{mcmc_convergence.pdm_mcmc_list}}.
 #' @param ... Passed to the underlying single-chain method.
 #'
-#' @return `summary()` returns the same object the single-chain method returns
-#'   for that model class; `log_lik()` a draws-by-observations matrix pooled
-#'   over chains; `waic()` and `loo()` the corresponding \pkg{loo} objects;
-#'   `plot()` returns `x` invisibly.
+#' @return `summary()` returns what the single-chain method returns for that
+#'   model class, with class `"summary.pdm_mcmc_list"` prepended and three
+#'   extra elements: `chains`, `n_chain_each` and `rhat` (a named vector of
+#'   rank-normalized split-\eqn{\hat{R}}, one per scalar parameter).
+#'   `log_lik()` returns a draws-by-observations matrix pooled over chains;
+#'   `waic()` and `loo()` the corresponding \pkg{loo} objects; `plot()` returns
+#'   `x` invisibly.
 #'
 #' @examples
 #' \donttest{
@@ -96,8 +116,106 @@ NULL
 
 #' @rdname pdm_mcmc_list-methods
 #' @export
-summary.pdm_mcmc_list <- function(object, ...) {
-  summary(pool_chains(object), ...)
+summary.pdm_mcmc_list <- function(object, rhat_threshold = 1.01, ...) {
+
+  if (!is.numeric(rhat_threshold) || length(rhat_threshold) != 1L ||
+      rhat_threshold <= 1) {
+    stop("'rhat_threshold' must be a single numeric value greater than 1")
+  }
+
+  out <- summary(pool_chains(object), ...)
+
+  # Pooling is only meaningful once the chains agree, and the pooled summary
+  # looks identical either way -- so the summary carries the evidence with it
+  # rather than leaving the user to remember to check separately.
+  rhat <- scalar_rhats(object)
+  out$chains         <- length(object)
+  out$n_chain_each   <- attr(object[[1L]], "n_chain")
+  out$rhat           <- rhat
+  out$rhat_threshold <- rhat_threshold
+
+  worst <- if (all(is.na(rhat))) NA_real_ else max(rhat, na.rm = TRUE)
+  if (!is.na(worst) && worst > rhat_threshold) {
+    warning("The chains have not converged: max R-hat is ",
+            format(worst, digits = 4), " against a threshold of ",
+            rhat_threshold, ", so the pooled summary below mixes draws from ",
+            "distributions that do not agree. Run mcmc_convergence() for the ",
+            "full table.", call. = FALSE)
+  }
+
+  class(out) <- c("summary.pdm_mcmc_list", class(out))
+  out
+}
+
+
+#' Rank-normalized split-R-hat for every scalar parameter of a multi-chain fit
+#'
+#' Restricted to the scalar parameters on purpose: they are cheap (a handful of
+#' `n_draw x n_chain` matrices) and, measured across the families, they are also
+#' the slowest-mixing part of these models, so they are what a convergence check
+#' would flag first. The latent state trajectories are one matrix per time point
+#' and are covered by \code{\link{mcmc_convergence}} instead.
+#'
+#' @param x An object of class `"pdm_mcmc_list"`.
+#'
+#' @return Named numeric vector of R-hat values, one per scalar parameter.
+#'
+#' @keywords internal
+#' @noRd
+scalar_rhats <- function(x) {
+  n_draw  <- attr(x[[1L]], "n_chain")
+  configs <- lapply(x, get_param_config)
+  params  <- names(configs[[1L]])
+
+  out <- vapply(params, function(nm) {
+    rhat_rank_normalized(scalar_draws(configs, nm, n_draw))
+  }, numeric(1L))
+
+  names(out) <- vapply(params, function(nm) configs[[1L]][[nm]]$name_str,
+                       character(1L))
+  out
+}
+
+
+#' @rdname pdm_mcmc_list-methods
+#' @param digits Integer, significant digits for the R-hat column. Default 4.
+#' @export
+print.summary.pdm_mcmc_list <- function(x, digits = 4L, ...) {
+
+  # The family's own summary first, then the evidence about whether pooling
+  # those chains was legitimate.
+  NextMethod()
+
+  worst <- if (all(is.na(x$rhat))) NA_real_ else max(x$rhat, na.rm = TRUE)
+
+  cat("Multi-chain diagnostics (", x$chains, " chains x ", x$n_chain_each,
+      " draws, pooled above)\n", sep = "")
+  cat(strrep("-", 75), "\n", sep = "")
+
+  # The mixture families carry six scalars, which overruns the 75-column rule
+  # the surrounding summary uses. Wrapped three per line rather than by
+  # strwrap(), which would break "W_1^{-1} = 2.01" at its internal spaces.
+  rhat_txt <- sprintf(paste0("%s = %.", digits, "f"), names(x$rhat), x$rhat)
+  rows     <- split(rhat_txt, ceiling(seq_along(rhat_txt) / 3L))
+  for (i in seq_along(rows)) {
+    cat(if (i == 1L) "  Scalar R-hat:  " else "                 ",
+        paste(rows[[i]], collapse = "   "), "\n", sep = "")
+  }
+
+  if (is.na(worst)) {
+    cat("  R-hat is undefined for every scalar parameter (constant draws?).\n")
+  } else if (worst > x$rhat_threshold) {
+    cat("  WARNING: max R-hat ", format(worst, digits = digits), " > ",
+        x$rhat_threshold, ". The chains disagree, so the\n",
+        "  summary above describes no single posterior.\n",
+        "  See mcmc_convergence() for the full table.\n", sep = "")
+  } else {
+    cat("  All below ", x$rhat_threshold,
+        "; pooling the chains is justified.\n", sep = "")
+  }
+  cat(strrep("-", 75), "\n\n", sep = "")
+
+  invisible(x)
 }
 
 

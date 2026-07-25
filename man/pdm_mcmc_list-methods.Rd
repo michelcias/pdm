@@ -3,13 +3,16 @@
 \name{pdm_mcmc_list-methods}
 \alias{pdm_mcmc_list-methods}
 \alias{summary.pdm_mcmc_list}
+\alias{print.summary.pdm_mcmc_list}
 \alias{log_lik.pdm_mcmc_list}
 \alias{waic.pdm_mcmc_list}
 \alias{loo.pdm_mcmc_list}
 \alias{plot.pdm_mcmc_list}
 \title{Methods for multi-chain pdm fits}
 \usage{
-\method{summary}{pdm_mcmc_list}(object, ...)
+\method{summary}{pdm_mcmc_list}(object, rhat_threshold = 1.01, ...)
+
+\method{print}{summary.pdm_mcmc_list}(x, digits = 4L, ...)
 
 \method{log_lik}{pdm_mcmc_list}(object, ...)
 
@@ -20,9 +23,16 @@
 \method{plot}{pdm_mcmc_list}(x, type = "mcmc", which = NULL, true_values = NULL, ask = NULL, ...)
 }
 \arguments{
+\item{rhat_threshold}{Numeric > 1, the \eqn{\hat{R}} above which \code{summary()}
+warns that the chains have not converged. Default \code{1.01}, matching
+\code{\link{mcmc_convergence.pdm_mcmc_list}}.}
+
 \item{...}{Passed to the underlying single-chain method.}
 
-\item{x, object}{An object of class \code{"pdm_mcmc_list"}.}
+\item{x, object}{An object of class \code{"pdm_mcmc_list"} — except in
+\code{print.summary.pdm_mcmc_list()}, where \code{x} is what \code{summary()} returned.}
+
+\item{digits}{Integer, significant digits for the R-hat column. Default 4.}
 
 \item{type}{Character, which diagnostic to draw. Accepts the same values as
 the plot method of the underlying model family (see
@@ -39,10 +49,13 @@ single-chain plot methods.}
 \code{interactive()} when more than one page will be drawn.}
 }
 \value{
-\code{summary()} returns the same object the single-chain method returns
-for that model class; \code{log_lik()} a draws-by-observations matrix pooled
-over chains; \code{waic()} and \code{loo()} the corresponding \pkg{loo} objects;
-\code{plot()} returns \code{x} invisibly.
+\code{summary()} returns what the single-chain method returns for that
+model class, with class \code{"summary.pdm_mcmc_list"} prepended and three
+extra elements: \code{chains}, \code{n_chain_each} and \code{rhat} (a named vector of
+rank-normalized split-\eqn{\hat{R}}, one per scalar parameter).
+\code{log_lik()} returns a draws-by-observations matrix pooled over chains;
+\code{waic()} and \code{loo()} the corresponding \pkg{loo} objects; \code{plot()} returns
+\code{x} invisibly.
 }
 \description{
 Methods that let an object returned with \code{chains > 1} be used
@@ -62,9 +75,22 @@ method here that reports a posterior quantity (\code{summary}, \code{log_lik},
 The exception is anything that reads the draws as a \emph{sequence}. A pooled
 trace plot splices chain 2 onto the end of chain 1 and shows a jump that
 means nothing, so \code{plot(type = "mcmc")} keeps the chains apart and draws
-one series per chain. Check convergence before trusting the pooled
-summaries: \code{\link{mcmc_convergence}} is the numerical counterpart of
-that plot.
+one series per chain.
+}
+
+\subsection{\code{summary()} carries its own convergence evidence}{
+Pooling is only meaningful once the chains agree, and a pooled summary
+looks exactly the same whether they do or not. \code{summary()} therefore
+computes the rank-normalized split-\eqn{\hat{R}} of every scalar parameter,
+stores it on the returned object, and prints it underneath the usual
+tables. When the largest exceeds \code{rhat_threshold} it also raises a
+warning at call time, so the caveat survives being scrolled past or
+captured.
+
+Only the scalar parameters are checked: they are cheap, and across the
+families they are the slowest-mixing part of these models, so they are what
+a convergence problem shows up in first. For the latent state trajectories
+as well, use \code{\link{mcmc_convergence}}.
 }
 
 \subsection{\code{loo()} uses the chain structure}{

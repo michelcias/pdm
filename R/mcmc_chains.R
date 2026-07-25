@@ -49,8 +49,7 @@ run_chains <- function(call, envir, chains, seed, parallel) {
     if (!requireNamespace("parallel", quietly = TRUE)) {
       stop("`parallel = TRUE` requires the 'parallel' package")
     }
-    fits <- parallel::mclapply(seeds, run_one,
-                               mc.cores = min(chains, parallel::detectCores()))
+    fits <- parallel::mclapply(seeds, run_one, mc.cores = worker_count(chains))
     # mclapply reports worker failures as condition objects instead of raising.
     failed <- vapply(fits, inherits, logical(1L), what = "try-error")
     if (any(failed)) {
@@ -62,6 +61,32 @@ run_chains <- function(call, envir, chains, seed, parallel) {
   }
 
   new_pdm_mcmc_list(fits, seeds = seeds)
+}
+
+
+#' How many workers to fork for a parallel chain run
+#'
+#' Never more than there are chains, since a spare worker has nothing to do.
+#'
+#' `parallel::detectCores()` is not used directly, on its own documentation's
+#' advice: it may return `NA`, and it counts the machine's logical CPUs rather
+#' than the ones this process is *allowed* to use — a distinction that matters
+#' under a container or a cluster scheduler. `getOption("mc.cores")` is the
+#' documented way for a user, a job script or `R CMD check` to say how many
+#' cores may be used, so it wins when set; `detectCores()` is only the fallback,
+#' and 2 the fallback for that.
+#'
+#' @param chains Integer, number of chains about to be run.
+#'
+#' @return A positive integer.
+#'
+#' @keywords internal
+#' @noRd
+worker_count <- function(chains) {
+  cores <- getOption("mc.cores")
+  if (is.null(cores)) cores <- parallel::detectCores()
+  if (length(cores) != 1L || is.na(cores) || !is.finite(cores)) cores <- 2L
+  max(1L, min(as.integer(chains), as.integer(cores)))
 }
 
 

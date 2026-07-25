@@ -299,3 +299,31 @@ test_that("chains works for the trend and acceleration samplers too", {
                          mcmc_convergence(accel, theta_timepoints = 0.5)$table$Parameter)),
                3L)
 })
+
+
+test_that("worker_count() never asks mclapply for a bad core count", {
+  # parallel::detectCores() is documented as unsuitable for mc.cores directly:
+  # it may return NA, and it counts the machine's CPUs rather than the ones
+  # this process is allowed to use. mc.cores = NA is an error, so the NA path
+  # is the one that would have taken a real run down.
+  old <- options(mc.cores = NULL)
+  on.exit(options(old), add = TRUE)
+
+  local_mocked_bindings(detectCores = function(...) NA_integer_,
+                        .package = "parallel")
+  expect_equal(worker_count(4L), 2L)
+
+  local_mocked_bindings(detectCores = function(...) 16L, .package = "parallel")
+  expect_equal(worker_count(4L), 4L)   # never more workers than chains
+  expect_equal(worker_count(64L), 16L) # nor more than the machine has
+
+  # An explicit mc.cores wins over detectCores(): this is how a job script or
+  # R CMD check caps a package, and how CRAN's two-core limit is honoured.
+  options(mc.cores = 2L)
+  expect_equal(worker_count(8L), 2L)
+  expect_equal(worker_count(1L), 1L)
+
+  # Nothing can drive it below one worker.
+  options(mc.cores = 0L)
+  expect_equal(worker_count(4L), 1L)
+})

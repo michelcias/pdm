@@ -15,14 +15,17 @@
 #' }
 #'
 #' Convergence diagnostics across fitted models are available via
-#' \code{\link{mcmc_convergence}}.
+#' \code{\link{mcmc_convergence}}. The Gaussian samplers additionally accept
+#' `chains > 1`, which runs several independent chains and enables the
+#' rank-normalized split-\eqn{\hat{R}} reported by
+#' \code{\link{mcmc_convergence.pdm_mcmc_list}}.
 #'
 #' @keywords internal
 "_PACKAGE"
 
 ## usethis namespace: start
 #' @useDynLib pdm, .registration = TRUE
-#' @importFrom stats acf density median qnorm quantile sd
+#' @importFrom stats acf density fft median nextn qnorm quantile sd var
 #' @importFrom graphics abline axTicks axis grid legend lines mtext par points polygon segments title
 #' @importFrom utils tail
 ## usethis namespace: end

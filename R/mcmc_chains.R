@@ -159,6 +159,76 @@ validate_pdm_mcmc_list <- function(x) {
 }
 
 
+#' Collapse a multi-chain fit into a single equivalent fit
+#'
+#' Stacks the draws of every chain into one `pdm_mcmc` object of the original
+#' model class: matrices (the latent trajectories, `alpha`, `z`) are `rbind`ed
+#' and vectors (the scalar parameters) concatenated, chain 1 first. The result
+#' carries the attributes of a single chain with `n_chain` corrected to the
+#' pooled total, so every existing single-chain method applies to it unchanged.
+#'
+#' Pooling is the right operation for anything that estimates a posterior
+#' quantity — summaries, credible bands, WAIC/LOO — because after convergence
+#' the chains are draws from the same distribution and more draws is simply a
+#' better estimate. It is the wrong operation for anything that reads the draws
+#' as a *sequence*: a pooled trace plot shows spurious jumps where one chain is
+#' concatenated to the next, which is why `plot.pdm_mcmc_list()` keeps the
+#' chains apart for `type = "mcmc"`.
+#'
+#' @param x An object of class `"pdm_mcmc_list"`.
+#'
+#' @return A `pdm_mcmc` object of the same model class as the individual chains.
+#'
+#' @keywords internal
+#' @noRd
+pool_chains <- function(x) {
+  if (!inherits(x, "pdm_mcmc_list")) {
+    stop("'x' must inherit from 'pdm_mcmc_list'")
+  }
+
+  first  <- x[[1L]]
+  comps  <- names(first)
+
+  pooled <- lapply(comps, function(nm) {
+    parts <- lapply(x, function(ch) ch[[nm]])
+    if (is.matrix(parts[[1L]])) do.call(rbind, parts)
+    else unlist(parts, use.names = FALSE)
+  })
+  names(pooled) <- comps
+
+  # Carry every attribute of a single chain across (class included), then
+  # correct the draw count and record how many chains produced it.
+  for (a in setdiff(names(attributes(first)), "names")) {
+    attr(pooled, a) <- attr(first, a)
+  }
+  attr(pooled, "n_chain") <- attr(first, "n_chain") * length(x)
+  attr(pooled, "chains")  <- length(x)
+
+  pooled
+}
+
+
+#' Assemble one scalar parameter's draws as an iterations-by-chains matrix
+#'
+#' Shared by `mcmc_convergence.pdm_mcmc_list()` and the multi-chain plot method,
+#' which both need the same layout: the shape every function in `R/rhat.R`
+#' expects.
+#'
+#' @param configs List of `get_param_config()` results, one per chain.
+#' @param nm Name of the scalar parameter within those configs.
+#' @param n_draw Number of retained draws per chain.
+#'
+#' @return Numeric matrix `n_draw x length(configs)`.
+#'
+#' @keywords internal
+#' @noRd
+scalar_draws <- function(configs, nm, n_draw) {
+  m <- vapply(configs, function(cfg) cfg[[nm]]$samples, numeric(n_draw))
+  dim(m) <- c(n_draw, length(configs))
+  m
+}
+
+
 #' Print method for pdm_mcmc_list objects
 #'
 #' @description Compact summary of a multi-chain fit: the model, how the chains

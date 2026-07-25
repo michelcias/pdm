@@ -227,9 +227,8 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
   param_names <- names(configs[[1L]])
 
   rows_scalar <- lapply(param_names, function(nm) {
-    draws <- vapply(configs, function(cfg) cfg[[nm]]$samples, numeric(n_chain))
-    dim(draws) <- c(n_chain, n_chains)
-    compute_row(draws, configs[[1L]][[nm]]$name_str)
+    compute_row(scalar_draws(configs, nm, n_chain),
+                configs[[1L]][[nm]]$name_str)
   })
 
   # --- Latent state time points -------------------------------------------

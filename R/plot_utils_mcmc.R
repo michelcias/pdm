@@ -431,6 +431,45 @@ validate_param_config <- function(config) {
 }
 
 
+#' Map a parameter's display name to its `true_values` key
+#'
+#' The names used to label a parameter (`"V^{-1}"`, `"W_1^{-1}"`, `"phi_1"`)
+#' are not the names of the object components a user supplies in
+#' `true_values` (`prec_y`, `prec_theta1`, `prec_1`). This is the single
+#' translation table between the two, shared by the single-chain and
+#' multi-chain diagnostic plots so that a parameter added to one cannot go
+#' missing from the other.
+#'
+#' @param name_str The `name_str` field of a `get_param_config()` entry.
+#' @param true_values The user's named list, or `NULL`.
+#'
+#' @return The matching element of `true_values`, or `NULL` when absent.
+#'
+#' @keywords internal
+#' @noRd
+true_value_for <- function(name_str, true_values) {
+  if (is.null(true_values)) return(NULL)
+
+  keys <- c(
+    "mu_1"     = "mu_1",         # mixture component means
+    "mu_2"     = "mu_2",
+    "phi_1"    = "prec_1",       # mixture component precisions
+    "phi_2"    = "prec_2",
+    "V^{-1}"   = "prec_y",       # observation precision (normal models)
+    "theta_01" = "theta_01",     # initial states
+    "theta_02" = "theta_02",
+    "theta_03" = "theta_03",
+    "W_1^{-1}" = "prec_theta1",  # innovation precisions
+    "W_2^{-1}" = "prec_theta2",
+    "W_3^{-1}" = "prec_theta3"
+  )
+
+  key <- keys[name_str]
+  if (is.na(key)) return(NULL)
+  true_values[[key]]
+}
+
+
 # =============================================================================
 # Generic Plotting Dispatchers
 # =============================================================================
@@ -516,61 +555,9 @@ plot_mcmc_diagnostics_generic <- function(x,
   for (i in which) {
     param_info <- param_config[[i]]
 
-    true_value <- NULL
-
-    # Extract true value if provided
-    if (!is.null(true_values)) {
-      param_name <- param_info$name_str
-
-      # ------------------------------------------------------------------
-      # Mixture component parameters
-      # ------------------------------------------------------------------
-      if (param_name == "mu_1") {
-        true_value <- true_values$mu_1
-      }
-      if (param_name == "mu_2") {
-        true_value <- true_values$mu_2
-      }
-      if (param_name == "phi_1") {
-        true_value <- true_values$prec_1
-      }
-      if (param_name == "phi_2") {
-        true_value <- true_values$prec_2
-      }
-
-      # ------------------------------------------------------------------
-      # Observation precision (normal models)
-      # ------------------------------------------------------------------
-      if (param_name == "V^{-1}") {
-        true_value <- true_values$prec_y
-      }
-
-      # ------------------------------------------------------------------
-      # Initial state parameters
-      # ------------------------------------------------------------------
-      if (param_name == "theta_01") {
-        true_value <- true_values$theta_01
-      }
-      if (param_name == "theta_02") {
-        true_value <- true_values$theta_02
-      }
-      if (param_name == "theta_03") {
-        true_value <- true_values$theta_03
-      }
-
-      # ------------------------------------------------------------------
-      # Innovation precision parameters
-      # ------------------------------------------------------------------
-      if (param_name == "W_1^{-1}") {
-        true_value <- true_values$prec_theta1
-      }
-      if (param_name == "W_2^{-1}") {
-        true_value <- true_values$prec_theta2
-      }
-      if (param_name == "W_3^{-1}") {
-        true_value <- true_values$prec_theta3
-      }
-    }
+    # Extract true value if provided (see `true_value_for()` for the mapping
+    # between a parameter's display name and its `true_values` key).
+    true_value <- true_value_for(param_info$name_str, true_values)
 
     # Plot diagnostics for this parameter
     plot_param_diagnostics_base(

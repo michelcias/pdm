@@ -18,10 +18,10 @@ mcmc_normal_locallevel(
   verbose = FALSE,
   bar_width = 60,
   seed = NULL,
-  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec1_type = c("halfcauchy", "gamma", "halft"),
   prior_prec1_scale = NULL,
   prior_prec1_df = 1,
-  prior_prec_y_type = c("gamma", "halfcauchy", "halft"),
+  prior_prec_y_type = c("halfcauchy", "gamma", "halft"),
   prior_prec_y_scale = NULL,
   prior_prec_y_df = 1,
   chains = 1,
@@ -61,27 +61,35 @@ prior for \eqn{1/V}. Required (and used) only when \code{prior_prec_y_type = "ga
 Default is \code{NULL}, which does not set the seed. When \code{chains > 1} it acts
 as a master seed from which each chain's own seed is drawn.}
 
-\item{prior_prec1_type}{Character, prior on the innovation precision
-\eqn{1/W_1}: \code{"gamma"} (default) for a Gamma prior on the precision, or
-\code{"halft"} / \code{"halfcauchy"} for a Half-t / Half-Cauchy prior on the innovation
-standard deviation \eqn{\sqrt{W_1}} (Gelman, 2006). \code{"halfcauchy"} is Half-t
-with \code{df = 1}.}
+\item{prior_prec1_type}{Character, prior on the level innovation precision
+\eqn{1/W_1}: \code{"halfcauchy"} (default) or \code{"halft"} for a Half-t /
+Half-Cauchy prior on the corresponding standard deviation (Gelman, 2006),
+or \code{"gamma"} for a Gamma prior on the precision. The default changed in
+0.4-0; a call that supplies \code{prior_prec1_shape}/\code{prior_prec1_rate}
+without naming a type is still read as \code{"gamma"}, so existing code keeps
+working.}
 
-\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A_1} of the Half-t prior for
-\eqn{\sqrt{W_1}}. Required when \code{prior_prec1_type} is \code{"halft"} or
-\code{"halfcauchy"}; ignored otherwise.}
+\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A} of the Half-t prior for
+\eqn{\sqrt{W_1}}. If \code{NULL} (default), derived from the data as
+\code{sd(diff(y)) / (2 * sqrt(2))}, which makes the fit invariant to
+the units of \code{y}. Ignored when \code{prior_prec1_type = "gamma"}.}
 
 \item{prior_prec1_df}{Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
 prior for \eqn{\sqrt{W_1}}. Default \code{1} (Half-Cauchy). Must equal \code{1} when
 \code{prior_prec1_type = "halfcauchy"}.}
 
 \item{prior_prec_y_type}{Character, prior on the observation precision
-\eqn{1/V}: \code{"gamma"} (default), or \code{"halft"} / \code{"halfcauchy"} for a Half-t /
-Half-Cauchy prior on the observation standard deviation \eqn{\sqrt{V}}.}
+\eqn{1/V}: \code{"halfcauchy"} (default) or \code{"halft"} for a Half-t /
+Half-Cauchy prior on the corresponding standard deviation (Gelman, 2006),
+or \code{"gamma"} for a Gamma prior on the precision. The default changed in
+0.4-0; a call that supplies \code{prior_prec_y_shape}/\code{prior_prec_y_rate}
+without naming a type is still read as \code{"gamma"}, so existing code keeps
+working.}
 
-\item{prior_prec_y_scale}{Numeric > 0, scale \eqn{A_V} of the Half-t prior for
-\eqn{\sqrt{V}}. Required when \code{prior_prec_y_type} is \code{"halft"} or
-\code{"halfcauchy"}; ignored otherwise.}
+\item{prior_prec_y_scale}{Numeric > 0, scale \eqn{A} of the Half-t prior for
+\eqn{\sqrt{V}}. If \code{NULL} (default), derived from the data as
+\code{sd(y)}, which makes the fit invariant to
+the units of \code{y}. Ignored when \code{prior_prec_y_type = "gamma"}.}
 
 \item{prior_prec_y_df}{Numeric > 0, degrees of freedom \eqn{\nu_V} of the
 Half-t prior for \eqn{\sqrt{V}}. Default \code{1} (Half-Cauchy). Must equal \code{1}
@@ -149,7 +157,7 @@ Each precision (the innovation precision \eqn{W_1^{-1}} and the observation
 precision \eqn{V^{-1}}) may be given one of two priors, chosen independently
 through \code{prior_prec1_type} and \code{prior_prec_y_type}:
 
-\emph{(a) Gamma prior on the precision} (default, conjugate):
+\emph{(a) Gamma prior on the precision} (conjugate; the default until 0.4-0):
 \deqn{
 \begin{aligned}
 W_1^{-1} &\sim \text{Gamma}(\nu_1, \eta_1), \\
@@ -157,7 +165,8 @@ V^{-1} &\sim \text{Gamma}(\nu_V, \eta_V).
 \end{aligned}
 }
 
-\emph{(b) Half-t prior on the standard deviation} (Gelman, 2006):
+\emph{(b) Half-t prior on the standard deviation} (Gelman, 2006; the
+default since 0.4-0, with a data-scaled \eqn{A}):
 \deqn{
 \sqrt{W_1} \sim \text{Half-}t(\nu_1, A_1), \qquad
 \sqrt{V} \sim \text{Half-}t(\nu_V, A_V),

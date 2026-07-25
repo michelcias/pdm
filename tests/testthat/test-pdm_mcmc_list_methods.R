@@ -153,6 +153,40 @@ test_that("waic() and loo() work on a multi-chain fit", {
 })
 
 
+test_that("waic() and loo() warn when the chains have not converged", {
+  skip_if_not_installed("loo")
+  y <- make_y()
+
+  # The asymmetry this closes: summary() said so, waic() and loo() did not, and
+  # a "loo" object gives no hint whether the draws behind it agreed. Model
+  # comparison is where that does the most damage.
+  under <- mcmc_normal_locallevel(
+    y, burnin = 10, thinning = 1, n_chain = 200,
+    prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
+    prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
+    prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2,
+    seed = 99, chains = 4
+  )
+
+  # Filtered, because the loo package raises Pareto-k warnings of its own.
+  ours <- function(expr) {
+    hit <- FALSE
+    withCallingHandlers(force(expr), warning = function(w) {
+      if (grepl("have not converged", conditionMessage(w))) hit <<- TRUE
+      invokeRestart("muffleWarning")
+    })
+    hit
+  }
+
+  expect_true(ours(loo::waic(under)))
+  expect_true(ours(loo::loo(under)))
+
+  # Raising the threshold above the observed value silences ours specifically.
+  expect_false(ours(loo::waic(under, rhat_threshold = 100)))
+  expect_false(ours(loo::loo(under, rhat_threshold = 100)))
+})
+
+
 test_that("loo() passes the real chain identifiers, not a single block", {
   skip_if_not_installed("loo")
   y    <- make_y()

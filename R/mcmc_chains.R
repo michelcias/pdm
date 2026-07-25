@@ -196,9 +196,8 @@ validate_pdm_mcmc_list <- function(x) {
 #' }
 #'
 #' @seealso \code{\link{mcmc_convergence}} for the multi-chain diagnostics;
-#'   \code{\link{mcmc_normal_locallevel}}, \code{\link{mcmc_normal_localtrend}}
-#'   and \code{\link{mcmc_normal_localacceleration}} for the samplers that
-#'   accept `chains`.
+#'   \code{\link{pdm}} for the catalog of samplers, all of which accept
+#'   `chains`.
 #'
 #' @export
 print.pdm_mcmc_list <- function(x, ...) {

@@ -288,6 +288,20 @@
 #'   `verbose = TRUE`. Default is `60`.
 #' @param seed Optional integer used to set the random number generator seed.
 #'   Default is `NULL`, which does not set the seed.
+#'   When `chains > 1` it acts as a master seed from which each chain's own
+#'   seed is drawn.
+#' @param chains Integer \eqn{\geq 1}, number of independent chains to run.
+#'   Default is `1`, which returns a single fitted object exactly as before.
+#'   With `chains > 1` the sampler is re-run once per chain -- each starting
+#'   from its own values drawn from the priors -- and an object of class
+#'   `"pdm_mcmc_list"` is returned, which \code{\link{mcmc_convergence}} turns
+#'   into R-hat and effective sample sizes. The progress bar is disabled in this
+#'   case, since several bars sharing one console interleave.
+#' @param parallel Logical, whether to run the chains through
+#'   `parallel::mclapply()`. Used only when `chains > 1`. The result does not
+#'   depend on this setting: every chain receives an explicit seed, so a given
+#'   `seed` reproduces the same output sequentially or in parallel. Default is
+#'   `FALSE`.
 #'
 #' @return A list with components:
 #' \describe{
@@ -326,6 +340,10 @@
 #'     \eqn{[n_{chain} \times n]} of acceptance proportions for each time point.
 #'     Only returned if `return_accept_prop = TRUE` and `link = "logit"`.}
 #' }
+#'
+#' When `chains > 1` the return value is instead an object of class
+#' `c("pdm_mcmc_list", "list")` holding one such fit per chain; see
+#' \code{\link{print.pdm_mcmc_list}}.
 #'
 #' @examples
 #' ## Description
@@ -565,7 +583,19 @@ mcmc_normal_mixture_localtrend <- function(y,
                                            prior_prec1_df = 1,
                                            prior_prec2_type = c("gamma", "halfcauchy", "halft"),
                                            prior_prec2_scale = NULL,
-                                           prior_prec2_df = 1) {
+                                           prior_prec2_df = 1,
+                                           chains = 1,
+                                           parallel = FALSE) {
+
+  # --- Multi-chain dispatch ---
+  # Re-issues this same call once per chain, each with its own seed, and returns
+  # the collection. Kept at the very top so `match.call()` captures the call
+  # exactly as the user wrote it.
+  validate_chains_args(chains, parallel)
+  if (chains > 1) {
+    return(run_chains(match.call(), parent.frame(),
+                      as.integer(chains), seed, parallel))
+  }
 
   # `missing()` must be read before these arguments are touched.
   prec01_df_user_set <- !missing(prior_prec01_df)

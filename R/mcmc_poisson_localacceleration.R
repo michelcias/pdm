@@ -293,7 +293,7 @@
 #'
 #' ## Simulation of data
 #' set.seed(123)
-#' n <- 500        # Number of observations to simulate
+#' n <- 200        # Number of observations to simulate
 #'
 #' # Generate true rates with acceleration (ensuring positive values)
 #' grid_vals <- seq_len(n) / n
@@ -307,8 +307,8 @@
 #' out <- mcmc_poisson_localacceleration(
 #'   y,
 #'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
+#'   thinning                = 20,
+#'   n_chain                 = 500,
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
 #'   prior_theta02_mean      = 0,
@@ -340,8 +340,8 @@
 #' out_hc <- mcmc_poisson_localacceleration(
 #'   y,
 #'   burnin             = 1000,
-#'   thinning           = 50,
-#'   n_chain            = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_theta02_mean = 0,

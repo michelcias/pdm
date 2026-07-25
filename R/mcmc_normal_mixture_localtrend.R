@@ -356,7 +356,7 @@
 #' # 6. Use progress bar for monitoring MCMC execution
 #'
 #' ## Simulation of data
-#' n <- 400  # Number of observations to simulate
+#' n <- 200  # Number of observations to simulate
 #'
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
@@ -382,9 +382,9 @@
 #' out_logit <- mcmc_normal_mixture_localtrend(
 #'   y,
 #'   link                    = "logit",
-#'   burnin                  = 2000,
+#'   burnin                  = 1000,
 #'   thinning                = 10,
-#'   n_chain                 = 1000,
+#'   n_chain                 = 500,
 #'   prior_mu01_mean         = NULL,  # Use default (25th percentile)
 #'   prior_mu01_prec         = 0.01,
 #'   prior_prec01_shape      = 0.01,
@@ -418,9 +418,9 @@
 #' out_probit <- mcmc_normal_mixture_localtrend(
 #'   y,
 #'   link               = "probit",
-#'   burnin             = 2000,
+#'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_mu01_mean    = NULL,
 #'   prior_mu01_prec    = 0.01,
 #'   prior_prec01_shape = 0.01,
@@ -449,9 +449,9 @@
 #' out_hc <- mcmc_normal_mixture_localtrend(
 #'   y,
 #'   link               = "probit",
-#'   burnin             = 2000,
+#'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_prec01_type  = "halfcauchy",
 #'   prior_prec01_scale = sd(y),
 #'   prior_prec02_type  = "halfcauchy",

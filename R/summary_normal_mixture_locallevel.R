@@ -46,7 +46,7 @@
 #' @examples
 #' \donttest{
 #' ## Simulation of data
-#' n <- 400  # Number of observations to simulate
+#' n <- 200  # Number of observations to simulate
 #'
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
@@ -72,9 +72,9 @@
 #' out_logit <- mcmc_normal_mixture_locallevel(
 #'   y,
 #'   link               = "logit",
-#'   burnin             = 2000,
+#'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_mu01_mean    = NULL,
 #'   prior_mu01_prec    = 0.01,
 #'   prior_prec01_shape = 0.01,
@@ -166,7 +166,7 @@ summary.normal_mixture_locallevel <- function(object,
 #' @examples
 #' \donttest{
 #' ## Simulation of data
-#' n <- 400  # Number of observations to simulate
+#' n <- 200  # Number of observations to simulate
 #'
 #' # Use a fixed seed for data simulation
 #' set.seed(123)
@@ -192,9 +192,9 @@ summary.normal_mixture_locallevel <- function(object,
 #' out_logit <- mcmc_normal_mixture_locallevel(
 #'   y,
 #'   link                    = "logit",
-#'   burnin                  = 2000,
+#'   burnin                  = 1000,
 #'   thinning                = 10,
-#'   n_chain                 = 1000,
+#'   n_chain                 = 500,
 #'   prior_mu01_mean         = NULL,
 #'   prior_mu01_prec         = 0.01,
 #'   prior_prec01_shape      = 0.01,

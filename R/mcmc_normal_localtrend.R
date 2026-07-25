@@ -155,7 +155,7 @@
 #' # 4. Set a seed for reproducibility
 #'
 #' ## Simulation of data
-#' n <- 1000 # Number of observations to simulate
+#' n <- 200  # Number of observations to simulate
 #'
 #' # True parameters for simulation:
 #' theta01_true <- 10        # Initial level (theta[0,1])
@@ -187,9 +187,9 @@
 #' # Run the Gibbs sampler with specified priors and a seed
 #' out <- mcmc_normal_localtrend(
 #'   y,
-#'   burnin             = 2000,
-#'   thinning           = 100,
-#'   n_chain            = 1000,
+#'   burnin             = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -211,9 +211,9 @@
 #' # precision's prior is chosen independently via its `*_type` argument.
 #' out_hc <- mcmc_normal_localtrend(
 #'   y,
-#'   burnin             = 2000,
-#'   thinning           = 100,
-#'   n_chain            = 1000,
+#'   burnin             = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,

@@ -168,7 +168,7 @@
 #' # oscillating pattern to mimic real-world seasonal or cyclical behavior.
 #'
 #' set.seed(123)
-#' n <- 400          # Number of time points
+#' n <- 200          # Number of time points
 #' n_trials <- 20    # Number of trials per observation
 #'
 #' # Generate complex oscillating success probabilities (mimicking seasonal patterns)
@@ -184,8 +184,8 @@
 #'   y,
 #'   n_trials                = n_trials,
 #'   burnin                  = 1000,      # Discard first 1000 iterations
-#'   thinning                = 50,        # Keep every 50th iteration
-#'   n_chain                 = 1000,      # Retain 1000 posterior samples
+#'   thinning                = 20,        # Keep every 20th iteration
+#'   n_chain                 = 500,       # Retain 500 posterior samples
 #'   # Weakly informative priors for initial states (centered at 0 on logit scale)
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
@@ -320,8 +320,8 @@
 #'   y,
 #'   n_trials                = n_trials,
 #'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
+#'   thinning                = 20,
+#'   n_chain                 = 500,
 #'   # Priors centered at true initial values
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,

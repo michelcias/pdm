@@ -153,7 +153,7 @@
 #' # oscillating pattern to mimic real-world temporal variation.
 #'
 #' set.seed(123)
-#' n <- 400          # Number of time points
+#' n <- 200          # Number of time points
 #'
 #' # Generate simple oscillating Poisson rates (mimicking seasonal patterns)
 #' alpha_true <- exp(sin(2 * pi * seq_len(n) / n) + 1)
@@ -166,8 +166,8 @@
 #' out <- mcmc_poisson_locallevel(
 #'   y,
 #'   burnin                  = 1000,      # Discard first 1000 iterations
-#'   thinning                = 50,        # Keep every 50th iteration
-#'   n_chain                 = 1000,      # Retain 1000 posterior samples
+#'   thinning                = 20,        # Keep every 20th iteration
+#'   n_chain                 = 500,       # Retain 500 posterior samples
 #'   # Weakly informative prior for initial state (centered at 0 on log scale)
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
@@ -273,9 +273,9 @@
 #' # priors centered near truth to demonstrate parameter recovery
 #' out <- mcmc_poisson_locallevel(
 #'   y,
-#'   burnin                  = 10000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
+#'   burnin                  = 1000,
+#'   thinning                = 20,
+#'   n_chain                 = 500,
 #'   # Prior centered at true initial value
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,

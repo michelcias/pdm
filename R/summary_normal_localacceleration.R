@@ -48,7 +48,7 @@
 #' @examples
 #' \donttest{
 #' ## Simulation of data
-#' n <- 1000 # Number of observations to simulate
+#' n <- 200  # Number of observations to simulate
 #'
 #' # True parameters for simulation:
 #' theta01_true <- 10         # Initial level (theta[0,1])
@@ -85,9 +85,9 @@
 #' ## Running the Gibbs sampler
 #' out <- mcmc_normal_localacceleration(
 #'   y,
-#'   burnin             = 2000,
-#'   thinning           = 100,
-#'   n_chain            = 1000,
+#'   burnin             = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -187,7 +187,7 @@ summary.normal_localacceleration <- function(object,
 #' @examples
 #' \donttest{
 #' ## Simulation of data
-#' n <- 1000
+#' n <- 200
 #' theta01_true <- 10
 #' theta02_true <- 0.5
 #' theta03_true <- 0.01
@@ -217,9 +217,9 @@ summary.normal_localacceleration <- function(object,
 #'
 #' out <- mcmc_normal_localacceleration(
 #'   y,
-#'   burnin             = 2000,
+#'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,

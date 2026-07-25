@@ -123,7 +123,7 @@ compute_loglik_normal <- function(object) {
 #' @examples
 #' \donttest{
 #' ## Simulate a Gaussian local-level series
-#' n <- 1000
+#' n <- 200
 #' set.seed(123)
 #' u1 <- rnorm(n, sd = 1)
 #' e  <- rnorm(n, sd = sqrt(1 / 5))
@@ -134,7 +134,7 @@ compute_loglik_normal <- function(object) {
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_prec1_shape  = 1e-2,
@@ -210,15 +210,15 @@ compute_loglik_poisson <- function(object) {
 #' @examples
 #' \donttest{
 #' set.seed(123)
-#' n <- 500
+#' n <- 200
 #' alpha_true <- exp(sin(2 * pi * seq_len(n) / n) + 1)
 #' y <- rpois(n, lambda = alpha_true)
 #'
 #' out <- mcmc_poisson_locallevel(
 #'   y,
 #'   burnin             = 1000,
-#'   thinning           = 50,
-#'   n_chain            = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_shape  = 100,
@@ -294,7 +294,7 @@ compute_loglik_binomial <- function(object) {
 #' @examples
 #' \donttest{
 #' set.seed(123)
-#' n <- 500
+#' n <- 200
 #' n_trials <- 20
 #' alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
 #' y <- rbinom(n, size = n_trials, prob = alpha_true)
@@ -303,8 +303,8 @@ compute_loglik_binomial <- function(object) {
 #'   y,
 #'   n_trials           = n_trials,
 #'   burnin             = 1000,
-#'   thinning           = 50,
-#'   n_chain            = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_shape  = 100,
@@ -381,15 +381,15 @@ compute_loglik_probit_bernoulli <- function(object) {
 #' @examples
 #' \donttest{
 #' set.seed(123)
-#' n <- 500
+#' n <- 200
 #' alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
 #' y <- rbinom(n, size = 1, prob = alpha_true)
 #'
 #' out <- mcmc_probit_bernoulli_locallevel(
 #'   y,
 #'   burnin             = 1000,
-#'   thinning           = 50,
-#'   n_chain            = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_shape  = 100,
@@ -497,7 +497,7 @@ compute_loglik_normal_mixture <- function(object) {
 #' @examples
 #' \donttest{
 #' set.seed(123)
-#' n <- 400
+#' n <- 200
 #' alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
 #' z_true <- rbinom(n, size = 1, prob = alpha_true)
 #' mu_y    <- (1 - z_true) * 0 + z_true * 2
@@ -507,9 +507,9 @@ compute_loglik_normal_mixture <- function(object) {
 #' out <- mcmc_normal_mixture_locallevel(
 #'   y,
 #'   link               = "logit",
-#'   burnin             = 2000,
+#'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_mu01_prec    = 0.01,
 #'   prior_prec01_shape = 0.01,
 #'   prior_prec01_rate  = 0.01,

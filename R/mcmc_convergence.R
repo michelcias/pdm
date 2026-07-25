@@ -147,7 +147,7 @@
 #' \donttest{
 #' ## 1. Simulate data from a local-trend dynamic model --------------------
 #' set.seed(123)
-#' n <- 300
+#' n <- 200
 #'
 #' # True parameters
 #' theta01_true <- 10        # initial level   (theta[0,1])
@@ -176,7 +176,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,

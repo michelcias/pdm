@@ -73,7 +73,7 @@ require_loo <- function() {
 #' @examples
 #' \donttest{
 #' ## Simulate a local-level series and fit two competing dynamic orders
-#' n <- 1000
+#' n <- 200
 #' set.seed(123)
 #' u1 <- rnorm(n, sd = 1)
 #' e  <- rnorm(n, sd = sqrt(1 / 5))
@@ -83,7 +83,7 @@ require_loo <- function() {
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_prec1_shape  = 1e-2,
@@ -96,9 +96,9 @@ require_loo <- function() {
 #'
 #' out_trend <- mcmc_normal_localtrend(
 #'   y,
-#'   burnin             = 2000,
-#'   thinning           = 100,
-#'   n_chain            = 1000,
+#'   burnin             = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -282,7 +282,7 @@ pdm_compare <- function(..., criterion = c("loo", "waic")) {
 #' @examples
 #' \donttest{
 #' set.seed(123)
-#' n <- 300
+#' n <- 200
 #' u1 <- rnorm(n, sd = 1)
 #' y  <- cumsum(c(10, u1))[-1] + rnorm(n, sd = sqrt(1 / 5))
 #'
@@ -290,7 +290,7 @@ pdm_compare <- function(..., criterion = c("loo", "waic")) {
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 1000,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_prec1_shape  = 1e-2,

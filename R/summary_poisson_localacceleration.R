@@ -50,7 +50,7 @@
 #' @examples
 #' \donttest{
 #' ## Simulation of data
-#' n <- 500        # Number of observations to simulate
+#' n <- 200        # Number of observations to simulate
 #'
 #' # True parameters for simulation:
 #' theta01_true <- 0.5     # Initial level state (theta[0,1]) on log scale
@@ -88,8 +88,8 @@
 #' out <- mcmc_poisson_localacceleration(
 #'   y,
 #'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
+#'   thinning                = 20,
+#'   n_chain                 = 500,
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
 #'   prior_theta02_mean      = 0,
@@ -200,7 +200,7 @@ summary.poisson_localacceleration <- function(object,
 #' @examples
 #' \donttest{
 #' ## Simulation of data
-#' n <- 500
+#' n <- 200
 #' theta01_true <- 0.5
 #' theta02_true <- 0.01
 #' theta03_true <- 0.001
@@ -230,8 +230,8 @@ summary.poisson_localacceleration <- function(object,
 #' out <- mcmc_poisson_localacceleration(
 #'   y,
 #'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
+#'   thinning                = 20,
+#'   n_chain                 = 500,
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
 #'   prior_theta02_mean      = 0,

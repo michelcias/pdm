@@ -46,7 +46,7 @@
 #' @examples
 #' \donttest{
 #' ## Simulation of data
-#' n <- 500  # Number of observations to simulate
+#' n <- 200  # Number of observations to simulate
 #'
 #' set.seed(123)
 #'
@@ -60,8 +60,8 @@
 #' out <- mcmc_probit_bernoulli_locallevel(
 #'   y,
 #'   burnin             = 1000,
-#'   thinning           = 50,
-#'   n_chain            = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_shape  = 100,
@@ -142,7 +142,7 @@ summary.probit_bernoulli_locallevel <- function(object,
 #' @examples
 #' \donttest{
 #' ## Simulation of data
-#' n <- 500
+#' n <- 200
 #' set.seed(123)
 #' alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
 #' y <- rbinom(n, size = 1, prob = alpha_true)
@@ -150,8 +150,8 @@ summary.probit_bernoulli_locallevel <- function(object,
 #' out <- mcmc_probit_bernoulli_locallevel(
 #'   y,
 #'   burnin             = 1000,
-#'   thinning           = 50,
-#'   n_chain            = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_shape  = 100,

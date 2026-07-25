@@ -20,7 +20,7 @@ NULL
 #'   autocorrelation function, posterior density, and running mean convergence
 #'   diagnostic for a single MCMC parameter.
 #'
-#' @param param_samples Numeric vector of MCMC samples for the parameter.
+#' @param param_draws Numeric vector of MCMC draws for the parameter.
 #' @param param_name Expression or quoted expression for the parameter name
 #'   (used in plot title), e.g., `quote(mu[1])`.
 #' @param param_label Expression for axis labels, e.g., `expression(mu[1])`.
@@ -51,7 +51,7 @@ NULL
 #'
 #' @keywords internal
 #' @noRd
-plot_param_diagnostics_base <- function(param_samples,
+plot_param_diagnostics_base <- function(param_draws,
                                         param_name,
                                         param_label,
                                         true_value = NULL,
@@ -72,10 +72,10 @@ plot_param_diagnostics_base <- function(param_samples,
   # =========================================================================
 
   # Compute y-axis range with buffer
-  range_param <- range(param_samples)
+  range_param <- range(param_draws)
   range_param[2] <- range_param[2] + 0.25 * diff(range_param)
 
-  plot(param_samples,
+  plot(param_draws,
        type = "l",
        col = "gray40",
        lwd = 0.8,
@@ -86,9 +86,9 @@ plot_param_diagnostics_base <- function(param_samples,
 
   # Add median reference line
   segments(x0 = 1,
-           y0 = median(param_samples),
-           x1 = length(param_samples),
-           y1 = median(param_samples),
+           y0 = median(param_draws),
+           x1 = length(param_draws),
+           y1 = median(param_draws),
            col = color,
            lwd = 2,
            lty = 1)
@@ -97,7 +97,7 @@ plot_param_diagnostics_base <- function(param_samples,
   if (!is.null(true_value)) {
     segments(x0 = 1,
              y0 = true_value,
-             x1 = length(param_samples),
+             x1 = length(param_draws),
              y1 = true_value,
              col = "black",
              lwd = 2,
@@ -126,7 +126,7 @@ plot_param_diagnostics_base <- function(param_samples,
   # Panel 2: Autocorrelation Function
   # =========================================================================
 
-  acf(param_samples,
+  acf(param_draws,
       main = "",
       col = color,
       lwd = 2)
@@ -137,7 +137,7 @@ plot_param_diagnostics_base <- function(param_samples,
   # Panel 3: Posterior Density
   # =========================================================================
 
-  dens <- density(param_samples)
+  dens <- density(param_draws)
 
   plot(dens,
        main = "Posterior Density",
@@ -152,9 +152,9 @@ plot_param_diagnostics_base <- function(param_samples,
           border = NA)
 
   # Add median reference line
-  segments(x0 = median(param_samples),
+  segments(x0 = median(param_draws),
            y0 = 0,
-           x1 = median(param_samples),
+           x1 = median(param_draws),
            y1 = max(dens$y),
            col = color,
            lwd = 2,
@@ -193,10 +193,10 @@ plot_param_diagnostics_base <- function(param_samples,
   # Panel 4: Running Mean (Convergence Diagnostic)
   # =========================================================================
 
-  running_mean <- cumsum(param_samples) / seq_along(param_samples)
+  running_mean <- cumsum(param_draws) / seq_along(param_draws)
 
   # Compute y-axis range with buffer
-  range_running <- range(running_mean, mean(param_samples))
+  range_running <- range(running_mean, mean(param_draws))
   range_running[2] <- range_running[2] + 0.25 * diff(range_running)
 
   plot(running_mean,
@@ -211,9 +211,9 @@ plot_param_diagnostics_base <- function(param_samples,
 
   # Add mean reference line
   segments(x0 = 1,
-           y0 = mean(param_samples),
-           x1 = length(param_samples),
-           y1 = mean(param_samples),
+           y0 = mean(param_draws),
+           x1 = length(param_draws),
+           y1 = mean(param_draws),
            col = color,
            lwd = 2,
            lty = 3)
@@ -222,7 +222,7 @@ plot_param_diagnostics_base <- function(param_samples,
   if (!is.null(true_value)) {
     segments(x0 = 1,
              y0 = true_value,
-             x1 = length(param_samples),
+             x1 = length(param_draws),
              y1 = true_value,
              col = "black",
              lwd = 2,
@@ -266,10 +266,10 @@ plot_param_diagnostics_base <- function(param_samples,
 #'   between mixture component parameters (means and precisions). Optionally
 #'   overlays true parameter values for simulation validation studies.
 #'
-#' @param mu_1 Numeric vector of MCMC samples for component 1 mean.
-#' @param mu_2 Numeric vector of MCMC samples for component 2 mean.
-#' @param prec_1 Numeric vector of MCMC samples for component 1 precision.
-#' @param prec_2 Numeric vector of MCMC samples for component 2 precision.
+#' @param mu_1 Numeric vector of MCMC draws for component 1 mean.
+#' @param mu_2 Numeric vector of MCMC draws for component 2 mean.
+#' @param prec_1 Numeric vector of MCMC draws for component 1 precision.
+#' @param prec_2 Numeric vector of MCMC draws for component 2 precision.
 #' @param which Integer vector specifying which subplots to display (1:4).
 #'   If NULL, all four plots are shown.
 #' @param true_values Named list containing true parameter values for comparison.
@@ -380,7 +380,7 @@ plot_mixture_params_base <- function(mu_1,
   # INPUT VALIDATION
   # ===========================================================================
 
-  # Validate MCMC samples
+  # Validate MCMC draws
   if (!is.numeric(mu_1) || !is.numeric(mu_2) ||
       !is.numeric(prec_1) || !is.numeric(prec_2)) {
     stop("All MCMC draw arguments must be numeric vectors")
@@ -476,7 +476,7 @@ plot_mixture_params_base <- function(mu_1,
   # ===========================================================================
 
   if (1 %in% which) {
-    # Create scatterplot of posterior samples
+    # Create scatterplot of posterior draws
     plot(mu_1,
          mu_2,
          xlab = expression(mu[1]),
@@ -634,7 +634,7 @@ plot_mixture_params_base <- function(mu_1,
 #'   with optional credible bands. Can overlay observed data and true values
 #'   for simulation studies.
 #'
-#' @param alpha Matrix of MCMC samples for alpha (n_draws x n_obs).
+#' @param alpha Matrix of MCMC draws for alpha (n_draws x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param title Character or expression; main title for the plot.
@@ -923,7 +923,7 @@ plot_alpha_trajectory_base <- function(alpha,
 #'   models, showing which component is more likely at each time point.
 #'   Uses mixture component colors for visual consistency.
 #'
-#' @param z Matrix of MCMC samples for component indicators (n_draws x n_obs).
+#' @param z Matrix of MCMC draws for component indicators (n_draws x n_obs).
 #' @param threshold Numeric; decision threshold for coloring (default 0.5).
 #' @param color_above Character; color when P(z_t = 1) > threshold.
 #'   Default is "darkviolet" (Component 2).
@@ -1126,7 +1126,7 @@ plot_component_probabilities_base <- function(z,
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
 #'
-#' @details This function extracts alpha samples and observed data from
+#' @details This function extracts alpha draws and observed data from
 #'   binomial model objects and delegates to the generic
 #'   `plot_alpha_trajectory_base()` function. It automatically computes
 #'   observed proportions from y/n_trials.
@@ -1360,7 +1360,7 @@ plot_bernoulli_alpha_base <- function(x,
 #'
 #' @return NULL (invisibly). Function is called for side effects (plotting).
 #'
-#' @details This function extracts alpha samples and observed data from
+#' @details This function extracts alpha draws and observed data from
 #'   Poisson model objects and delegates to the generic
 #'   `plot_alpha_trajectory_base()` function. Unlike binomial models,
 #'   observed counts are plotted directly without proportion calculations,
@@ -1428,8 +1428,8 @@ plot_poisson_alpha_base <- function(x,
 #'   Page 1 shows alpha_t trajectory with credible bands and optional data overlay,
 #'   Page 2 shows posterior probabilities P(z_t = 1 | data) with component colors.
 #'
-#' @param alpha Matrix of MCMC samples for mixture weights (n_draws x n_obs).
-#' @param z Matrix of MCMC samples for component indicators (n_draws x n_obs).
+#' @param alpha Matrix of MCMC draws for mixture weights (n_draws x n_obs).
+#' @param z Matrix of MCMC draws for component indicators (n_draws x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param overlay_data Logical; whether to overlay observed data on alpha plot.

@@ -66,7 +66,7 @@ state time point. Columns always present: \code{Parameter}, \code{ESS},
 \verb{show_*} arguments: \code{ESS_status}, \code{Geweke_z},
 \code{Geweke_pass}, \code{Heidel_stat}, \code{Heidel_hw},
 \code{Overall}.}
-\item{\code{n_draws}}{Number of retained MCMC samples (\eqn{N}).}
+\item{\code{n_draws}}{Number of retained MCMC draws (\eqn{N}).}
 \item{\code{model_type}}{Character string, e.g. \code{"locallevel"},
 \code{"localtrend"} or \code{"localacceleration"}.}
 \item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
@@ -114,7 +114,7 @@ Autocorrelation inflates the variance of MCMC estimators relative to an
 i.i.d. sample of the same length. The ESS approximates the number of
 independent draws that would carry the same information,
 \deqn{\mathrm{ESS} = \frac{N}{1 + 2 \sum_{k \ge 1} \rho_k},}
-where \eqn{N} is the number of retained samples and \eqn{\rho_k} is the
+where \eqn{N} is the number of retained draws and \eqn{\rho_k} is the
 lag-\eqn{k} sample autocorrelation. Following the truncated-sum approach of
 Geyer (1992), the sum is taken over the positive sample autocorrelations up
 to a maximum lag. This estimate requires no external package. The reported

@@ -174,7 +174,7 @@ get_n_params <- function(model_class, model_order) {
 #' Generate parameter configuration for plotting
 #'
 #' @description Creates a standardized list of parameter metadata for all
-#'   scalar parameters in a model, including MCMC samples and plotting
+#'   scalar parameters in a model, including MCMC draws and plotting
 #'   specifications for base R graphics.
 #'
 #' @param x An object inheriting from "pdm_mcmc".
@@ -185,7 +185,7 @@ get_n_params <- function(model_class, model_order) {
 #'
 #' @return A named list where each element contains:
 #'   \describe{
-#'     \item{samples}{Numeric vector of MCMC samples (length n_draws)}
+#'     \item{draws}{Numeric vector of MCMC draws (length n_draws)}
 #'     \item{name}{Quoted expression for base graphics titles}
 #'     \item{label}{Expression for base graphics axis labels}
 #'     \item{name_str}{Character string identifier for the parameter}
@@ -255,7 +255,7 @@ get_param_config <- function(x,
   # 4. Add mixture components (if applicable)
   if (model_class == "mixture") {
     config$mu_1 <- list(
-      samples = x$mu_1,
+      draws = x$mu_1,
       name = quote(mu[1]),
       label = expression(mu[1]),
       name_str = "mu_1",
@@ -264,7 +264,7 @@ get_param_config <- function(x,
     )
 
     config$mu_2 <- list(
-      samples = x$mu_2,
+      draws = x$mu_2,
       name = quote(mu[2]),
       label = expression(mu[2]),
       name_str = "mu_2",
@@ -273,7 +273,7 @@ get_param_config <- function(x,
     )
 
     config$phi_1 <- list(
-      samples = x$prec_1,
+      draws = x$prec_1,
       name = quote(phi[1]),
       label = expression(phi[1]),
       name_str = "phi_1",
@@ -282,7 +282,7 @@ get_param_config <- function(x,
     )
 
     config$phi_2 <- list(
-      samples = x$prec_2,
+      draws = x$prec_2,
       name = quote(phi[2]),
       label = expression(phi[2]),
       name_str = "phi_2",
@@ -295,7 +295,7 @@ get_param_config <- function(x,
   # Note: Binomial and Poisson models do NOT have observation precision
   if (model_class == "normal") {
     config$V_inv <- list(
-      samples = x$prec_y,
+      draws = x$prec_y,
       name = quote(V^{-1}),
       label = expression(V^{-1}),
       name_str = "V^{-1}",
@@ -306,7 +306,7 @@ get_param_config <- function(x,
 
   # 6. Add initial states based on polynomial order
   config$theta_01 <- list(
-    samples = x$theta_01,
+    draws = x$theta_01,
     name = quote(theta["0,1"]),
     label = expression(theta["0,1"]),
     name_str = "theta_01",
@@ -316,7 +316,7 @@ get_param_config <- function(x,
 
   if (model_order >= 2L) {
     config$theta_02 <- list(
-      samples = x$theta_02,
+      draws = x$theta_02,
       name = quote(theta["0,2"]),
       label = expression(theta["0,2"]),
       name_str = "theta_02",
@@ -327,7 +327,7 @@ get_param_config <- function(x,
 
   if (model_order >= 3L) {
     config$theta_03 <- list(
-      samples = x$theta_03,
+      draws = x$theta_03,
       name = quote(theta["0,3"]),
       label = expression(theta["0,3"]),
       name_str = "theta_03",
@@ -338,7 +338,7 @@ get_param_config <- function(x,
 
   # 7. Add innovation precisions
   config$W1_inv <- list(
-    samples = x$prec_theta1,
+    draws = x$prec_theta1,
     name = quote(W[1]^{-1}),
     label = expression(W[1]^{-1}),
     name_str = "W_1^{-1}",
@@ -348,7 +348,7 @@ get_param_config <- function(x,
 
   if (model_order >= 2L) {
     config$W2_inv <- list(
-      samples = x$prec_theta2,
+      draws = x$prec_theta2,
       name = quote(W[2]^{-1}),
       label = expression(W[2]^{-1}),
       name_str = "W_2^{-1}",
@@ -359,7 +359,7 @@ get_param_config <- function(x,
 
   if (model_order >= 3L) {
     config$W3_inv <- list(
-      samples = x$prec_theta3,
+      draws = x$prec_theta3,
       name = quote(W[3]^{-1}),
       label = expression(W[3]^{-1}),
       name_str = "W_3^{-1}",
@@ -398,7 +398,7 @@ validate_param_config <- function(config) {
   }
 
   # Required fields for each parameter
-  required_fields <- c("samples", "name", "label", "name_str", "label_str")
+  required_fields <- c("draws", "name", "label", "name_str", "label_str")
 
   # Check each parameter
   for (i in seq_along(config)) {
@@ -417,12 +417,12 @@ validate_param_config <- function(config) {
            paste(missing_fields, collapse = ", "))
     }
 
-    # Validate samples
-    if (!is.numeric(param_info$samples)) {
+    # Validate draws
+    if (!is.numeric(param_info$draws)) {
       stop("Parameter '", param_name, "': draws must be numeric")
     }
 
-    if (any(!is.finite(param_info$samples))) {
+    if (any(!is.finite(param_info$draws))) {
       stop("Parameter '", param_name, "': draws contain non-finite values")
     }
   }
@@ -561,7 +561,7 @@ plot_mcmc_diagnostics_generic <- function(x,
 
     # Plot diagnostics for this parameter
     plot_param_diagnostics_base(
-      param_samples = param_info$samples,
+      param_draws = param_info$draws,
       param_name = param_info$name,
       param_label = param_info$label,
       true_value = true_value,

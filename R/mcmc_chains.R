@@ -248,7 +248,7 @@ pool_chains <- function(x) {
 #' @keywords internal
 #' @noRd
 scalar_draws <- function(configs, nm, n_draw) {
-  m <- vapply(configs, function(cfg) cfg[[nm]]$samples, numeric(n_draw))
+  m <- vapply(configs, function(cfg) cfg[[nm]]$draws, numeric(n_draw))
   dim(m) <- c(n_draw, length(configs))
   m
 }

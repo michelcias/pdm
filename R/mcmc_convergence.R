@@ -49,7 +49,7 @@
 #'       `show_*` arguments: `ESS_status`, `Geweke_z`,
 #'       `Geweke_pass`, `Heidel_stat`, `Heidel_hw`,
 #'       `Overall`.}
-#'     \item{\code{n_draws}}{Number of retained MCMC samples (\eqn{N}).}
+#'     \item{\code{n_draws}}{Number of retained MCMC draws (\eqn{N}).}
 #'     \item{\code{model_type}}{Character string, e.g. `"locallevel"`,
 #'       `"localtrend"` or `"localacceleration"`.}
 #'     \item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
@@ -84,7 +84,7 @@
 #'   i.i.d. sample of the same length. The ESS approximates the number of
 #'   independent draws that would carry the same information,
 #'   \deqn{\mathrm{ESS} = \frac{N}{1 + 2 \sum_{k \ge 1} \rho_k},}
-#'   where \eqn{N} is the number of retained samples and \eqn{\rho_k} is the
+#'   where \eqn{N} is the number of retained draws and \eqn{\rho_k} is the
 #'   lag-\eqn{k} sample autocorrelation. Following the truncated-sum approach of
 #'   Geyer (1992), the sum is taken over the positive sample autocorrelations up
 #'   to a maximum lag. This estimate requires no external package. The reported
@@ -285,11 +285,11 @@ mcmc_convergence.pdm_mcmc <- function(object,
   # Critical z value for Geweke
   geweke_z_crit <- qnorm(1 - geweke_level / 2)
 
-  # Helper: compute diagnostics row for a single samples vector
-  compute_row <- function(samples, label) {
+  # Helper: compute diagnostics row for a single draws vector
+  compute_row <- function(draws, label) {
 
     # ESS
-    acf_vals <- acf(samples, plot = FALSE,
+    acf_vals <- acf(draws, plot = FALSE,
                     lag.max = min(100L, floor(n_draws / 4L)))$acf[-1L]
     ess        <- max(1, n_draws / (1 + 2 * sum(acf_vals[acf_vals > 0])))
     efficiency <- 100 * ess / n_draws
@@ -308,7 +308,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
 
     # coda diagnostics
     if (has_coda) {
-      mcmc_obj <- coda::mcmc(samples)
+      mcmc_obj <- coda::mcmc(draws)
 
       # Geweke
       gz          <- tryCatch(coda::geweke.diag(mcmc_obj)$z,
@@ -351,7 +351,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
   # --- Scalar parameters --------------------------------------------------
   param_config <- get_param_config(object)
   rows_scalar  <- lapply(names(param_config), function(nm) {
-    compute_row(param_config[[nm]]$samples, param_config[[nm]]$name_str)
+    compute_row(param_config[[nm]]$draws, param_config[[nm]]$name_str)
   })
 
   # --- Latent state time points -------------------------------------------
@@ -384,8 +384,8 @@ mcmc_convergence.pdm_mcmc <- function(object,
 
         for (tidx in time_indices) {
           label   <- sprintf("theta_%s[t=%d]", j, tidx)
-          samples <- mat[, tidx]
-          rows_theta[[length(rows_theta) + 1L]] <- compute_row(samples, label)
+          draws <- mat[, tidx]
+          rows_theta[[length(rows_theta) + 1L]] <- compute_row(draws, label)
         }
       }
     }

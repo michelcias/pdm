@@ -19,6 +19,74 @@ fit_mix <- function(y, ...) {
 }
 
 
+test_that("rg_component_rate() implements the Richardson-Green scaling", {
+  y <- c(0, 10)                       # range 10
+  expect_equal(rg_component_rate(y, 2), 2 * 100 / 100)
+  expect_equal(rg_component_rate(y, 5), 5 * 100 / 100)
+
+  # Scales with the square of the range, and follows the shape.
+  expect_equal(rg_component_rate(c(0, 20), 2), 4 * rg_component_rate(c(0, 10), 2))
+  expect_equal(rg_component_rate(y, 4), 2 * rg_component_rate(y, 2))
+})
+
+
+test_that("the component-precision defaults follow Richardson-Green", {
+  y <- make_y()
+  expected <- 2 * diff(range(y))^2 / 100
+
+  fit <- fit_mix(y)
+  # The wrapper records the priors it actually used.
+  expect_equal(attr(fit, "prior_prec_phi1")$shape, 2)
+  expect_equal(attr(fit, "prior_prec_phi1")$rate, expected)
+  expect_equal(attr(fit, "prior_prec_phi2")$shape, 2)
+  expect_equal(attr(fit, "prior_prec_phi2")$rate, expected)
+
+  # An explicit rate overrides the data-scaled default.
+  fixed <- fit_mix(y, prior_prec01_rate = 3, prior_prec02_rate = 7)
+  expect_equal(attr(fixed, "prior_prec_phi1")$rate, 3)
+  expect_equal(attr(fixed, "prior_prec_phi2")$rate, 7)
+
+  # A changed shape carries into the default rate, as in R&G's formula.
+  shaped <- fit_mix(y, prior_prec01_shape = 4)
+  expect_equal(attr(shaped, "prior_prec_phi1")$rate, 4 * diff(range(y))^2 / 100)
+})
+
+
+test_that("the Half-t path ignores the Gamma rate default", {
+  y <- make_y()
+
+  # `rate` is meaningless under Half-t; leaving it NULL must not error.
+  fit <- fit_mix(y, prior_prec01_type = "halfcauchy", prior_prec01_scale = 1)
+  expect_s3_class(fit, "normal_mixture_locallevel")
+  expect_equal(attr(fit, "prior_prec_phi1")$type, "halfcauchy")
+  # The other component keeps the Gamma default.
+  expect_equal(attr(fit, "prior_prec_phi2")$shape, 2)
+})
+
+
+test_that("the new default suppresses the degenerate precision excursions", {
+  skip_on_cran()
+  # The reason for the change: a component collapsing onto a few observations
+  # drives its precision up without limit, and the old Gamma(0.01, 0.01) barely
+  # penalised that region.
+  set.seed(1)
+  n <- 300
+  a <- plogis(cumsum(rnorm(n, sd = 0.2)))
+  z <- rbinom(n, 1, a)
+  y <- ifelse(z == 1, rnorm(n, 3, 1), rnorm(n, 0, 1))
+
+  ctrl <- list(y, link = "logit", 2000, 10, 400, verbose = FALSE, seed = 2024)
+  new_default <- do.call(mcmc_normal_mixture_locallevel, ctrl)
+  old_default <- do.call(mcmc_normal_mixture_locallevel, c(ctrl, list(
+    prior_prec01_shape = 0.01, prior_prec01_rate = 0.01,
+    prior_prec02_shape = 0.01, prior_prec02_rate = 0.01
+  )))
+
+  expect_lt(max(new_default$prec_2), max(old_default$prec_2))
+  expect_lt(max(new_default$prec_2), 100)
+})
+
+
 test_that("check_mixture_mu_priors() warns only when the order is reversed", {
   expect_warning(check_mixture_mu_priors(2, -2), "enforcing mu_1 < mu_2")
   expect_warning(check_mixture_mu_priors(0.5, 0.4), "prior_mu01_mean")

@@ -16,16 +16,16 @@
 
 \method{log_lik}{pdm_mcmc_list}(object, ...)
 
-\method{waic}{pdm_mcmc_list}(x, ...)
+\method{waic}{pdm_mcmc_list}(x, rhat_threshold = 1.01, ...)
 
-\method{loo}{pdm_mcmc_list}(x, ...)
+\method{loo}{pdm_mcmc_list}(x, rhat_threshold = 1.01, ...)
 
 \method{plot}{pdm_mcmc_list}(x, type = "mcmc", which = NULL, true_values = NULL, ask = NULL, ...)
 }
 \arguments{
-\item{rhat_threshold}{Numeric > 1, the \eqn{\hat{R}} above which \code{summary()}
-warns that the chains have not converged. Default \code{1.01}, matching
-\code{\link{mcmc_convergence.pdm_mcmc_list}}.}
+\item{rhat_threshold}{Numeric > 1, the \eqn{\hat{R}} above which \code{summary()},
+\code{waic()} and \code{loo()} warn that the chains have not converged. Default
+\code{1.01}, matching \code{\link{mcmc_convergence.pdm_mcmc_list}}.}
 
 \item{...}{Passed to the underlying single-chain method.}
 
@@ -91,6 +91,14 @@ Only the scalar parameters are checked: they are cheap, and across the
 families they are the slowest-mixing part of these models, so they are what
 a convergence problem shows up in first. For the latent state trajectories
 as well, use \code{\link{mcmc_convergence}}.
+}
+
+\subsection{\code{waic()} and \code{loo()} warn too}{
+They pool the chains exactly as \code{summary()} does, and a \code{"loo"} object gives
+no hint whether the draws behind it agreed. Both therefore raise the same
+warning above \code{rhat_threshold}. Model comparison is where an unconverged
+fit does the most damage, since the number it produces looks like every
+other elpd.
 }
 
 \subsection{\code{loo()} uses the chain structure}{

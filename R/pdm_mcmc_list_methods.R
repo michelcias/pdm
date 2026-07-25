@@ -35,6 +35,14 @@
 #'   as well, use \code{\link{mcmc_convergence}}.
 #' }
 #'
+#' \subsection{`waic()` and `loo()` warn too}{
+#'   They pool the chains exactly as `summary()` does, and a `"loo"` object gives
+#'   no hint whether the draws behind it agreed. Both therefore raise the same
+#'   warning above `rhat_threshold`. Model comparison is where an unconverged
+#'   fit does the most damage, since the number it produces looks like every
+#'   other elpd.
+#' }
+#'
 #' \subsection{`loo()` uses the chain structure}{
 #'   `loo.pdm_mcmc_list()` is not a plain delegation. The single-chain method
 #'   has to tell \pkg{loo} that all draws come from one chain
@@ -56,9 +64,9 @@
 #'   single-chain plot methods.
 #' @param ask Logical, whether to pause between pages. Defaults to
 #'   `interactive()` when more than one page will be drawn.
-#' @param rhat_threshold Numeric > 1, the \eqn{\hat{R}} above which `summary()`
-#'   warns that the chains have not converged. Default `1.01`, matching
-#'   \code{\link{mcmc_convergence.pdm_mcmc_list}}.
+#' @param rhat_threshold Numeric > 1, the \eqn{\hat{R}} above which `summary()`,
+#'   `waic()` and `loo()` warn that the chains have not converged. Default
+#'   `1.01`, matching \code{\link{mcmc_convergence.pdm_mcmc_list}}.
 #' @param ... Passed to the underlying single-chain method.
 #'
 #' @return `summary()` returns what the single-chain method returns for that
@@ -134,17 +142,38 @@ summary.pdm_mcmc_list <- function(object, rhat_threshold = 1.01, ...) {
   out$rhat           <- rhat
   out$rhat_threshold <- rhat_threshold
 
-  worst <- if (all(is.na(rhat))) NA_real_ else max(rhat, na.rm = TRUE)
-  if (!is.na(worst) && worst > rhat_threshold) {
-    warning("The chains have not converged: max R-hat is ",
-            format(worst, digits = 4), " against a threshold of ",
-            rhat_threshold, ", so the pooled summary below mixes draws from ",
-            "distributions that do not agree. Run mcmc_convergence() for the ",
-            "full table.", call. = FALSE)
-  }
+  warn_if_unconverged(rhat, rhat_threshold, "the pooled summary below")
 
   class(out) <- c("summary.pdm_mcmc_list", class(out))
   out
+}
+
+
+#' Warn when pooling chains that have not agreed
+#'
+#' Shared by `summary()`, `waic()` and `loo()` on a `pdm_mcmc_list`. All three
+#' pool the chains, and all three produce output that looks the same whether the
+#' chains agreed or not — so each says so rather than leaving the user to
+#' remember to check separately.
+#'
+#' @param rhat Named numeric vector from `scalar_rhats()`.
+#' @param threshold The cut-off above which to warn.
+#' @param what Phrase naming what the pooling produced, spliced into the
+#'   message.
+#'
+#' @return `NULL`, invisibly.
+#'
+#' @keywords internal
+#' @noRd
+warn_if_unconverged <- function(rhat, threshold, what) {
+  worst <- if (all(is.na(rhat))) NA_real_ else max(rhat, na.rm = TRUE)
+  if (!is.na(worst) && worst > threshold) {
+    warning("The chains have not converged: max R-hat is ",
+            format(worst, digits = 4), " against a threshold of ", threshold,
+            ", so ", what, " mixes draws from distributions that do not agree. ",
+            "Run mcmc_convergence() for the full table.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 
@@ -228,16 +257,18 @@ log_lik.pdm_mcmc_list <- function(object, ...) {
 
 #' @rdname pdm_mcmc_list-methods
 #' @exportS3Method loo::waic
-waic.pdm_mcmc_list <- function(x, ...) {
+waic.pdm_mcmc_list <- function(x, rhat_threshold = 1.01, ...) {
   require_loo()
+  warn_if_unconverged(scalar_rhats(x), rhat_threshold, "the pooled log-likelihood")
   loo::waic(log_lik(x), ...)
 }
 
 
 #' @rdname pdm_mcmc_list-methods
 #' @exportS3Method loo::loo
-loo.pdm_mcmc_list <- function(x, ...) {
+loo.pdm_mcmc_list <- function(x, rhat_threshold = 1.01, ...) {
   require_loo()
+  warn_if_unconverged(scalar_rhats(x), rhat_threshold, "the pooled log-likelihood")
   ll   <- log_lik(x)
   dots <- list(...)
   if (is.null(dots$r_eff)) {

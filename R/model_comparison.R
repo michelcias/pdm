@@ -164,9 +164,14 @@ pdm_compare <- function(..., criterion = c("loo", "waic")) {
   models    <- list(...)
   arg_names <- vapply(substitute(list(...))[-1L], deparse, character(1L))
 
+  # A fit is either a single chain or a multi-chain collection; `loo::loo()` and
+  # `loo::waic()` dispatch on both. A `pdm_mcmc_list` is itself a list, so it
+  # must be recognised here or the branch below would mistake one multi-chain
+  # fit for a list of models and compare its chains against each other.
+  is_fit <- function(m) inherits(m, "pdm_mcmc") || inherits(m, "pdm_mcmc_list")
+
   # Allow a single (optionally named) list of models.
-  if (length(models) == 1L && is.list(models[[1L]]) &&
-      !inherits(models[[1L]], "pdm_mcmc")) {
+  if (length(models) == 1L && is.list(models[[1L]]) && !is_fit(models[[1L]])) {
     models    <- models[[1L]]
     arg_names <- names(models)
     if (is.null(arg_names)) arg_names <- paste0("model", seq_along(models))
@@ -177,10 +182,10 @@ pdm_compare <- function(..., criterion = c("loo", "waic")) {
          call. = FALSE)
   }
 
-  is_pdm <- vapply(models, inherits, logical(1L), what = "pdm_mcmc")
+  is_pdm <- vapply(models, is_fit, logical(1L))
   if (!all(is_pdm)) {
-    stop("All objects must be fitted pdm models (inheriting class 'pdm_mcmc'). ",
-         "Offending argument(s): ",
+    stop("All objects must be fitted pdm models (class 'pdm_mcmc' or ",
+         "'pdm_mcmc_list'). Offending argument(s): ",
          paste(arg_names[!is_pdm], collapse = ", "), call. = FALSE)
   }
 

@@ -83,9 +83,9 @@ plot.ts(alpha_true)
 #-------------------------------------------------------------------------------
 burnin   <- 10000
 thinning <- 1
-n_chain  <- 10000
+n_draws  <- 10000
 # Total iterations: same formula as in C implementations
-n_iter   <- burnin + (n_chain - 1) * thinning + 1
+n_iter   <- burnin + (n_draws - 1) * thinning + 1
 
 # Priors (matching naming from C implementations)
 mean_theta01 <- 0       # prior_theta01_mean
@@ -96,10 +96,10 @@ eta_01       <- 1e-1     # prior_prec1_rate
 #-------------------------------------------------------------------------------
 # 3) Chain Storage
 #-------------------------------------------------------------------------------
-theta_1_chain  <- matrix(NA_real_, nrow = n_chain, ncol = n)
-theta_01_chain <- numeric(n_chain)
-prec_theta1_chain   <- numeric(n_chain)
-alpha_chain    <- matrix(NA_real_, nrow = n_chain, ncol = n)
+theta_1_chain  <- matrix(NA_real_, nrow = n_draws, ncol = n)
+theta_01_chain <- numeric(n_draws)
+prec_theta1_chain   <- numeric(n_draws)
+alpha_chain    <- matrix(NA_real_, nrow = n_draws, ncol = n)
 
 # Full history arrays (iteration-wise, including burn-in)
 theta_01_post <- numeric(n_iter)
@@ -207,7 +207,7 @@ true_values <- c(
   prec_theta1   = prec1_true
 )
 
-print_posterior_estimates_table(param_chains, true_values, n_chain)
+print_posterior_estimates_table(param_chains, true_values, n_draws)
 print_quantiles_table(param_chains)
 
 #-------------------------------------------------------------------------------
@@ -246,14 +246,14 @@ analyze_multiple_states(
   states       = states_for_analysis,
   n_segments   = 5,
   max_lag      = 10,
-  n_chain      = n_chain,
+  n_draws      = n_draws,
   n_timepoints = 10
 )
 
 #-------------------------------------------------------------------------------
 # 8) Convergence Diagnostics (parameters) via helpers
 #-------------------------------------------------------------------------------
-print_ess_table(param_chains, n_chain)
+print_ess_table(param_chains, n_draws)
 run_coda_diagnostics(param_chains)  # requires 'coda', prints informative note if missing
 
 #-------------------------------------------------------------------------------

@@ -101,14 +101,14 @@
 #' one update per bar segment, ensuring smooth visual feedback with minimal
 #' performance overhead (~0.01% for typical runs).
 #'
-#' Burn-in and thinning are applied so that exactly `n_chain` posterior
+#' Burn-in and thinning are applied so that exactly `n_draws` posterior
 #' samples are returned.
 #'
 #' @param y Numeric vector of observed Bernoulli outcomes (length \eqn{n}). Each
 #'   element must be either 0 or 1.
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
 #' @param thinning Integer \eqn{\geq 1}, thinning interval.
-#' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
+#' @param n_draws Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_theta01_mean Numeric, prior mean for the initial state \eqn{\theta_{0,1}}.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,1}}.
 #' @param prior_theta02_mean Numeric, prior mean for the initial state \eqn{\theta_{0,2}}.
@@ -184,17 +184,17 @@
 #'     samples for the latent trend state \eqn{\theta_{t,2}}.}
 #'   \item{\code{theta_3}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the latent acceleration state \eqn{\theta_{t,3}}.}
-#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_01}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the initial level state \eqn{\theta_{0,1}}.}
-#'   \item{\code{theta_02}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_02}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the initial trend state \eqn{\theta_{0,2}}.}
-#'   \item{\code{theta_03}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_03}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the initial acceleration state \eqn{\theta_{0,3}}.}
-#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the level innovation precision \eqn{1/W_1}.}
-#'   \item{\code{prec_theta2}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta2}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the trend innovation precision \eqn{1/W_2}.}
-#'   \item{\code{prec_theta3}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta3}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the acceleration innovation precision \eqn{1/W_3}.}
 #'   \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the Bernoulli probabilities \eqn{\alpha_t}.}
@@ -242,7 +242,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_theta02_mean = 0,
@@ -267,7 +267,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_theta02_mean = 0,
@@ -331,7 +331,7 @@
 mcmc_probit_bernoulli_localacceleration <- function(y,
                                                     burnin,
                                                     thinning,
-                                                    n_chain,
+                                                    n_draws,
                                                     prior_theta01_mean,
                                                     prior_theta01_prec,
                                                     prior_theta02_mean,
@@ -418,9 +418,9 @@ mcmc_probit_bernoulli_localacceleration <- function(y,
       thinning != floor(thinning)) {
     stop("`thinning` must be a single positive integer")
   }
-  if (!is.numeric(n_chain) || length(n_chain) != 1 || n_chain < 1 ||
-      n_chain != floor(n_chain)) {
-    stop("`n_chain` must be a single positive integer")
+  if (!is.numeric(n_draws) || length(n_draws) != 1 || n_draws < 1 ||
+      n_draws != floor(n_draws)) {
+    stop("`n_draws` must be a single positive integer")
   }
 
   if (!is.numeric(prior_theta01_mean) || length(prior_theta01_mean) != 1) {
@@ -483,7 +483,7 @@ mcmc_probit_bernoulli_localacceleration <- function(y,
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),
-    as.integer(n_chain),
+    as.integer(n_draws),
     as.numeric(prior_theta01_mean),
     as.numeric(prior_theta01_prec),
     as.numeric(prior_theta02_mean),
@@ -512,7 +512,7 @@ mcmc_probit_bernoulli_localacceleration <- function(y,
   result <- new_probit_bernoulli_localacceleration(
     result = result,
     n_obs = length(y),
-    n_chain = n_chain,
+    n_draws = n_draws,
     burnin = burnin,
     thinning = thinning,
     y = y

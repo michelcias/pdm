@@ -19,14 +19,14 @@ make_bern <- function(n = 30, seed = 1) {
   rbinom(n, 1, pnorm(cumsum(rnorm(n, sd = 0.2))))
 }
 
-CTRL <- list(burnin = 20, thinning = 1, n_chain = 40)
+CTRL <- list(burnin = 20, thinning = 1, n_draws = 40)
 
 # ---- Binomial (logit link) -------------------------------------------------
 
 test_that("binomial locallevel accepts a Half-Cauchy prior on W_1", {
   y <- make_binom()
   fit <- mcmc_binomial_locallevel(
-    y, n_trials = 10, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, n_trials = 10, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_prec1_type = "halfcauchy", prior_prec1_scale = 5,
     verbose = FALSE, seed = 1
@@ -39,7 +39,7 @@ test_that("binomial locallevel accepts a Half-Cauchy prior on W_1", {
 test_that("binomial localtrend accepts a mixed Gamma / Half-t specification", {
   y <- make_binom()
   fit <- mcmc_binomial_localtrend(
-    y, n_trials = 10, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, n_trials = 10, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_theta02_mean = 0, prior_theta02_prec = 1,
     prior_prec1_type = "halft", prior_prec1_scale = 5, prior_prec1_df = 3,
@@ -56,7 +56,7 @@ test_that("binomial localtrend accepts a mixed Gamma / Half-t specification", {
 test_that("binomial localacceleration accepts Half-Cauchy on all three W_k", {
   y <- make_binom()
   fit <- mcmc_binomial_localacceleration(
-    y, n_trials = 10, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, n_trials = 10, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_theta02_mean = 0, prior_theta02_prec = 1,
     prior_theta03_mean = 0, prior_theta03_prec = 1,
@@ -76,7 +76,7 @@ test_that("binomial localacceleration accepts Half-Cauchy on all three W_k", {
 test_that("poisson locallevel accepts a Half-Cauchy prior on W_1", {
   y <- make_pois()
   fit <- mcmc_poisson_locallevel(
-    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_prec1_type = "halfcauchy", prior_prec1_scale = 5,
     verbose = FALSE, seed = 1
@@ -89,7 +89,7 @@ test_that("poisson locallevel accepts a Half-Cauchy prior on W_1", {
 test_that("poisson localtrend and localacceleration accept Half-t priors", {
   y <- make_pois()
   ft <- mcmc_poisson_localtrend(
-    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_theta02_mean = 0, prior_theta02_prec = 1,
     prior_prec1_type = "halft", prior_prec1_scale = 5, prior_prec1_df = 4,
@@ -101,7 +101,7 @@ test_that("poisson localtrend and localacceleration accept Half-t priors", {
   expect_true(all(ft$prec_theta1 > 0) && all(ft$prec_theta2 > 0))
 
   fa <- mcmc_poisson_localacceleration(
-    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_theta02_mean = 0, prior_theta02_prec = 1,
     prior_theta03_mean = 0, prior_theta03_prec = 1,
@@ -120,7 +120,7 @@ test_that("probit-bernoulli drivers accept Half-t priors on all W_k", {
   y <- make_bern()
 
   fl <- mcmc_probit_bernoulli_locallevel(
-    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_prec1_type = "halfcauchy", prior_prec1_scale = 5, seed = 1
   )
@@ -129,7 +129,7 @@ test_that("probit-bernoulli drivers accept Half-t priors on all W_k", {
   expect_true(all(fl$prec_theta1 > 0))
 
   ft <- mcmc_probit_bernoulli_localtrend(
-    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_theta02_mean = 0, prior_theta02_prec = 1,
     prior_prec1_type = "halft", prior_prec1_scale = 5, prior_prec1_df = 2,
@@ -139,7 +139,7 @@ test_that("probit-bernoulli drivers accept Half-t priors on all W_k", {
   expect_true(all(ft$prec_theta1 > 0) && all(ft$prec_theta2 > 0))
 
   fa <- mcmc_probit_bernoulli_localacceleration(
-    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_theta02_mean = 0, prior_theta02_prec = 1,
     prior_theta03_mean = 0, prior_theta03_prec = 1,
@@ -156,7 +156,7 @@ test_that("probit-bernoulli drivers accept Half-t priors on all W_k", {
 test_that("Gamma prior stays the default and remains backward compatible", {
   y <- make_pois()
   fit <- mcmc_poisson_locallevel(
-    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
     verbose = FALSE, seed = 1
@@ -171,7 +171,7 @@ test_that("invalid Half-t specifications are rejected (probit locallevel)", {
   # A Half-Cauchy without a scale is no longer an error: the link families
   # default to a fixed scale of 2 on the link scale (see 0.5-0).
   fit <- mcmc_probit_bernoulli_locallevel(
-    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_theta01_mean = 0, prior_theta01_prec = 1,
     prior_prec1_type = "halfcauchy", seed = 1)
   expect_equal(attr(fit, "prior_prec_theta1")$scale, 2)
@@ -179,7 +179,7 @@ test_that("invalid Half-t specifications are rejected (probit locallevel)", {
   # "halfcauchy" contradicted by df != 1.
   expect_error(
     mcmc_probit_bernoulli_locallevel(
-      y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+      y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
       prior_theta01_mean = 0, prior_theta01_prec = 1,
       prior_prec1_type = "halfcauchy", prior_prec1_scale = 5, prior_prec1_df = 2,
       seed = 1),
@@ -190,7 +190,7 @@ test_that("invalid Half-t specifications are rejected (probit locallevel)", {
   # makes this an error now: Gamma is no longer the default.
   expect_error(
     mcmc_probit_bernoulli_locallevel(
-      y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+      y, CTRL$burnin, CTRL$thinning, CTRL$n_draws,
       prior_theta01_mean = 0, prior_theta01_prec = 1,
       prior_prec1_type = "gamma", seed = 1),
     "gamma"

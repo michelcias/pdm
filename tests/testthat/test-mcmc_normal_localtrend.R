@@ -14,7 +14,7 @@ run_lt <- function(y, ...) {
     y,
     burnin   = 30,
     thinning = 1,
-    n_chain  = 60,
+    n_draws  = 60,
     prior_theta01_mean = y[1],
     prior_theta01_prec = 1 / var(y),
     prior_theta02_mean = 0,

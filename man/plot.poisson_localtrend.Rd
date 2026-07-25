@@ -208,7 +208,7 @@ out <- mcmc_poisson_localtrend(
   y,
   burnin                  = 1000,      # Discard first 1000 iterations
   thinning                = 20,        # Keep every 20th iteration
-  n_chain                 = 500,       # Retain 500 posterior samples
+  n_draws                 = 500,       # Retain 500 posterior samples
   # Weakly informative priors for initial states (centered at 0 on log scale)
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
@@ -329,7 +329,7 @@ out <- mcmc_poisson_localtrend(
   y,
   burnin                  = 1000,
   thinning                = 20,
-  n_chain                 = 500,
+  n_draws                 = 500,
   # Priors centered at true initial values
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,

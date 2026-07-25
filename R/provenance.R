@@ -26,7 +26,7 @@
 #' do.call(mcmc_normal_locallevel,
 #'         c(list(y = attr(fit, "y"), burnin = attr(fit, "burnin"),
 #'                thinning = attr(fit, "thinning"),
-#'                n_chain = attr(fit, "n_chain")),
+#'                n_draws = attr(fit, "n_draws")),
 #'           attr(fit, "priors")))
 #' ```
 #'

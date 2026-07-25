@@ -27,7 +27,7 @@ out <- mcmc_poisson_locallevel(
   y,
   burnin             = 50,
   thinning           = 1,
-  n_chain            = 50,
+  n_draws            = 50,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_prec1_shape  = 1e-2,

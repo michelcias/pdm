@@ -12,7 +12,7 @@ make_y <- function(n = 120, seed = 5, scale = 1) {
 
 fit_ll <- function(y, ...) {
   mcmc_normal_locallevel(
-    y, burnin = 300, thinning = 2, n_chain = 200,
+    y, burnin = 300, thinning = 2, n_draws = 200,
     prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
     verbose = FALSE, seed = 1, ...
   )

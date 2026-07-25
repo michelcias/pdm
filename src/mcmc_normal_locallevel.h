@@ -2,8 +2,8 @@
  * @file mcmc_normal_locallevel.h
  * @brief Header for MCMC sampling in Gaussian local-level dynamic models
  * @author Michel H. Montoril
- * @date 2025-10-11
- * @version 1.1
+ * @date 2026-07-25
+ * @version 1.2
  *
  * @details This header declares the Gibbs sampler for Bayesian estimation of local-level
  *          polynomial dynamic models with Gaussian observation equations. The implementation
@@ -41,7 +41,7 @@
  *          4. 1/V | y, theta_1 → Gamma
  *
  *          **Output:**
- *          Returns n_chain posterior samples for all parameters after burn-in and thinning.
+ *          Returns n_draws posterior samples for all parameters after burn-in and thinning.
  */
 
 #ifndef MCMC_NORMAL_LOCALLEVEL_H
@@ -76,7 +76,7 @@
  *          requiring only O(n) temporary memory regardless of chain length.
  *
  *          **Iteration count:**
- *          Total iterations = burnin + (n_chain - 1) × thinning + 1
+ *          Total iterations = burnin + (n_draws - 1) × thinning + 1
  *
  * @param y_                    SEXP Numeric vector of observed time series data [length n].
  *                              Contains observations y_1, ..., y_n.
@@ -84,8 +84,8 @@
  *                              for chain convergence. Typical values: 1000-10000.
  * @param thinning_             SEXP Integer scalar, thinning interval to reduce autocorrelation
  *                              in retained samples. Typical values: 1-10.
- * @param n_chain_              SEXP Integer scalar, target number of retained posterior samples.
- *                              Final output will contain exactly n_chain samples.
+ * @param n_draws_              SEXP Integer scalar, target number of retained posterior samples.
+ *                              Final output will contain exactly n_draws samples.
  * @param prior_theta01_mean_   SEXP Double scalar, prior mean mu_0 for initial state theta_{0,1}.
  *                              Typical value: 0 (vague prior).
  * @param prior_theta01_prec_   SEXP Double scalar, prior precision tau_0 = 1/sigma_0^2 for
@@ -102,10 +102,10 @@
  * @param bar_width_            Integer controlling progress bar width (clamped to 10-120 characters)
  *
  * @return SEXP R list containing posterior samples with named components:
- *         - theta_1: Numeric matrix [n_chain × n] of complete state trajectory samples
- *         - theta_01: Numeric vector [n_chain] of initial state theta_{0,1} samples
- *         - prec_theta1: Numeric vector [n_chain] of innovation precision 1/W_1 samples
- *         - prec_y: Numeric vector [n_chain] of observation precision 1/V samples
+ *         - theta_1: Numeric matrix [n_draws × n] of complete state trajectory samples
+ *         - theta_01: Numeric vector [n_draws] of initial state theta_{0,1} samples
+ *         - prec_theta1: Numeric vector [n_draws] of innovation precision 1/W_1 samples
+ *         - prec_y: Numeric vector [n_draws] of observation precision 1/V samples
  *
  * @note Computational complexity: O(n_iter × n) for n_iter total iterations.
  * @note Memory requirements: O(n) temporary storage for efficient buffer management.
@@ -125,7 +125,7 @@
 SEXP C_MCMC_normal_locallevel(SEXP y_,
                               SEXP burnin_,
                               SEXP thinning_,
-                              SEXP n_chain_,
+                              SEXP n_draws_,
                               SEXP prior_theta01_mean_,
                               SEXP prior_theta01_prec_,
                               SEXP prior_prec1_type_,

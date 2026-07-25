@@ -2,8 +2,8 @@
  * @file mcmc_normal_mixture_localacceleration.c
  * @brief MCMC sampling for Gaussian mixture models with local-acceleration weights
  * @author Michel H. Montoril
- * @date 2026-07-24
- * @version 1.1
+ * @date 2026-07-25
+ * @version 1.2
  *
  * @details Implements the full Gibbs sampler for Bayesian estimation of two-component
  * Gaussian mixture models with time-varying mixture weights that follow a
@@ -65,7 +65,7 @@
  * 10. 1/W_1 | theta_1, theta_{0,1}, theta_{0,2} -> Gamma posterior
  * 11. theta_{0,1} | theta_1, theta_{0,2}, W_1 -> Gaussian posterior
  *
- * Total iterations: burnin + (n_chain - 1) * thinning + 1
+ * Total iterations: burnin + (n_draws - 1) * thinning + 1
  *
  * **Performance note:**
  * The computational overhead of supporting both link functions via conditional
@@ -138,7 +138,7 @@
  * Specifies link function for mixture weights.
  * @param burnin_                     Number of burn-in iterations (discarded).
  * @param thinning_                   Thinning interval for autocorrelation reduction.
- * @param n_chain_                    Number of retained posterior samples.
+ * @param n_draws_                    Number of retained posterior samples.
  * @param prior_mu01_mean_            Prior mean for mu_1.
  * @param prior_mu01_prec_            Prior precision for mu_1.
  * @param prior_prec01_type_          Prior kind on phi_1 (0 = Gamma, 1 = Half-t).
@@ -187,25 +187,25 @@
  *
  * @return R list with components:
  * **Always returned:**
- * - mu_1:        Vector [n_chain] of component 1 mean samples
- * - prec_1:      Vector [n_chain] of component 1 precision samples
- * - mu_2:        Vector [n_chain] of component 2 mean samples
- * - prec_2:      Vector [n_chain] of component 2 precision samples
- * - theta_1:     Matrix [n_chain * n] of level state trajectory samples
- * - theta_2:     Matrix [n_chain * n] of trend state trajectory samples
- * - theta_3:     Matrix [n_chain * n] of acceleration state trajectory samples
- * - theta_01:    Vector [n_chain] of initial level state samples
- * - theta_02:    Vector [n_chain] of initial trend state samples
- * - theta_03:    Vector [n_chain] of initial acceleration state samples
- * - prec_theta1: Vector [n_chain] of level innovation precision samples
- * - prec_theta2: Vector [n_chain] of trend innovation precision samples
- * - prec_theta3: Vector [n_chain] of acceleration innovation precision samples
- * - alpha:       Matrix [n_chain * n] of mixture weight samples
- * - z:           Matrix [n_chain * n] of latent indicator samples
+ * - mu_1:        Vector [n_draws] of component 1 mean samples
+ * - prec_1:      Vector [n_draws] of component 1 precision samples
+ * - mu_2:        Vector [n_draws] of component 2 mean samples
+ * - prec_2:      Vector [n_draws] of component 2 precision samples
+ * - theta_1:     Matrix [n_draws * n] of level state trajectory samples
+ * - theta_2:     Matrix [n_draws * n] of trend state trajectory samples
+ * - theta_3:     Matrix [n_draws * n] of acceleration state trajectory samples
+ * - theta_01:    Vector [n_draws] of initial level state samples
+ * - theta_02:    Vector [n_draws] of initial trend state samples
+ * - theta_03:    Vector [n_draws] of initial acceleration state samples
+ * - prec_theta1: Vector [n_draws] of level innovation precision samples
+ * - prec_theta2: Vector [n_draws] of trend innovation precision samples
+ * - prec_theta3: Vector [n_draws] of acceleration innovation precision samples
+ * - alpha:       Matrix [n_draws * n] of mixture weight samples
+ * - z:           Matrix [n_draws * n] of latent indicator samples
  *
  * **Conditionally returned (logit only, if requested):**
- * - log_sigma:   Matrix [n_chain * n] of proposal scales
- * - accept_prop: Matrix [n_chain * n] of acceptance proportions
+ * - log_sigma:   Matrix [n_draws * n] of proposal scales
+ * - accept_prop: Matrix [n_draws * n] of acceptance proportions
  *
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
@@ -232,7 +232,7 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
                                              SEXP link_,
                                              SEXP burnin_,
                                              SEXP thinning_,
-                                             SEXP n_chain_,
+                                             SEXP n_draws_,
                                              SEXP prior_mu01_mean_,
                                              SEXP prior_mu01_prec_,
                                              SEXP prior_prec01_type_,
@@ -310,8 +310,8 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
   /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];
   int thinning = INTEGER(thinning_)[0];
-  int n_chain  = INTEGER(n_chain_)[0];
-  int n_iter   = burnin + (n_chain - 1) * thinning + 1;
+  int n_draws  = INTEGER(n_draws_)[0];
+  int n_iter   = burnin + (n_draws - 1) * thinning + 1;
 
   /* ========== Parse Mixture Component Prior Hyperparameters ========== */
   /* Each component precision phi_k carries a Gamma or Half-t prior (resolved in
@@ -410,21 +410,21 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP mu_1_samples        = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_1_samples      = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP mu_2_samples        = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_2_samples      = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_2_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_3_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_02_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_03_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta2_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta3_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP z_samples           = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP mu_1_samples        = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_1_samples      = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP mu_2_samples        = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_2_samples      = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_2_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_3_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP theta_02_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP theta_03_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta2_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta3_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP z_samples           = PROTECT(allocMatrix(REALSXP, n_draws, n));
 
   /* Conditional allocation for logit-specific diagnostics */
   SEXP log_sigma_samples   = R_NilValue;
@@ -434,12 +434,12 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
 
   if (use_logit) {
     if (return_log_sigma) {
-      log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+      log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
       n_outputs++;
       n_protect++;
     }
     if (return_accept_prop) {
-      accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+      accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
       n_outputs++;
       n_protect++;
     }
@@ -779,19 +779,19 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
 
       /* Store state trajectories, mixture weights, and indicators */
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(theta_2_samples)[idx + t * n_chain] = theta_2_current[t];
-        REAL(theta_3_samples)[idx + t * n_chain] = theta_3_current[t];
-        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
-        REAL(z_samples)[idx + t * n_chain]       = z_current[t];
+        REAL(theta_1_samples)[idx + t * n_draws] = theta_1_current[t];
+        REAL(theta_2_samples)[idx + t * n_draws] = theta_2_current[t];
+        REAL(theta_3_samples)[idx + t * n_draws] = theta_3_current[t];
+        REAL(alpha_samples)[idx + t * n_draws] = alpha_current[t];
+        REAL(z_samples)[idx + t * n_draws]       = z_current[t];
 
         /* Store logit-specific diagnostics if requested */
         if (use_logit) {
           if (return_log_sigma) {
-            REAL(log_sigma_samples)[idx + t * n_chain] = log_sigma[t];
+            REAL(log_sigma_samples)[idx + t * n_draws] = log_sigma[t];
           }
           if (return_accept_prop) {
-            REAL(accept_prop_samples)[idx + t * n_chain] = accept_prop[t];
+            REAL(accept_prop_samples)[idx + t * n_draws] = accept_prop[t];
           }
         }
       }
@@ -819,7 +819,7 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
   }
 
   /* ========== Finalize Progress Bar ========== */
-  progress_bar_finish(&pb, n_chain);
+  progress_bar_finish(&pb, n_draws);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();

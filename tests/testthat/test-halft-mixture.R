@@ -14,12 +14,12 @@ make_mix <- function(n = 60, seed = 1) {
   ifelse(z == 1, rnorm(n, 2, 0.7), rnorm(n, -2, 0.7))
 }
 
-CTRL <- list(burnin = 40, thinning = 1, n_chain = 60)
+CTRL <- list(burnin = 40, thinning = 1, n_draws = 60)
 
 test_that("mixture locallevel: Gamma default works and stays backward compatible", {
   y <- make_mix()
   fit <- mcmc_normal_mixture_locallevel(
-    y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     verbose = FALSE, seed = 1
   )
   expect_s3_class(fit, "normal_mixture_locallevel")
@@ -37,7 +37,7 @@ test_that("mixture locallevel: Gamma default works and stays backward compatible
 test_that("mixture locallevel: Half-Cauchy on phi_1, phi_2 and W_1 (probit)", {
   y <- make_mix()
   fit <- mcmc_normal_mixture_locallevel(
-    y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_prec01_type = "halfcauchy", prior_prec01_scale = 2,
     prior_prec02_type = "halfcauchy", prior_prec02_scale = 2,
     prior_prec1_type  = "halfcauchy", prior_prec1_scale  = 2,
@@ -55,7 +55,7 @@ test_that("mixture locallevel: Half-Cauchy on phi_1, phi_2 and W_1 (probit)", {
 test_that("mixture localtrend: mixed Gamma / Half-t on phi and W (logit)", {
   y <- make_mix()
   fit <- mcmc_normal_mixture_localtrend(
-    y, link = "logit", CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, link = "logit", CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_prec01_type = "halft", prior_prec01_scale = 2, prior_prec01_df = 3,
     prior_prec02_type = "halfcauchy", prior_prec02_scale = 2,
     prior_prec1_type  = "halfcauchy", prior_prec1_scale  = 1,
@@ -73,7 +73,7 @@ test_that("mixture localtrend: mixed Gamma / Half-t on phi and W (logit)", {
 test_that("mixture localacceleration: Half-Cauchy everywhere (probit)", {
   y <- make_mix()
   fit <- mcmc_normal_mixture_localacceleration(
-    y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_draws,
     prior_prec01_type = "halfcauchy", prior_prec01_scale = 2,
     prior_prec02_type = "halfcauchy", prior_prec02_scale = 2,
     prior_prec1_type  = "halfcauchy", prior_prec1_scale  = 1,
@@ -94,14 +94,14 @@ test_that("mixture: invalid Half-t specifications are rejected", {
   # Half-Cauchy on phi_1 without a scale.
   expect_error(
     mcmc_normal_mixture_locallevel(
-      y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+      y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_draws,
       prior_prec01_type = "halfcauchy", verbose = FALSE, seed = 1),
     "scale"
   )
   # "halfcauchy" on W_1 contradicted by df != 1.
   expect_error(
     mcmc_normal_mixture_locallevel(
-      y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+      y, link = "probit", CTRL$burnin, CTRL$thinning, CTRL$n_draws,
       prior_prec1_type = "halfcauchy", prior_prec1_scale = 1, prior_prec1_df = 2,
       verbose = FALSE, seed = 1),
     "df = 1"

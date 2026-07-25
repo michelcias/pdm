@@ -634,7 +634,7 @@ plot_mixture_params_base <- function(mu_1,
 #'   with optional credible bands. Can overlay observed data and true values
 #'   for simulation studies.
 #'
-#' @param alpha Matrix of MCMC samples for alpha (n_chain x n_obs).
+#' @param alpha Matrix of MCMC samples for alpha (n_draws x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param title Character or expression; main title for the plot.
@@ -923,7 +923,7 @@ plot_alpha_trajectory_base <- function(alpha,
 #'   models, showing which component is more likely at each time point.
 #'   Uses mixture component colors for visual consistency.
 #'
-#' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
+#' @param z Matrix of MCMC samples for component indicators (n_draws x n_obs).
 #' @param threshold Numeric; decision threshold for coloring (default 0.5).
 #' @param color_above Character; color when P(z_t = 1) > threshold.
 #'   Default is "darkviolet" (Component 2).
@@ -1193,7 +1193,7 @@ plot_binomial_alpha_base <- function(x,
 #' @description Plots Metropolis-Hastings acceptance proportions over time points,
 #'   showing median acceptance with min-max range and target reference line.
 #'
-#' @param accept_prop Matrix of acceptance proportions (n_chain x n_obs).
+#' @param accept_prop Matrix of acceptance proportions (n_draws x n_obs).
 #' @param target_acceptance Numeric; target acceptance proportion for reference line.
 #'   Default is 0.44 (theoretically optimal for univariate random-walk proposals).
 #' @param ... Additional arguments (currently unused).
@@ -1428,8 +1428,8 @@ plot_poisson_alpha_base <- function(x,
 #'   Page 1 shows alpha_t trajectory with credible bands and optional data overlay,
 #'   Page 2 shows posterior probabilities P(z_t = 1 | data) with component colors.
 #'
-#' @param alpha Matrix of MCMC samples for mixture weights (n_chain x n_obs).
-#' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
+#' @param alpha Matrix of MCMC samples for mixture weights (n_draws x n_obs).
+#' @param z Matrix of MCMC samples for component indicators (n_draws x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param overlay_data Logical; whether to overlay observed data on alpha plot.

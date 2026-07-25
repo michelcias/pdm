@@ -38,7 +38,7 @@ out <- mcmc_probit_bernoulli_localtrend(
   y,
   burnin             = 1000,
   thinning           = 20,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_theta02_mean = 0,

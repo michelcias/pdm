@@ -26,13 +26,13 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
   y <- as.numeric(rbinom(n, size = 1, prob = alpha_true))  # Bernoulli outcomes
 
   # --- 2. R Wrapper for the Test Sampler ---
-  test_sampler <- function(y, burnin, n_chain,
+  test_sampler <- function(y, burnin, n_draws,
                            theta_1_true = NULL, theta_01_true = NULL, prec_theta1_true = NULL,
                            prior_theta01_mean = 0.0, prior_theta01_prec = 1.0,
                            prior_prec1_shape = 1.0, prior_prec1_rate = 1.0) {
 
     .Call("_pdm_test_mcmc_probit_bernoulli_locallevel_fixed_params",
-          y, as.integer(burnin), 1L, as.integer(n_chain),
+          y, as.integer(burnin), 1L, as.integer(n_draws),
           theta_1_true, theta_01_true, prec_theta1_true,
           prior_theta01_mean, prior_theta01_prec,
           prior_prec1_shape, prior_prec1_rate)
@@ -42,7 +42,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
 
   # Test A: Sample theta_01, fixing theta_1 and prec_theta1
   set.seed(502)
-  mcmc_out_A <- test_sampler(y, burnin = 4000, n_chain = 1500,
+  mcmc_out_A <- test_sampler(y, burnin = 4000, n_draws = 1500,
                              theta_1_true = theta_1_true,
                              prec_theta1_true = prec_theta1_true,
                              prior_theta01_mean = 0,    # Prior for theta_01
@@ -55,7 +55,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
 
   # Test B: Sample prec_theta1, fixing theta_1 and theta_01
   set.seed(503)
-  mcmc_out_B <- test_sampler(y, burnin = 4000, n_chain = 1500,
+  mcmc_out_B <- test_sampler(y, burnin = 4000, n_draws = 1500,
                              theta_1_true = theta_1_true,
                              theta_01_true = theta_01_true,
                              prior_prec1_shape = 80,   # Prior for prec_theta1
@@ -68,7 +68,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
 
   # Test C: Sample theta_1, fixing theta_01 and prec_theta1
   set.seed(504)
-  mcmc_out_C <- test_sampler(y, burnin = 4000, n_chain = 1500,
+  mcmc_out_C <- test_sampler(y, burnin = 4000, n_draws = 1500,
                              theta_01_true = theta_01_true,
                              prec_theta1_true = prec_theta1_true)
 
@@ -96,7 +96,7 @@ test_that("mcmc_probit_bernoulli_locallevel sampler is conditionally correct", {
     theta_1_true_k <- cumsum(c(theta_01_true, u1_k))[-1]
     y_k <- as.numeric(rbinom(n, size = 1, prob = pnorm(theta_1_true_k)))
 
-    out_k <- test_sampler(y_k, burnin = 4000, n_chain = 1500,
+    out_k <- test_sampler(y_k, burnin = 4000, n_draws = 1500,
                           theta_01_true = theta_01_true,
                           prec_theta1_true = prec_theta1_true)
     ci_k <- apply(out_k$theta_1, 2, quantile, probs = c(0.025, 0.975))

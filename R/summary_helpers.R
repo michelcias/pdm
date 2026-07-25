@@ -156,7 +156,7 @@ format_scalar_params_locallevel <- function(object, ci_level) {
 #' @description Creates summary statistics for time-varying parameters.
 #'   Can produce either simple (min/median/max) or detailed (with mean/SD/CI) summaries.
 #'
-#' @param matrix_param Matrix of parameter samples (n_chain × n_obs)
+#' @param matrix_param Matrix of parameter samples (n_draws × n_obs)
 #' @param ci_level Credible interval level; a single numeric value strictly
 #'   between 0 and 1.
 #' @param summary_type Character string: "simple" or "detailed"
@@ -255,7 +255,7 @@ print_summary_header <- function(x) {
     cat("  Link function:     ", x$link, "\n", sep = "")
   }
   cat("  Observations:      ", x$n_obs, "\n", sep = "")
-  cat("  MCMC samples:      ", x$n_chain, "\n", sep = "")
+  cat("  MCMC samples:      ", x$n_draws, "\n", sep = "")
   cat("  Burn-in:           ", x$burnin, "\n", sep = "")
   cat("  Thinning:          ", x$thinning, "\n\n", sep = "")
 

@@ -11,7 +11,7 @@ N <- 9L
 mk_obj <- function(class1, comp, y, ...) {
   o <- structure(comp, class = c(class1, "pdm_mcmc", "list"))
   attr(o, "y")       <- y
-  attr(o, "n_chain") <- S
+  attr(o, "n_draws") <- S
   attr(o, "n_obs")   <- N
   extra <- list(...)
   for (nm in names(extra)) attr(o, nm) <- extra[[nm]]
@@ -104,7 +104,7 @@ test_that("log_lik dispatches on a real fit with a draws-by-obs orientation", {
   set.seed(6)
   y <- cumsum(rnorm(50)) + rnorm(50, sd = 0.3)
   fit <- mcmc_normal_locallevel(
-    y, burnin = 30, thinning = 1, n_chain = 80,
+    y, burnin = 30, thinning = 1, n_draws = 80,
     prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
     prior_prec1_shape  = 1e-2, prior_prec1_rate  = 1e-2,
     prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2, seed = 42

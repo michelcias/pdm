@@ -43,7 +43,7 @@ out <- mcmc_normal_locallevel(
   y,
   burnin             = 1000,
   thinning           = 10,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_shape  = 1e-2,

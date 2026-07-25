@@ -27,8 +27,8 @@ run_ll <- function(y, ...) {
 test_that("chains = 1 is identical to omitting the argument", {
   y <- make_y()
 
-  without <- run_ll(y, burnin = 200, thinning = 2, n_chain = 200, seed = 7)
-  with_1  <- run_ll(y, burnin = 200, thinning = 2, n_chain = 200, seed = 7,
+  without <- run_ll(y, burnin = 200, thinning = 2, n_draws = 200, seed = 7)
+  with_1  <- run_ll(y, burnin = 200, thinning = 2, n_draws = 200, seed = 7,
                     chains = 1)
 
   expect_identical(without, with_1)
@@ -39,7 +39,7 @@ test_that("chains = 1 is identical to omitting the argument", {
 
 test_that("chains > 1 returns a validated pdm_mcmc_list", {
   y <- make_y()
-  fits <- run_ll(y, burnin = 200, thinning = 2, n_chain = 200, seed = 7,
+  fits <- run_ll(y, burnin = 200, thinning = 2, n_draws = 200, seed = 7,
                  chains = 3)
 
   expect_s3_class(fits, "pdm_mcmc_list")
@@ -52,7 +52,7 @@ test_that("chains > 1 returns a validated pdm_mcmc_list", {
   expect_s3_class(mcmc_convergence(fits[[1L]]), "pdm_convergence")
 
   # Metadata is lifted from the chains.
-  expect_equal(attr(fits, "n_chain"), 200L)
+  expect_equal(attr(fits, "n_draws"), 200L)
   expect_equal(attr(fits, "burnin"), 200L)
   expect_equal(attr(fits, "n_obs"), length(y))
   expect_equal(attr(fits, "model_type"), "locallevel")
@@ -61,7 +61,7 @@ test_that("chains > 1 returns a validated pdm_mcmc_list", {
 
 test_that("the chains actually differ from one another", {
   y <- make_y()
-  fits <- run_ll(y, burnin = 200, thinning = 2, n_chain = 200, seed = 7,
+  fits <- run_ll(y, burnin = 200, thinning = 2, n_draws = 200, seed = 7,
                  chains = 3)
 
   expect_false(identical(fits[[1L]]$prec_y, fits[[2L]]$prec_y))
@@ -72,7 +72,7 @@ test_that("the chains actually differ from one another", {
 
 test_that("a master seed reproduces the whole set, in parallel or not", {
   y <- make_y()
-  args <- list(y = y, burnin = 100, thinning = 1, n_chain = 150, seed = 42,
+  args <- list(y = y, burnin = 100, thinning = 1, n_draws = 150, seed = 42,
                chains = 2)
 
   a <- do.call(run_ll, args)
@@ -89,13 +89,13 @@ test_that("a master seed reproduces the whole set, in parallel or not", {
 test_that("invalid chains / parallel arguments are rejected", {
   y <- make_y(n = 40)
 
-  expect_error(run_ll(y, burnin = 10, thinning = 1, n_chain = 20, chains = 0),
+  expect_error(run_ll(y, burnin = 10, thinning = 1, n_draws = 20, chains = 0),
                "positive integer")
-  expect_error(run_ll(y, burnin = 10, thinning = 1, n_chain = 20, chains = 2.5),
+  expect_error(run_ll(y, burnin = 10, thinning = 1, n_draws = 20, chains = 2.5),
                "positive integer")
-  expect_error(run_ll(y, burnin = 10, thinning = 1, n_chain = 20, chains = c(2, 3)),
+  expect_error(run_ll(y, burnin = 10, thinning = 1, n_draws = 20, chains = c(2, 3)),
                "positive integer")
-  expect_error(run_ll(y, burnin = 10, thinning = 1, n_chain = 20, chains = 2,
+  expect_error(run_ll(y, burnin = 10, thinning = 1, n_draws = 20, chains = 2,
                       parallel = "yes"),
                "single logical")
 })
@@ -103,7 +103,7 @@ test_that("invalid chains / parallel arguments are rejected", {
 
 test_that("mcmc_convergence() on a pdm_mcmc_list reports R-hat and ESS", {
   y <- make_y()
-  fits <- run_ll(y, burnin = 500, thinning = 2, n_chain = 400, seed = 11,
+  fits <- run_ll(y, burnin = 500, thinning = 2, n_draws = 400, seed = 11,
                  chains = 4)
 
   conv <- mcmc_convergence(fits)
@@ -131,7 +131,7 @@ test_that("mcmc_convergence() on a pdm_mcmc_list reports R-hat and ESS", {
 
 test_that("mcmc_convergence() rejects invalid thresholds", {
   y <- make_y(n = 40)
-  fits <- run_ll(y, burnin = 50, thinning = 1, n_chain = 100, seed = 3,
+  fits <- run_ll(y, burnin = 50, thinning = 1, n_draws = 100, seed = 3,
                  chains = 2)
 
   expect_error(mcmc_convergence(fits, rhat_threshold = 0.9), "greater than 1")
@@ -148,14 +148,14 @@ test_that("R-hat separates an under-burned run from a converged one", {
   y <- make_y()
 
   under <- mcmc_convergence(
-    run_ll(y, burnin = 10, thinning = 1, n_chain = 200, seed = 99, chains = 4),
+    run_ll(y, burnin = 10, thinning = 1, n_draws = 200, seed = 99, chains = 4),
     theta_timepoints = NULL
   )
   # The innovation and observation precisions are the slowest-mixing parameters
   # of this model and need thinning of this order to clear the 1.01 cut-off;
   # burn-in alone is not enough.
   converged <- mcmc_convergence(
-    run_ll(y, burnin = 5000, thinning = 30, n_chain = 2000, seed = 99, chains = 4),
+    run_ll(y, burnin = 5000, thinning = 30, n_draws = 2000, seed = 99, chains = 4),
     theta_timepoints = NULL
   )
 
@@ -169,7 +169,7 @@ test_that("R-hat separates an under-burned run from a converged one", {
 
 test_that("print methods run without error", {
   y <- make_y(n = 40)
-  fits <- run_ll(y, burnin = 50, thinning = 1, n_chain = 100, seed = 3,
+  fits <- run_ll(y, burnin = 50, thinning = 1, n_draws = 100, seed = 3,
                  chains = 2)
 
   expect_output(print(fits), "Multi-chain pdm fit")
@@ -227,7 +227,7 @@ test_that("R-hat has power on a non-Gaussian family too (phase-2 init)", {
 
   under <- mcmc_convergence(
     mcmc_binomial_locallevel(
-      y, n_trials = 10, burnin = 50, thinning = 1, n_chain = 300,
+      y, n_trials = 10, burnin = 50, thinning = 1, n_draws = 300,
       prior_theta01_mean = 0, prior_theta01_prec = 1,
       prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
       verbose = FALSE, seed = 2024, chains = 4
@@ -251,7 +251,7 @@ test_that("chains works for the trend and acceleration samplers too", {
     y,
     burnin             = 200,
     thinning           = 2,
-    n_chain            = 200,
+    n_draws            = 200,
     prior_theta01_mean = y[1],
     prior_theta01_prec = 1 / var(y),
     prior_theta02_mean = 0,
@@ -275,7 +275,7 @@ test_that("chains works for the trend and acceleration samplers too", {
     y,
     burnin             = 200,
     thinning           = 2,
-    n_chain            = 200,
+    n_draws            = 200,
     prior_theta01_mean = y[1],
     prior_theta01_prec = 1 / var(y),
     prior_theta02_mean = 0,

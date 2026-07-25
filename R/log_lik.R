@@ -59,20 +59,20 @@ loglik_stored_y <- function(object) {
 #' @noRd
 compute_loglik_normal <- function(object) {
   y       <- loglik_stored_y(object)
-  n_chain <- attr(object, "n_chain")
+  n_draws <- attr(object, "n_draws")
   n_obs   <- attr(object, "n_obs")
 
-  theta_1 <- object$theta_1   # [n_chain x n_obs]: rows = draws, columns = time
-  prec_y  <- object$prec_y    # length n_chain: one observation precision per draw
+  theta_1 <- object$theta_1   # [n_draws x n_obs]: rows = draws, columns = time
+  prec_y  <- object$prec_y    # length n_draws: one observation precision per draw
 
   # Target: ll[s, t] = log dnorm(y_t; theta_1[s, t], sd_draw[s]). Column-major
   # recycling reuses sd_draw[s] within each row (leading dimension); y depends
   # on the column t, so it is expanded once, by row, into y_mat.
   sd_draw <- sqrt(1 / prec_y)
-  y_mat   <- matrix(y, nrow = n_chain, ncol = n_obs, byrow = TRUE)
+  y_mat   <- matrix(y, nrow = n_draws, ncol = n_obs, byrow = TRUE)
 
   ll <- stats::dnorm(y_mat, mean = theta_1, sd = sd_draw, log = TRUE)
-  dim(ll) <- c(n_chain, n_obs)   # dnorm() drops the dim attribute; restore it
+  dim(ll) <- c(n_draws, n_obs)   # dnorm() drops the dim attribute; restore it
   ll
 }
 
@@ -107,7 +107,7 @@ compute_loglik_normal <- function(object) {
 #'   sampler.
 #' @param ... Currently unused.
 #'
-#' @return A numeric matrix of dimension `n_chain` \eqn{\times} `n_obs`
+#' @return A numeric matrix of dimension `n_draws` \eqn{\times} `n_obs`
 #'   (draws \eqn{\times} observations), suitable for direct use with
 #'   `loo::waic()` and `loo::loo()`.
 #'
@@ -134,7 +134,7 @@ compute_loglik_normal <- function(object) {
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_prec1_shape  = 1e-2,
@@ -145,7 +145,7 @@ compute_loglik_normal <- function(object) {
 #' )
 #'
 #' ll <- log_lik(out)
-#' dim(ll)   # c(n_chain, n_obs)
+#' dim(ll)   # c(n_draws, n_obs)
 #'
 #' ## The pointwise matrix feeds the loo package directly
 #' ## (conditional-on-states; see Details):
@@ -179,7 +179,7 @@ log_lik.normal_localacceleration <- function(object, ...) compute_loglik_normal(
 #' @noRd
 compute_loglik_poisson <- function(object) {
   y     <- loglik_stored_y(object)
-  alpha <- object$alpha   # [n_chain x n_obs]: fitted rates exp(theta_{t,1})
+  alpha <- object$alpha   # [n_draws x n_obs]: fitted rates exp(theta_{t,1})
 
   y_mat <- matrix(y, nrow = nrow(alpha), ncol = ncol(alpha), byrow = TRUE)
   ll    <- stats::dpois(y_mat, lambda = alpha, log = TRUE)
@@ -218,7 +218,7 @@ compute_loglik_poisson <- function(object) {
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_shape  = 100,
@@ -228,7 +228,7 @@ compute_loglik_poisson <- function(object) {
 #' )
 #'
 #' ll <- log_lik(out)
-#' dim(ll)   # c(n_chain, n_obs)
+#' dim(ll)   # c(n_draws, n_obs)
 #'
 #' ## The pointwise matrix feeds the loo package directly
 #' ## (conditional-on-states; see Details):
@@ -263,7 +263,7 @@ log_lik.poisson_localacceleration <- function(object, ...) compute_loglik_poisso
 compute_loglik_binomial <- function(object) {
   y        <- loglik_stored_y(object)
   n_trials <- attr(object, "n_trials")
-  alpha    <- object$alpha   # [n_chain x n_obs]: fitted success probabilities
+  alpha    <- object$alpha   # [n_draws x n_obs]: fitted success probabilities
 
   y_mat <- matrix(y, nrow = nrow(alpha), ncol = ncol(alpha), byrow = TRUE)
   ll    <- stats::dbinom(y_mat, size = n_trials, prob = alpha, log = TRUE)
@@ -304,7 +304,7 @@ compute_loglik_binomial <- function(object) {
 #'   n_trials           = n_trials,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_shape  = 100,
@@ -314,7 +314,7 @@ compute_loglik_binomial <- function(object) {
 #' )
 #'
 #' ll <- log_lik(out)
-#' dim(ll)   # c(n_chain, n_obs)
+#' dim(ll)   # c(n_draws, n_obs)
 #'
 #' ## The pointwise matrix feeds the loo package directly
 #' ## (conditional-on-states; see Details):
@@ -348,7 +348,7 @@ log_lik.binomial_localacceleration <- function(object, ...) compute_loglik_binom
 #' @noRd
 compute_loglik_probit_bernoulli <- function(object) {
   y     <- loglik_stored_y(object)
-  alpha <- object$alpha   # [n_chain x n_obs]: fitted Bernoulli probabilities
+  alpha <- object$alpha   # [n_draws x n_obs]: fitted Bernoulli probabilities
 
   y_mat <- matrix(y, nrow = nrow(alpha), ncol = ncol(alpha), byrow = TRUE)
   ll    <- stats::dbinom(y_mat, size = 1, prob = alpha, log = TRUE)
@@ -389,7 +389,7 @@ compute_loglik_probit_bernoulli <- function(object) {
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_shape  = 100,
@@ -399,7 +399,7 @@ compute_loglik_probit_bernoulli <- function(object) {
 #' )
 #'
 #' ll <- log_lik(out)
-#' dim(ll)   # c(n_chain, n_obs)
+#' dim(ll)   # c(n_draws, n_obs)
 #'
 #' ## The pointwise matrix feeds the loo package directly
 #' ## (conditional-on-states; see Details):
@@ -436,18 +436,18 @@ log_lik.probit_bernoulli_localacceleration <- function(object, ...) compute_logl
 #' @noRd
 compute_loglik_normal_mixture <- function(object) {
   y     <- loglik_stored_y(object)
-  alpha <- object$alpha   # [n_chain x n_obs]: P(z_t = 1) = weight of component 2
-  n_chain <- nrow(alpha)
+  alpha <- object$alpha   # [n_draws x n_obs]: P(z_t = 1) = weight of component 2
+  n_draws <- nrow(alpha)
   n_obs   <- ncol(alpha)
 
-  y_mat <- matrix(y, nrow = n_chain, ncol = n_obs, byrow = TRUE)
+  y_mat <- matrix(y, nrow = n_draws, ncol = n_obs, byrow = TRUE)
 
-  # Component parameters are per-draw scalars (length n_chain); they recycle
-  # per row against the [n_chain x n_obs] matrices (leading dimension).
+  # Component parameters are per-draw scalars (length n_draws); they recycle
+  # per row against the [n_draws x n_obs] matrices (leading dimension).
   logd1 <- stats::dnorm(y_mat, mean = object$mu_1, sd = sqrt(1 / object$prec_1), log = TRUE)
   logd2 <- stats::dnorm(y_mat, mean = object$mu_2, sd = sqrt(1 / object$prec_2), log = TRUE)
-  dim(logd1) <- c(n_chain, n_obs)
-  dim(logd2) <- c(n_chain, n_obs)
+  dim(logd1) <- c(n_draws, n_obs)
+  dim(logd2) <- c(n_draws, n_obs)
 
   # Marginalise z_t: mixture with weights (1 - alpha) on component 1 and alpha
   # on component 2. Stable two-term log-sum-exp on the log scale.
@@ -455,7 +455,7 @@ compute_loglik_normal_mixture <- function(object) {
   a2 <- log(alpha)    + logd2
   m  <- pmax(a1, a2)
   ll <- m + log(exp(a1 - m) + exp(a2 - m))
-  dim(ll) <- c(n_chain, n_obs)
+  dim(ll) <- c(n_draws, n_obs)
   ll
 }
 
@@ -509,7 +509,7 @@ compute_loglik_normal_mixture <- function(object) {
 #'   link               = "logit",
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_mu01_prec    = 0.01,
 #'   prior_prec01_shape = 0.01,
 #'   prior_prec01_rate  = 0.01,
@@ -525,7 +525,7 @@ compute_loglik_normal_mixture <- function(object) {
 #' )
 #'
 #' ll <- log_lik(out)
-#' dim(ll)   # c(n_chain, n_obs)
+#' dim(ll)   # c(n_draws, n_obs)
 #'
 #' ## The pointwise matrix feeds the loo package directly
 #' ## (conditional-on-states; see Details):

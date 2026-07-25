@@ -242,7 +242,7 @@ out_logit <- mcmc_normal_mixture_localacceleration(
   link               = "logit",
   burnin             = 1000,       # Discard first 1000 iterations
   thinning           = 20,         # Keep every 20th iteration
-  n_chain            = 500,        # Retain 500 posterior samples
+  n_draws            = 500,        # Retain 500 posterior samples
   # Weakly informative priors for mixture components
   prior_mu01_mean    = NULL,       # Use default (25th percentile)
   prior_mu01_prec    = 1 / 100,
@@ -408,7 +408,7 @@ out <- mcmc_normal_mixture_localacceleration(
   link               = "logit",
   burnin             = 1000,
   thinning           = 20,
-  n_chain            = 500,
+  n_draws            = 500,
   # Priors for mixture components
   prior_mu01_mean    = NULL,  # Use default (25th percentile)
   prior_mu01_prec    = 1 / 100,

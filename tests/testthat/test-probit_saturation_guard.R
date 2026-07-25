@@ -86,7 +86,7 @@ test_that("probit mixture sampler stays numerically valid on segmented data", {
   y <- rnorm(n, seg * 1.2, 0.25)
 
   out <- mcmc_normal_mixture_locallevel(
-    y, link = "probit", burnin = 1500, thinning = 5, n_chain = 600,
+    y, link = "probit", burnin = 1500, thinning = 5, n_draws = 600,
     prior_theta01_prec = 1,
     prior_prec1_shape = 0.01, prior_prec1_rate = 0.01,
     seed = 7

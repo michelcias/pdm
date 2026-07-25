@@ -24,33 +24,33 @@ cat("✓ Arquivos carregados com sucesso\n\n")
 
 create_mock_mixture <- function(model_order = 1) {
 
-  n_chain <- 100
+  n_draws <- 100
   n_obs <- 50
 
   # Componentes básicos
   obj <- list(
-    mu_1 = rnorm(n_chain, 0, 1),
-    mu_2 = rnorm(n_chain, 2, 1),
-    prec_1 = rgamma(n_chain, 2, 1),
-    prec_2 = rgamma(n_chain, 2, 1),
-    theta_01 = rnorm(n_chain),
-    prec_theta1 = rgamma(n_chain, 2, 1),
-    theta_1 = matrix(rnorm(n_chain * n_obs), n_chain, n_obs),
-    alpha = matrix(runif(n_chain * n_obs, 0.2, 0.8), n_chain, n_obs),
-    z = matrix(rbinom(n_chain * n_obs, 1, 0.5), n_chain, n_obs)
+    mu_1 = rnorm(n_draws, 0, 1),
+    mu_2 = rnorm(n_draws, 2, 1),
+    prec_1 = rgamma(n_draws, 2, 1),
+    prec_2 = rgamma(n_draws, 2, 1),
+    theta_01 = rnorm(n_draws),
+    prec_theta1 = rgamma(n_draws, 2, 1),
+    theta_1 = matrix(rnorm(n_draws * n_obs), n_draws, n_obs),
+    alpha = matrix(runif(n_draws * n_obs, 0.2, 0.8), n_draws, n_obs),
+    z = matrix(rbinom(n_draws * n_obs, 1, 0.5), n_draws, n_obs)
   )
 
   # Ordem superior
   if (model_order >= 2) {
-    obj$theta_02 <- rnorm(n_chain)
-    obj$prec_theta2 <- rgamma(n_chain, 2, 1)
-    obj$theta_2 <- matrix(rnorm(n_chain * n_obs, 0, 0.5), n_chain, n_obs)
+    obj$theta_02 <- rnorm(n_draws)
+    obj$prec_theta2 <- rgamma(n_draws, 2, 1)
+    obj$theta_2 <- matrix(rnorm(n_draws * n_obs, 0, 0.5), n_draws, n_obs)
   }
 
   if (model_order >= 3) {
-    obj$theta_03 <- rnorm(n_chain)
-    obj$prec_theta3 <- rgamma(n_chain, 2, 1)
-    obj$theta_3 <- matrix(rnorm(n_chain * n_obs, 0, 0.2), n_chain, n_obs)
+    obj$theta_03 <- rnorm(n_draws)
+    obj$prec_theta3 <- rgamma(n_draws, 2, 1)
+    obj$theta_3 <- matrix(rnorm(n_draws * n_obs, 0, 0.2), n_draws, n_obs)
   }
 
   # Classe
@@ -68,7 +68,7 @@ create_mock_mixture <- function(model_order = 1) {
   )
 
   attr(obj, "n_obs") <- n_obs
-  attr(obj, "n_chain") <- n_chain
+  attr(obj, "n_draws") <- n_draws
   attr(obj, "burnin") <- 1000
   attr(obj, "thinning") <- 10
   attr(obj, "model_type") <- model_type

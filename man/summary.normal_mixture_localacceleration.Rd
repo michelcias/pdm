@@ -24,7 +24,7 @@ a list containing:
 \item{\code{link}}{Character string indicating the link function used}
 \item{\code{model_type}}{Character string indicating the model type}
 \item{\code{n_obs}}{Number of observations}
-\item{\code{n_chain}}{Number of MCMC samples}
+\item{\code{n_draws}}{Number of MCMC samples}
 \item{\code{burnin}}{Number of burn-in iterations}
 \item{\code{thinning}}{Thinning interval}
 \item{\code{ci_level}}{Credible interval level used (HPDI)}
@@ -85,7 +85,7 @@ out_logit <- mcmc_normal_mixture_localacceleration(
   link               = "logit",
   burnin             = 1000,
   thinning           = 10,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_mu01_mean    = NULL,  # Use default (25th percentile)
   prior_mu01_prec    = 0.01,
   prior_prec01_shape = 0.01,

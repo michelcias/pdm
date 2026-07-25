@@ -139,7 +139,7 @@ new_pdm_mcmc_list <- function(fits, seeds) {
   attr(fits, "chains")     <- length(fits)
   attr(fits, "seeds")      <- seeds
   attr(fits, "n_obs")      <- attr(first, "n_obs")
-  attr(fits, "n_chain")    <- attr(first, "n_chain")
+  attr(fits, "n_draws")    <- attr(first, "n_draws")
   attr(fits, "burnin")     <- attr(first, "burnin")
   attr(fits, "thinning")   <- attr(first, "thinning")
   attr(fits, "model_type") <- attr(first, "model_type")
@@ -170,8 +170,8 @@ validate_pdm_mcmc_list <- function(x) {
     stop("Internal error: all chains must share the same model class")
   }
 
-  n_chain <- vapply(x, function(ch) attr(ch, "n_chain"), integer(1L))
-  if (length(unique(n_chain)) != 1L) {
+  n_draws <- vapply(x, function(ch) attr(ch, "n_draws"), integer(1L))
+  if (length(unique(n_draws)) != 1L) {
     stop("Internal error: all chains must retain the same number of samples")
   }
 
@@ -189,7 +189,7 @@ validate_pdm_mcmc_list <- function(x) {
 #' Stacks the draws of every chain into one `pdm_mcmc` object of the original
 #' model class: matrices (the latent trajectories, `alpha`, `z`) are `rbind`ed
 #' and vectors (the scalar parameters) concatenated, chain 1 first. The result
-#' carries the attributes of a single chain with `n_chain` corrected to the
+#' carries the attributes of a single chain with `n_draws` corrected to the
 #' pooled total, so every existing single-chain method applies to it unchanged.
 #'
 #' Pooling is the right operation for anything that estimates a posterior
@@ -226,7 +226,7 @@ pool_chains <- function(x) {
   for (a in setdiff(names(attributes(first)), "names")) {
     attr(pooled, a) <- attr(first, a)
   }
-  attr(pooled, "n_chain") <- attr(first, "n_chain") * length(x)
+  attr(pooled, "n_draws") <- attr(first, "n_draws") * length(x)
   attr(pooled, "chains")  <- length(x)
 
   pooled
@@ -275,7 +275,7 @@ scalar_draws <- function(configs, nm, n_draw) {
 #'   y,
 #'   burnin             = 500,
 #'   thinning           = 5,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_prec1_shape  = 1e-2,
@@ -302,7 +302,7 @@ print.pdm_mcmc_list <- function(x, ...) {
   cat(strrep("=", 70), "\n\n", sep = "")
   cat("Model:         ", class(x[[1L]])[1L], "\n", sep = "")
   cat("Chains:        ", attr(x, "chains"), "\n", sep = "")
-  cat("Samples/chain: ", attr(x, "n_chain"), "\n", sep = "")
+  cat("Samples/chain: ", attr(x, "n_draws"), "\n", sep = "")
   cat("Burn-in:       ", attr(x, "burnin"), "\n", sep = "")
   cat("Thinning:      ", attr(x, "thinning"), "\n", sep = "")
   cat("Observations:  ", attr(x, "n_obs"), "\n", sep = "")

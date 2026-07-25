@@ -2,8 +2,8 @@
  * @file mcmc_binomial_localacceleration.h
  * @brief Header for MCMC sampling in local-acceleration binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
- * @date 2025-01-11
- * @version 1.0
+ * @date 2026-07-25
+ * @version 1.1
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
  *          binomial and Bernoulli dynamic models with local-acceleration structure.
@@ -49,7 +49,7 @@
  * @param n_trials_                Number of trials per observation
  * @param burnin_                  Burn-in iterations (discarded)
  * @param thinning_                Thinning interval
- * @param n_chain_                 Number of retained samples
+ * @param n_draws_                 Number of retained samples
  * @param prior_theta01_mean_      Prior mean for theta_{0,1}
  * @param prior_theta01_prec_      Prior precision for theta_{0,1}
  * @param prior_theta02_mean_      Prior mean for theta_{0,2}
@@ -83,18 +83,18 @@
  * @param bar_width_               Width of progress bar in characters (10-120 recommended)
  *
  * @return List with components:
- *         - theta_1: Matrix [n_chain * n] of level state samples
- *         - theta_2: Matrix [n_chain * n] of trend state samples
- *         - theta_3: Matrix [n_chain * n] of acceleration state samples
- *         - theta_01: Vector [n_chain] of initial level samples
- *         - theta_02: Vector [n_chain] of initial trend samples
- *         - theta_03: Vector [n_chain] of initial acceleration samples
- *         - prec_theta1: Vector [n_chain] of level precision samples
- *         - prec_theta2: Vector [n_chain] of trend precision samples
- *         - prec_theta3: Vector [n_chain] of acceleration precision samples
- *         - alpha: Matrix [n_chain * n] of probability samples
- *         - log_sigma: Matrix [n_chain * n] (if requested)
- *         - accept_prop: Matrix [n_chain * n] (if requested)
+ *         - theta_1: Matrix [n_draws * n] of level state samples
+ *         - theta_2: Matrix [n_draws * n] of trend state samples
+ *         - theta_3: Matrix [n_draws * n] of acceleration state samples
+ *         - theta_01: Vector [n_draws] of initial level samples
+ *         - theta_02: Vector [n_draws] of initial trend samples
+ *         - theta_03: Vector [n_draws] of initial acceleration samples
+ *         - prec_theta1: Vector [n_draws] of level precision samples
+ *         - prec_theta2: Vector [n_draws] of trend precision samples
+ *         - prec_theta3: Vector [n_draws] of acceleration precision samples
+ *         - alpha: Matrix [n_draws * n] of probability samples
+ *         - log_sigma: Matrix [n_draws * n] (if requested)
+ *         - accept_prop: Matrix [n_draws * n] (if requested)
  *
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for stability
@@ -113,7 +113,7 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
                                              SEXP n_trials_,
                                              SEXP burnin_,
                                              SEXP thinning_,
-                                             SEXP n_chain_,
+                                             SEXP n_draws_,
                                              SEXP prior_theta01_mean_,
                                              SEXP prior_theta01_prec_,
                                              SEXP prior_theta02_mean_,
@@ -160,7 +160,7 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @param y_                  Observed Bernoulli outcomes [n] (0 or 1)
  * @param burnin_             Burn-in iterations (discarded)
  * @param thinning_           Thinning interval
- * @param n_chain_            Number of retained samples
+ * @param n_draws_            Number of retained samples
  * @param prior_theta01_mean_ Prior mean for theta_{0,1}
  * @param prior_theta01_prec_ Prior precision for theta_{0,1}
  * @param prior_theta02_mean_ Prior mean for theta_{0,2}
@@ -186,16 +186,16 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @param bar_width_          Width of progress bar in characters (10-120 recommended)
  *
  * @return List with components:
- *         - theta_1: Matrix [n_chain * n] of level state samples
- *         - theta_2: Matrix [n_chain * n] of trend state samples
- *         - theta_3: Matrix [n_chain * n] of acceleration state samples
- *         - theta_01: Vector [n_chain] of initial level samples
- *         - theta_02: Vector [n_chain] of initial trend samples
- *         - theta_03: Vector [n_chain] of initial acceleration samples
- *         - prec_theta1: Vector [n_chain] of level precision samples
- *         - prec_theta2: Vector [n_chain] of trend precision samples
- *         - prec_theta3: Vector [n_chain] of acceleration precision samples
- *         - alpha: Matrix [n_chain * n] of probability samples
+ *         - theta_1: Matrix [n_draws * n] of level state samples
+ *         - theta_2: Matrix [n_draws * n] of trend state samples
+ *         - theta_3: Matrix [n_draws * n] of acceleration state samples
+ *         - theta_01: Vector [n_draws] of initial level samples
+ *         - theta_02: Vector [n_draws] of initial trend samples
+ *         - theta_03: Vector [n_draws] of initial acceleration samples
+ *         - prec_theta1: Vector [n_draws] of level precision samples
+ *         - prec_theta2: Vector [n_draws] of trend precision samples
+ *         - prec_theta3: Vector [n_draws] of acceleration precision samples
+ *         - alpha: Matrix [n_draws * n] of probability samples
  *
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for stability
@@ -215,7 +215,7 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
 SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
                                                SEXP burnin_,
                                                SEXP thinning_,
-                                               SEXP n_chain_,
+                                               SEXP n_draws_,
                                                SEXP prior_theta01_mean_,
                                                SEXP prior_theta01_prec_,
                                                SEXP prior_theta02_mean_,

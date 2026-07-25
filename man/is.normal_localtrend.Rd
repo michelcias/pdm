@@ -27,7 +27,7 @@ out <- mcmc_normal_localtrend(
   y,
   burnin             = 50,
   thinning           = 1,
-  n_chain            = 50,
+  n_draws            = 50,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_theta02_mean = 0,

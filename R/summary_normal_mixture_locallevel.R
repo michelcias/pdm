@@ -17,7 +17,7 @@
 #'     \item{\code{link}}{Character string indicating the link function used}
 #'     \item{\code{model_type}}{Character string indicating the model type}
 #'     \item{\code{n_obs}}{Number of observations}
-#'     \item{\code{n_chain}}{Number of MCMC samples}
+#'     \item{\code{n_draws}}{Number of MCMC samples}
 #'     \item{\code{burnin}}{Number of burn-in iterations}
 #'     \item{\code{thinning}}{Thinning interval}
 #'     \item{\code{ci_level}}{Credible interval level used (HPDI)}
@@ -74,7 +74,7 @@
 #'   link               = "logit",
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_mu01_mean    = NULL,
 #'   prior_mu01_prec    = 0.01,
 #'   prior_prec01_shape = 0.01,
@@ -137,7 +137,7 @@ summary.normal_mixture_locallevel <- function(object,
     link = attr(object, "link"),
     model_type = attr(object, "model_type"),
     n_obs = attr(object, "n_obs"),
-    n_chain = attr(object, "n_chain"),
+    n_draws = attr(object, "n_draws"),
     burnin = attr(object, "burnin"),
     thinning = attr(object, "thinning"),
     ci_level = ci_level,
@@ -194,7 +194,7 @@ summary.normal_mixture_locallevel <- function(object,
 #'   link                    = "logit",
 #'   burnin                  = 1000,
 #'   thinning                = 10,
-#'   n_chain                 = 500,
+#'   n_draws                 = 500,
 #'   prior_mu01_mean         = NULL,
 #'   prior_mu01_prec         = 0.01,
 #'   prior_prec01_shape      = 0.01,

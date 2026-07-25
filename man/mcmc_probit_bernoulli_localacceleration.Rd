@@ -8,7 +8,7 @@ mcmc_probit_bernoulli_localacceleration(
   y,
   burnin,
   thinning,
-  n_chain,
+  n_draws,
   prior_theta01_mean,
   prior_theta01_prec,
   prior_theta02_mean,
@@ -45,7 +45,7 @@ element must be either 0 or 1.}
 
 \item{thinning}{Integer \eqn{\geq 1}, thinning interval.}
 
-\item{n_chain}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
+\item{n_draws}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
 
 \item{prior_theta01_mean}{Numeric, prior mean for the initial state \eqn{\theta_{0,1}}.}
 
@@ -148,17 +148,17 @@ samples for the latent level state \eqn{\theta_{t,1}}.}
 samples for the latent trend state \eqn{\theta_{t,2}}.}
 \item{\code{theta_3}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 samples for the latent acceleration state \eqn{\theta_{t,3}}.}
-\item{\code{theta_01}}{Numeric vector of length \code{n_chain} of posterior samples
+\item{\code{theta_01}}{Numeric vector of length \code{n_draws} of posterior samples
 for the initial level state \eqn{\theta_{0,1}}.}
-\item{\code{theta_02}}{Numeric vector of length \code{n_chain} of posterior samples
+\item{\code{theta_02}}{Numeric vector of length \code{n_draws} of posterior samples
 for the initial trend state \eqn{\theta_{0,2}}.}
-\item{\code{theta_03}}{Numeric vector of length \code{n_chain} of posterior samples
+\item{\code{theta_03}}{Numeric vector of length \code{n_draws} of posterior samples
 for the initial acceleration state \eqn{\theta_{0,3}}.}
-\item{\code{prec_theta1}}{Numeric vector of length \code{n_chain} of posterior samples
+\item{\code{prec_theta1}}{Numeric vector of length \code{n_draws} of posterior samples
 for the level innovation precision \eqn{1/W_1}.}
-\item{\code{prec_theta2}}{Numeric vector of length \code{n_chain} of posterior samples
+\item{\code{prec_theta2}}{Numeric vector of length \code{n_draws} of posterior samples
 for the trend innovation precision \eqn{1/W_2}.}
-\item{\code{prec_theta3}}{Numeric vector of length \code{n_chain} of posterior samples
+\item{\code{prec_theta3}}{Numeric vector of length \code{n_draws} of posterior samples
 for the acceleration innovation precision \eqn{1/W_3}.}
 \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 samples for the Bernoulli probabilities \eqn{\alpha_t}.}
@@ -277,7 +277,7 @@ The progress bar update frequency is automatically calculated as approximately
 one update per bar segment, ensuring smooth visual feedback with minimal
 performance overhead (~0.01\% for typical runs).
 
-Burn-in and thinning are applied so that exactly \code{n_chain} posterior
+Burn-in and thinning are applied so that exactly \code{n_draws} posterior
 samples are returned.
 }
 \examples{
@@ -312,7 +312,7 @@ out <- mcmc_probit_bernoulli_localacceleration(
   y,
   burnin             = 1000,
   thinning           = 20,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_theta02_mean = 0,
@@ -337,7 +337,7 @@ out_hc <- mcmc_probit_bernoulli_localacceleration(
   y,
   burnin             = 1000,
   thinning           = 20,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_theta02_mean = 0,

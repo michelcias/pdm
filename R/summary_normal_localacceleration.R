@@ -16,7 +16,7 @@
 #'   \describe{
 #'     \item{\code{model_type}}{Character string indicating the model type}
 #'     \item{\code{n_obs}}{Number of observations}
-#'     \item{\code{n_chain}}{Number of MCMC samples}
+#'     \item{\code{n_draws}}{Number of MCMC samples}
 #'     \item{\code{burnin}}{Number of burn-in iterations}
 #'     \item{\code{thinning}}{Thinning interval}
 #'     \item{\code{ci_level}}{Credible interval level used (HPDI)}
@@ -87,7 +87,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -158,7 +158,7 @@ summary.normal_localacceleration <- function(object,
   result <- list(
     model_type = attr(object, "model_type"),
     n_obs = attr(object, "n_obs"),
-    n_chain = attr(object, "n_chain"),
+    n_draws = attr(object, "n_draws"),
     burnin = attr(object, "burnin"),
     thinning = attr(object, "thinning"),
     ci_level = ci_level,
@@ -219,7 +219,7 @@ summary.normal_localacceleration <- function(object,
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -259,7 +259,7 @@ print.summary.normal_localacceleration <- function(x, digits = 3, ...) {
   cat("Model Information:\n")
   cat("  Type:              ", x$model_type, "\n", sep = "")
   cat("  Observations:      ", x$n_obs, "\n", sep = "")
-  cat("  MCMC samples:      ", x$n_chain, "\n", sep = "")
+  cat("  MCMC samples:      ", x$n_draws, "\n", sep = "")
   cat("  Burn-in:           ", x$burnin, "\n", sep = "")
   cat("  Thinning:          ", x$thinning, "\n\n", sep = "")
 

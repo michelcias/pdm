@@ -185,7 +185,7 @@ get_n_params <- function(model_class, model_order) {
 #'
 #' @return A named list where each element contains:
 #'   \describe{
-#'     \item{samples}{Numeric vector of MCMC samples (length n_chain)}
+#'     \item{samples}{Numeric vector of MCMC samples (length n_draws)}
 #'     \item{name}{Quoted expression for base graphics titles}
 #'     \item{label}{Expression for base graphics axis labels}
 #'     \item{name_str}{Character string identifier for the parameter}

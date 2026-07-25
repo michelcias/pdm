@@ -2,8 +2,8 @@
  * @file mcmc_normal_locallevel.c
  * @brief MCMC sampling for Gaussian local-level dynamic models
  * @author Michel H. Montoril
- * @date 2025-10-11
- * @version 1.1
+ * @date 2026-07-25
+ * @version 1.2
  *
  * @details This file implements a complete Gibbs sampler for Bayesian estimation of
  *          local-level polynomial dynamic models with Gaussian observation equations.
@@ -62,7 +62,7 @@
  *          requiring only O(n) temporary memory regardless of chain length.
  *
  *          **Iteration count:**
- *          Total iterations = burnin + (n_chain - 1) × thinning + 1
+ *          Total iterations = burnin + (n_draws - 1) × thinning + 1
  *
  * @param y_                    SEXP Numeric vector of observed time series data [length n].
  *                              Contains observations y_1, ..., y_n.
@@ -70,8 +70,8 @@
  *                              for chain convergence. Typical values: 1000-10000.
  * @param thinning_             SEXP Integer scalar, thinning interval to reduce autocorrelation
  *                              in retained samples. Typical values: 1-10.
- * @param n_chain_              SEXP Integer scalar, target number of retained posterior samples.
- *                              Final output will contain exactly n_chain samples.
+ * @param n_draws_              SEXP Integer scalar, target number of retained posterior samples.
+ *                              Final output will contain exactly n_draws samples.
  * @param prior_theta01_mean_   SEXP Double scalar, prior mean mu_0 for initial state theta_{0,1}.
  *                              Typical value: 0 (vague prior).
  * @param prior_theta01_prec_   SEXP Double scalar, prior precision tau_0 = 1/sigma_0^2 for
@@ -103,10 +103,10 @@
  *                              characters. Recommended range: 10-120.
  *
  * @return SEXP R list containing posterior samples with named components:
- *         - theta_1: Numeric matrix [n_chain × n] of complete state trajectory samples
- *         - theta_01: Numeric vector [n_chain] of initial state theta_{0,1} samples
- *         - prec_theta1: Numeric vector [n_chain] of innovation precision 1/W_1 samples
- *         - prec_y: Numeric vector [n_chain] of observation precision 1/V samples
+ *         - theta_1: Numeric matrix [n_draws × n] of complete state trajectory samples
+ *         - theta_01: Numeric vector [n_draws] of initial state theta_{0,1} samples
+ *         - prec_theta1: Numeric vector [n_draws] of innovation precision 1/W_1 samples
+ *         - prec_y: Numeric vector [n_draws] of observation precision 1/V samples
  *
  * @note Computational complexity: O(n_iter × n) for n_iter total iterations.
  * @note Memory requirements: O(n) temporary storage for efficient buffer management.
@@ -126,7 +126,7 @@
 SEXP C_MCMC_normal_locallevel(SEXP y_,
                               SEXP burnin_,
                               SEXP thinning_,
-                              SEXP n_chain_,
+                              SEXP n_draws_,
                               SEXP prior_theta01_mean_,
                               SEXP prior_theta01_prec_,
                               SEXP prior_prec1_type_,
@@ -163,10 +163,10 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];     /* Burn-in iterations to discard */
   int thinning = INTEGER(thinning_)[0];   /* Thinning interval for autocorrelation reduction */
-  int n_chain  = INTEGER(n_chain_)[0];    /* Number of retained samples */
+  int n_draws  = INTEGER(n_draws_)[0];    /* Number of retained samples */
 
-  /* Compute total iterations needed to produce n_chain thinned samples after burn-in */
-  int n_iter = burnin + (n_chain - 1) * thinning + 1;
+  /* Compute total iterations needed to produce n_draws thinned samples after burn-in */
+  int n_iter = burnin + (n_draws - 1) * thinning + 1;
 
   /* ========== Parse Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
@@ -209,10 +209,10 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_y_samples      = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_y_samples      = PROTECT(allocVector(REALSXP, n_draws));
 
   /* ========== Allocate Temporary Buffers (Memory-Efficient O(n) Storage) ========== */
   /* Uses current/previous iteration buffers for efficient memory management.
@@ -312,7 +312,7 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
 
       /* Copy current theta_1 vector to output matrix (column-major storage) */
       for (int j = 0; j < n; j++) {
-        REAL(theta_1_samples)[idx + j * n_chain] = theta_1_current[j];
+        REAL(theta_1_samples)[idx + j * n_draws] = theta_1_current[j];
       }
 
       /* Copy scalar parameters to output vectors */
@@ -337,7 +337,7 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   }
 
   /* ========== Finalize Progress Bar ========== */
-  progress_bar_finish(&pb, n_chain);
+  progress_bar_finish(&pb, n_draws);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();

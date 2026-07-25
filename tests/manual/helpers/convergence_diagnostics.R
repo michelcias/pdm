@@ -14,8 +14,8 @@ compute_effective_sample_sizes <- function(param_list) {
 
 #' Print ESS analysis table
 #' @param param_list Named list of parameter chains
-#' @param n_chain Number of MCMC samples
-print_ess_table <- function(param_list, n_chain) {
+#' @param n_draws Number of MCMC samples
+print_ess_table <- function(param_list, n_draws) {
   ess_values <- compute_effective_sample_sizes(param_list)
 
   cat("Effective Sample Size Analysis:\n")
@@ -24,12 +24,12 @@ print_ess_table <- function(param_list, n_chain) {
   cat("==========================================================================\n")
 
   for (param_name in names(ess_values)) {
-    efficiency <- 100 * ess_values[param_name] / n_chain
+    efficiency <- 100 * ess_values[param_name] / n_draws
     status <- ifelse(efficiency > 50, "EXCELLENT",
                      ifelse(efficiency > 25, "GOOD",
                             ifelse(efficiency > 10, "ACCEPTABLE", "POOR")))
     cat(sprintf("%-11s | %12d | %10.1f | %15.1f | %12s\n",
-                param_name, n_chain, ess_values[param_name], efficiency, status))
+                param_name, n_draws, ess_values[param_name], efficiency, status))
   }
   cat("==========================================================================\n")
   cat(sprintf("Overall Assessment: Min ESS = %.1f, Mean ESS = %.1f\n\n",
@@ -54,8 +54,8 @@ run_coda_diagnostics <- function(param_list) {
   print_heidelberg_table(mcmc_objects)
 
   # 3) Raftery–Lewis diagnostic (robust/fallback)
-  n_chain <- length(param_list[[1]])
-  print_raftery_lewis_table(mcmc_objects, n_chain)
+  n_draws <- length(param_list[[1]])
+  print_raftery_lewis_table(mcmc_objects, n_draws)
 
   # 4) Overall convergence assessment
   print_overall_convergence_table(mcmc_objects, param_list)
@@ -113,8 +113,8 @@ print_heidelberg_table <- function(mcmc_objects) {
 
 #' Print Raftery–Lewis diagnostic table with robust fallbacks
 #' @param mcmc_objects Named list of coda::mcmc objects
-#' @param n_chain Length of each chain (number of saved samples)
-print_raftery_lewis_table <- function(mcmc_objects, n_chain) {
+#' @param n_draws Length of each chain (number of saved samples)
+print_raftery_lewis_table <- function(mcmc_objects, n_draws) {
   cat("Raftery-Lewis Diagnostic (Burn-in and Sample Size Requirements):\n")
   cat("=============================================================================================================\n")
   cat("Parameter   | Quantile | Accuracy | Probability | Burn-in (M) | Total (N) | Lower (Nmin) |     Dependence\n")
@@ -153,16 +153,16 @@ print_raftery_lewis_table <- function(mcmc_objects, n_chain) {
       param_name <- rownames(rm)[i]
       M <- rm[i, "M"]; N <- rm[i, "N"]; Nmin <- rm[i, "Nmin"]; I <- rm[i, "I"]
       dep_status <- ifelse(I < 5, "Low", ifelse(I < 10, "Moderate", "High"))
-      chain_ok   <- n_chain >= N
+      chain_ok   <- n_draws >= N
       star <- ifelse(chain_ok, "", " *")
       cat(sprintf("%-11s |    %4.1f%% |     %.1f%% |         95%% | %11d | %9d | %12d | %8.2f (%s)%s\n",
                   param_name, 100*q_used, 100*r_used, M, N, Nmin, I, dep_status, star))
     }
 
     max_required <- max(rm[, "N"])
-    if (n_chain < max_required) {
+    if (n_draws < max_required) {
       cat("=============================================================================================================\n")
-      cat(sprintf("WARNING: Current chain size (%d) is smaller than recommended (%d)\n", n_chain, max_required))
+      cat(sprintf("WARNING: Current chain size (%d) is smaller than recommended (%d)\n", n_draws, max_required))
       cat("* Marked parameters may need longer chains for reliable estimates\n")
       cat(sprintf("Recommendation: Increase chain size to at least %d samples\n", max_required))
     }
@@ -180,7 +180,7 @@ print_raftery_lewis_table <- function(mcmc_objects, n_chain) {
 #' @param param_list Named list of numeric chains (same ordering as mcmc_objects)
 print_overall_convergence_table <- function(mcmc_objects, param_list) {
   # Prepare ESS
-  n_chain <- length(param_list[[1]])
+  n_draws <- length(param_list[[1]])
   ess <- compute_effective_sample_sizes(param_list)
   params <- names(mcmc_objects)
 
@@ -218,7 +218,7 @@ print_overall_convergence_table <- function(mcmc_objects, param_list) {
   for (i in seq_along(params)) {
     p <- params[i]
     ess_val <- ess[p]
-    efficiency <- 100 * ess_val / n_chain
+    efficiency <- 100 * ess_val / n_draws
 
     # Geweke pass
     gz <- try(geweke[[p]]$z, silent = TRUE)
@@ -233,7 +233,7 @@ print_overall_convergence_table <- function(mcmc_objects, param_list) {
       rm <- raftery_result$resmatrix
       if (p %in% rownames(rm)) {
         I <- rm[p, "I"]; N <- rm[p, "N"]
-        raftery_pass <- (I < 5) && (n_chain >= N)
+        raftery_pass <- (I < 5) && (n_draws >= N)
       } else {
         raftery_pass <- FALSE
       }

@@ -51,7 +51,7 @@ single-chain plot methods.}
 \value{
 \code{summary()} returns what the single-chain method returns for that
 model class, with class \code{"summary.pdm_mcmc_list"} prepended and three
-extra elements: \code{chains}, \code{n_chain_each}, \code{rhat} (a named vector of
+extra elements: \code{chains}, \code{n_draws_each}, \code{rhat} (a named vector of
 rank-normalized split-\eqn{\hat{R}}, one per scalar parameter) and
 \code{rhat_states} (the same, at twenty time points along each trajectory).
 \code{log_lik()} returns a draws-by-observations matrix pooled over chains;
@@ -126,7 +126,7 @@ fits <- mcmc_normal_locallevel(
   y,
   burnin             = 1000,
   thinning           = 5,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_shape  = 1e-2,

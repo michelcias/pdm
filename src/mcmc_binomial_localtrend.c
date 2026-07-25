@@ -2,8 +2,8 @@
  * @file mcmc_binomial_localtrend.c
  * @brief MCMC sampling for local-trend binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
- * @date 2026-07-24
- * @version 1.4
+ * @date 2026-07-25
+ * @version 1.5
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
  *          dynamic models with different link functions and local-trend structure:
@@ -84,13 +84,13 @@
  *          5. 1/W_1 | theta_1, theta_01, theta_02 -> Gamma posterior
  *          6. theta_{0,1} | theta_1, theta_02, W_1 -> Gaussian posterior
  *
- *          Total iterations: burnin + (n_chain - 1) * thinning + 1
+ *          Total iterations: burnin + (n_draws - 1) * thinning + 1
  *
  * @param y_                       Numeric vector [n] of observed binomial counts.
  * @param n_trials_                Number of trials per observation.
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for autocorrelation reduction.
- * @param n_chain_                 Number of retained posterior samples.
+ * @param n_draws_                 Number of retained posterior samples.
  * @param prior_theta01_mean_      Prior mean for theta_{0,1}.
  * @param prior_theta01_prec_      Prior precision for theta_{0,1}.
  * @param prior_theta02_mean_      Prior mean for theta_{0,2}.
@@ -117,15 +117,15 @@
  * @param bar_width_               Integer: width of progress bar in characters (10-120).
  *
  * @return R list with components:
- *         - theta_1:     Matrix [n_chain * n] of level state trajectory samples
- *         - theta_2:     Matrix [n_chain * n] of trend state trajectory samples
- *         - theta_01:    Vector [n_chain] of initial level state samples
- *         - theta_02:    Vector [n_chain] of initial trend state samples
- *         - prec_theta1:      Vector [n_chain] of level innovation precision samples
- *         - prec_theta2:      Vector [n_chain] of trend innovation precision samples
- *         - alpha:       Matrix [n_chain * n] of success probability samples
- *         - log_sigma:   Matrix [n_chain * n] of proposal scales (if requested)
- *         - accept_prop: Matrix [n_chain * n] of acceptance proportions (if requested)
+ *         - theta_1:     Matrix [n_draws * n] of level state trajectory samples
+ *         - theta_2:     Matrix [n_draws * n] of trend state trajectory samples
+ *         - theta_01:    Vector [n_draws] of initial level state samples
+ *         - theta_02:    Vector [n_draws] of initial trend state samples
+ *         - prec_theta1:      Vector [n_draws] of level innovation precision samples
+ *         - prec_theta2:      Vector [n_draws] of trend innovation precision samples
+ *         - alpha:       Matrix [n_draws * n] of success probability samples
+ *         - log_sigma:   Matrix [n_draws * n] of proposal scales (if requested)
+ *         - accept_prop: Matrix [n_draws * n] of acceptance proportions (if requested)
  *
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
@@ -148,7 +148,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
                                       SEXP n_trials_,
                                       SEXP burnin_,
                                       SEXP thinning_,
-                                      SEXP n_chain_,
+                                      SEXP n_draws_,
                                       SEXP prior_theta01_mean_,
                                       SEXP prior_theta01_prec_,
                                       SEXP prior_theta02_mean_,
@@ -206,10 +206,10 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
   /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];     /* Burn-in iterations to discard */
   int thinning = INTEGER(thinning_)[0];   /* Thinning interval */
-  int n_chain  = INTEGER(n_chain_)[0];    /* Number of retained samples */
+  int n_draws  = INTEGER(n_draws_)[0];    /* Number of retained samples */
 
   /* Compute total iterations needed */
-  int n_iter = burnin + (n_chain - 1) * thinning + 1;
+  int n_iter = burnin + (n_draws - 1) * thinning + 1;
 
   /* ========== Parse Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
@@ -264,13 +264,13 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_2_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_02_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta2_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_2_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP theta_02_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta2_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_draws, n));
 
   /* Conditional allocation for diagnostics */
   SEXP log_sigma_samples   = R_NilValue;
@@ -279,12 +279,12 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
   int n_protect = 7;  /* Base protection count */
 
   if (return_log_sigma) {
-    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
     n_outputs++;
     n_protect++;
   }
   if (return_accept_prop) {
-    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
     n_outputs++;
     n_protect++;
   }
@@ -463,16 +463,16 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
 
       /* Copy current theta_1, theta_2 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(theta_2_samples)[idx + t * n_chain] = theta_2_current[t];
-        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
+        REAL(theta_1_samples)[idx + t * n_draws] = theta_1_current[t];
+        REAL(theta_2_samples)[idx + t * n_draws] = theta_2_current[t];
+        REAL(alpha_samples)[idx + t * n_draws] = alpha_current[t];
 
         /* Store diagnostics if requested */
         if (return_log_sigma) {
-          REAL(log_sigma_samples)[idx + t * n_chain] = log_sigma[t];
+          REAL(log_sigma_samples)[idx + t * n_draws] = log_sigma[t];
         }
         if (return_accept_prop) {
-          REAL(accept_prop_samples)[idx + t * n_chain] = accept_prop[t];
+          REAL(accept_prop_samples)[idx + t * n_draws] = accept_prop[t];
         }
       }
 
@@ -499,7 +499,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
   }
 
   /* ========== Finalize Progress Bar ========== */
-  progress_bar_finish(&pb, n_chain);
+  progress_bar_finish(&pb, n_draws);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();
@@ -605,12 +605,12 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
  *          5. 1/W_1 | theta_1, theta_01, theta_02 -> Gamma posterior
  *          6. theta_{0,1} | theta_1, theta_02, W_1 -> Gaussian posterior
  *
- *          Total iterations: burnin + (n_chain - 1) * thinning + 1
+ *          Total iterations: burnin + (n_draws - 1) * thinning + 1
  *
  * @param y_                  Numeric vector [n] of Bernoulli observations.
  * @param burnin_             Number of burn-in iterations (discarded).
  * @param thinning_           Thinning interval for autocorrelation reduction.
- * @param n_chain_            Number of retained posterior samples.
+ * @param n_draws_            Number of retained posterior samples.
  * @param prior_theta01_mean_ Prior mean for theta_{0,1}.
  * @param prior_theta01_prec_ Prior precision for theta_{0,1}.
  * @param prior_theta02_mean_ Prior mean for theta_{0,2}.
@@ -629,13 +629,13 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
  * @param bar_width_          Integer: width of progress bar in characters (10-120).
  *
  * @return R list with components:
- *         - theta_1:  Matrix [n_chain * n] of level state trajectory samples
- *         - theta_2:  Matrix [n_chain * n] of trend state trajectory samples
- *         - theta_01: Vector [n_chain] of initial level state samples
- *         - theta_02: Vector [n_chain] of initial trend state samples
- *         - prec_theta1:   Vector [n_chain] of level innovation precision samples
- *         - prec_theta2:   Vector [n_chain] of trend innovation precision samples
- *         - alpha:    Matrix [n_chain * n] of Bernoulli probabilities
+ *         - theta_1:  Matrix [n_draws * n] of level state trajectory samples
+ *         - theta_2:  Matrix [n_draws * n] of trend state trajectory samples
+ *         - theta_01: Vector [n_draws] of initial level state samples
+ *         - theta_02: Vector [n_draws] of initial trend state samples
+ *         - prec_theta1:   Vector [n_draws] of level innovation precision samples
+ *         - prec_theta2:   Vector [n_draws] of trend innovation precision samples
+ *         - alpha:    Matrix [n_draws * n] of Bernoulli probabilities
  *
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
@@ -659,7 +659,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
 SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
                                         SEXP burnin_,
                                         SEXP thinning_,
-                                        SEXP n_chain_,
+                                        SEXP n_draws_,
                                         SEXP prior_theta01_mean_,
                                         SEXP prior_theta01_prec_,
                                         SEXP prior_theta02_mean_,
@@ -705,10 +705,10 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];     /* Burn-in iterations to discard */
   int thinning = INTEGER(thinning_)[0];   /* Thinning interval */
-  int n_chain  = INTEGER(n_chain_)[0];    /* Number of retained samples */
+  int n_draws  = INTEGER(n_draws_)[0];    /* Number of retained samples */
 
   /* Compute total iterations needed */
-  int n_iter = burnin + (n_chain - 1) * thinning + 1;
+  int n_iter = burnin + (n_draws - 1) * thinning + 1;
 
   /* ========== Parse Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
@@ -751,13 +751,13 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_2_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_02_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta2_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_2_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP theta_02_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta2_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_draws, n));
   int n_outputs = 7;
   int n_protect = 7;
 
@@ -909,9 +909,9 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
 
       /* Copy current theta_1, theta_2 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(theta_2_samples)[idx + t * n_chain] = theta_2_current[t];
-        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
+        REAL(theta_1_samples)[idx + t * n_draws] = theta_1_current[t];
+        REAL(theta_2_samples)[idx + t * n_draws] = theta_2_current[t];
+        REAL(alpha_samples)[idx + t * n_draws] = alpha_current[t];
       }
 
       /* Copy scalar parameters to output vectors */
@@ -937,7 +937,7 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
   }
 
   /* ========== Finalize Progress Bar ========== */
-  progress_bar_finish(&pb, n_chain);
+  progress_bar_finish(&pb, n_draws);
 
   /* ========== Restore RNG State ========== */
   PutRNGstate();

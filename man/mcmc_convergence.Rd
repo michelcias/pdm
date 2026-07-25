@@ -66,7 +66,7 @@ state time point. Columns always present: \code{Parameter}, \code{ESS},
 \verb{show_*} arguments: \code{ESS_status}, \code{Geweke_z},
 \code{Geweke_pass}, \code{Heidel_stat}, \code{Heidel_hw},
 \code{Overall}.}
-\item{\code{n_chain}}{Number of retained MCMC samples (\eqn{N}).}
+\item{\code{n_draws}}{Number of retained MCMC samples (\eqn{N}).}
 \item{\code{model_type}}{Character string, e.g. \code{"locallevel"},
 \code{"localtrend"} or \code{"localacceleration"}.}
 \item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
@@ -183,7 +183,7 @@ fit <- mcmc_normal_localtrend(
   y,
   burnin             = 1000,
   thinning           = 10,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = y[1] / 2,
   prior_theta01_prec = 1 / var(y),
   prior_theta02_mean = y[1] / 2,

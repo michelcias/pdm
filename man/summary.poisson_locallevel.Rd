@@ -23,7 +23,7 @@ a list containing:
 \describe{
 \item{\code{model_type}}{Character string indicating the model type}
 \item{\code{n_obs}}{Number of observations}
-\item{\code{n_chain}}{Number of MCMC samples}
+\item{\code{n_draws}}{Number of MCMC samples}
 \item{\code{burnin}}{Number of burn-in iterations}
 \item{\code{thinning}}{Thinning interval}
 \item{\code{ci_level}}{Credible interval level used (HPDI)}
@@ -80,7 +80,7 @@ out <- mcmc_poisson_locallevel(
   y,
   burnin                  = 1000,
   thinning                = 20,
-  n_chain                 = 500,
+  n_draws                 = 500,
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
   prior_prec1_shape       = 100,

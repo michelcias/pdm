@@ -19,7 +19,7 @@ or \code{binomial_localacceleration}.}
 \item{...}{Currently unused.}
 }
 \value{
-A numeric matrix of dimension \code{n_chain} \eqn{\times} \code{n_obs}
+A numeric matrix of dimension \code{n_draws} \eqn{\times} \code{n_obs}
 (draws \eqn{\times} observations), suitable for direct use with
 \code{loo::waic()} and \code{loo::loo()}.
 }
@@ -62,7 +62,7 @@ out <- mcmc_binomial_locallevel(
   n_trials           = n_trials,
   burnin             = 1000,
   thinning           = 20,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_prec1_shape  = 100,
@@ -72,7 +72,7 @@ out <- mcmc_binomial_locallevel(
 )
 
 ll <- log_lik(out)
-dim(ll)   # c(n_chain, n_obs)
+dim(ll)   # c(n_draws, n_obs)
 
 ## The pointwise matrix feeds the loo package directly
 ## (conditional-on-states; see Details):

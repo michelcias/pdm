@@ -52,7 +52,7 @@ out_logit <- mcmc_normal_mixture_localacceleration(
   link                    = "logit",
   burnin                  = 1000,
   thinning                = 10,
-  n_chain                 = 500,
+  n_draws                 = 500,
   prior_mu01_mean         = NULL,  # Use default (25th percentile)
   prior_mu01_prec         = 0.01,
   prior_prec01_shape      = 0.01,

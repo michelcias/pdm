@@ -36,7 +36,7 @@ NULL
 #'
 #' @return A named list of state matrices:
 #'   \describe{
-#'     \item{theta_1}{Matrix (n_chain x n_obs) for level/first state}
+#'     \item{theta_1}{Matrix (n_draws x n_obs) for level/first state}
 #'     \item{theta_2}{Matrix for trend (order >= 2 only)}
 #'     \item{theta_3}{Matrix for acceleration (order 3 only)}
 #'   }
@@ -108,7 +108,7 @@ get_n_states <- function(model_order) {
 #' @description Calculates median and credible intervals for each time point
 #'   of a dynamic state matrix.
 #'
-#' @param state_matrix Matrix (n_chain x n_obs) of MCMC samples.
+#' @param state_matrix Matrix (n_draws x n_obs) of MCMC samples.
 #' @param ci Logical; whether to compute credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #'
@@ -185,7 +185,7 @@ summarise_all_states <- function(x, model_order = NULL, ci = TRUE,
 #' @param x An object inheriting from "pdm_mcmc".
 #' @param model_order Integer: 1, 2, or 3. If NULL, auto-detected.
 #'
-#' @return A named list of innovation matrices (n_chain x n_obs):
+#' @return A named list of innovation matrices (n_draws x n_obs):
 #'   \describe{
 #'     \item{innov_1}{Level innovations}
 #'     \item{innov_2}{Trend innovations (order >= 2)}

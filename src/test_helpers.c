@@ -9,8 +9,8 @@
  *          details in production interfaces.
  *
  * @author Michel H. Montoril
- * @date 2025-10-12
- * @version 1.6
+ * @date 2026-07-25
+ * @version 1.7
  *
  * @changelog
  * - v1.6 (2025-10-12): Realigned every helper with refactored core routines.
@@ -1883,7 +1883,7 @@ SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
  * @param y_                       Observed Poisson counts [n].
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for retained samples.
- * @param n_chain_                 Number of chains to simulate.
+ * @param n_draws_                 Number of chains to simulate.
  * @param theta_1_true_            Optional:  true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_           Optional: true theta_01 value to fix (NULL = sample normally).
  * @param prec_theta1_true_        Optional: true prec_theta1 value to fix (NULL = sample normally).
@@ -1911,7 +1911,7 @@ SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
 SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
                                                    SEXP burnin_,
                                                    SEXP thinning_,
-                                                   SEXP n_chain_,
+                                                   SEXP n_draws_,
                                                    SEXP theta_1_true_,
                                                    SEXP theta_01_true_,
                                                    SEXP prec_theta1_true_,
@@ -1961,10 +1961,10 @@ SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
   /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];     /* Burn-in iterations to discard */
   int thinning = INTEGER(thinning_)[0];   /* Thinning interval */
-  int n_chain  = INTEGER(n_chain_)[0];    /* Number of retained samples */
+  int n_draws  = INTEGER(n_draws_)[0];    /* Number of retained samples */
 
   /* Compute total iterations needed */
-  int n_iter = burnin + (n_chain - 1) * thinning + 1;
+  int n_iter = burnin + (n_draws - 1) * thinning + 1;
 
   /* ========== Parse Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
@@ -2030,13 +2030,13 @@ SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
   }
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_draws, n));
   protect_count++;
-  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_draws));
   protect_count++;
-  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_draws));
   protect_count++;
-  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_draws, n));
   protect_count++;
 
   /* Conditional allocation for diagnostics */
@@ -2045,12 +2045,12 @@ SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
   int n_outputs = 4;  /* Base outputs:  theta_1, theta_01, prec_theta1, alpha */
 
   if (return_log_sigma) {
-    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
     protect_count++;
     n_outputs++;
   }
   if (return_accept_prop) {
-    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
     protect_count++;
     n_outputs++;
   }
@@ -2181,15 +2181,15 @@ SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
 
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
+        REAL(theta_1_samples)[idx + t * n_draws] = theta_1_current[t];
+        REAL(alpha_samples)[idx + t * n_draws] = alpha_current[t];
 
         /* Store diagnostics if requested */
         if (return_log_sigma) {
-          REAL(log_sigma_samples)[idx + t * n_chain] = log_sigma[t];
+          REAL(log_sigma_samples)[idx + t * n_draws] = log_sigma[t];
         }
         if (return_accept_prop) {
-          REAL(accept_prop_samples)[idx + t * n_chain] = accept_prop[t];
+          REAL(accept_prop_samples)[idx + t * n_draws] = accept_prop[t];
         }
       }
 
@@ -2279,7 +2279,7 @@ SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
  * @param n_trials_                Number of trials for each observation.
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for retained samples.
- * @param n_chain_                 Number of chains to simulate.
+ * @param n_draws_                 Number of chains to simulate.
  * @param theta_1_true_            Optional: true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_           Optional: true theta_01 value to fix (NULL = sample normally).
  * @param prec_theta1_true_             Optional: true prec_theta1 value to fix (NULL = sample normally).
@@ -2308,7 +2308,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
                                                 SEXP n_trials_,
                                                 SEXP burnin_,
                                                 SEXP thinning_,
-                                                SEXP n_chain_,
+                                                SEXP n_draws_,
                                                 SEXP theta_1_true_,
                                                 SEXP theta_01_true_,
                                                 SEXP prec_theta1_true_,
@@ -2361,10 +2361,10 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];     /* Burn-in iterations to discard */
   int thinning = INTEGER(thinning_)[0];   /* Thinning interval */
-  int n_chain  = INTEGER(n_chain_)[0];    /* Number of retained samples */
+  int n_draws  = INTEGER(n_draws_)[0];    /* Number of retained samples */
 
   /* Compute total iterations needed */
-  int n_iter = burnin + (n_chain - 1) * thinning + 1;
+  int n_iter = burnin + (n_draws - 1) * thinning + 1;
 
   /* ========== Parse Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
@@ -2430,13 +2430,13 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   }
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_draws, n));
   protect_count++;
-  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_draws));
   protect_count++;
-  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_draws));
   protect_count++;
-  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_draws, n));
   protect_count++;
 
   /* Conditional allocation for diagnostics */
@@ -2445,12 +2445,12 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
   int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_theta1, alpha */
 
   if (return_log_sigma) {
-    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
     protect_count++;
     n_outputs++;
   }
   if (return_accept_prop) {
-    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+    accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
     protect_count++;
     n_outputs++;
   }
@@ -2582,15 +2582,15 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
 
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
+        REAL(theta_1_samples)[idx + t * n_draws] = theta_1_current[t];
+        REAL(alpha_samples)[idx + t * n_draws] = alpha_current[t];
 
         /* Store diagnostics if requested */
         if (return_log_sigma) {
-          REAL(log_sigma_samples)[idx + t * n_chain] = log_sigma[t];
+          REAL(log_sigma_samples)[idx + t * n_draws] = log_sigma[t];
         }
         if (return_accept_prop) {
-          REAL(accept_prop_samples)[idx + t * n_chain] = accept_prop[t];
+          REAL(accept_prop_samples)[idx + t * n_draws] = accept_prop[t];
         }
       }
 
@@ -2675,7 +2675,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
  * @param y_                  Observed Bernoulli outcomes [n] (0 or 1).
  * @param burnin_             Number of burn-in iterations (discarded).
  * @param thinning_           Thinning interval for retained samples.
- * @param n_chain_            Number of chains to simulate.
+ * @param n_draws_            Number of chains to simulate.
  * @param theta_1_true_       Optional: true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_      Optional: true theta_01 value to fix (NULL = sample normally).
  * @param prec_theta1_true_        Optional: true prec_theta1 value to fix (NULL = sample normally).
@@ -2696,7 +2696,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
 SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
                                                         SEXP burnin_,
                                                         SEXP thinning_,
-                                                        SEXP n_chain_,
+                                                        SEXP n_draws_,
                                                         SEXP theta_1_true_,
                                                         SEXP theta_01_true_,
                                                         SEXP prec_theta1_true_,
@@ -2734,10 +2734,10 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
   /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];     /* Burn-in iterations to discard */
   int thinning = INTEGER(thinning_)[0];   /* Thinning interval */
-  int n_chain  = INTEGER(n_chain_)[0];    /* Number of retained samples */
+  int n_draws  = INTEGER(n_draws_)[0];    /* Number of retained samples */
 
   /* Compute total iterations needed */
-  int n_iter = burnin + (n_chain - 1) * thinning + 1;
+  int n_iter = burnin + (n_draws - 1) * thinning + 1;
 
   /* ========== Parse Prior Hyperparameters ========== */
   double mean_theta01 = REAL(prior_theta01_mean_)[0]; /* Prior mean for theta_{0,1} */
@@ -2791,13 +2791,13 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
   }
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP theta_1_samples      = PROTECT(allocMatrix(REALSXP, n_draws, n));
   protect_count++;
-  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP theta_01_samples     = PROTECT(allocVector(REALSXP, n_draws));
   protect_count++;
-  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_chain));
+  SEXP prec_theta1_samples  = PROTECT(allocVector(REALSXP, n_draws));
   protect_count++;
-  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP alpha_samples        = PROTECT(allocMatrix(REALSXP, n_draws, n));
   protect_count++;
 
   int n_outputs = 4;  /* Base outputs: theta_1, theta_01, prec_theta1, alpha */
@@ -2903,8 +2903,8 @@ SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
 
       /* Copy current theta_1 and alpha to output matrices (column-major) */
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
+        REAL(theta_1_samples)[idx + t * n_draws] = theta_1_current[t];
+        REAL(alpha_samples)[idx + t * n_draws] = alpha_current[t];
       }
 
       /* Copy scalar parameters to output vectors */

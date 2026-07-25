@@ -2,8 +2,8 @@
  * @file mcmc_normal_mixture_localacceleration.h
  * @brief MCMC sampling for Gaussian mixture models with local-acceleration weights
  * @author Michel H. Montoril
- * @date 2025-10-25
- * @version 1.0
+ * @date 2026-07-25
+ * @version 1.1
  *
  * @details Declares the Gibbs sampler for a two-component Gaussian mixture model whose
  *          mixture weights evolve according to a local-acceleration polynomial dynamic.
@@ -55,7 +55,7 @@
  * @param link_                    Character string: "logit" or "probit".
  * @param burnin_                  Integer scalar, number of burn-in iterations.
  * @param thinning_                Integer scalar, thinning interval.
- * @param n_chain_                 Integer scalar, number of retained samples.
+ * @param n_draws_                 Integer scalar, number of retained samples.
  * @param prior_mu01_mean_         Double scalar, prior mean for mu_1.
  * @param prior_mu01_prec_         Double scalar, prior precision for mu_1.
  * @param prior_prec01_type_       Integer, prior kind on phi_1 (0 = Gamma, 1 = Half-t).
@@ -114,7 +114,7 @@ SEXP C_MCMC_normal_mixture_localacceleration(SEXP y_,
                                              SEXP link_,
                                              SEXP burnin_,
                                              SEXP thinning_,
-                                             SEXP n_chain_,
+                                             SEXP n_draws_,
                                              SEXP prior_mu01_mean_,
                                              SEXP prior_mu01_prec_,
                                              SEXP prior_prec01_type_,

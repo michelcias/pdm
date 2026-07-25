@@ -149,7 +149,7 @@
 #'   \item `min_deviation_threshold = NULL`: Uses practical default of 1/lag_update.
 #' }
 #'
-#' Burn-in and thinning are applied so that exactly `n_chain` posterior samples
+#' Burn-in and thinning are applied so that exactly `n_draws` posterior samples
 #' are returned.
 #'
 #' @param y Numeric vector of observed binomial counts (length \eqn{n}). Each
@@ -158,7 +158,7 @@
 #'   observation.
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
 #' @param thinning Integer \eqn{\geq 1}, thinning interval.
-#' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
+#' @param n_draws Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_theta01_mean Numeric, prior mean for the initial state
 #'   \eqn{\theta_{0,1}}.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance)
@@ -222,8 +222,8 @@
 #'   with components:
 #' \describe{
 #'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
-#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` of posterior samples for \eqn{\theta_{0,1}}.}
-#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` of posterior samples for \eqn{1/W_1}.}
+#'   \item{\code{theta_01}}{Numeric vector of length `n_draws` of posterior samples for \eqn{\theta_{0,1}}.}
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_draws` of posterior samples for \eqn{1/W_1}.}
 #'   \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
 #'   \item{\code{log_sigma}}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics
 #'     (if `return_log_sigma = TRUE`).}
@@ -290,7 +290,7 @@
 #'   n_trials                = n_trials,
 #'   burnin                  = 1000,
 #'   thinning                = 20,
-#'   n_chain                 = 500,
+#'   n_draws                 = 500,
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
 #'   prior_prec1_shape       = 100,
@@ -316,7 +316,7 @@
 #'   n_trials           = n_trials,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_type   = "halfcauchy",  # Half-Cauchy on sqrt(W[1])
@@ -353,7 +353,7 @@ mcmc_binomial_locallevel <- function(y,
                                      n_trials,
                                      burnin,
                                      thinning,
-                                     n_chain,
+                                     n_draws,
                                      prior_theta01_mean,
                                      prior_theta01_prec,
                                      prior_prec1_shape = NULL,
@@ -423,9 +423,9 @@ mcmc_binomial_locallevel <- function(y,
       thinning != floor(thinning)) {
     stop("`thinning` must be a single positive integer")
   }
-  if (!is.numeric(n_chain) || length(n_chain) != 1 || n_chain < 1 ||
-      n_chain != floor(n_chain)) {
-    stop("`n_chain` must be a single positive integer")
+  if (!is.numeric(n_draws) || length(n_draws) != 1 || n_draws < 1 ||
+      n_draws != floor(n_draws)) {
+    stop("`n_draws` must be a single positive integer")
   }
   if (!is.numeric(prior_theta01_mean) || length(prior_theta01_mean) != 1) {
     stop("`prior_theta01_mean` must be a single numeric value")
@@ -506,7 +506,7 @@ mcmc_binomial_locallevel <- function(y,
     as.numeric(n_trials),
     as.integer(burnin),
     as.integer(thinning),
-    as.integer(n_chain),
+    as.integer(n_draws),
     as.numeric(prior_theta01_mean),
     as.numeric(prior_theta01_prec),
     as.integer(prec1_prior$code),
@@ -529,7 +529,7 @@ mcmc_binomial_locallevel <- function(y,
   result <- new_binomial_locallevel(
     result = result,
     n_obs = length(y),
-    n_chain = n_chain,
+    n_draws = n_draws,
     burnin = burnin,
     thinning = thinning,
     y = y,

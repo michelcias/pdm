@@ -218,7 +218,7 @@ test_that("mcmc_log_poisson_locallevel sampler is conditionally correct", {
   y <- rpois(n, lambda = alpha_true)  # Poisson counts
 
   # --- 2. R Wrapper for the Test Sampler ---
-  test_sampler <- function(y, burnin, n_chain,
+  test_sampler <- function(y, burnin, n_draws,
                            theta_1_true = NULL, theta_01_true = NULL, prec_theta1_true = NULL,
                            prior_theta01_mean = 0.0, prior_theta01_prec = 1.0,
                            prior_prec1_shape = 1.0, prior_prec1_rate = 1.0,
@@ -230,7 +230,7 @@ test_that("mcmc_log_poisson_locallevel sampler is conditionally correct", {
            as.numeric(y),
            as.integer(burnin),
            as.integer(1L),
-           as.integer(n_chain),
+           as.integer(n_draws),
            if(is.null(theta_1_true)) NULL else as.numeric(theta_1_true),
            if(is.null(theta_01_true)) NULL else as.numeric(theta_01_true),
            if(is.null(prec_theta1_true)) NULL else as.numeric(prec_theta1_true),
@@ -254,7 +254,7 @@ test_that("mcmc_log_poisson_locallevel sampler is conditionally correct", {
   mcmc_out_A <- test_sampler(
     y,
     burnin = 1000,
-    n_chain = 2000,
+    n_draws = 2000,
     theta_1_true = theta_1_true,
     prec_theta1_true = prec_theta1_true,
     prior_theta01_mean = 0.0,
@@ -271,7 +271,7 @@ test_that("mcmc_log_poisson_locallevel sampler is conditionally correct", {
   mcmc_out_B <- test_sampler(
     y,
     burnin = 1000,
-    n_chain = 2000,
+    n_draws = 2000,
     theta_1_true = theta_1_true,
     theta_01_true = theta_01_true,
     prior_prec1_shape = 80.0,
@@ -288,7 +288,7 @@ test_that("mcmc_log_poisson_locallevel sampler is conditionally correct", {
   mcmc_out_C <- test_sampler(
     y,
     burnin = 1000,
-    n_chain = 1000,
+    n_draws = 1000,
     theta_01_true = theta_01_true,
     prec_theta1_true = prec_theta1_true
   )

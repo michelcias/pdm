@@ -6,7 +6,7 @@ library(testthat)
 
 fit_ll <- function(y, seed = 1, ...) {
   mcmc_normal_locallevel(
-    y, burnin = 50, thinning = 1, n_chain = 300,
+    y, burnin = 50, thinning = 1, n_draws = 300,
     prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
     prior_prec1_shape  = 1e-2, prior_prec1_rate  = 1e-2,
     prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2,

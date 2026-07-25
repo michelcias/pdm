@@ -63,13 +63,13 @@
 #' choice is resolved once, before the sampler runs, and never re-evaluated
 #' inside the MCMC loop.
 #'
-#' Burn-in and thinning are applied so that exactly `n_chain` posterior samples
+#' Burn-in and thinning are applied so that exactly `n_draws` posterior samples
 #' are returned.
 #'
 #' @param y Numeric vector of observations (length \eqn{n}). Must contain only finite values.
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
 #' @param thinning Integer \eqn{\geq 1}, thinning interval.
-#' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
+#' @param n_draws Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_theta01_mean Numeric, prior mean for the initial level \eqn{\theta_{0,1}}.
 #' @param prior_theta01_prec Numeric > 0, prior precision for \eqn{\theta_{0,1}}.
 #' @param prior_theta02_mean Numeric, prior mean for the initial trend \eqn{\theta_{0,2}}.
@@ -150,11 +150,11 @@
 #' \describe{
 #'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
 #'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
-#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` for the initial level \eqn{\theta_{0,1}}.}
-#'   \item{\code{theta_02}}{Numeric vector of length `n_chain` for the initial trend \eqn{\theta_{0,2}}.}
-#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` for the level innovation precision \eqn{1/W_1}.}
-#'   \item{\code{prec_theta2}}{Numeric vector of length `n_chain` for the trend innovation precision \eqn{1/W_2}.}
-#'   \item{\code{prec_y}}{Numeric vector of length `n_chain` for the data precision \eqn{1/V}.}
+#'   \item{\code{theta_01}}{Numeric vector of length `n_draws` for the initial level \eqn{\theta_{0,1}}.}
+#'   \item{\code{theta_02}}{Numeric vector of length `n_draws` for the initial trend \eqn{\theta_{0,2}}.}
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_draws` for the level innovation precision \eqn{1/W_1}.}
+#'   \item{\code{prec_theta2}}{Numeric vector of length `n_draws` for the trend innovation precision \eqn{1/W_2}.}
+#'   \item{\code{prec_y}}{Numeric vector of length `n_draws` for the data precision \eqn{1/V}.}
 #' }
 #'
 #' When `chains > 1` the return value is instead an object of class
@@ -215,7 +215,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -239,7 +239,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -301,7 +301,7 @@
 mcmc_normal_localtrend <- function(y,
                                    burnin,
                                    thinning,
-                                   n_chain,
+                                   n_draws,
                                    prior_theta01_mean,
                                    prior_theta01_prec,
                                    prior_theta02_mean,
@@ -381,8 +381,8 @@ mcmc_normal_localtrend <- function(y,
   if (!is.numeric(thinning) || length(thinning) != 1 || thinning < 1 || thinning != floor(thinning)) {
     stop("`thinning` must be a single positive integer")
   }
-  if (!is.numeric(n_chain) || length(n_chain) != 1 || n_chain < 1 || n_chain != floor(n_chain)) {
-    stop("`n_chain` must be a single positive integer")
+  if (!is.numeric(n_draws) || length(n_draws) != 1 || n_draws < 1 || n_draws != floor(n_draws)) {
+    stop("`n_draws` must be a single positive integer")
   }
   # Priors for theta_01
   if (!is.numeric(prior_theta01_mean) || length(prior_theta01_mean) != 1) {
@@ -455,7 +455,7 @@ mcmc_normal_localtrend <- function(y,
     as.numeric(y),
     as.integer(burnin),
     as.integer(thinning),
-    as.integer(n_chain),
+    as.integer(n_draws),
     as.numeric(prior_theta01_mean),
     as.numeric(prior_theta01_prec),
     as.numeric(prior_theta02_mean),
@@ -482,7 +482,7 @@ mcmc_normal_localtrend <- function(y,
   result <- new_normal_localtrend(
     result = result,
     n_obs = length(y),
-    n_chain = n_chain,
+    n_draws = n_draws,
     burnin = burnin,
     thinning = thinning,
     y = y

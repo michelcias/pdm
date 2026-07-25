@@ -5,27 +5,27 @@
 # Date: 2026-07-25
 
 # Helper function (reuse from test-print-methods.R or recreate here)
-create_mock_object <- function(n_chain = 100, n_obs = 50, seed = 123) {
+create_mock_object <- function(n_draws = 100, n_obs = 50, seed = 123) {
   set.seed(seed)
 
   mock_obj <- list(
-    mu_1 = rnorm(n_chain, mean = 0, sd = 0.5),
-    mu_2 = rnorm(n_chain, mean = 2, sd = 0.5),
-    prec_1 = rgamma(n_chain, shape = 2, rate = 1),
-    prec_2 = rgamma(n_chain, shape = 2, rate = 1),
-    theta_1 = matrix(rnorm(n_chain * n_obs), nrow = n_chain, ncol = n_obs),
-    theta_2 = matrix(rnorm(n_chain * n_obs, sd = 0.5), nrow = n_chain, ncol = n_obs),
-    theta_01 = rnorm(n_chain, mean = 0, sd = 1),
-    theta_02 = rnorm(n_chain, mean = 0, sd = 0.5),
-    prec_theta1 = rgamma(n_chain, shape = 5, rate = 1),
-    prec_theta2 = rgamma(n_chain, shape = 10, rate = 1),
-    alpha = matrix(runif(n_chain * n_obs, 0.2, 0.8), nrow = n_chain, ncol = n_obs),
-    z = matrix(rbinom(n_chain * n_obs, 1, 0.5), nrow = n_chain, ncol = n_obs)
+    mu_1 = rnorm(n_draws, mean = 0, sd = 0.5),
+    mu_2 = rnorm(n_draws, mean = 2, sd = 0.5),
+    prec_1 = rgamma(n_draws, shape = 2, rate = 1),
+    prec_2 = rgamma(n_draws, shape = 2, rate = 1),
+    theta_1 = matrix(rnorm(n_draws * n_obs), nrow = n_draws, ncol = n_obs),
+    theta_2 = matrix(rnorm(n_draws * n_obs, sd = 0.5), nrow = n_draws, ncol = n_obs),
+    theta_01 = rnorm(n_draws, mean = 0, sd = 1),
+    theta_02 = rnorm(n_draws, mean = 0, sd = 0.5),
+    prec_theta1 = rgamma(n_draws, shape = 5, rate = 1),
+    prec_theta2 = rgamma(n_draws, shape = 10, rate = 1),
+    alpha = matrix(runif(n_draws * n_obs, 0.2, 0.8), nrow = n_draws, ncol = n_obs),
+    z = matrix(rbinom(n_draws * n_obs, 1, 0.5), nrow = n_draws, ncol = n_obs)
   )
 
   attr(mock_obj, "link") <- "logit"
   attr(mock_obj, "n_obs") <- n_obs
-  attr(mock_obj, "n_chain") <- n_chain
+  attr(mock_obj, "n_draws") <- n_draws
   attr(mock_obj, "burnin") <- 500
   attr(mock_obj, "thinning") <- 10
   attr(mock_obj, "model_type") <- "localtrend"
@@ -245,14 +245,14 @@ test_that("plot() handles ggplot2 unavailability gracefully", {
 
 test_that("plot() works with different object sizes", {
   # Small object
-  small_obj <- create_mock_object(n_chain = 10, n_obs = 5)
+  small_obj <- create_mock_object(n_draws = 10, n_obs = 5)
 
   pdf(NULL)
   expect_no_error(plot(small_obj, type = "alpha", engine = "base"))
   dev.off()
 
   # Large object
-  large_obj <- create_mock_object(n_chain = 1000, n_obs = 200)
+  large_obj <- create_mock_object(n_draws = 1000, n_obs = 200)
 
   pdf(NULL)
   expect_no_error(plot(large_obj, type = "alpha", engine = "base"))
@@ -382,7 +382,7 @@ test_that("plot() is reasonably fast for typical sizes", {
   skip_on_cran()
   skip_if_not(interactive())  # Only run interactively
 
-  mock_obj <- create_mock_object(n_chain = 1000, n_obs = 100)
+  mock_obj <- create_mock_object(n_draws = 1000, n_obs = 100)
 
   pdf(NULL)
   on.exit(dev.off())

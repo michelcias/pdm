@@ -25,40 +25,40 @@ cat("✓ Arquivos carregados com sucesso\n\n")
 # Função auxiliar para criar objetos mock
 create_mock_object <- function(model_class = "mixture", model_order = 1) {
 
-  n_chain <- 100
+  n_draws <- 100
   n_obs <- 50
 
   # Componentes comuns a todos os modelos
   obj <- list(
-    theta_01 = rnorm(n_chain),
-    prec_theta1 = rgamma(n_chain, 2, 1),
-    theta_1 = matrix(rnorm(n_chain * n_obs), n_chain, n_obs)
+    theta_01 = rnorm(n_draws),
+    prec_theta1 = rgamma(n_draws, 2, 1),
+    theta_1 = matrix(rnorm(n_draws * n_obs), n_draws, n_obs)
   )
 
   # Adicionar componentes de mixture
   if (model_class == "mixture") {
-    obj$mu_1 <- rnorm(n_chain, 0, 1)
-    obj$mu_2 <- rnorm(n_chain, 2, 1)
-    obj$prec_1 <- rgamma(n_chain, 2, 1)
-    obj$prec_2 <- rgamma(n_chain, 2, 1)
-    obj$alpha <- matrix(runif(n_chain * n_obs), n_chain, n_obs)
-    obj$z <- matrix(rbinom(n_chain * n_obs, 1, 0.5), n_chain, n_obs)
+    obj$mu_1 <- rnorm(n_draws, 0, 1)
+    obj$mu_2 <- rnorm(n_draws, 2, 1)
+    obj$prec_1 <- rgamma(n_draws, 2, 1)
+    obj$prec_2 <- rgamma(n_draws, 2, 1)
+    obj$alpha <- matrix(runif(n_draws * n_obs), n_draws, n_obs)
+    obj$z <- matrix(rbinom(n_draws * n_obs, 1, 0.5), n_draws, n_obs)
   } else {
     # Standard model tem prec_y
-    obj$prec_y <- rgamma(n_chain, 2, 1)
+    obj$prec_y <- rgamma(n_draws, 2, 1)
   }
 
   # Adicionar estados de ordem superior
   if (model_order >= 2) {
-    obj$theta_02 <- rnorm(n_chain)
-    obj$prec_theta2 <- rgamma(n_chain, 2, 1)
-    obj$theta_2 <- matrix(rnorm(n_chain * n_obs), n_chain, n_obs)
+    obj$theta_02 <- rnorm(n_draws)
+    obj$prec_theta2 <- rgamma(n_draws, 2, 1)
+    obj$theta_2 <- matrix(rnorm(n_draws * n_obs), n_draws, n_obs)
   }
 
   if (model_order >= 3) {
-    obj$theta_03 <- rnorm(n_chain)
-    obj$prec_theta3 <- rgamma(n_chain, 2, 1)
-    obj$theta_3 <- matrix(rnorm(n_chain * n_obs), n_chain, n_obs)
+    obj$theta_03 <- rnorm(n_draws)
+    obj$prec_theta3 <- rgamma(n_draws, 2, 1)
+    obj$theta_3 <- matrix(rnorm(n_draws * n_obs), n_draws, n_obs)
   }
 
   # Definir classe e atributos
@@ -84,7 +84,7 @@ create_mock_object <- function(model_class = "mixture", model_order = 1) {
   }
 
   attr(obj, "n_obs") <- n_obs
-  attr(obj, "n_chain") <- n_chain
+  attr(obj, "n_draws") <- n_draws
   attr(obj, "burnin") <- 1000
   attr(obj, "thinning") <- 10
   attr(obj, "model_type") <- model_type

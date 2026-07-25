@@ -58,7 +58,7 @@ test_that("a fit can be reproduced from its own attributes", {
   roundtrip <- function(fit, sampler, extra = list()) {
     args <- c(list(attr(fit, "y")), extra,
               list(attr(fit, "burnin"), attr(fit, "thinning"),
-                   attr(fit, "n_chain")),
+                   attr(fit, "n_draws")),
               attr(fit, "priors"),
               list(verbose = FALSE, seed = attr(fit, "seed")))
     again <- do.call(sampler, args)

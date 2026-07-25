@@ -2,8 +2,8 @@
  * @file test_helpers.h
  * @brief Header declaring R-accessible wrappers for internal C functions used in testing
  * @author Michel H. Montoril
- * @date 2025-10-12
- * @version 1.6
+ * @date 2026-07-25
+ * @version 1.7
  *
  * @details Declares the @c .Call entry points implemented in test_helpers.c that
  *          bridge internal C routines with R so that unit tests (e.g., via
@@ -512,7 +512,7 @@ SEXP test_generate_alpha_probit_bernoulli(SEXP theta_1_in_,
  * @param n_trials_                Number of trials for each observation.
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for retained samples.
- * @param n_chain_                 Number of chains to simulate.
+ * @param n_draws_                 Number of draws to simulate.
  * @param theta_1_true_            Optional: true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_           Optional: true theta_01 value to fix (NULL = sample normally).
  * @param prec_theta1_true_             Optional: true prec_theta1 value to fix (NULL = sample normally).
@@ -541,7 +541,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
                                                 SEXP n_trials_,
                                                 SEXP burnin_,
                                                 SEXP thinning_,
-                                                SEXP n_chain_,
+                                                SEXP n_draws_,
                                                 SEXP theta_1_true_,
                                                 SEXP theta_01_true_,
                                                 SEXP prec_theta1_true_,
@@ -578,7 +578,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
  * @param y_                  Observed Bernoulli outcomes [n] (0 or 1).
  * @param burnin_             Number of burn-in iterations (discarded).
  * @param thinning_           Thinning interval for retained samples.
- * @param n_chain_            Number of chains to simulate.
+ * @param n_draws_            Number of draws to simulate.
  * @param theta_1_true_       Optional: true theta_1 values [n] to fix (NULL = sample normally).
  * @param theta_01_true_      Optional: true theta_01 value to fix (NULL = sample normally).
  * @param prec_theta1_true_        Optional: true prec_theta1 value to fix (NULL = sample normally).
@@ -599,7 +599,7 @@ SEXP test_mcmc_binomial_locallevel_fixed_params(SEXP y_,
 SEXP test_mcmc_probit_bernoulli_locallevel_fixed_params(SEXP y_,
                                                         SEXP burnin_,
                                                         SEXP thinning_,
-                                                        SEXP n_chain_,
+                                                        SEXP n_draws_,
                                                         SEXP theta_1_true_,
                                                         SEXP theta_01_true_,
                                                         SEXP prec_theta1_true_,
@@ -715,7 +715,7 @@ SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
  * @param y_                       Observed Poisson counts [n].
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for retained samples.
- * @param n_chain_                 Number of chains to simulate.
+ * @param n_draws_                 Number of draws to simulate.
  * @param theta_1_true_            Optional:  true theta_1 values [n] to fix (NULL = sample).
  * @param theta_01_true_           Optional: true theta_01 value to fix (NULL = sample).
  * @param prec_theta1_true_        Optional: true prec_theta1 value to fix (NULL = sample).
@@ -743,7 +743,7 @@ SEXP test_generate_alpha_log_poisson(SEXP theta_1_in_,
 SEXP test_mcmc_log_poisson_locallevel_fixed_params(SEXP y_,
                                                    SEXP burnin_,
                                                    SEXP thinning_,
-                                                   SEXP n_chain_,
+                                                   SEXP n_draws_,
                                                    SEXP theta_1_true_,
                                                    SEXP theta_01_true_,
                                                    SEXP prec_theta1_true_,

@@ -29,7 +29,7 @@ out <- mcmc_normal_mixture_locallevel(
   link     = "logit",
   burnin   = 50,
   thinning = 1,
-  n_chain  = 50,
+  n_draws  = 50,
   verbose  = FALSE,
   seed     = 456
 )

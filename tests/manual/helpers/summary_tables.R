@@ -22,8 +22,8 @@ compute_summary_stats <- function(chain, true_value) {
 #' Generate formatted posterior estimates table
 #' @param param_list Named list of parameter chains
 #' @param true_values Named vector of true parameter values
-#' @param n_chain Number of MCMC samples
-print_posterior_estimates_table <- function(param_list, true_values, n_chain) {
+#' @param n_draws Number of MCMC samples
+print_posterior_estimates_table <- function(param_list, true_values, n_draws) {
   cat("Enhanced Summary of Posterior Estimates:\n")
   cat("=====================================================================================================================\n")
   cat("Parameter | True Value | Median Est |  Post SD |     MCSE |          95% CI        | Coverage |   Rel Err |  Abs Err\n")
@@ -34,7 +34,7 @@ print_posterior_estimates_table <- function(param_list, true_values, n_chain) {
       stats <- compute_summary_stats(param_list[[param_name]], true_values[param_name])
       cat(sprintf("%-9s | %10.4f | %10.4f | %8.4f | %8.4f | [%9.4f, %9.4f] | %8s | %8.2f%% | %8.4f\n",
                   param_name, true_values[param_name], stats$median, stats$sd,
-                  stats$sd / sqrt(n_chain), stats$ci_lower, stats$ci_upper,
+                  stats$sd / sqrt(n_draws), stats$ci_lower, stats$ci_upper,
                   ifelse(stats$coverage, "YES", "NO"), stats$rel_error, stats$abs_error))
     }
   }

@@ -24,7 +24,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
   y <- as.numeric(rbinom(n, size = n_trials, prob = alpha_true))
 
   # --- 2. R Wrapper for the Test Sampler ---
-  test_sampler <- function(y, n_trials, burnin, n_chain,
+  test_sampler <- function(y, n_trials, burnin, n_draws,
                            theta_1_true = NULL, theta_01_true = NULL, prec_theta1_true = NULL,
                            prior_theta01_mean = 0.0, prior_theta01_prec = 1.0,
                            prior_prec1_shape = 1.0, prior_prec1_rate = 1.0,
@@ -33,7 +33,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
                            target_acceptance = 0.44) {
 
     .Call("_pdm_test_mcmc_binomial_locallevel_fixed_params",
-          y, n_trials, as.integer(burnin), 1L, as.integer(n_chain),
+          y, n_trials, as.integer(burnin), 1L, as.integer(n_draws),
           theta_1_true, theta_01_true, prec_theta1_true,
           prior_theta01_mean, prior_theta01_prec,
           prior_prec1_shape, prior_prec1_rate,
@@ -45,7 +45,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
 
   # Test A: Sample theta_01, fixing theta_1 and prec_theta1
   set.seed(405)
-  mcmc_out_A <- test_sampler(y, n_trials, burnin = 500, n_chain = 2000,
+  mcmc_out_A <- test_sampler(y, n_trials, burnin = 500, n_draws = 2000,
                              theta_1_true = theta_1_true,
                              prec_theta1_true = prec_theta1_true,
                              prior_theta01_mean = 0, # Prior for theta_01
@@ -58,7 +58,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
 
   # Test B: Sample prec_theta1, fixing theta_1 and theta_01
   set.seed(406)
-  mcmc_out_B <- test_sampler(y, n_trials, burnin = 500, n_chain = 2000,
+  mcmc_out_B <- test_sampler(y, n_trials, burnin = 500, n_draws = 2000,
                              theta_1_true = theta_1_true,
                              theta_01_true = theta_01_true,
                              prior_prec1_shape = 100, # Prior for prec_theta1
@@ -71,7 +71,7 @@ test_that("mcmc_binomial_locallevel sampler is conditionally correct", {
 
   # Test C: Sample theta_1, fixing theta_01 and prec_theta1
   set.seed(407)
-  mcmc_out_C <- test_sampler(y, n_trials, burnin = 500, n_chain = 1000,
+  mcmc_out_C <- test_sampler(y, n_trials, burnin = 500, n_draws = 1000,
                              theta_01_true = theta_01_true,
                              prec_theta1_true = prec_theta1_true)
 

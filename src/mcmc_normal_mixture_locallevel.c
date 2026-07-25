@@ -3,8 +3,8 @@
  * @brief MCMC sampling for Gaussian mixture models with dynamic mixture weights
  * under a local-level evolution
  * @author Michel H. Montoril
- * @date 2026-07-24
- * @version 1.1
+ * @date 2026-07-25
+ * @version 1.2
  *
  * @details Implements the complete Gibbs sampler for Bayesian estimation of
  * two-component Gaussian mixture models with time-varying mixture
@@ -77,7 +77,7 @@
  * @param link_                    Character string: "logit" or "probit".
  * @param burnin_                  Number of burn-in iterations (discarded).
  * @param thinning_                Thinning interval for retained samples.
- * @param n_chain_                 Number of retained posterior samples.
+ * @param n_draws_                 Number of retained posterior samples.
  * @param prior_mu01_mean_         Prior mean for mu_1.
  * @param prior_mu01_prec_         Prior precision for mu_1.
  * @param prior_prec01_type_       Prior kind on phi_1 (0 = Gamma, 1 = Half-t on sqrt(1/phi_1)).
@@ -134,7 +134,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
                                       SEXP link_,
                                       SEXP burnin_,
                                       SEXP thinning_,
-                                      SEXP n_chain_,
+                                      SEXP n_draws_,
                                       SEXP prior_mu01_mean_,
                                       SEXP prior_mu01_prec_,
                                       SEXP prior_prec01_type_,
@@ -195,8 +195,8 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
   /* ========== Parse MCMC Control Parameters ========== */
   int burnin   = INTEGER(burnin_)[0];
   int thinning = INTEGER(thinning_)[0];
-  int n_chain  = INTEGER(n_chain_)[0];
-  int n_iter   = burnin + (n_chain - 1) * thinning + 1;
+  int n_draws  = INTEGER(n_draws_)[0];
+  int n_iter   = burnin + (n_draws - 1) * thinning + 1;
 
   /* ========== Parse Mixture Component Prior Hyperparameters ========== */
   /* Each component precision phi_k carries a Gamma or Half-t prior, resolved in
@@ -270,15 +270,15 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
   progress_bar_start(&pb);
 
   /* ========== Allocate Output Storage (Retained Samples Only) ========== */
-  SEXP mu_1_samples        = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_1_samples      = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP mu_2_samples        = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_2_samples      = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_chain));
-  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_chain, n));
-  SEXP z_samples           = PROTECT(allocMatrix(REALSXP, n_chain, n));
+  SEXP mu_1_samples        = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_1_samples      = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP mu_2_samples        = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_2_samples      = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP theta_1_samples     = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP theta_01_samples    = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP prec_theta1_samples = PROTECT(allocVector(REALSXP, n_draws));
+  SEXP alpha_samples       = PROTECT(allocMatrix(REALSXP, n_draws, n));
+  SEXP z_samples           = PROTECT(allocMatrix(REALSXP, n_draws, n));
 
   SEXP log_sigma_samples   = R_NilValue;
   SEXP accept_prop_samples = R_NilValue;
@@ -287,12 +287,12 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
 
   if (use_logit) {
     if (return_log_sigma) {
-      log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+      log_sigma_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
       n_outputs++;
       n_protect++;
     }
     if (return_accept_prop) {
-      accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_chain, n));
+      accept_prop_samples = PROTECT(allocMatrix(REALSXP, n_draws, n));
       n_outputs++;
       n_protect++;
     }
@@ -487,16 +487,16 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
       REAL(prec_theta1_samples)[idx] = prec_theta1_current;
 
       for (int t = 0; t < n; t++) {
-        REAL(theta_1_samples)[idx + t * n_chain] = theta_1_current[t];
-        REAL(alpha_samples)[idx + t * n_chain] = alpha_current[t];
-        REAL(z_samples)[idx + t * n_chain]       = z_current[t];
+        REAL(theta_1_samples)[idx + t * n_draws] = theta_1_current[t];
+        REAL(alpha_samples)[idx + t * n_draws] = alpha_current[t];
+        REAL(z_samples)[idx + t * n_draws]       = z_current[t];
 
         if (use_logit) {
           if (return_log_sigma) {
-            REAL(log_sigma_samples)[idx + t * n_chain] = log_sigma[t];
+            REAL(log_sigma_samples)[idx + t * n_draws] = log_sigma[t];
           }
           if (return_accept_prop) {
-            REAL(accept_prop_samples)[idx + t * n_chain] = accept_prop[t];
+            REAL(accept_prop_samples)[idx + t * n_draws] = accept_prop[t];
           }
         }
       }
@@ -513,7 +513,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
     prec_theta1_previous = prec_theta1_current;
   }
 
-  progress_bar_finish(&pb, n_chain);
+  progress_bar_finish(&pb, n_draws);
   PutRNGstate();
 
   /* ========== Free Temporary Buffers ========== */

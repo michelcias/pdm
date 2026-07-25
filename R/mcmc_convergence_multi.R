@@ -38,7 +38,7 @@
 #'       Optional columns, controlled by the `show_*` arguments: `ESS_bulk`,
 #'       `ESS_tail`, `Overall`.}
 #'     \item{\code{chains}}{Number of chains.}
-#'     \item{\code{n_chain}}{Number of retained samples per chain (\eqn{N}).}
+#'     \item{\code{n_draws}}{Number of retained samples per chain (\eqn{N}).}
 #'     \item{\code{model_type}}{Character string, e.g. `"locallevel"`.}
 #'     \item{\code{rhat_threshold}}{The \eqn{\hat{R}} cut-off used.}
 #'     \item{\code{ess_threshold}}{The ESS cut-off used.}
@@ -117,7 +117,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 5,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_prec1_shape  = 1e-2,
@@ -189,11 +189,11 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
   }
   # ------------------------------------------------------------------------
 
-  n_chain    <- as.integer(attr(object, "n_chain"))
+  n_draws    <- as.integer(attr(object, "n_draws"))
   n_chains   <- as.integer(attr(object, "chains"))
   model_type <- attr(object, "model_type")
 
-  # Helper: diagnostics row for one n_chain x n_chains matrix of draws
+  # Helper: diagnostics row for one n_draws x n_chains matrix of draws
   compute_row <- function(draws, label) {
 
     rhat <- rhat_rank_normalized(draws)
@@ -229,7 +229,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
   param_names <- names(configs[[1L]])
 
   rows_scalar <- lapply(param_names, function(nm) {
-    compute_row(scalar_draws(configs, nm, n_chain),
+    compute_row(scalar_draws(configs, nm, n_draws),
                 configs[[1L]][[nm]]$name_str)
   })
 
@@ -239,7 +239,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
   if (!is.null(theta_timepoints)) {
 
     # Trajectory matrices are named theta_1, theta_2, ... (no leading zero) and
-    # stored as n_chain x n_obs. The initial-state scalars theta_01, theta_02
+    # stored as n_draws x n_obs. The initial-state scalars theta_01, theta_02
     # are vectors already covered above and must not match here.
     state_names <- grep("^theta_[1-9][0-9]*$", names(object[[1L]]), value = TRUE)
     state_names <- state_names[vapply(state_names,
@@ -255,8 +255,8 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
 
       for (tidx in time_indices) {
         draws <- vapply(object, function(ch) ch[[sname]][, tidx],
-                        numeric(n_chain))
-        dim(draws) <- c(n_chain, n_chains)
+                        numeric(n_draws))
+        dim(draws) <- c(n_draws, n_chains)
         rows_theta[[length(rows_theta) + 1L]] <-
           compute_row(draws, sprintf("theta_%s[t=%d]", j, tidx))
       }
@@ -270,7 +270,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
   result <- list(
     table          = table,
     chains         = n_chains,
-    n_chain        = n_chain,
+    n_draws        = n_draws,
     model_type     = model_type,
     rhat_threshold = rhat_threshold,
     ess_threshold  = ess_threshold
@@ -299,7 +299,7 @@ print.pdm_convergence_multi <- function(x, digits = 4L, ...) {
   cat(strrep("=", 70), "\n\n", sep = "")
   cat("Model:         ", x$model_type, "\n", sep = "")
   cat("Chains:        ", x$chains, "\n", sep = "")
-  cat("Samples/chain: ", x$n_chain, "\n", sep = "")
+  cat("Samples/chain: ", x$n_draws, "\n", sep = "")
   cat("\n")
 
   df <- x$table

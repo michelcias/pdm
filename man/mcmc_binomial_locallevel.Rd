@@ -9,7 +9,7 @@ mcmc_binomial_locallevel(
   n_trials,
   burnin,
   thinning,
-  n_chain,
+  n_draws,
   prior_theta01_mean,
   prior_theta01_prec,
   prior_prec1_shape = NULL,
@@ -43,7 +43,7 @@ observation.}
 
 \item{thinning}{Integer \eqn{\geq 1}, thinning interval.}
 
-\item{n_chain}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
+\item{n_draws}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
 
 \item{prior_theta01_mean}{Numeric, prior mean for the initial state
 \eqn{\theta_{0,1}}.}
@@ -128,8 +128,8 @@ An object of class \code{c("binomial_locallevel", "pdm_mcmc", "list")}
 with components:
 \describe{
 \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
-\item{\code{theta_01}}{Numeric vector of length \code{n_chain} of posterior samples for \eqn{\theta_{0,1}}.}
-\item{\code{prec_theta1}}{Numeric vector of length \code{n_chain} of posterior samples for \eqn{1/W_1}.}
+\item{\code{theta_01}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{\theta_{0,1}}.}
+\item{\code{prec_theta1}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{1/W_1}.}
 \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
 \item{\code{log_sigma}}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics
 (if \code{return_log_sigma = TRUE}).}
@@ -292,7 +292,7 @@ For most applications:
 \item \code{min_deviation_threshold = NULL}: Uses practical default of 1/lag_update.
 }
 
-Burn-in and thinning are applied so that exactly \code{n_chain} posterior samples
+Burn-in and thinning are applied so that exactly \code{n_draws} posterior samples
 are returned.
 }
 \examples{
@@ -326,7 +326,7 @@ out <- mcmc_binomial_locallevel(
   n_trials                = n_trials,
   burnin                  = 1000,
   thinning                = 20,
-  n_chain                 = 500,
+  n_draws                 = 500,
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
   prior_prec1_shape       = 100,
@@ -352,7 +352,7 @@ out_hc <- mcmc_binomial_locallevel(
   n_trials           = n_trials,
   burnin             = 1000,
   thinning           = 20,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_prec1_type   = "halfcauchy",  # Half-Cauchy on sqrt(W[1])

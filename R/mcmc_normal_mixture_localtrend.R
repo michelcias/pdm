@@ -191,7 +191,7 @@
 #' one update per bar segment, ensuring smooth visual feedback with minimal
 #' performance overhead (~0.01% for typical runs).
 #'
-#' Burn-in and thinning are applied so that exactly `n_chain` posterior
+#' Burn-in and thinning are applied so that exactly `n_draws` posterior
 #' samples are returned.
 #'
 #' @param y Numeric vector of observed data (length \eqn{n}).
@@ -199,7 +199,7 @@
 #'   `"logit"` or `"probit"`. Default is `"logit"`.
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
 #' @param thinning Integer \eqn{\geq 1}, thinning interval.
-#' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
+#' @param n_draws Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_mu01_mean Numeric, prior mean for the mean of component 1 (\eqn{\mu_1}).
 #'   If `NULL` (default), set to the 25th percentile of `y`. The components are
 #'   identified by the constraint \eqn{\mu_1 < \mu_2}, which the sampler enforces
@@ -324,27 +324,27 @@
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{\code{mu_1}}{Numeric vector of length `n_chain` of posterior samples for
+#'   \item{\code{mu_1}}{Numeric vector of length `n_draws` of posterior samples for
 #'     the mean of component 1 (\eqn{\mu_1}). Component 1 is defined as the
 #'     component with the smaller mean due to the label switching constraint.}
-#'   \item{\code{prec_1}}{Numeric vector of length `n_chain` of posterior samples for
+#'   \item{\code{prec_1}}{Numeric vector of length `n_draws` of posterior samples for
 #'     the precision of component 1 (\eqn{\phi_1 = 1/\sigma_1^2}).}
-#'   \item{\code{mu_2}}{Numeric vector of length `n_chain` of posterior samples for
+#'   \item{\code{mu_2}}{Numeric vector of length `n_draws` of posterior samples for
 #'     the mean of component 2 (\eqn{\mu_2}). Component 2 is defined as the
 #'     component with the larger mean.}
-#'   \item{\code{prec_2}}{Numeric vector of length `n_chain` of posterior samples for
+#'   \item{\code{prec_2}}{Numeric vector of length `n_draws` of posterior samples for
 #'     the precision of component 2 (\eqn{\phi_2 = 1/\sigma_2^2}).}
 #'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the latent level state \eqn{\theta_{t,1}}.}
 #'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the latent trend state \eqn{\theta_{t,2}}.}
-#'   \item{\code{theta_01}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_01}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the initial level state \eqn{\theta_{0,1}}.}
-#'   \item{\code{theta_02}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{theta_02}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the initial trend state \eqn{\theta_{0,2}}.}
-#'   \item{\code{prec_theta1}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta1}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the level innovation precision \eqn{1/W_1}.}
-#'   \item{\code{prec_theta2}}{Numeric vector of length `n_chain` of posterior samples
+#'   \item{\code{prec_theta2}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the trend innovation precision \eqn{1/W_2}.}
 #'   \item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
 #'     samples for the time-varying mixture weights \eqn{\alpha_t = P(z_t = 1)}.}
@@ -414,7 +414,7 @@
 #'   link                    = "logit",
 #'   burnin                  = 1000,
 #'   thinning                = 10,
-#'   n_chain                 = 500,
+#'   n_draws                 = 500,
 #'   prior_mu01_mean         = NULL,  # Use default (25th percentile)
 #'   prior_mu01_prec         = 0.01,
 #'   prior_prec01_shape      = 0.01,
@@ -450,7 +450,7 @@
 #'   link               = "probit",
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_mu01_mean    = NULL,
 #'   prior_mu01_prec    = 0.01,
 #'   prior_prec01_shape = 0.01,
@@ -481,7 +481,7 @@
 #'   link               = "probit",
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_prec01_type  = "halfcauchy",
 #'   prior_prec01_scale = sd(y),
 #'   prior_prec02_type  = "halfcauchy",
@@ -578,7 +578,7 @@ mcmc_normal_mixture_localtrend <- function(y,
                                            link = c("logit", "probit"),
                                            burnin,
                                            thinning,
-                                           n_chain,
+                                           n_draws,
                                            prior_mu01_mean = NULL,
                                            prior_mu01_prec = 0.01,
                                            prior_prec01_shape = 2,
@@ -680,9 +680,9 @@ mcmc_normal_mixture_localtrend <- function(y,
       thinning != floor(thinning)) {
     stop("`thinning` must be a single positive integer")
   }
-  if (!is.numeric(n_chain) || length(n_chain) != 1 || n_chain < 1 ||
-      n_chain != floor(n_chain)) {
-    stop("`n_chain` must be a single positive integer")
+  if (!is.numeric(n_draws) || length(n_draws) != 1 || n_draws < 1 ||
+      n_draws != floor(n_draws)) {
+    stop("`n_draws` must be a single positive integer")
   }
 
   # Set intelligent defaults for mixture component priors based on data
@@ -837,7 +837,7 @@ mcmc_normal_mixture_localtrend <- function(y,
     as.character(link),
     as.integer(burnin),
     as.integer(thinning),
-    as.integer(n_chain),
+    as.integer(n_draws),
     as.numeric(prior_mu01_mean),
     as.numeric(prior_mu01_prec),
     as.integer(prec01_prior$code),
@@ -883,7 +883,7 @@ mcmc_normal_mixture_localtrend <- function(y,
     result = result,
     link = link,
     n_obs = length(y),
-    n_chain = n_chain,
+    n_draws = n_draws,
     burnin = burnin,
     thinning = thinning,
     y = y

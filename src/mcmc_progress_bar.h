@@ -2,8 +2,8 @@
  * @file mcmc_progress_bar.h
  * @brief Efficient progress bar interface for MCMC samplers
  * @author Michel H. Montoril
- * @date 2025-01-16
- * @version 1.0
+ * @date 2026-07-25
+ * @version 1.1
  *
  * @details Provides a lightweight, computationally optimized progress bar system
  *          designed specifically for iterative MCMC algorithms. The implementation
@@ -124,12 +124,12 @@ void progress_bar_update(const ProgressBar *pb, int current_iteration);
  *          length dynamically adjusts to accommodate all summary information.
  *
  * @param pb Pointer to initialized ProgressBar structure
- * @param n_chain Number of retained posterior samples
+ * @param n_draws Number of retained posterior samples
  *
  * @note Does nothing if pb->total_iterations == 0 (verbose disabled)
  * @note Adds appropriate line spacing before and after summary
  * @note Flushes console output to ensure complete display
  */
-void progress_bar_finish(const ProgressBar *pb, int n_chain);
+void progress_bar_finish(const ProgressBar *pb, int n_draws);
 
 #endif /* MCMC_PROGRESS_BAR_H */

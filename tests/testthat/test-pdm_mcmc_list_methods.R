@@ -13,7 +13,7 @@ fit_ll <- function(y, ...) {
     y,
     burnin             = 200,
     thinning           = 1,
-    n_chain            = 150,
+    n_draws            = 150,
     prior_theta01_mean = y[1],
     prior_theta01_prec = 1 / var(y),
     prior_prec1_shape  = 1e-2,
@@ -42,7 +42,7 @@ test_that("pool_chains() stacks the draws in chain order", {
   expect_identical(pool$theta_1[1:150, ], fits[[1L]]$theta_1)
 
   # Attributes carry over, with the draw count corrected.
-  expect_equal(attr(pool, "n_chain"), 450L)
+  expect_equal(attr(pool, "n_draws"), 450L)
   expect_equal(attr(pool, "n_obs"), attr(fits[[1L]], "n_obs"))
   expect_equal(attr(pool, "model_type"), "locallevel")
   expect_identical(attr(pool, "y"), y)
@@ -56,7 +56,7 @@ test_that("summary() and log_lik() delegate to the pooled fit", {
   s <- suppressWarnings(summary(fits))
   expect_s3_class(s, "summary.pdm_mcmc_list")
   expect_s3_class(s, "summary.normal_locallevel")
-  expect_equal(s$n_chain, 450L)
+  expect_equal(s$n_draws, 450L)
 
   # The tables themselves are exactly the single-chain method's, on the pooled
   # draws; only the convergence fields and the class are added on top.
@@ -77,7 +77,7 @@ test_that("summary() carries R-hat for every scalar parameter", {
   s    <- suppressWarnings(summary(fits))
 
   expect_equal(s$chains, 3L)
-  expect_equal(s$n_chain_each, 150L)
+  expect_equal(s$n_draws_each, 150L)
   expect_named(s$rhat, c("V^{-1}", "theta_01", "W_1^{-1}"))
   expect_true(all(s$rhat > 0.9))
 
@@ -94,7 +94,7 @@ test_that("summary() warns when the chains have not converged", {
   # Ten iterations of burn-in: the chains cannot have agreed yet. Called
   # directly because fit_ll() fixes the MCMC controls.
   under <- mcmc_normal_locallevel(
-    y, burnin = 10, thinning = 1, n_chain = 200,
+    y, burnin = 10, thinning = 1, n_draws = 200,
     prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
     prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
     prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2,
@@ -116,7 +116,7 @@ test_that("summary() warns when the chains have not converged", {
 test_that("summary() is silent and reassuring on a converged fit", {
   y <- make_y()
   ok <- mcmc_normal_locallevel(
-    y, burnin = 5000, thinning = 30, n_chain = 400,
+    y, burnin = 5000, thinning = 30, n_draws = 400,
     prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
     prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
     prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2,
@@ -161,7 +161,7 @@ test_that("waic() and loo() warn when the chains have not converged", {
   # a "loo" object gives no hint whether the draws behind it agreed. Model
   # comparison is where that does the most damage.
   under <- mcmc_normal_locallevel(
-    y, burnin = 10, thinning = 1, n_chain = 200,
+    y, burnin = 10, thinning = 1, n_draws = 200,
     prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
     prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
     prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2,

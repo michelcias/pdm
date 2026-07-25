@@ -76,7 +76,7 @@
 #'
 #' @return `summary()` returns what the single-chain method returns for that
 #'   model class, with class `"summary.pdm_mcmc_list"` prepended and three
-#'   extra elements: `chains`, `n_chain_each`, `rhat` (a named vector of
+#'   extra elements: `chains`, `n_draws_each`, `rhat` (a named vector of
 #'   rank-normalized split-\eqn{\hat{R}}, one per scalar parameter) and
 #'   `rhat_states` (the same, at twenty time points along each trajectory).
 #'   `log_lik()` returns a draws-by-observations matrix pooled over chains;
@@ -93,7 +93,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 5,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_prec1_shape  = 1e-2,
@@ -146,7 +146,7 @@ summary.pdm_mcmc_list <- function(object, rhat_threshold = 1.01, ...) {
   rhat_states <- state_rhats(object)
 
   out$chains         <- length(object)
-  out$n_chain_each   <- attr(object[[1L]], "n_chain")
+  out$n_draws_each   <- attr(object[[1L]], "n_draws")
   out$rhat           <- rhat
   out$rhat_states    <- rhat_states
   out$rhat_threshold <- rhat_threshold
@@ -189,7 +189,7 @@ warn_if_unconverged <- function(rhat, threshold, what) {
 
 #' Rank-normalized split-R-hat for every scalar parameter of a multi-chain fit
 #'
-#' Cheap: a handful of `n_draw x n_chain` matrices. This covers only half of
+#' Cheap: a handful of `n_draw x n_draws` matrices. This covers only half of
 #' what a convergence check needs — in the link families the latent states are
 #' the slower of the two — so `summary()` pairs it with `state_rhats()`.
 #'
@@ -200,7 +200,7 @@ warn_if_unconverged <- function(rhat, threshold, what) {
 #' @keywords internal
 #' @noRd
 scalar_rhats <- function(x) {
-  n_draw  <- attr(x[[1L]], "n_chain")
+  n_draw  <- attr(x[[1L]], "n_draws")
   configs <- lapply(x, get_param_config)
   params  <- names(configs[[1L]])
 
@@ -217,7 +217,7 @@ scalar_rhats <- function(x) {
 #' Rank-normalized split-R-hat for the latent states, on a sample of time points
 #'
 #' A screen, not a census. Every time point of every trajectory would be one
-#' `n_draw x n_chain` matrix each — measured at n = 400, that is 1.76s against
+#' `n_draw x n_draws` matrix each — measured at n = 400, that is 1.76s against
 #' 0.04s for the scalars, which is too much to spend inside `summary()`. Twenty
 #' evenly spaced points cost about 0.1s and are enough to notice a trajectory
 #' that has not settled.
@@ -238,7 +238,7 @@ scalar_rhats <- function(x) {
 #' @noRd
 state_rhats <- function(x, timepoints = seq(0.05, 0.95, length.out = 20L)) {
 
-  n_draw <- attr(x[[1L]], "n_chain")
+  n_draw <- attr(x[[1L]], "n_draws")
 
   # Trajectories are theta_1, theta_2, ... and stored as n_draw x n_obs. The
   # initial states theta_01, theta_02 are vectors, are covered by
@@ -283,7 +283,7 @@ print.summary.pdm_mcmc_list <- function(x, digits = 4L, ...) {
   all_rhat <- c(x$rhat, x$rhat_states)
   worst <- if (all(is.na(all_rhat))) NA_real_ else max(all_rhat, na.rm = TRUE)
 
-  cat("Multi-chain diagnostics (", x$chains, " chains x ", x$n_chain_each,
+  cat("Multi-chain diagnostics (", x$chains, " chains x ", x$n_draws_each,
       " draws, pooled above)\n", sep = "")
   cat(strrep("-", 75), "\n", sep = "")
 
@@ -348,10 +348,10 @@ loo.pdm_mcmc_list <- function(x, rhat_threshold = 1.01, ...) {
   dots <- list(...)
   if (is.null(dots$r_eff)) {
     # pool_chains() stacks chain 1 first, so the chain identifiers run in blocks
-    # of n_chain. Unlike the single-chain method, these are the real ones.
+    # of n_draws. Unlike the single-chain method, these are the real ones.
     dots$r_eff <- loo::relative_eff(
       exp(ll),
-      chain_id = rep(seq_along(x), each = attr(x[[1L]], "n_chain"))
+      chain_id = rep(seq_along(x), each = attr(x[[1L]], "n_draws"))
     )
   }
   do.call(loo::loo, c(list(ll), dots))
@@ -421,7 +421,7 @@ plot.pdm_mcmc_list <- function(x,
 #' @noRd
 plot_multichain_params <- function(x, which = NULL, true_values = NULL) {
 
-  n_draw  <- attr(x[[1L]], "n_chain")
+  n_draw  <- attr(x[[1L]], "n_draws")
   configs <- lapply(x, get_param_config)
   params  <- names(configs[[1L]])
 

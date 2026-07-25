@@ -8,7 +8,7 @@ mcmc_normal_localacceleration(
   y,
   burnin,
   thinning,
-  n_chain,
+  n_draws,
   prior_theta01_mean,
   prior_theta01_prec,
   prior_theta02_mean,
@@ -49,7 +49,7 @@ mcmc_normal_localacceleration(
 
 \item{thinning}{Integer \eqn{\geq 1}, thinning interval.}
 
-\item{n_chain}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
+\item{n_draws}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
 
 \item{prior_theta01_mean}{Numeric, prior mean for the initial level \eqn{\theta_{0,1}}.}
 
@@ -183,13 +183,13 @@ A list with components:
 \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
 \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
 \item{\code{theta_3}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the acceleration state \eqn{\theta_{t,3}}.}
-\item{\code{theta_01}}{Numeric vector of length \code{n_chain} for the initial level \eqn{\theta_{0,1}}.}
-\item{\code{theta_02}}{Numeric vector of length \code{n_chain} for the initial trend \eqn{\theta_{0,2}}.}
-\item{\code{theta_03}}{Numeric vector of length \code{n_chain} for the initial acceleration \eqn{\theta_{0,3}}.}
-\item{\code{prec_theta1}}{Numeric vector of length \code{n_chain} for the level innovation precision \eqn{1/W_1}.}
-\item{\code{prec_theta2}}{Numeric vector of length \code{n_chain} for the trend innovation precision \eqn{1/W_2}.}
-\item{\code{prec_theta3}}{Numeric vector of length \code{n_chain} for the acceleration innovation precision \eqn{1/W_3}.}
-\item{\code{prec_y}}{Numeric vector of length \code{n_chain} for the data precision \eqn{1/V}.}
+\item{\code{theta_01}}{Numeric vector of length \code{n_draws} for the initial level \eqn{\theta_{0,1}}.}
+\item{\code{theta_02}}{Numeric vector of length \code{n_draws} for the initial trend \eqn{\theta_{0,2}}.}
+\item{\code{theta_03}}{Numeric vector of length \code{n_draws} for the initial acceleration \eqn{\theta_{0,3}}.}
+\item{\code{prec_theta1}}{Numeric vector of length \code{n_draws} for the level innovation precision \eqn{1/W_1}.}
+\item{\code{prec_theta2}}{Numeric vector of length \code{n_draws} for the trend innovation precision \eqn{1/W_2}.}
+\item{\code{prec_theta3}}{Numeric vector of length \code{n_draws} for the acceleration innovation precision \eqn{1/W_3}.}
+\item{\code{prec_y}}{Numeric vector of length \code{n_draws} for the data precision \eqn{1/V}.}
 }
 
 When \code{chains > 1} the return value is instead an object of class
@@ -270,7 +270,7 @@ arguments are required only when it is \code{"halft"} or \code{"halfcauchy"}. Th
 choice is resolved once, before the sampler runs, and never re-evaluated
 inside the MCMC loop.
 
-Burn-in and thinning are applied so that exactly \code{n_chain} posterior samples
+Burn-in and thinning are applied so that exactly \code{n_draws} posterior samples
 are returned.
 }
 \examples{
@@ -327,7 +327,7 @@ out <- mcmc_normal_localacceleration(
   y,
   burnin             = 1000,
   thinning           = 20,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_theta02_mean = y[1] / 2,
@@ -355,7 +355,7 @@ out_hc <- mcmc_normal_localacceleration(
   y,
   burnin             = 1000,
   thinning           = 20,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_theta02_mean = y[1] / 2,

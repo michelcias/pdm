@@ -49,7 +49,7 @@
 #'       `show_*` arguments: `ESS_status`, `Geweke_z`,
 #'       `Geweke_pass`, `Heidel_stat`, `Heidel_hw`,
 #'       `Overall`.}
-#'     \item{\code{n_chain}}{Number of retained MCMC samples (\eqn{N}).}
+#'     \item{\code{n_draws}}{Number of retained MCMC samples (\eqn{N}).}
 #'     \item{\code{model_type}}{Character string, e.g. `"locallevel"`,
 #'       `"localtrend"` or `"localacceleration"`.}
 #'     \item{\code{has_coda}}{Logical, whether \pkg{coda}-based diagnostics are
@@ -176,7 +176,7 @@
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 10,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -278,7 +278,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
   }
   # ------------------------------------------------------------------------
 
-  n_chain    <- as.integer(attr(object, "n_chain"))
+  n_draws    <- as.integer(attr(object, "n_draws"))
   model_type <- attr(object, "model_type")
   has_coda   <- requireNamespace("coda", quietly = TRUE)
 
@@ -290,9 +290,9 @@ mcmc_convergence.pdm_mcmc <- function(object,
 
     # ESS
     acf_vals <- acf(samples, plot = FALSE,
-                    lag.max = min(100L, floor(n_chain / 4L)))$acf[-1L]
-    ess        <- max(1, n_chain / (1 + 2 * sum(acf_vals[acf_vals > 0])))
-    efficiency <- 100 * ess / n_chain
+                    lag.max = min(100L, floor(n_draws / 4L)))$acf[-1L]
+    ess        <- max(1, n_draws / (1 + 2 * sum(acf_vals[acf_vals > 0])))
+    efficiency <- 100 * ess / n_draws
     ess_status <- if (efficiency > ess_thresholds[1]) "EXCELLENT" else
                   if (efficiency > ess_thresholds[2]) "GOOD"      else
                   if (efficiency > ess_thresholds[3]) "ACCEPTABLE" else "POOR"
@@ -361,7 +361,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
 
     # Detect the latent-state trajectory matrices in the object. These are
     # named theta_1, theta_2, theta_3 (no leading zero) and stored as
-    # n_chain x n_obs matrices. The initial-state scalars theta_01, theta_02,
+    # n_draws x n_obs matrices. The initial-state scalars theta_01, theta_02,
     # theta_03 must NOT be captured here: they are vectors, already reported as
     # scalar parameters, and a leading-zero name would otherwise match.
     state_names <- grep("^theta_[1-9][0-9]*$", names(object), value = TRUE)
@@ -373,7 +373,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
 
     if (length(state_names) > 0L) {
       for (sname in state_names) {
-        mat    <- object[[sname]]          # n_chain x n_obs matrix
+        mat    <- object[[sname]]          # n_draws x n_obs matrix
         j      <- sub("theta_", "", sname) # "1", "2", ...
 
         # Use the actual number of time points stored in this matrix so the
@@ -398,7 +398,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
 
   result <- list(
     table          = table,
-    n_chain        = n_chain,
+    n_draws        = n_draws,
     model_type     = model_type,
     has_coda       = has_coda,
     ess_thresholds = ess_thresholds,
@@ -423,7 +423,7 @@ print.pdm_convergence <- function(x, digits = 3L, ...) {
   cat("MCMC Convergence Diagnostics\n")
   cat(strrep("=", 70), "\n\n", sep = "")
   cat("Model:         ", x$model_type, "\n", sep = "")
-  cat("Chain samples: ", x$n_chain, "\n", sep = "")
+  cat("Chain samples: ", x$n_draws, "\n", sep = "")
 
   # Show active settings only when non-default
   thr <- x$ess_thresholds

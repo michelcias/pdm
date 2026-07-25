@@ -49,7 +49,7 @@ state time point. Columns always present: \code{Parameter}, \code{Rhat}.
 Optional columns, controlled by the \verb{show_*} arguments: \code{ESS_bulk},
 \code{ESS_tail}, \code{Overall}.}
 \item{\code{chains}}{Number of chains.}
-\item{\code{n_chain}}{Number of retained samples per chain (\eqn{N}).}
+\item{\code{n_draws}}{Number of retained samples per chain (\eqn{N}).}
 \item{\code{model_type}}{Character string, e.g. \code{"locallevel"}.}
 \item{\code{rhat_threshold}}{The \eqn{\hat{R}} cut-off used.}
 \item{\code{ess_threshold}}{The ESS cut-off used.}
@@ -125,7 +125,7 @@ fits <- mcmc_normal_locallevel(
   y,
   burnin             = 1000,
   thinning           = 5,
-  n_chain            = 500,
+  n_draws            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_shape  = 1e-2,

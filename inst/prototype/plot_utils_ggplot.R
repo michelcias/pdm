@@ -333,7 +333,7 @@ plot_mixture_params_ggplot <- function(mu_1, mu_2, prec_1, prec_2,
 #'   with optional credible bands using ggplot2. Can overlay observed data
 #'   and true values for simulation studies.
 #'
-#' @param alpha Matrix of MCMC samples for alpha (n_chain x n_obs).
+#' @param alpha Matrix of MCMC samples for alpha (n_draws x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param title Character or expression; main title for the plot.
@@ -524,7 +524,7 @@ plot_alpha_trajectory_ggplot <- function(alpha,
 #'   models using ggplot2, showing which component is more likely at each
 #'   time point.
 #'
-#' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
+#' @param z Matrix of MCMC samples for component indicators (n_draws x n_obs).
 #' @param threshold Numeric; decision threshold for coloring (default 0.5).
 #' @param color_above Character; color when P(z_t = 1) > threshold.
 #' @param color_below Character; color when P(z_t = 1) <= threshold.
@@ -934,8 +934,8 @@ plot_bernoulli_alpha_ggplot <- function(x, ci = TRUE, ci_level = 0.95,
 #'   Page 1 shows alpha_t trajectory with credible bands,
 #'   Page 2 shows posterior probabilities P(z_t = 1 | data).
 #'
-#' @param alpha Matrix of MCMC samples for mixture weights (n_chain x n_obs).
-#' @param z Matrix of MCMC samples for component indicators (n_chain x n_obs).
+#' @param alpha Matrix of MCMC samples for mixture weights (n_draws x n_obs).
+#' @param z Matrix of MCMC samples for component indicators (n_draws x n_obs).
 #' @param ci Logical; whether to display credible intervals.
 #' @param ci_level Numeric between 0 and 1; credible interval level.
 #' @param ... Additional arguments (currently unused).

@@ -4,29 +4,29 @@
 # Date: 2025-10-24
 
 # Helper function to create a mock normal_mixture_localtrend object
-create_mock_object <- function(n_chain = 1000, n_obs = 100, seed = 123) {
+create_mock_object <- function(n_draws = 1000, n_obs = 100, seed = 123) {
   set.seed(seed)
 
   # Create MCMC samples with realistic properties
   # Mixture components
-  mu_1 <- rnorm(n_chain, mean = 0, sd = 0.5)
-  mu_2 <- rnorm(n_chain, mean = 2, sd = 0.5)
+  mu_1 <- rnorm(n_draws, mean = 0, sd = 0.5)
+  mu_2 <- rnorm(n_draws, mean = 2, sd = 0.5)
 
   # Precisions (Gamma distributed - right skewed)
-  prec_1 <- rgamma(n_chain, shape = 2, rate = 1)
-  prec_2 <- rgamma(n_chain, shape = 2, rate = 1)
+  prec_1 <- rgamma(n_draws, shape = 2, rate = 1)
+  prec_2 <- rgamma(n_draws, shape = 2, rate = 1)
 
   # Dynamic states
-  theta_01 <- rnorm(n_chain, mean = 0, sd = 1)
-  theta_02 <- rnorm(n_chain, mean = 0, sd = 0.5)
-  prec_theta1 <- rgamma(n_chain, shape = 5, rate = 1)
-  prec_theta2 <- rgamma(n_chain, shape = 10, rate = 1)
+  theta_01 <- rnorm(n_draws, mean = 0, sd = 1)
+  theta_02 <- rnorm(n_draws, mean = 0, sd = 0.5)
+  prec_theta1 <- rgamma(n_draws, shape = 5, rate = 1)
+  prec_theta2 <- rgamma(n_draws, shape = 10, rate = 1)
 
   # Time-varying parameters (matrices)
-  theta_1 <- matrix(rnorm(n_chain * n_obs), nrow = n_chain, ncol = n_obs)
-  theta_2 <- matrix(rnorm(n_chain * n_obs, sd = 0.5), nrow = n_chain, ncol = n_obs)
-  alpha <- matrix(runif(n_chain * n_obs, 0.2, 0.8), nrow = n_chain, ncol = n_obs)
-  z <- matrix(rbinom(n_chain * n_obs, 1, 0.5), nrow = n_chain, ncol = n_obs)
+  theta_1 <- matrix(rnorm(n_draws * n_obs), nrow = n_draws, ncol = n_obs)
+  theta_2 <- matrix(rnorm(n_draws * n_obs, sd = 0.5), nrow = n_draws, ncol = n_obs)
+  alpha <- matrix(runif(n_draws * n_obs, 0.2, 0.8), nrow = n_draws, ncol = n_obs)
+  z <- matrix(rbinom(n_draws * n_obs, 1, 0.5), nrow = n_draws, ncol = n_obs)
 
   # Create list structure
   mock_obj <- list(
@@ -47,7 +47,7 @@ create_mock_object <- function(n_chain = 1000, n_obs = 100, seed = 123) {
   # Add attributes
   attr(mock_obj, "link") <- "logit"
   attr(mock_obj, "n_obs") <- n_obs
-  attr(mock_obj, "n_chain") <- n_chain
+  attr(mock_obj, "n_draws") <- n_draws
   attr(mock_obj, "burnin") <- 500
   attr(mock_obj, "thinning") <- 10
   attr(mock_obj, "model_type") <- "localtrend"
@@ -127,7 +127,7 @@ test_that("print() shows model and MCMC metadata", {
 
   # Check specific values
   expect_true(any(grepl("100", output)))  # n_obs
-  expect_true(any(grepl("1000", output))) # n_chain
+  expect_true(any(grepl("1000", output))) # n_draws
   expect_true(any(grepl("500", output)))  # burnin
   expect_true(any(grepl("10", output)))   # thinning
 })
@@ -159,7 +159,7 @@ test_that("summary() returns correct structure", {
   expect_true("link" %in% names(summ))
   expect_true("model_type" %in% names(summ))
   expect_true("n_obs" %in% names(summ))
-  expect_true("n_chain" %in% names(summ))
+  expect_true("n_draws" %in% names(summ))
   expect_true("ci_level" %in% names(summ))
 })
 
@@ -356,9 +356,9 @@ test_that("summary() fails on invalid object", {
   )
 })
 
-test_that("print() and summary() handle small n_chain", {
+test_that("print() and summary() handle small n_draws", {
   # Very small sample size
-  small_obj <- create_mock_object(n_chain = 10, n_obs = 5)
+  small_obj <- create_mock_object(n_draws = 10, n_obs = 5)
 
   # Should produce output without errors
   expect_output(print(small_obj), "Posterior Medians")

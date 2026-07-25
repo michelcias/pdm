@@ -2,8 +2,8 @@
  * @file mcmc_progress_bar.c
  * @brief Implementation of efficient progress bar for MCMC samplers
  * @author Michel H. Montoril
- * @date 2025-01-16
- * @version 1.0
+ * @date 2026-07-25
+ * @version 1.1
  */
 
 #include "mcmc_progress_bar.h"
@@ -132,7 +132,7 @@ void progress_bar_update(const ProgressBar *pb, int current_iteration) {
   R_FlushConsole();
 }
 
-void progress_bar_finish(const ProgressBar *pb, int n_chain) {
+void progress_bar_finish(const ProgressBar *pb, int n_draws) {
   /* Skip if verbose disabled */
   if (pb->total_iterations == 0) return;
 
@@ -153,7 +153,7 @@ void progress_bar_finish(const ProgressBar *pb, int n_chain) {
                              total_hrs, total_min, total_sec, iter_per_sec);
 
   int samples_length = snprintf(samples_buffer, sizeof(samples_buffer),
-                                "  Samples retained (n_chain): %d", n_chain);
+                                "  Samples retained (n_draws): %d", n_draws);
 
   /* Use maximum length for separator */
   int sep_length = pb->separator_length;

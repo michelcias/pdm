@@ -13,11 +13,11 @@
 #' @param estimates numeric vector with estimates (e.g., medians) (length n)
 #' @param ci_lower numeric vector with lower CI (length n)
 #' @param ci_upper numeric vector with upper CI (length n)
-#' @param chain MCMC matrix [n_chain x n] with samples per time point
+#' @param chain MCMC matrix [n_draws x n] with samples per time point
 #' @param state_name label for the state (e.g., "theta_1" or "level")
 #' @param n_segments number of temporal segments (default 5)
 #' @param max_lag maximum lag for temporal ACF (default 10)
-#' @param n_chain chain length (defaults to nrow(chain))
+#' @param n_draws chain length (defaults to nrow(chain))
 #' @param n_timepoints how many time points to sample for ESS (default 10)
 analyze_state_series <- function(true_values,
                                  estimates,
@@ -27,11 +27,11 @@ analyze_state_series <- function(true_values,
                                  state_name = "state",
                                  n_segments = 5,
                                  max_lag = 10,
-                                 n_chain = nrow(chain),
+                                 n_draws = nrow(chain),
                                  n_timepoints = 10) {
   n <- length(true_values)
   if (!is.matrix(chain) || ncol(chain) != n) {
-    stop("chain must be a matrix [n_chain x n] consistent with the series length.")
+    stop("chain must be a matrix [n_draws x n] consistent with the series length.")
   }
 
   cat(sprintf("=== %s ANALYSIS ===\n\n", toupper(state_name)))
@@ -169,7 +169,7 @@ analyze_state_series <- function(true_values,
   ess_time_analysis <- data.frame(
     Time_Point = time_points,
     ESS = round(ess_by_time),
-    Efficiency = round(100 * ess_by_time / n_chain, 1)
+    Efficiency = round(100 * ess_by_time / n_draws, 1)
   )
 
   cat("Time Point |   ESS | Efficiency (%)\n")
@@ -183,7 +183,7 @@ analyze_state_series <- function(true_values,
   ess_min  <- round(min(ess_by_time[is.finite(ess_by_time)]))
   ess_max  <- round(max(ess_by_time[is.finite(ess_by_time)]))
   ess_mean <- round(mean(ess_by_time[is.finite(ess_by_time)]), 1)
-  ess_eff  <- round(100 * ess_mean / n_chain, 1)
+  ess_eff  <- round(100 * ess_mean / n_draws, 1)
   cat(sprintf("Overall ESS range: [%d, %d]\n", ess_min, ess_max))
   cat(sprintf("Mean ESS: %.1f (%.1f%% efficiency)\n\n", ess_mean, ess_eff))
 }
@@ -191,11 +191,11 @@ analyze_state_series <- function(true_values,
 #' Analyze multiple state series in sequence
 #' @param states named list; each item is a list with:
 #'        true, estimate, ci_lower, ci_upper, chain, optionally state_name
-#' @param n_segments, max_lag, n_chain, n_timepoints see analyze_state_series
+#' @param n_segments, max_lag, n_draws, n_timepoints see analyze_state_series
 analyze_multiple_states <- function(states,
                                     n_segments = 5,
                                     max_lag = 10,
-                                    n_chain = NULL,
+                                    n_draws = NULL,
                                     n_timepoints = 10) {
   stopifnot(is.list(states), length(states) > 0)
   for (nm in names(states)) {
@@ -210,7 +210,7 @@ analyze_multiple_states <- function(states,
       state_name  = nm_eff,
       n_segments  = n_segments,
       max_lag     = max_lag,
-      n_chain     = if (is.null(n_chain)) nrow(s$chain) else n_chain,
+      n_draws     = if (is.null(n_draws)) nrow(s$chain) else n_draws,
       n_timepoints= n_timepoints
     )
   }

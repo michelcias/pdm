@@ -31,7 +31,7 @@ out_logit_level <- mcmc_normal_mixture_locallevel(
   link                    = "logit",
   burnin                  = 50000,        # Burn-in iterations to discard
   thinning                = 250,          # Keep every 250th sample
-  n_chain                 = 1000,         # Number of samples to keep
+  n_draws                 = 1000,         # Number of samples to keep
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile of y
   prior_mu01_prec         = 1 / (1 * var(y)),
@@ -72,7 +72,7 @@ out_probit_level <- mcmc_normal_mixture_locallevel(
   link               = "probit",
   burnin             = 50000,
   thinning           = 250,
-  n_chain            = 1000,
+  n_draws            = 1000,
   prior_mu01_mean    = NULL,
   prior_mu01_prec    = 1 / (1 * var(y)),
   prior_prec01_shape = 0.1,
@@ -104,7 +104,7 @@ out_logit_trend <- mcmc_normal_mixture_localtrend(
   link                    = "logit",
   burnin                  = 20000,       # Increased burn-in for more complex model
   thinning                = 600,
-  n_chain                 = 1000,
+  n_draws                 = 1000,
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile
   prior_mu01_prec         = 1 / (1 * var(y)),
@@ -149,7 +149,7 @@ out_probit_trend <- mcmc_normal_mixture_localtrend(
   link               = "probit",
   burnin             = 20000,
   thinning           = 600,
-  n_chain            = 1000,
+  n_draws            = 1000,
   prior_mu01_mean    = NULL,
   prior_mu01_prec    = 1 / (1 * var(y)),
   prior_prec01_shape = 0.01,
@@ -185,7 +185,7 @@ out_logit_accel <- mcmc_normal_mixture_localacceleration(
   link                    = "logit",
   burnin                  = 50000,       # Increased burn-in for most complex model
   thinning                = 1000,
-  n_chain                 = 1000,
+  n_draws                 = 1000,
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile
   prior_mu01_prec         = 1 / (1 * var(y)),
@@ -236,7 +236,7 @@ out_probit_accel <- mcmc_normal_mixture_localacceleration(
   link               = "probit",
   burnin             = 50000,
   thinning           = 500,
-  n_chain            = 1000,
+  n_draws            = 1000,
   prior_mu01_mean    = NULL,
   prior_mu01_prec    = 1 / (1 * var(y)),
   prior_prec01_shape = 01,
@@ -287,7 +287,7 @@ out_logit_level_hc <- mcmc_normal_mixture_locallevel(
   link                    = "logit",
   burnin                  = 50000,
   thinning                = 250,
-  n_chain                 = 1000,
+  n_draws                 = 1000,
   # Prior for mean of first mixture component
   prior_mu01_mean         = NULL,         # Default: 25th percentile of y
   prior_mu01_prec         = 1 / (1 * var(y)),
@@ -328,7 +328,7 @@ out_probit_level_hc <- mcmc_normal_mixture_locallevel(
   link               = "probit",
   burnin             = 50000,
   thinning           = 300,
-  n_chain            = 1000,
+  n_draws            = 1000,
   prior_mu01_mean    = NULL,
   prior_mu01_prec    = 1 / (1 * var(y)),
   prior_prec01_type  = "halfcauchy",
@@ -353,7 +353,7 @@ out_logit_trend_hc <- mcmc_normal_mixture_localtrend(
   link                    = "logit",
   burnin                  = 50000,
   thinning                = 200,
-  n_chain                 = 1000,
+  n_draws                 = 1000,
   prior_mu01_mean         = NULL,
   prior_mu01_prec         = 1 / (1 * var(y)),
   prior_prec01_type       = "halfcauchy",
@@ -391,7 +391,7 @@ out_probit_trend_hc <- mcmc_normal_mixture_localtrend(
   link               = "probit",
   burnin             = 50000,
   thinning           = 200,
-  n_chain            = 1000,
+  n_draws            = 1000,
   prior_mu01_mean    = NULL,
   prior_mu01_prec    = 1 / (1 * var(y)),
   prior_prec01_type  = "halfcauchy",
@@ -420,7 +420,7 @@ out_logit_accel_hc <- mcmc_normal_mixture_localacceleration(
   link                    = "logit",
   burnin                  = 50000,
   thinning                = 1000,
-  n_chain                 = 1000,
+  n_draws                 = 1000,
   prior_mu01_mean         = NULL,
   prior_mu01_prec         = 1 / (1 * var(y)),
   prior_prec01_type       = "halfcauchy",
@@ -462,7 +462,7 @@ out_probit_accel_hc <- mcmc_normal_mixture_localacceleration(
   link               = "probit",
   burnin             = 50000,
   thinning           = 500,
-  n_chain            = 1000,
+  n_draws            = 1000,
   prior_mu01_mean    = NULL,
   prior_mu01_prec    = 1 / (1 * var(y)),
   prior_prec01_type  = "halfcauchy",

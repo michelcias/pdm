@@ -3,8 +3,8 @@
  * @brief MCMC sampling for Gaussian mixture models with dynamic mixture weights
  *        following a local-level structure
  * @author Michel H. Montoril
- * @date 2025-10-24
- * @version 1.0
+ * @date 2026-07-25
+ * @version 1.1
  *
  * @details Declares the complete Gibbs sampler for Bayesian estimation of
  *          two-component Gaussian mixture models with time-varying mixture
@@ -78,13 +78,13 @@
  *          - Automatic enforcement of label-switching constraint (mu_1 < mu_2)
  *
  *          **Iteration count:**
- *          Total iterations = burnin + (n_chain - 1) × thinning + 1
+ *          Total iterations = burnin + (n_draws - 1) × thinning + 1
  *
  * @param y_                       Numeric vector [n] of observations.
  * @param link_                    Character scalar: "logit" or "probit".
  * @param burnin_                  Integer scalar, number of burn-in iterations.
  * @param thinning_                Integer scalar, thinning interval.
- * @param n_chain_                 Integer scalar, number of retained samples.
+ * @param n_draws_                 Integer scalar, number of retained samples.
  * @param prior_mu01_mean_         Double scalar, prior mean for mu_1.
  * @param prior_mu01_prec_         Double scalar, prior precision for mu_1.
  * @param prior_prec01_type_       Integer, prior kind on phi_1 (0 = Gamma, 1 = Half-t).
@@ -119,19 +119,19 @@
  *
  * @return R list with components:
  *         **Always returned:**
- *         - mu_1:        Vector [n_chain] of component 1 mean samples
- *         - prec_1:      Vector [n_chain] of component 1 precision samples
- *         - mu_2:        Vector [n_chain] of component 2 mean samples
- *         - prec_2:      Vector [n_chain] of component 2 precision samples
- *         - theta_1:     Matrix [n_chain × n] of level state samples
- *         - theta_01:    Vector [n_chain] of initial level state samples
- *         - prec_theta1: Vector [n_chain] of level innovation precision samples
- *         - alpha:       Matrix [n_chain × n] of mixture weight samples
- *         - z:           Matrix [n_chain × n] of latent indicator samples
+ *         - mu_1:        Vector [n_draws] of component 1 mean samples
+ *         - prec_1:      Vector [n_draws] of component 1 precision samples
+ *         - mu_2:        Vector [n_draws] of component 2 mean samples
+ *         - prec_2:      Vector [n_draws] of component 2 precision samples
+ *         - theta_1:     Matrix [n_draws × n] of level state samples
+ *         - theta_01:    Vector [n_draws] of initial level state samples
+ *         - prec_theta1: Vector [n_draws] of level innovation precision samples
+ *         - alpha:       Matrix [n_draws × n] of mixture weight samples
+ *         - z:           Matrix [n_draws × n] of latent indicator samples
  *
  *         **Conditionally returned (logit only):**
- *         - log_sigma:   Matrix [n_chain × n] of proposal log-scales
- *         - accept_prop: Matrix [n_chain × n] of acceptance proportions
+ *         - log_sigma:   Matrix [n_draws × n] of proposal log-scales
+ *         - accept_prop: Matrix [n_draws × n] of acceptance proportions
  *
  * @note Computational complexity: O(n_iter × n) time, O(n) space.
  * @note Requires n >= 3 for numerical stability (consistent with dynamic GLM samplers).
@@ -153,7 +153,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
                                       SEXP link_,
                                       SEXP burnin_,
                                       SEXP thinning_,
-                                      SEXP n_chain_,
+                                      SEXP n_draws_,
                                       SEXP prior_mu01_mean_,
                                       SEXP prior_mu01_prec_,
                                       SEXP prior_prec01_type_,

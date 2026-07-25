@@ -7,7 +7,7 @@
 #'
 #' @param result List containing MCMC results returned by the C function.
 #' @param n_obs Integer, number of observations in the original data.
-#' @param n_chain Integer, number of MCMC samples retained after burn-in and thinning.
+#' @param n_draws Integer, number of MCMC samples retained after burn-in and thinning.
 #' @param burnin Integer, number of burn-in iterations.
 #' @param thinning Integer, thinning interval.
 #' @param y Numeric vector of original observed data.
@@ -20,7 +20,7 @@
 #'     \item{Attributes}{
 #'       \itemize{
 #'         \item `n_obs`: Number of observations
-#'         \item `n_chain`: Number of MCMC samples
+#'         \item `n_draws`: Number of MCMC samples
 #'         \item `burnin`: Burn-in iterations
 #'         \item `thinning`: Thinning interval
 #'         \item `model_type`: `"localtrend"` (polynomial order 2)
@@ -44,7 +44,7 @@
 #' @noRd
 new_normal_localtrend <- function(result,
                                   n_obs,
-                                  n_chain,
+                                  n_draws,
                                   burnin,
                                   thinning,
                                   y) {
@@ -58,8 +58,8 @@ new_normal_localtrend <- function(result,
   if (!is.numeric(n_obs) || length(n_obs) != 1 || n_obs <= 0) {
     stop("Internal error: n_obs must be a positive scalar")
   }
-  if (!is.numeric(n_chain) || length(n_chain) != 1 || n_chain <= 0) {
-    stop("Internal error: n_chain must be a positive scalar")
+  if (!is.numeric(n_draws) || length(n_draws) != 1 || n_draws <= 0) {
+    stop("Internal error: n_draws must be a positive scalar")
   }
   if (!is.numeric(burnin) || length(burnin) != 1 || burnin < 0) {
     stop("Internal error: burnin must be a non-negative scalar")
@@ -76,7 +76,7 @@ new_normal_localtrend <- function(result,
 
   # Add metadata as attributes
   attr(result, "n_obs") <- as.integer(n_obs)
-  attr(result, "n_chain") <- as.integer(n_chain)
+  attr(result, "n_draws") <- as.integer(n_draws)
   attr(result, "burnin") <- as.integer(burnin)
   attr(result, "thinning") <- as.integer(thinning)
   attr(result, "model_type") <- "localtrend"  # Polynomial order 2
@@ -113,21 +113,21 @@ validate_normal_localtrend <- function(x) {
   }
 
   # 3. Extract and validate metadata attributes
-  n_chain_raw <- attr(x, "n_chain")
+  n_draws_raw <- attr(x, "n_draws")
   n_obs_raw <- attr(x, "n_obs")
 
-  if (is.null(n_chain_raw)) {
-    stop("Missing required attribute 'n_chain'")
+  if (is.null(n_draws_raw)) {
+    stop("Missing required attribute 'n_draws'")
   }
   if (is.null(n_obs_raw)) {
     stop("Missing required attribute 'n_obs'")
   }
 
-  n_chain <- as.integer(n_chain_raw)
+  n_draws <- as.integer(n_draws_raw)
   n_obs <- as.integer(n_obs_raw)
 
-  if (length(n_chain) == 0 || is.na(n_chain) || n_chain <= 0) {
-    stop("Attribute 'n_chain' must be a positive integer")
+  if (length(n_draws) == 0 || is.na(n_draws) || n_draws <= 0) {
+    stop("Attribute 'n_draws' must be a positive integer")
   }
   if (length(n_obs) == 0 || is.na(n_obs) || n_obs <= 0) {
     stop("Attribute 'n_obs' must be a positive integer")
@@ -144,10 +144,10 @@ validate_normal_localtrend <- function(x) {
     }
 
     # Check length
-    if (length(x[[param]]) != n_chain) {
+    if (length(x[[param]]) != n_draws) {
       stop(sprintf(
         "Component '%s' should have length %d but has length %d",
-        param, n_chain, length(x[[param]])
+        param, n_draws, length(x[[param]])
       ))
     }
 
@@ -166,7 +166,7 @@ validate_normal_localtrend <- function(x) {
         n_nonpositive <- sum(x[[param]] <= 0)
         stop(sprintf(
           "Component '%s' (precision) must be positive, but %d/%d values are non-positive",
-          param, n_nonpositive, n_chain
+          param, n_nonpositive, n_draws
         ))
       }
     }
@@ -186,10 +186,10 @@ validate_normal_localtrend <- function(x) {
 
     dims <- dim(x[[param]])
 
-    if (dims[1] != n_chain || dims[2] != n_obs) {
+    if (dims[1] != n_draws || dims[2] != n_obs) {
       stop(sprintf(
         "Component '%s' has incorrect dimensions [%d x %d], expected [%d x %d].\n  Each row should be one MCMC sample, each column one time point.",
-        param, dims[1], dims[2], n_chain, n_obs
+        param, dims[1], dims[2], n_draws, n_obs
       ))
     }
 
@@ -271,7 +271,7 @@ validate_normal_localtrend <- function(x) {
 #'   y,
 #'   burnin             = 50,
 #'   thinning           = 1,
-#'   n_chain            = 50,
+#'   n_draws            = 50,
 #'   prior_theta01_mean = y[1],
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = 0,
@@ -339,7 +339,7 @@ is.normal_localtrend <- function(x) {
 #'   y,
 #'   burnin             = 1000,
 #'   thinning           = 20,
-#'   n_chain            = 500,
+#'   n_draws            = 500,
 #'   prior_theta01_mean = y[1] / 2,
 #'   prior_theta01_prec = 1 / var(y),
 #'   prior_theta02_mean = y[1] / 2,
@@ -390,7 +390,7 @@ print.normal_localtrend <- function(x, digits = 3, ...) {
   # MCMC metadata
   cat("MCMC:\n")
   cat("  Observations:      ", attr(x, "n_obs"), "\n", sep = "")
-  cat("  Samples retained:  ", attr(x, "n_chain"), "\n", sep = "")
+  cat("  Samples retained:  ", attr(x, "n_draws"), "\n", sep = "")
   cat("  Burn-in:           ", attr(x, "burnin"), "\n", sep = "")
   cat("  Thinning:          ", attr(x, "thinning"), "\n", sep = "")
   # Which version and seed produced this fit. Several defaults have moved

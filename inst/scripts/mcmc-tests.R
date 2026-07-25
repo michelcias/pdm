@@ -48,7 +48,7 @@ CONFIG <- list(
   mcmc = list(
     burnin = 5000,              # Burn-in iterations
     thinning = 25,              # Thinning interval
-    n_chain = 2000,             # Posterior samples
+    n_draws = 2000,             # Posterior samples
     target_acceptance = 0.44,   # Target acceptance rate
     lag_update = 50L,           # Adaptive update lag
     max_step_size = 0.1,        # Maximum step size
@@ -79,7 +79,7 @@ CONFIG <- list(
 if (CONFIG$test$quick_test) {
   CONFIG$simulation$n <- 100
   CONFIG$mcmc$burnin <- 1000
-  CONFIG$mcmc$n_chain <- 500
+  CONFIG$mcmc$n_draws <- 500
   CONFIG$mcmc$thinning <- 10
 }
 
@@ -92,7 +92,7 @@ if (CONFIG$test$quick_test) {
 #' @param n_trials Number of trials
 #' @param ... Additional parameters to validate
 validate_inputs <- function(y, n_trials, burnin = NULL, thinning = NULL,
-                            n_chain = NULL, theta_1_true = NULL, ...) {
+                            n_draws = NULL, theta_1_true = NULL, ...) {
 
   # Basic input checks
   if (!is.numeric(y) || length(y) == 0) {
@@ -129,9 +129,9 @@ validate_inputs <- function(y, n_trials, burnin = NULL, thinning = NULL,
     }
   }
 
-  if (!is.null(n_chain)) {
-    if (!is.numeric(n_chain) || n_chain < 1 || n_chain != round(n_chain)) {
-      stop("'n_chain' must be a positive integer")
+  if (!is.null(n_draws)) {
+    if (!is.numeric(n_draws) || n_draws < 1 || n_draws != round(n_draws)) {
+      stop("'n_draws' must be a positive integer")
     }
   }
 
@@ -272,7 +272,7 @@ generate_test_report <- function(test_results, config = CONFIG) {
   cat("CONFIGURATION SUMMARY:\n")
   cat("  Sample size (n):", config$simulation$n, "\n")
   cat("  Binomial trials:", config$simulation$n_trials, "\n")
-  cat("  MCMC samples:", config$mcmc$n_chain, "\n")
+  cat("  MCMC samples:", config$mcmc$n_draws, "\n")
   cat("  Burn-in:", config$mcmc$burnin, "\n")
   cat("  Thinning:", config$mcmc$thinning, "\n\n")
 
@@ -447,7 +447,7 @@ generate_test_report <- function(test_results, config = CONFIG) {
 #' @param n_trials Number of trials for each binomial observation
 #' @param burnin Number of burn-in iterations
 #' @param thinning Thinning interval for stored samples
-#' @param n_chain Number of samples to store after burn-in and thinning
+#' @param n_draws Number of samples to store after burn-in and thinning
 #' @param theta_1_true Optional: fixed values for latent states (testing only)
 #' @param theta_01_true Optional: fixed value for initial state (testing only)
 #' @param prec_theta1_true Optional: fixed value for state precision (testing only)
@@ -463,9 +463,9 @@ generate_test_report <- function(test_results, config = CONFIG) {
 #' @param validate_inputs Whether to perform input validation
 #'
 #' @return List with MCMC samples and diagnostics:
-#'   - theta_1: Matrix of latent state samples (n_chain x n)
-#'   - theta_01: Vector of initial state samples (n_chain)
-#'   - prec_theta1: Vector of precision samples (n_chain)
+#'   - theta_1: Matrix of latent state samples (n_draws x n)
+#'   - theta_01: Vector of initial state samples (n_draws)
+#'   - prec_theta1: Vector of precision samples (n_draws)
 #'   - diagnostics: List of convergence diagnostics
 #'
 #' @examples
@@ -475,9 +475,9 @@ generate_test_report <- function(test_results, config = CONFIG) {
 #'
 #' # Run MCMC
 #' result <- enhanced_test_sampler(y, n_trials = 50, burnin = 1000,
-#'                                thinning = 10, n_chain = 500)
+#'                                thinning = 10, n_draws = 500)
 #' }
-enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
+enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_draws,
                                   theta_1_true = NULL, theta_01_true = NULL, prec_theta1_true = NULL,
                                   prior_theta01_mean = 0.0, prior_theta01_prec = 1.0,
                                   prior_prec1_shape = 1.0, prior_prec1_rate = 1.0,
@@ -490,12 +490,12 @@ enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
 
   # Input validation
   if (validate_inputs) {
-    validate_inputs(y, n_trials, burnin, thinning, n_chain, theta_1_true)
+    validate_inputs(y, n_trials, burnin, thinning, n_draws, theta_1_true)
   }
 
   # Progress indicator
   if (CONFIG$test$verbose) {
-    total_iter <- burnin + (n_chain - 1) * thinning + 1
+    total_iter <- burnin + (n_draws - 1) * thinning + 1
     cat("Starting MCMC with", total_iter, "total iterations...\n")
   }
 
@@ -506,7 +506,7 @@ enhanced_test_sampler <- function(y, n_trials, burnin, thinning, n_chain,
                     n_trials,                   # 2
                     as.integer(burnin),         # 3
                     as.integer(thinning),       # 4
-                    as.integer(n_chain),        # 5
+                    as.integer(n_draws),        # 5
                     theta_1_true,               # 6
                     theta_01_true,              # 7
                     prec_theta1_true,                # 8
@@ -629,7 +629,7 @@ mcmc_out_A <- enhanced_test_sampler(
   n_trials = n_trials,
   burnin = CONFIG$mcmc$burnin,
   thinning = CONFIG$mcmc$thinning,
-  n_chain = CONFIG$mcmc$n_chain,
+  n_draws = CONFIG$mcmc$n_draws,
   theta_1_true = theta_1_true,    # Fixed at true values
   prec_theta1_true = prec_theta1_true,      # Fixed at true values
   prior_theta01_mean = 0.0,       # Weakly informative prior
@@ -738,7 +738,7 @@ mcmc_out_B <- enhanced_test_sampler(
   n_trials = n_trials,
   burnin = CONFIG$mcmc$burnin,
   thinning = CONFIG$mcmc$thinning,
-  n_chain = CONFIG$mcmc$n_chain,
+  n_draws = CONFIG$mcmc$n_draws,
   theta_1_true = theta_1_true,      # Fixed at true values
   theta_01_true = theta_01_true,    # Fixed at true values
   prior_prec1_shape = 1.0,          # Weakly informative Gamma prior
@@ -817,7 +817,7 @@ cat("Purpose: Validate conditional posterior for latent state trajectory\n")
 set.seed(CONFIG$simulation$seed + 3)
 
 # Reduce samples for computational efficiency in trajectory sampling
-n_chain_C <- ifelse(CONFIG$test$quick_test, 200, 1000)
+n_draws_C <- ifelse(CONFIG$test$quick_test, 200, 1000)
 
 # Run MCMC with enhanced wrapper
 mcmc_out_C <- enhanced_test_sampler(
@@ -825,7 +825,7 @@ mcmc_out_C <- enhanced_test_sampler(
   n_trials = n_trials,
   burnin = CONFIG$mcmc$burnin,
   thinning = CONFIG$mcmc$thinning,
-  n_chain = n_chain_C,
+  n_draws = n_draws_C,
   theta_01_true = theta_01_true,    # Fixed at true values
   prec_theta1_true = prec_theta1_true         # Fixed at true values
 )
@@ -964,7 +964,7 @@ total_mcmc_time <- Sys.time()  # This would be better tracked during actual runs
 cat("Configuration used:\n")
 cat("  Quick test mode:", ifelse(CONFIG$test$quick_test, "YES", "NO"), "\n")
 cat("  Total MCMC samples generated:",
-    3 * CONFIG$mcmc$n_chain + n_chain_C, "\n")
+    3 * CONFIG$mcmc$n_draws + n_draws_C, "\n")
 cat("  Validation thresholds met:",
     ifelse(final_report$overall_status, "ALL", "SOME"), "\n")
 

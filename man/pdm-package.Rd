@@ -25,7 +25,10 @@ Probit-Bernoulli \tab \code{\link{mcmc_probit_bernoulli_locallevel}} \tab \code{
 }
 
 Convergence diagnostics across fitted models are available via
-\code{\link{mcmc_convergence}}.
+\code{\link{mcmc_convergence}}. The Gaussian samplers additionally accept
+\code{chains > 1}, which runs several independent chains and enables the
+rank-normalized split-\eqn{\hat{R}} reported by
+\code{\link{mcmc_convergence.pdm_mcmc_list}}.
 }
 \author{
 \strong{Maintainer}: Michel H. Montoril \email{michel@ufscar.br}

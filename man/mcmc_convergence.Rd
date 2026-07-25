@@ -102,10 +102,12 @@ and are reported among the scalar parameters. Only the trajectory matrices
 (\code{theta_1}, \code{theta_2}, \ldots), which hold one column per time
 point, are evaluated at the time points given by \code{theta_timepoints}.
 
-Because the \verb{mcmc_*()} samplers return a single chain, all diagnostics
-are \emph{within-chain} criteria. Multi-chain diagnostics such as the
-Gelman–Rubin \eqn{\hat{R}} require several independent runs and are not
-computed here.
+All diagnostics on this page are \emph{within-chain} criteria, because the
+object being assessed holds a single chain. To obtain the Gelman–Rubin
+\eqn{\hat{R}}, fit the model with \code{chains > 1} (see
+\code{\link{mcmc_normal_locallevel}}) and pass the resulting
+\code{"pdm_mcmc_list"} to the same generic; the method for that class is
+documented in \code{\link{mcmc_convergence.pdm_mcmc_list}}.
 
 \subsection{Effective Sample Size (ESS)}{
 Autocorrelation inflates the variance of MCMC estimators relative to an

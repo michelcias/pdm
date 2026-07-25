@@ -399,19 +399,23 @@ mcmc_normal_localacceleration <- function(y,
   prior_prec_y_type <- match.arg(prior_prec_y_type)
 
   prior_prec1_type <- infer_gamma_from_hyperparams(
-    prior_prec1_type, prec1_type_user_set, prior_prec1_shape, prior_prec1_rate
+    prior_prec1_type, prec1_type_user_set,
+    !missing(prior_prec1_shape) || !missing(prior_prec1_rate)
   )
 
   prior_prec2_type <- infer_gamma_from_hyperparams(
-    prior_prec2_type, prec2_type_user_set, prior_prec2_shape, prior_prec2_rate
+    prior_prec2_type, prec2_type_user_set,
+    !missing(prior_prec2_shape) || !missing(prior_prec2_rate)
   )
 
   prior_prec3_type <- infer_gamma_from_hyperparams(
-    prior_prec3_type, prec3_type_user_set, prior_prec3_shape, prior_prec3_rate
+    prior_prec3_type, prec3_type_user_set,
+    !missing(prior_prec3_shape) || !missing(prior_prec3_rate)
   )
 
   prior_prec_y_type <- infer_gamma_from_hyperparams(
-    prior_prec_y_type, prec_y_type_user_set, prior_prec_y_shape, prior_prec_y_rate
+    prior_prec_y_type, prec_y_type_user_set,
+    !missing(prior_prec_y_shape) || !missing(prior_prec_y_rate)
   )
   # --- Input Validation ---
   if (!is.numeric(y)) {

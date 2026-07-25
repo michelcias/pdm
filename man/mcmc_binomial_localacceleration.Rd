@@ -33,14 +33,14 @@ mcmc_binomial_localacceleration(
   verbose = TRUE,
   bar_width = 60,
   seed = NULL,
-  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
-  prior_prec1_scale = NULL,
+  prior_prec1_type = c("halfcauchy", "gamma", "halft"),
+  prior_prec1_scale = 2,
   prior_prec1_df = 1,
-  prior_prec2_type = c("gamma", "halfcauchy", "halft"),
-  prior_prec2_scale = NULL,
+  prior_prec2_type = c("halfcauchy", "gamma", "halft"),
+  prior_prec2_scale = 2,
   prior_prec2_df = 1,
-  prior_prec3_type = c("gamma", "halfcauchy", "halft"),
-  prior_prec3_scale = NULL,
+  prior_prec3_type = c("halfcauchy", "gamma", "halft"),
+  prior_prec3_scale = 2,
   prior_prec3_df = 1,
   chains = 1,
   parallel = FALSE
@@ -118,31 +118,47 @@ reproducibility. Default is \code{NULL} (no seed set).
 When \code{chains > 1} it acts as a master seed from which each chain's own
 seed is drawn.}
 
-\item{prior_prec1_type}{Character, prior on the level innovation precision
-\eqn{1/W_1}: \code{"gamma"} (default), or \code{"halft"} / \code{"halfcauchy"} for a Half-t
-/ Half-Cauchy prior on \eqn{\sqrt{W_1}} (Gelman, 2006). \code{"halfcauchy"} is
-Half-t with \code{df = 1}.}
+\item{prior_prec1_type}{Character, prior on the level innovation
+precision \eqn{1/W_1}: \code{"halfcauchy"} (default) or \code{"halft"} for a Half-t /
+Half-Cauchy prior on \eqn{\sqrt{W_1}} (Gelman, 2006), or \code{"gamma"} for a
+Gamma prior on the precision. The default changed in 0.5-0; a call that
+supplies \code{prior_prec1_shape}/\code{prior_prec1_rate} without naming a type is
+still read as \code{"gamma"}, so existing code keeps working.}
 
-\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A_1} of the Half-t prior for
-\eqn{\sqrt{W_1}}. Required when \code{prior_prec1_type} is \code{"halft"}/\code{"halfcauchy"}.}
+\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A} of the Half-t prior for
+\eqn{\sqrt{W_1}}. Default \code{2}, on the scale of the link -- a fixed value
+is enough here, unlike the Gaussian family, because the link scale carries
+no arbitrary units. Ignored when \code{prior_prec1_type = "gamma"}.}
 
 \item{prior_prec1_df}{Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
 prior for \eqn{\sqrt{W_1}}. Default \code{1} (Half-Cauchy).}
 
-\item{prior_prec2_type}{Character, prior on the trend innovation precision
-\eqn{1/W_2}: \code{"gamma"} (default), or \code{"halft"} / \code{"halfcauchy"}.}
+\item{prior_prec2_type}{Character, prior on the trend innovation
+precision \eqn{1/W_2}: \code{"halfcauchy"} (default) or \code{"halft"} for a Half-t /
+Half-Cauchy prior on \eqn{\sqrt{W_2}} (Gelman, 2006), or \code{"gamma"} for a
+Gamma prior on the precision. The default changed in 0.5-0; a call that
+supplies \code{prior_prec2_shape}/\code{prior_prec2_rate} without naming a type is
+still read as \code{"gamma"}, so existing code keeps working.}
 
-\item{prior_prec2_scale}{Numeric > 0, scale \eqn{A_2} of the Half-t prior for
-\eqn{\sqrt{W_2}}. Required when \code{prior_prec2_type} is \code{"halft"}/\code{"halfcauchy"}.}
+\item{prior_prec2_scale}{Numeric > 0, scale \eqn{A} of the Half-t prior for
+\eqn{\sqrt{W_2}}. Default \code{2}, on the scale of the link -- a fixed value
+is enough here, unlike the Gaussian family, because the link scale carries
+no arbitrary units. Ignored when \code{prior_prec2_type = "gamma"}.}
 
 \item{prior_prec2_df}{Numeric > 0, degrees of freedom \eqn{\nu_2} of the Half-t
 prior for \eqn{\sqrt{W_2}}. Default \code{1} (Half-Cauchy).}
 
 \item{prior_prec3_type}{Character, prior on the acceleration innovation
-precision \eqn{1/W_3}: \code{"gamma"} (default), or \code{"halft"} / \code{"halfcauchy"}.}
+precision \eqn{1/W_3}: \code{"halfcauchy"} (default) or \code{"halft"} for a Half-t /
+Half-Cauchy prior on \eqn{\sqrt{W_3}} (Gelman, 2006), or \code{"gamma"} for a
+Gamma prior on the precision. The default changed in 0.5-0; a call that
+supplies \code{prior_prec3_shape}/\code{prior_prec3_rate} without naming a type is
+still read as \code{"gamma"}, so existing code keeps working.}
 
-\item{prior_prec3_scale}{Numeric > 0, scale \eqn{A_3} of the Half-t prior for
-\eqn{\sqrt{W_3}}. Required when \code{prior_prec3_type} is \code{"halft"}/\code{"halfcauchy"}.}
+\item{prior_prec3_scale}{Numeric > 0, scale \eqn{A} of the Half-t prior for
+\eqn{\sqrt{W_3}}. Default \code{2}, on the scale of the link -- a fixed value
+is enough here, unlike the Gaussian family, because the link scale carries
+no arbitrary units. Ignored when \code{prior_prec3_type = "gamma"}.}
 
 \item{prior_prec3_df}{Numeric > 0, degrees of freedom \eqn{\nu_3} of the Half-t
 prior for \eqn{\sqrt{W_3}}. Default \code{1} (Half-Cauchy).}

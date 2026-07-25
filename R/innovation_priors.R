@@ -72,14 +72,21 @@ observation_prior_scale <- function(y) {
 #' `type = "halfcauchy", shape = 1` still errors on the unused `shape` through
 #' the usual validation rather than being silently reinterpreted.
 #'
+#' The test is on whether the caller *supplied* the hyperparameters, not on
+#' whether they are non-`NULL`. The Gaussian wrappers default them to `NULL`, so
+#' the two coincide there, but the mixture wrappers default them to `0.01` — a
+#' `NULL` test would read those defaults as a user's Gamma specification and
+#' pin every mixture fit to a Gamma. Callers pass `!missing(...)`, which
+#' `missing()` requires be evaluated in the frame that owns the argument.
+#'
 #' @param type The resolved type, after `match.arg()`.
 #' @param type_user_set Whether the caller named the type.
-#' @param shape,rate The Gamma hyperparameters as supplied (possibly `NULL`).
+#' @param hyper_user_set Whether the caller supplied `shape` or `rate`.
 #'
 #' @return The type to use.
 #'
 #' @keywords internal
 #' @noRd
-infer_gamma_from_hyperparams <- function(type, type_user_set, shape, rate) {
-  if (!type_user_set && (!is.null(shape) || !is.null(rate))) "gamma" else type
+infer_gamma_from_hyperparams <- function(type, type_user_set, hyper_user_set) {
+  if (!type_user_set && hyper_user_set) "gamma" else type
 }

@@ -251,21 +251,29 @@
 #'   \eqn{\theta_{0,3}}. Default is 0.01 (vague prior).
 #' @param prior_prec1_type,prior_prec1_scale,prior_prec1_df Prior on the level
 #'   innovation precision \eqn{1/W_1} (Half-t placed on \eqn{\sqrt{W_1}}); see
-#'   `prior_prec01_type` for the argument meanings.
+#'   `prior_prec01_type` for the argument meanings. Defaults to
+#'   `"halfcauchy"` with `scale = 2` on the link scale since 0.5-0; a bare
+#'   `shape`/`rate` pair without a named type is still read as `"gamma"`.
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the level innovation precision \eqn{1/W_1}. Default is 0.01 (vague prior).
 #'   Used only when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for
 #'   \eqn{1/W_1}. Default is 0.01 (vague prior). Used only when `prior_prec1_type = "gamma"`.
 #' @param prior_prec2_type,prior_prec2_scale,prior_prec2_df Prior on the trend
-#'   innovation precision \eqn{1/W_2} (Half-t placed on \eqn{\sqrt{W_2}}).
+#'   innovation precision \eqn{1/W_2} (Half-t placed on \eqn{\sqrt{W_2}}); see
+#'   `prior_prec01_type` for the argument meanings. Defaults to
+#'   `"halfcauchy"` with `scale = 2` on the link scale since 0.5-0; a bare
+#'   `shape`/`rate` pair without a named type is still read as `"gamma"`.
 #' @param prior_prec2_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the trend innovation precision \eqn{1/W_2}. Default is 0.01 (vague prior).
 #'   Used only when `prior_prec2_type = "gamma"`.
 #' @param prior_prec2_rate Numeric > 0, rate parameter of the Gamma prior for
 #'   \eqn{1/W_2}. Default is 0.01 (vague prior). Used only when `prior_prec2_type = "gamma"`.
-#' @param prior_prec3_type,prior_prec3_scale,prior_prec3_df Prior on the
-#'   acceleration innovation precision \eqn{1/W_3} (Half-t on \eqn{\sqrt{W_3}}).
+#' @param prior_prec3_type,prior_prec3_scale,prior_prec3_df Prior on the acceleration
+#'   innovation precision \eqn{1/W_3} (Half-t placed on \eqn{\sqrt{W_3}}); see
+#'   `prior_prec01_type` for the argument meanings. Defaults to
+#'   `"halfcauchy"` with `scale = 2` on the link scale since 0.5-0; a bare
+#'   `shape`/`rate` pair without a named type is still read as `"gamma"`.
 #' @param prior_prec3_shape Numeric > 0, shape parameter of the Gamma prior for
 #'   the acceleration innovation precision \eqn{1/W_3}. Default is 0.01 (vague prior).
 #'   Used only when `prior_prec3_type = "gamma"`.
@@ -632,14 +640,14 @@ mcmc_normal_mixture_localacceleration <- function(y,
                                                   prior_prec02_type = c("gamma", "halfcauchy", "halft"),
                                                   prior_prec02_scale = NULL,
                                                   prior_prec02_df = 1,
-                                                  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
-                                                  prior_prec1_scale = NULL,
+                                                  prior_prec1_type = c("halfcauchy", "gamma", "halft"),
+                                                  prior_prec1_scale = 2,
                                                   prior_prec1_df = 1,
-                                                  prior_prec2_type = c("gamma", "halfcauchy", "halft"),
-                                                  prior_prec2_scale = NULL,
+                                                  prior_prec2_type = c("halfcauchy", "gamma", "halft"),
+                                                  prior_prec2_scale = 2,
                                                   prior_prec2_df = 1,
-                                                  prior_prec3_type = c("gamma", "halfcauchy", "halft"),
-                                                  prior_prec3_scale = NULL,
+                                                  prior_prec3_type = c("halfcauchy", "gamma", "halft"),
+                                                  prior_prec3_scale = 2,
                                                   prior_prec3_df = 1,
                                                   chains = 1,
                                                   parallel = FALSE) {
@@ -662,9 +670,30 @@ mcmc_normal_mixture_localacceleration <- function(y,
   prec3_df_user_set  <- !missing(prior_prec3_df)
   prior_prec01_type  <- match.arg(prior_prec01_type)
   prior_prec02_type  <- match.arg(prior_prec02_type)
+  # Whether the type was named decides how a bare shape/rate pair is read
+  # (see infer_gamma_from_hyperparams() in R/innovation_priors.R).
+  prec1_type_user_set <- !missing(prior_prec1_type)
+  prec2_type_user_set <- !missing(prior_prec2_type)
+  prec3_type_user_set <- !missing(prior_prec3_type)
+
   prior_prec1_type   <- match.arg(prior_prec1_type)
   prior_prec2_type   <- match.arg(prior_prec2_type)
   prior_prec3_type   <- match.arg(prior_prec3_type)
+
+  prior_prec1_type <- infer_gamma_from_hyperparams(
+    prior_prec1_type, prec1_type_user_set,
+    !missing(prior_prec1_shape) || !missing(prior_prec1_rate)
+  )
+
+  prior_prec2_type <- infer_gamma_from_hyperparams(
+    prior_prec2_type, prec2_type_user_set,
+    !missing(prior_prec2_shape) || !missing(prior_prec2_rate)
+  )
+
+  prior_prec3_type <- infer_gamma_from_hyperparams(
+    prior_prec3_type, prec3_type_user_set,
+    !missing(prior_prec3_shape) || !missing(prior_prec3_rate)
+  )
   # --- Input Validation ---
 
   # Validate y

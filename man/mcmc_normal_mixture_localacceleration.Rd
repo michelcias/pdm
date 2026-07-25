@@ -47,14 +47,14 @@ mcmc_normal_mixture_localacceleration(
   prior_prec02_type = c("gamma", "halfcauchy", "halft"),
   prior_prec02_scale = NULL,
   prior_prec02_df = 1,
-  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
-  prior_prec1_scale = NULL,
+  prior_prec1_type = c("halfcauchy", "gamma", "halft"),
+  prior_prec1_scale = 2,
   prior_prec1_df = 1,
-  prior_prec2_type = c("gamma", "halfcauchy", "halft"),
-  prior_prec2_scale = NULL,
+  prior_prec2_type = c("halfcauchy", "gamma", "halft"),
+  prior_prec2_scale = 2,
   prior_prec2_df = 1,
-  prior_prec3_type = c("gamma", "halfcauchy", "halft"),
-  prior_prec3_scale = NULL,
+  prior_prec3_type = c("halfcauchy", "gamma", "halft"),
+  prior_prec3_scale = 2,
   prior_prec3_df = 1,
   chains = 1,
   parallel = FALSE
@@ -219,13 +219,21 @@ component-2 precision \eqn{\phi_2} (Half-t placed on \eqn{\sqrt{1/\phi_2}}).}
 
 \item{prior_prec1_type, prior_prec1_scale, prior_prec1_df}{Prior on the level
 innovation precision \eqn{1/W_1} (Half-t placed on \eqn{\sqrt{W_1}}); see
-\code{prior_prec01_type} for the argument meanings.}
+\code{prior_prec01_type} for the argument meanings. Defaults to
+\code{"halfcauchy"} with \code{scale = 2} on the link scale since 0.5-0; a bare
+\code{shape}/\code{rate} pair without a named type is still read as \code{"gamma"}.}
 
 \item{prior_prec2_type, prior_prec2_scale, prior_prec2_df}{Prior on the trend
-innovation precision \eqn{1/W_2} (Half-t placed on \eqn{\sqrt{W_2}}).}
+innovation precision \eqn{1/W_2} (Half-t placed on \eqn{\sqrt{W_2}}); see
+\code{prior_prec01_type} for the argument meanings. Defaults to
+\code{"halfcauchy"} with \code{scale = 2} on the link scale since 0.5-0; a bare
+\code{shape}/\code{rate} pair without a named type is still read as \code{"gamma"}.}
 
-\item{prior_prec3_type, prior_prec3_scale, prior_prec3_df}{Prior on the
-acceleration innovation precision \eqn{1/W_3} (Half-t on \eqn{\sqrt{W_3}}).}
+\item{prior_prec3_type, prior_prec3_scale, prior_prec3_df}{Prior on the acceleration
+innovation precision \eqn{1/W_3} (Half-t placed on \eqn{\sqrt{W_3}}); see
+\code{prior_prec01_type} for the argument meanings. Defaults to
+\code{"halfcauchy"} with \code{scale = 2} on the link scale since 0.5-0; a bare
+\code{shape}/\code{rate} pair without a named type is still read as \code{"gamma"}.}
 
 \item{chains}{Integer \eqn{\geq 1}, number of independent chains to run.
 Default is \code{1}, which returns a single fitted object exactly as before.

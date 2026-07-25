@@ -179,30 +179,46 @@
 #' @param prior_theta02_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,2}}.
 #' @param prior_theta03_mean Numeric, prior mean for the initial state \eqn{\theta_{0,3}}.
 #' @param prior_theta03_prec Numeric > 0, prior precision (inverse variance) for \eqn{\theta_{0,3}}.
-#' @param prior_prec1_type Character, prior on the level innovation precision
-#'   \eqn{1/W_1}: `"gamma"` (default), or `"halft"` / `"halfcauchy"` for a Half-t
-#'   / Half-Cauchy prior on \eqn{\sqrt{W_1}} (Gelman, 2006). `"halfcauchy"` is
-#'   Half-t with `df = 1`.
+#' @param prior_prec1_type Character, prior on the level innovation
+#'   precision \eqn{1/W_1}: `"halfcauchy"` (default) or `"halft"` for a Half-t /
+#'   Half-Cauchy prior on \eqn{\sqrt{W_1}} (Gelman, 2006), or `"gamma"` for a
+#'   Gamma prior on the precision. The default changed in 0.5-0; a call that
+#'   supplies `prior_prec1_shape`/`prior_prec1_rate` without naming a type is
+#'   still read as `"gamma"`, so existing code keeps working.
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
-#' @param prior_prec1_scale Numeric > 0, scale \eqn{A_1} of the Half-t prior for
-#'   \eqn{\sqrt{W_1}}. Required when `prior_prec1_type` is `"halft"`/`"halfcauchy"`.
+#' @param prior_prec1_scale Numeric > 0, scale \eqn{A} of the Half-t prior for
+#'   \eqn{\sqrt{W_1}}. Default `2`, on the scale of the link -- a fixed value
+#'   is enough here, unlike the Gaussian family, because the link scale carries
+#'   no arbitrary units. Ignored when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_df Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
 #'   prior for \eqn{\sqrt{W_1}}. Default `1` (Half-Cauchy).
-#' @param prior_prec2_type Character, prior on the trend innovation precision
-#'   \eqn{1/W_2}: `"gamma"` (default), or `"halft"` / `"halfcauchy"`.
+#' @param prior_prec2_type Character, prior on the trend innovation
+#'   precision \eqn{1/W_2}: `"halfcauchy"` (default) or `"halft"` for a Half-t /
+#'   Half-Cauchy prior on \eqn{\sqrt{W_2}} (Gelman, 2006), or `"gamma"` for a
+#'   Gamma prior on the precision. The default changed in 0.5-0; a call that
+#'   supplies `prior_prec2_shape`/`prior_prec2_rate` without naming a type is
+#'   still read as `"gamma"`, so existing code keeps working.
 #' @param prior_prec2_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_2}. Required (and used) only when `prior_prec2_type = "gamma"`.
 #' @param prior_prec2_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_2}. Required (and used) only when `prior_prec2_type = "gamma"`.
-#' @param prior_prec2_scale Numeric > 0, scale \eqn{A_2} of the Half-t prior for
-#'   \eqn{\sqrt{W_2}}. Required when `prior_prec2_type` is `"halft"`/`"halfcauchy"`.
+#' @param prior_prec2_scale Numeric > 0, scale \eqn{A} of the Half-t prior for
+#'   \eqn{\sqrt{W_2}}. Default `2`, on the scale of the link -- a fixed value
+#'   is enough here, unlike the Gaussian family, because the link scale carries
+#'   no arbitrary units. Ignored when `prior_prec2_type = "gamma"`.
 #' @param prior_prec2_df Numeric > 0, degrees of freedom \eqn{\nu_2} of the Half-t
 #'   prior for \eqn{\sqrt{W_2}}. Default `1` (Half-Cauchy).
 #' @param prior_prec3_type Character, prior on the acceleration innovation
-#'   precision \eqn{1/W_3}: `"gamma"` (default), or `"halft"` / `"halfcauchy"`.
+#'   precision \eqn{1/W_3}: `"halfcauchy"` (default) or `"halft"` for a Half-t /
+#'   Half-Cauchy prior on \eqn{\sqrt{W_3}} (Gelman, 2006), or `"gamma"` for a
+#'   Gamma prior on the precision. The default changed in 0.5-0; a call that
+#'   supplies `prior_prec3_shape`/`prior_prec3_rate` without naming a type is
+#'   still read as `"gamma"`, so existing code keeps working.
 #' @param prior_prec3_shape Numeric > 0, shape parameter of the Gamma prior for \eqn{1/W_3}. Required (and used) only when `prior_prec3_type = "gamma"`.
 #' @param prior_prec3_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{1/W_3}. Required (and used) only when `prior_prec3_type = "gamma"`.
-#' @param prior_prec3_scale Numeric > 0, scale \eqn{A_3} of the Half-t prior for
-#'   \eqn{\sqrt{W_3}}. Required when `prior_prec3_type` is `"halft"`/`"halfcauchy"`.
+#' @param prior_prec3_scale Numeric > 0, scale \eqn{A} of the Half-t prior for
+#'   \eqn{\sqrt{W_3}}. Default `2`, on the scale of the link -- a fixed value
+#'   is enough here, unlike the Gaussian family, because the link scale carries
+#'   no arbitrary units. Ignored when `prior_prec3_type = "gamma"`.
 #' @param prior_prec3_df Numeric > 0, degrees of freedom \eqn{\nu_3} of the Half-t
 #'   prior for \eqn{\sqrt{W_3}}. Default `1` (Half-Cauchy).
 #' @param lag_update Integer \eqn{\geq 1}, adaptation frequency (sliding window size) for
@@ -414,14 +430,14 @@ mcmc_binomial_localacceleration <- function(y,
                                             verbose = TRUE,
                                             bar_width = 60,
                                             seed = NULL,
-                                            prior_prec1_type = c("gamma", "halfcauchy", "halft"),
-                                            prior_prec1_scale = NULL,
+                                            prior_prec1_type = c("halfcauchy", "gamma", "halft"),
+                                            prior_prec1_scale = 2,
                                             prior_prec1_df = 1,
-                                            prior_prec2_type = c("gamma", "halfcauchy", "halft"),
-                                            prior_prec2_scale = NULL,
+                                            prior_prec2_type = c("halfcauchy", "gamma", "halft"),
+                                            prior_prec2_scale = 2,
                                             prior_prec2_df = 1,
-                                            prior_prec3_type = c("gamma", "halfcauchy", "halft"),
-                                            prior_prec3_scale = NULL,
+                                            prior_prec3_type = c("halfcauchy", "gamma", "halft"),
+                                            prior_prec3_scale = 2,
                                             prior_prec3_df = 1,
                                             chains = 1,
                                             parallel = FALSE) {
@@ -440,9 +456,30 @@ mcmc_binomial_localacceleration <- function(y,
   prec1_df_user_set <- !missing(prior_prec1_df)
   prec2_df_user_set <- !missing(prior_prec2_df)
   prec3_df_user_set <- !missing(prior_prec3_df)
+  # Whether the type was named decides how a bare shape/rate pair is read
+  # (see infer_gamma_from_hyperparams() in R/innovation_priors.R).
+  prec1_type_user_set <- !missing(prior_prec1_type)
+  prec2_type_user_set <- !missing(prior_prec2_type)
+  prec3_type_user_set <- !missing(prior_prec3_type)
+
   prior_prec1_type  <- match.arg(prior_prec1_type)
   prior_prec2_type  <- match.arg(prior_prec2_type)
   prior_prec3_type  <- match.arg(prior_prec3_type)
+
+  prior_prec1_type <- infer_gamma_from_hyperparams(
+    prior_prec1_type, prec1_type_user_set,
+    !missing(prior_prec1_shape) || !missing(prior_prec1_rate)
+  )
+
+  prior_prec2_type <- infer_gamma_from_hyperparams(
+    prior_prec2_type, prec2_type_user_set,
+    !missing(prior_prec2_shape) || !missing(prior_prec2_rate)
+  )
+
+  prior_prec3_type <- infer_gamma_from_hyperparams(
+    prior_prec3_type, prec3_type_user_set,
+    !missing(prior_prec3_shape) || !missing(prior_prec3_rate)
+  )
 
   # --- Input Validation ---
   if (!is.numeric(y)) stop("`y` must be a numeric vector")

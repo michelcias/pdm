@@ -163,18 +163,20 @@
 #'   \eqn{\theta_{0,1}}.
 #' @param prior_theta01_prec Numeric > 0, prior precision (inverse variance)
 #'   for \eqn{\theta_{0,1}}.
-#' @param prior_prec1_type Character, prior on the innovation precision
-#'   \eqn{1/W_1}: `"gamma"` (default) for a Gamma prior on the precision, or
-#'   `"halft"` / `"halfcauchy"` for a Half-t / Half-Cauchy prior on the
-#'   innovation standard deviation \eqn{\sqrt{W_1}} (Gelman, 2006). `"halfcauchy"`
-#'   is Half-t with `df = 1`.
+#' @param prior_prec1_type Character, prior on the level innovation
+#'   precision \eqn{1/W_1}: `"halfcauchy"` (default) or `"halft"` for a Half-t /
+#'   Half-Cauchy prior on \eqn{\sqrt{W_1}} (Gelman, 2006), or `"gamma"` for a
+#'   Gamma prior on the precision. The default changed in 0.5-0; a call that
+#'   supplies `prior_prec1_shape`/`prior_prec1_rate` without naming a type is
+#'   still read as `"gamma"`, so existing code keeps working.
 #' @param prior_prec1_shape Numeric > 0, shape parameter of the Gamma prior
 #'   for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_rate Numeric > 0, rate parameter of the Gamma prior
 #'   for \eqn{1/W_1}. Required (and used) only when `prior_prec1_type = "gamma"`.
-#' @param prior_prec1_scale Numeric > 0, scale \eqn{A_1} of the Half-t prior for
-#'   \eqn{\sqrt{W_1}}. Required when `prior_prec1_type` is `"halft"` or
-#'   `"halfcauchy"`; ignored otherwise.
+#' @param prior_prec1_scale Numeric > 0, scale \eqn{A} of the Half-t prior for
+#'   \eqn{\sqrt{W_1}}. Default `2`, on the scale of the link -- a fixed value
+#'   is enough here, unlike the Gaussian family, because the link scale carries
+#'   no arbitrary units. Ignored when `prior_prec1_type = "gamma"`.
 #' @param prior_prec1_df Numeric > 0, degrees of freedom \eqn{\nu_1} of the Half-t
 #'   prior for \eqn{\sqrt{W_1}}. Default `1` (Half-Cauchy). Must equal `1` when
 #'   `prior_prec1_type = "halfcauchy"`.
@@ -356,8 +358,8 @@ mcmc_binomial_locallevel <- function(y,
                                      verbose = TRUE,
                                      bar_width = 60,
                                      seed = NULL,
-                                     prior_prec1_type = c("gamma", "halfcauchy", "halft"),
-                                     prior_prec1_scale = NULL,
+                                     prior_prec1_type = c("halfcauchy", "gamma", "halft"),
+                                     prior_prec1_scale = 2,
                                      prior_prec1_df = 1,
                                      chains = 1,
                                      parallel = FALSE) {
@@ -376,7 +378,16 @@ mcmc_binomial_locallevel <- function(y,
   # contradictory `type = "halfcauchy"` + `df != 1`). `missing()` must be read
   # before the argument is touched.
   prec1_df_user_set <- !missing(prior_prec1_df)
+  # Whether the type was named decides how a bare shape/rate pair is read
+  # (see infer_gamma_from_hyperparams() in R/innovation_priors.R).
+  prec1_type_user_set <- !missing(prior_prec1_type)
+
   prior_prec1_type  <- match.arg(prior_prec1_type)
+
+  prior_prec1_type <- infer_gamma_from_hyperparams(
+    prior_prec1_type, prec1_type_user_set,
+    !missing(prior_prec1_shape) || !missing(prior_prec1_rate)
+  )
   # --- Input Validation ---
   if (!is.numeric(y)) {
     stop("`y` must be a numeric vector")

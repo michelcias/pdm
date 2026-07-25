@@ -304,10 +304,12 @@ mcmc_normal_locallevel <- function(y,
   prior_prec_y_type <- match.arg(prior_prec_y_type)
 
   prior_prec1_type <- infer_gamma_from_hyperparams(
-    prior_prec1_type, prec1_type_user_set, prior_prec1_shape, prior_prec1_rate
+    prior_prec1_type, prec1_type_user_set,
+    !missing(prior_prec1_shape) || !missing(prior_prec1_rate)
   )
   prior_prec_y_type <- infer_gamma_from_hyperparams(
-    prior_prec_y_type, prec_y_type_user_set, prior_prec_y_shape, prior_prec_y_rate
+    prior_prec_y_type, prec_y_type_user_set,
+    !missing(prior_prec_y_shape) || !missing(prior_prec_y_rate)
   )
   # --- Input Validation ---
   if (!is.numeric(y)) {

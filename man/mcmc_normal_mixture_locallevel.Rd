@@ -39,8 +39,8 @@ mcmc_normal_mixture_locallevel(
   prior_prec02_type = c("gamma", "halfcauchy", "halft"),
   prior_prec02_scale = NULL,
   prior_prec02_df = 1,
-  prior_prec1_type = c("gamma", "halfcauchy", "halft"),
-  prior_prec1_scale = NULL,
+  prior_prec1_type = c("halfcauchy", "gamma", "halft"),
+  prior_prec1_scale = 2,
   prior_prec1_df = 1,
   chains = 1,
   parallel = FALSE
@@ -182,12 +182,17 @@ Required when \code{prior_prec02_type} is \code{"halft"}/\code{"halfcauchy"}.}
 \item{prior_prec02_df}{Numeric > 0, Half-t df for \eqn{\sqrt{1/\phi_2}}.
 Default \code{1} (Half-Cauchy).}
 
-\item{prior_prec1_type}{Character, prior on the level innovation precision
-\eqn{1/W_1} (\code{"gamma"} default, or \code{"halft"} / \code{"halfcauchy"} for a Half-t /
-Half-Cauchy prior on \eqn{\sqrt{W_1}}).}
+\item{prior_prec1_type}{Character, prior on the level innovation
+precision \eqn{1/W_1}: \code{"halfcauchy"} (default) or \code{"halft"} for a Half-t /
+Half-Cauchy prior on \eqn{\sqrt{W_1}} (Gelman, 2006), or \code{"gamma"} for a
+Gamma prior on the precision. The default changed in 0.5-0; a call that
+supplies \code{prior_prec1_shape}/\code{prior_prec1_rate} without naming a type is
+still read as \code{"gamma"}, so existing code keeps working.}
 
-\item{prior_prec1_scale}{Numeric > 0, Half-t scale \eqn{A_1} for \eqn{\sqrt{W_1}}.
-Required when \code{prior_prec1_type} is \code{"halft"}/\code{"halfcauchy"}.}
+\item{prior_prec1_scale}{Numeric > 0, scale \eqn{A} of the Half-t prior for
+\eqn{\sqrt{W_1}}. Default \code{2}, on the scale of the link -- a fixed value
+is enough here, unlike the Gaussian family, because the link scale carries
+no arbitrary units. Ignored when \code{prior_prec1_type = "gamma"}.}
 
 \item{prior_prec1_df}{Numeric > 0, Half-t df \eqn{\nu_1} for \eqn{\sqrt{W_1}}.
 Default \code{1} (Half-Cauchy).}

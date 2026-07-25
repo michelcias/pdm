@@ -83,12 +83,12 @@ test_that("Half-t prior with df > 1 and a mixed Gamma/Half-t specification run",
 test_that("invalid prior specifications are rejected with informative errors", {
   y <- make_y()
 
-  # Half-t / Half-Cauchy without a scale.
-  expect_error(
-    run_ll(y, prior_prec1_type = "halfcauchy",
-           prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2),
-    "scale"
-  )
+  # A Half-t without a scale is no longer an error: the scale is derived from
+  # the data (see R/innovation_priors.R). This is the 0.4-0 contract.
+  fit <- run_ll(y, prior_prec1_type = "halfcauchy",
+                prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2)
+  expect_equal(attr(fit, "prior_prec_theta1")$scale,
+               sd(diff(y)) / (2 * sqrt(2)))
 
   # "halfcauchy" contradicted by df != 1.
   expect_error(
@@ -98,9 +98,11 @@ test_that("invalid prior specifications are rejected with informative errors", {
     "df = 1"
   )
 
-  # Gamma prior but shape/rate omitted.
+  # Gamma asked for by name, but shape/rate omitted. Naming the type is what
+  # makes this an error now -- a bare shape/rate pair is read as Gamma instead.
   expect_error(
-    run_ll(y, prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2),
+    run_ll(y, prior_prec1_type = "gamma",
+           prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2),
     "gamma"
   )
 })

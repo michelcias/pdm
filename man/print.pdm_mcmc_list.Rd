@@ -47,7 +47,6 @@ plot(fits[[1]], type = "states")   # methods apply to a single chain
 }
 \seealso{
 \code{\link{mcmc_convergence}} for the multi-chain diagnostics;
-\code{\link{mcmc_normal_locallevel}}, \code{\link{mcmc_normal_localtrend}}
-and \code{\link{mcmc_normal_localacceleration}} for the samplers that
-accept \code{chains}.
+\code{\link{pdm}} for the catalog of samplers, all of which accept
+\code{chains}.
 }

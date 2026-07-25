@@ -280,9 +280,20 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   prec_theta1_previous   = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
 
-  /* Initialize theta_1 and alpha with efficient neutral starting values */
+  /* Start each trajectory flat at this chain's own prior-drawn initial level.
+   * A hard-coded zero would be identical in every chain, which costs the
+   * Gelman-Rubin statistic its power: with a common starting point the chains
+   * can settle in the same region and R-hat approaches 1 spuriously. Drawing
+   * the trajectory from the prior random walk instead would disperse them
+   * further, but under a vague precision prior it can reach |theta| ~ 1e3,
+   * which saturates the link and stalls the MH step.
+   *
+   * alpha_current is not set from theta here: generate_alpha_* writes it under
+   * the same condition that guards the only read of it, so its value at this
+   * point is never observed.
+   */
   for (int t = 0; t < n; t++) {
-    theta_1_previous[t] = 0.0;   /* Zeros for state trajectory */
+    theta_1_previous[t] = theta_01_previous;
     alpha_current[t]    = 0.5;   /* Neutral probability for success rates */
   }
 
@@ -613,9 +624,20 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
   theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
   prec_theta1_previous   = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
 
-  /* Initialize theta_1 and alpha with efficient neutral starting values */
+  /* Start each trajectory flat at this chain's own prior-drawn initial level.
+   * A hard-coded zero would be identical in every chain, which costs the
+   * Gelman-Rubin statistic its power: with a common starting point the chains
+   * can settle in the same region and R-hat approaches 1 spuriously. Drawing
+   * the trajectory from the prior random walk instead would disperse them
+   * further, but under a vague precision prior it can reach |theta| ~ 1e3,
+   * which saturates the link and stalls the MH step.
+   *
+   * alpha_current is not set from theta here: generate_alpha_* writes it under
+   * the same condition that guards the only read of it, so its value at this
+   * point is never observed.
+   */
   for (int t = 0; t < n; t++) {
-    theta_1_previous[t] = 0.0;   /* Zeros for state trajectory */
+    theta_1_previous[t] = theta_01_previous;
     alpha_current[t]    = 0.5;   /* Neutral probability for success rates */
   }
 

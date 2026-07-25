@@ -170,7 +170,6 @@ for assessing convergence of MCMC (with discussion).
 \seealso{
 \code{\link{mcmc_convergence}} for the single-chain diagnostics;
 \code{\link{print.pdm_mcmc_list}} for the multi-chain fit object;
-\code{\link{mcmc_normal_locallevel}}, \code{\link{mcmc_normal_localtrend}}
-and \code{\link{mcmc_normal_localacceleration}} for the samplers that
-accept \code{chains}.
+\code{\link{pdm}} for the catalog of samplers, all of which accept
+\code{chains}.
 }

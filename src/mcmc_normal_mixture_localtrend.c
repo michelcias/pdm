@@ -489,12 +489,27 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
   prec_theta1_previous  = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
   prec_theta2_previous  = pdm_init_prec_prior(prec2_kind, &prior_W2, &aux_W2);
 
-  /* Initialize state vectors with neutral starting values */
+  /* Start each trajectory flat at this chain's own prior-drawn initial level.
+   * A hard-coded zero would be identical in every chain, which costs the
+   * Gelman-Rubin statistic its power: with a common starting point the chains
+   * can settle in the same region and R-hat approaches 1 spuriously. Drawing
+   * the trajectory from the prior random walk instead would disperse them
+   * further, but under a vague precision prior it can reach |theta| ~ 1e3,
+   * which saturates the link and stalls the MH step.
+   *
+   * alpha_current is not set from theta here: generate_alpha_* writes it under
+   * the same condition that guards the only read of it, so its value at this
+   * point is never observed.
+   *
+   * z_current, by contrast, IS read before it is written (the component
+   * parameters are drawn from it in step 1), so an all-zero start would put
+   * every observation in the same component in every chain.
+   */
   for (int t = 0; t < n; t++) {
-    theta_1_previous[t] = 0.0;
-    theta_2_previous[t] = 0.0;
+    theta_1_previous[t] = theta_01_previous;
+    theta_2_previous[t] = theta_02_previous;
     alpha_current[t]    = 0.5;
-    z_current[t]        = 0.0;  /* Start with component 1 */
+    z_current[t]        = (unif_rand() < 0.5) ? 1.0 : 0.0;
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */

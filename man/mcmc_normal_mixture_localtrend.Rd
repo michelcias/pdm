@@ -48,7 +48,9 @@ mcmc_normal_mixture_localtrend(
   prior_prec1_df = 1,
   prior_prec2_type = c("gamma", "halfcauchy", "halft"),
   prior_prec2_scale = NULL,
-  prior_prec2_df = 1
+  prior_prec2_df = 1,
+  chains = 1,
+  parallel = FALSE
 )
 }
 \arguments{
@@ -164,7 +166,9 @@ Default is \code{FALSE}.}
 \code{verbose = TRUE}. Default is \code{60}.}
 
 \item{seed}{Optional integer used to set the random number generator seed.
-Default is \code{NULL}, which does not set the seed.}
+Default is \code{NULL}, which does not set the seed.
+When \code{chains > 1} it acts as a master seed from which each chain's own
+seed is drawn.}
 
 \item{prior_prec01_type, prior_prec01_scale, prior_prec01_df}{Prior on the
 component-1 precision \eqn{\phi_1}: \code{type} is \code{"gamma"} (default), \code{"halft"},
@@ -181,6 +185,20 @@ innovation precision \eqn{1/W_1} (Half-t placed on \eqn{\sqrt{W_1}}); see
 
 \item{prior_prec2_type, prior_prec2_scale, prior_prec2_df}{Prior on the trend
 innovation precision \eqn{1/W_2} (Half-t placed on \eqn{\sqrt{W_2}}).}
+
+\item{chains}{Integer \eqn{\geq 1}, number of independent chains to run.
+Default is \code{1}, which returns a single fitted object exactly as before.
+With \code{chains > 1} the sampler is re-run once per chain -- each starting
+from its own values drawn from the priors -- and an object of class
+\code{"pdm_mcmc_list"} is returned, which \code{\link{mcmc_convergence}} turns
+into R-hat and effective sample sizes. The progress bar is disabled in this
+case, since several bars sharing one console interleave.}
+
+\item{parallel}{Logical, whether to run the chains through
+\code{parallel::mclapply()}. Used only when \code{chains > 1}. The result does not
+depend on this setting: every chain receives an explicit seed, so a given
+\code{seed} reproduces the same output sequentially or in parallel. Default is
+\code{FALSE}.}
 }
 \value{
 A list with components:
@@ -220,6 +238,10 @@ and \code{link = "logit"}.}
 \eqn{[n_{chain} \times n]} of acceptance proportions for each time point.
 Only returned if \code{return_accept_prop = TRUE} and \code{link = "logit"}.}
 }
+
+When \code{chains > 1} the return value is instead an object of class
+\code{c("pdm_mcmc_list", "list")} holding one such fit per chain; see
+\code{\link{print.pdm_mcmc_list}}.
 }
 \description{
 Runs a Gibbs sampler for a two-component Gaussian mixture model

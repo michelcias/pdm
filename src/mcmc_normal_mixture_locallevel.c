@@ -364,9 +364,9 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
   prec_theta1_previous = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
 
   for (int t = 0; t < n; t++) {
-    theta_1_previous[t] = 0.0;
+    theta_1_previous[t] = theta_01_previous;
     alpha_current[t]    = 0.5;
-    z_current[t]        = 0.0;
+    z_current[t]        = (unif_rand() < 0.5) ? 1.0 : 0.0;
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */

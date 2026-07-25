@@ -178,6 +178,68 @@ test_that("print methods run without error", {
 })
 
 
+test_that("chains works for every non-Gaussian family", {
+  # Structural coverage of the phase-2 wiring: one model per family, tiny runs.
+  set.seed(3)
+  n <- 40
+  p <- plogis(cumsum(rnorm(n, sd = 0.2)))
+
+  gamma_w1 <- list(prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2)
+
+  binom <- do.call(mcmc_binomial_locallevel, c(
+    list(rbinom(n, 10, p), n_trials = 10, 20, 1, 40,
+         prior_theta01_mean = 0, prior_theta01_prec = 1,
+         verbose = FALSE, seed = 1, chains = 2), gamma_w1
+  ))
+  pois <- do.call(mcmc_poisson_locallevel, c(
+    list(rpois(n, exp(0.5 + cumsum(rnorm(n, sd = 0.1)))), 20, 1, 40,
+         prior_theta01_mean = 0, prior_theta01_prec = 1,
+         verbose = FALSE, seed = 1, chains = 2), gamma_w1
+  ))
+  probit <- do.call(mcmc_probit_bernoulli_locallevel, c(
+    list(rbinom(n, 1, p), 20, 1, 40,
+         prior_theta01_mean = 0, prior_theta01_prec = 1,
+         verbose = FALSE, seed = 1, chains = 2), gamma_w1
+  ))
+  mixture <- mcmc_normal_mixture_locallevel(
+    ifelse(rbinom(n, 1, p) == 1, rnorm(n, 3, 0.5), rnorm(n, 0, 0.5)),
+    link = "logit", 20, 1, 40, verbose = FALSE, seed = 1, chains = 2
+  )
+
+  for (fit in list(binom, pois, probit, mixture)) {
+    expect_s3_class(fit, "pdm_mcmc_list")
+    expect_length(fit, 2L)
+    expect_false(identical(fit[[1L]]$theta_1, fit[[2L]]$theta_1))
+    expect_s3_class(mcmc_convergence(fit, theta_timepoints = 0.5),
+                    "pdm_convergence_multi")
+  }
+})
+
+
+test_that("R-hat has power on a non-Gaussian family too (phase-2 init)", {
+  # Until the phase-2 fix these samplers started every chain's trajectory at a
+  # hard-coded theta = 0, which suppressed the between-chain variance R-hat
+  # depends on. With the fix an under-burned run must be flagged, exactly as it
+  # already was for the Gaussian family.
+  set.seed(7)
+  n <- 60
+  y <- rbinom(n, 10, plogis(cumsum(rnorm(n, sd = 0.2))))
+
+  under <- mcmc_convergence(
+    mcmc_binomial_locallevel(
+      y, n_trials = 10, burnin = 50, thinning = 1, n_chain = 300,
+      prior_theta01_mean = 0, prior_theta01_prec = 1,
+      prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
+      verbose = FALSE, seed = 2024, chains = 4
+    ),
+    theta_timepoints = NULL
+  )
+
+  expect_gt(max(under$table$Rhat), 1.05)
+  expect_true(any(under$table$Overall == "POOR"))
+})
+
+
 test_that("chains works for the trend and acceleration samplers too", {
   set.seed(9)
   n  <- 100

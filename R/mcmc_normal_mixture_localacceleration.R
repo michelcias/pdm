@@ -386,6 +386,12 @@
 #' `c("pdm_mcmc_list", "list")` holding one such fit per chain; see
 #' \code{\link{print.pdm_mcmc_list}}.
 #'
+#'
+#' The object also carries `pdm_version`, `seed` and `priors` as attributes:
+#' the version that produced it, the seed as supplied, and every prior after
+#' resolution -- including the ones derived from the data, which never appear in
+#' the call. Splicing `attr(fit, "priors")` back into a fresh call reproduces the
+#' fit on any later version, whatever the defaults have become.
 #' @examples
 #' ## Description
 #' # This example demonstrates how to:
@@ -943,6 +949,10 @@ mcmc_normal_mixture_localacceleration <- function(y,
   # Record the RWMH target acceptance rate so plot(type = "acceptance") can draw
   # the correct reference line (logit link only; unused under the probit sampler).
   attr(result, "target_acceptance") <- as.numeric(target_acceptance)
+
+  # Record what produced this fit: version, seed and every resolved prior
+  # (see R/provenance.R). Must come after all defaults are filled in.
+  result <- record_provenance(result, seed)
 
   return(result)
 }

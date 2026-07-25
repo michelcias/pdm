@@ -253,6 +253,12 @@
 #' variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
 #' 6(4), 847-900.
 #'
+#'
+#' The object also carries `pdm_version`, `seed` and `priors` as attributes:
+#' the version that produced it, the seed as supplied, and every prior after
+#' resolution -- including the ones derived from the data, which never appear in
+#' the call. Splicing `attr(fit, "priors")` back into a fresh call reproduces the
+#' fit on any later version, whatever the defaults have become.
 #' @examples
 #' ## Description
 #' # This example demonstrates how to:
@@ -532,6 +538,10 @@ mcmc_binomial_locallevel <- function(y,
   # reproducibility). The auxiliary Half-t variable is a nuisance parameter and
   # is intentionally not returned.
   attr(result, "prior_prec_theta1") <- prec1_prior[c("type", "shape", "rate", "scale", "df")]
+
+  # Record what produced this fit: version, seed and every resolved prior
+  # (see R/provenance.R). Must come after all defaults are filled in.
+  result <- record_provenance(result, seed)
 
   return(result)
 }

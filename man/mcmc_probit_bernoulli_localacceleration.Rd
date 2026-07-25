@@ -167,6 +167,12 @@ samples for the Bernoulli probabilities \eqn{\alpha_t}.}
 When \code{chains > 1} the return value is instead an object of class
 \code{c("pdm_mcmc_list", "list")} holding one such fit per chain; see
 \code{\link{print.pdm_mcmc_list}}.
+
+The object also carries \code{pdm_version}, \code{seed} and \code{priors} as attributes:
+the version that produced it, the seed as supplied, and every prior after
+resolution -- including the ones derived from the data, which never appear in
+the call. Splicing \code{attr(fit, "priors")} back into a fresh call reproduces the
+fit on any later version, whatever the defaults have become.
 }
 \description{
 Runs a Gibbs sampler for the local-acceleration Bernoulli dynamic model

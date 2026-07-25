@@ -403,7 +403,13 @@ print.probit_bernoulli_localtrend <- function(x, digits = 3, ...) {
   cat("  Observations:      ", attr(x, "n_obs"), "\n", sep = "")
   cat("  Samples retained:  ", attr(x, "n_chain"), "\n", sep = "")
   cat("  Burn-in:           ", attr(x, "burnin"), "\n", sep = "")
-  cat("  Thinning:          ", attr(x, "thinning"), "\n\n", sep = "")
+  cat("  Thinning:          ", attr(x, "thinning"), "\n", sep = "")
+  # Which version and seed produced this fit. Several defaults have moved
+  # across releases, so a saved object needs to say where it came from.
+  cat("  pdm version:       ", attr(x, "pdm_version"), "\n", sep = "")
+  cat("  Seed:              ",
+      if (is.null(attr(x, "seed"))) "not set" else attr(x, "seed"),
+      "\n\n", sep = "")
 
   # Calculate medians with error handling
   tryCatch({

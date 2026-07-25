@@ -173,6 +173,12 @@
 #' `c("pdm_mcmc_list", "list")` holding one such fit per chain; see
 #' \code{\link{print.pdm_mcmc_list}}.
 #'
+#'
+#' The object also carries `pdm_version`, `seed` and `priors` as attributes:
+#' the version that produced it, the seed as supplied, and every prior after
+#' resolution -- including the ones derived from the data, which never appear in
+#' the call. Splicing `attr(fit, "priors")` back into a fresh call reproduces the
+#' fit on any later version, whatever the defaults have become.
 #' @examples
 #' ## Description
 #' # This example demonstrates how to:
@@ -441,6 +447,10 @@ mcmc_probit_bernoulli_localtrend <- function(y,
   # variables are nuisance parameters and are intentionally not returned).
   attr(result, "prior_prec_theta1") <- prec1_prior[c("type", "shape", "rate", "scale", "df")]
   attr(result, "prior_prec_theta2") <- prec2_prior[c("type", "shape", "rate", "scale", "df")]
+
+  # Record what produced this fit: version, seed and every resolved prior
+  # (see R/provenance.R). Must come after all defaults are filled in.
+  result <- record_provenance(result, seed)
 
   return(result)
 }

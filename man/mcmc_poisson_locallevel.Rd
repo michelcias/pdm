@@ -383,6 +383,12 @@ Roberts, G. O., & Rosenthal, J. S. (2009). Examples of adaptive MCMC.
 Wand, M. P., Ormerod, J. T., Padoan, S. A., & Fruhwirth, R. (2011). Mean field
 variational Bayes for elaborate distributions. \emph{Bayesian Analysis},
 6(4), 847-900.
+
+The object also carries \code{pdm_version}, \code{seed} and \code{priors} as attributes:
+the version that produced it, the seed as supplied, and every prior after
+resolution -- including the ones derived from the data, which never appear in
+the call. Splicing \code{attr(fit, "priors")} back into a fresh call reproduces the
+fit on any later version, whatever the defaults have become.
 }
 \seealso{
 \code{\link{plot.poisson_locallevel}},

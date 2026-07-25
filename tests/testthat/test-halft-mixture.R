@@ -27,7 +27,11 @@ test_that("mixture locallevel: Gamma default works and stays backward compatible
                 all(fit$prec_theta1 > 0))
   expect_equal(attr(fit, "prior_prec_phi1")$type, "gamma")
   expect_equal(attr(fit, "prior_prec_phi2")$type, "gamma")
-  expect_equal(attr(fit, "prior_prec_theta1")$type, "gamma")
+  # W_1 is the *state* innovation and defaults to a Half-Cauchy since 0.5-0;
+  # the component precisions phi_k keep their Gamma, for the opposite reason
+  # (see docs/mixture-convergence.md).
+  expect_equal(attr(fit, "prior_prec_theta1")$type, "halfcauchy")
+  expect_equal(attr(fit, "prior_prec_theta1")$scale, 2)
 })
 
 test_that("mixture locallevel: Half-Cauchy on phi_1, phi_2 and W_1 (probit)", {

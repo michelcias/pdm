@@ -134,3 +134,75 @@ test_that("naming the type explicitly always wins", {
   # Named Gamma without hyperparameters still errors rather than falling back.
   expect_error(fit_ll(y, prior_prec1_type = "gamma"), "gamma")
 })
+
+
+# --- Link families -----------------------------------------------------------
+# These do not have the unit-dependence problem: the state lives on the link
+# scale, which carries no arbitrary units, so a *fixed* scale is already
+# invariant. What carries over is the boundary behaviour, and the scale of 2 was
+# chosen by measurement -- it is the only candidate with no significant loss in
+# any regime (see docs/innovation-priors.md).
+
+test_that("the link families default to a fixed Half-Cauchy(2)", {
+  set.seed(1)
+  n  <- 60
+  th <- rep(0.5, n)
+
+  fits <- list(
+    binomial = mcmc_binomial_locallevel(
+      rbinom(n, 20, plogis(th)), n_trials = 20, 50, 1, 50,
+      prior_theta01_mean = 0, prior_theta01_prec = 1, verbose = FALSE, seed = 1),
+    poisson = mcmc_poisson_locallevel(
+      rpois(n, exp(th)), 50, 1, 50,
+      prior_theta01_mean = 0, prior_theta01_prec = 1, verbose = FALSE, seed = 1),
+    probit = mcmc_probit_bernoulli_locallevel(
+      rbinom(n, 1, pnorm(th)), 50, 1, 50,
+      prior_theta01_mean = 0, prior_theta01_prec = 1, verbose = FALSE, seed = 1),
+    mixture = mcmc_normal_mixture_locallevel(
+      ifelse(rbinom(n, 1, plogis(th)) == 1, rnorm(n, 3, 0.5), rnorm(n, 0, 0.5)),
+      link = "logit", 50, 1, 50, verbose = FALSE, seed = 1)
+  )
+
+  for (f in fits) {
+    expect_equal(attr(f, "prior_prec_theta1")$type, "halfcauchy")
+    expect_equal(attr(f, "prior_prec_theta1")$scale, 2)
+  }
+})
+
+
+test_that("the mixture component precisions keep their Gamma", {
+  # The state innovation and the component precisions are opposite problems:
+  # variance -> 0 is a legitimate boundary for the first and an unbounded-
+  # likelihood singularity for the second. Only the first became a Half-Cauchy.
+  set.seed(1)
+  n <- 60
+  y <- ifelse(rbinom(n, 1, 0.5) == 1, rnorm(n, 3, 0.5), rnorm(n, 0, 0.5))
+  f <- mcmc_normal_mixture_locallevel(y, link = "logit", 50, 1, 50,
+                                      verbose = FALSE, seed = 1)
+
+  expect_equal(attr(f, "prior_prec_theta1")$type, "halfcauchy")
+  expect_equal(attr(f, "prior_prec_phi1")$type, "gamma")
+  expect_equal(attr(f, "prior_prec_phi2")$type, "gamma")
+  expect_equal(attr(f, "prior_prec_phi1")$shape, 2)
+})
+
+
+test_that("a bare shape/rate pair is still Gamma in the link families", {
+  # The mixture wrappers default shape and rate to 0.01 rather than NULL, so the
+  # backward-compatibility test has to be on whether the caller *supplied* them.
+  # A NULL test would read those defaults as a Gamma specification and pin every
+  # mixture fit to a Gamma.
+  set.seed(1)
+  n <- 60
+  y <- ifelse(rbinom(n, 1, 0.5) == 1, rnorm(n, 3, 0.5), rnorm(n, 0, 0.5))
+
+  bare <- mcmc_normal_mixture_locallevel(y, link = "logit", 50, 1, 50,
+                                         verbose = FALSE, seed = 1)
+  expect_equal(attr(bare, "prior_prec_theta1")$type, "halfcauchy")
+
+  explicit <- mcmc_normal_mixture_locallevel(
+    y, link = "logit", 50, 1, 50,
+    prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2, verbose = FALSE, seed = 1)
+  expect_equal(attr(explicit, "prior_prec_theta1")$type, "gamma")
+  expect_equal(attr(explicit, "prior_prec_theta1")$shape, 1e-2)
+})

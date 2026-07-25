@@ -167,14 +167,15 @@ test_that("Gamma prior stays the default and remains backward compatible", {
 
 test_that("invalid Half-t specifications are rejected (probit locallevel)", {
   y <- make_bern()
-  # Half-Cauchy without a scale.
-  expect_error(
-    mcmc_probit_bernoulli_locallevel(
-      y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
-      prior_theta01_mean = 0, prior_theta01_prec = 1,
-      prior_prec1_type = "halfcauchy", seed = 1),
-    "scale"
-  )
+
+  # A Half-Cauchy without a scale is no longer an error: the link families
+  # default to a fixed scale of 2 on the link scale (see 0.5-0).
+  fit <- mcmc_probit_bernoulli_locallevel(
+    y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
+    prior_theta01_mean = 0, prior_theta01_prec = 1,
+    prior_prec1_type = "halfcauchy", seed = 1)
+  expect_equal(attr(fit, "prior_prec_theta1")$scale, 2)
+
   # "halfcauchy" contradicted by df != 1.
   expect_error(
     mcmc_probit_bernoulli_locallevel(
@@ -184,11 +185,14 @@ test_that("invalid Half-t specifications are rejected (probit locallevel)", {
       seed = 1),
     "df = 1"
   )
-  # Gamma prior (default) but shape/rate omitted.
+
+  # Gamma asked for by name, but shape/rate omitted. Naming the type is what
+  # makes this an error now: Gamma is no longer the default.
   expect_error(
     mcmc_probit_bernoulli_locallevel(
       y, CTRL$burnin, CTRL$thinning, CTRL$n_chain,
-      prior_theta01_mean = 0, prior_theta01_prec = 1, seed = 1),
+      prior_theta01_mean = 0, prior_theta01_prec = 1,
+      prior_prec1_type = "gamma", seed = 1),
     "gamma"
   )
 })

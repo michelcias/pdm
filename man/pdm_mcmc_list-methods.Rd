@@ -51,8 +51,9 @@ single-chain plot methods.}
 \value{
 \code{summary()} returns what the single-chain method returns for that
 model class, with class \code{"summary.pdm_mcmc_list"} prepended and three
-extra elements: \code{chains}, \code{n_chain_each} and \code{rhat} (a named vector of
-rank-normalized split-\eqn{\hat{R}}, one per scalar parameter).
+extra elements: \code{chains}, \code{n_chain_each}, \code{rhat} (a named vector of
+rank-normalized split-\eqn{\hat{R}}, one per scalar parameter) and
+\code{rhat_states} (the same, at twenty time points along each trajectory).
 \code{log_lik()} returns a draws-by-observations matrix pooled over chains;
 \code{waic()} and \code{loo()} the corresponding \pkg{loo} objects; \code{plot()} returns
 \code{x} invisibly.
@@ -87,10 +88,15 @@ tables. When the largest exceeds \code{rhat_threshold} it also raises a
 warning at call time, so the caveat survives being scrolled past or
 captured.
 
-Only the scalar parameters are checked: they are cheap, and across the
-families they are the slowest-mixing part of these models, so they are what
-a convergence problem shows up in first. For the latent state trajectories
-as well, use \code{\link{mcmc_convergence}}.
+Both the scalar parameters and a sample of twenty time points along each
+latent trajectory are checked. An earlier version checked only the scalars,
+on the stated grounds that they are the slowest-mixing part of these
+models. That is true of the Gaussian family and false of the link
+families: measured at the settings the examples use, \code{binomial}, \code{poisson}
+and \code{probit} all had \emph{states} with higher \eqn{\hat{R}} than any scalar,
+and a scalar-only screen therefore reported all-clear on fits whose
+trajectories had not converged. For every time point rather than a sample,
+use \code{\link{mcmc_convergence}}.
 }
 
 \subsection{\code{waic()} and \code{loo()} warn too}{

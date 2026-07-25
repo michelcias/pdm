@@ -351,3 +351,88 @@ test_that("plot() covers the non-Gaussian families and their extra types", {
   expect_s3_class(suppressWarnings(summary(mix)),
                   "summary.normal_mixture_locallevel")
 })
+
+
+test_that("summary() screens the latent states, not only the scalars", {
+  y    <- make_y()
+  fits <- fit_ll(y, seed = 1, chains = 3)
+  s    <- suppressWarnings(summary(fits))
+
+  # Twenty time points along the single trajectory of a local-level model.
+  expect_length(s$rhat_states, 20L)
+  expect_true(all(grepl("^theta_1\\[t=[0-9]+\\]$", names(s$rhat_states))))
+  expect_true(all(s$rhat_states > 0.9))
+
+  # The same numbers mcmc_convergence() reports for those time points.
+  conv <- mcmc_convergence(fits, theta_timepoints = seq(0.05, 0.95,
+                                                        length.out = 20L))
+  from_conv <- conv$table$Rhat[match(names(s$rhat_states),
+                                     conv$table$Parameter)]
+  expect_equal(unname(round(s$rhat_states, 4)), from_conv, tolerance = 1e-6)
+
+  expect_output(print(s), "State R-hat")
+})
+
+
+test_that("an unconverged state warns even when every scalar looks fine", {
+  # The hole this closes. summary() used to check only the scalar parameters,
+  # documented as the slowest-mixing part of these models -- true of the
+  # Gaussian family, false of the link families, where the states are slower.
+  # A scalar-only screen therefore reported all-clear on fits whose
+  # trajectories had not agreed.
+  y    <- make_y()
+  fits <- fit_ll(y, seed = 1, chains = 3)
+
+  clean_scalars <- structure(c(`V^{-1}` = 1.001, theta_01 = 1.002), class = NULL)
+  bad_state     <- c(`theta_1[t=40]` = 1.35)
+
+  local_mocked_bindings(scalar_rhats = function(...) clean_scalars,
+                        state_rhats  = function(...) bad_state)
+
+  expect_warning(summary(fits), "chains have not converged")
+  expect_warning(summary(fits), "1.35")
+
+  s <- suppressWarnings(summary(fits))
+  expect_output(print(s), "WARNING: max R-hat")
+
+  # And the scalar table alone would have said nothing is wrong.
+  expect_lt(max(s$rhat), 1.01)
+})
+
+
+test_that("waic() and loo() screen the states too", {
+  skip_if_not_installed("loo")
+  y    <- make_y()
+  fits <- fit_ll(y, seed = 1, chains = 3)
+
+  local_mocked_bindings(scalar_rhats = function(...) c(`V^{-1}` = 1.001),
+                        state_rhats  = function(...) c(`theta_1[t=40]` = 1.35))
+
+  ours <- function(expr) {
+    hit <- FALSE
+    withCallingHandlers(force(expr), warning = function(w) {
+      if (grepl("have not converged", conditionMessage(w))) hit <<- TRUE
+      invokeRestart("muffleWarning")
+    })
+    hit
+  }
+
+  expect_true(ours(loo::waic(fits)))
+  expect_true(ours(loo::loo(fits)))
+})
+
+
+test_that("state_rhats() is empty for a model with no trajectory matrices", {
+  # Guards the unlist()/names() path against a zero-length result, and pins
+  # that theta_01 -- a vector, covered by scalar_rhats() -- is not mistaken
+  # for a trajectory.
+  fits <- fit_ll(make_y(), seed = 1, chains = 2)
+  stripped <- lapply(fits, function(ch) {
+    ch$theta_1 <- NULL
+    ch
+  })
+  attributes(stripped) <- attributes(fits)
+
+  expect_length(state_rhats(stripped), 0L)
+  expect_type(state_rhats(stripped), "double")
+})

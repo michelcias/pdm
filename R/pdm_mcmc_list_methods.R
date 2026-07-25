@@ -29,10 +29,15 @@
 #'   warning at call time, so the caveat survives being scrolled past or
 #'   captured.
 #'
-#'   Only the scalar parameters are checked: they are cheap, and across the
-#'   families they are the slowest-mixing part of these models, so they are what
-#'   a convergence problem shows up in first. For the latent state trajectories
-#'   as well, use \code{\link{mcmc_convergence}}.
+#'   Both the scalar parameters and a sample of twenty time points along each
+#'   latent trajectory are checked. An earlier version checked only the scalars,
+#'   on the stated grounds that they are the slowest-mixing part of these
+#'   models. That is true of the Gaussian family and false of the link
+#'   families: measured at the settings the examples use, `binomial`, `poisson`
+#'   and `probit` all had *states* with higher \eqn{\hat{R}} than any scalar,
+#'   and a scalar-only screen therefore reported all-clear on fits whose
+#'   trajectories had not converged. For every time point rather than a sample,
+#'   use \code{\link{mcmc_convergence}}.
 #' }
 #'
 #' \subsection{`waic()` and `loo()` warn too}{
@@ -71,8 +76,9 @@
 #'
 #' @return `summary()` returns what the single-chain method returns for that
 #'   model class, with class `"summary.pdm_mcmc_list"` prepended and three
-#'   extra elements: `chains`, `n_chain_each` and `rhat` (a named vector of
-#'   rank-normalized split-\eqn{\hat{R}}, one per scalar parameter).
+#'   extra elements: `chains`, `n_chain_each`, `rhat` (a named vector of
+#'   rank-normalized split-\eqn{\hat{R}}, one per scalar parameter) and
+#'   `rhat_states` (the same, at twenty time points along each trajectory).
 #'   `log_lik()` returns a draws-by-observations matrix pooled over chains;
 #'   `waic()` and `loo()` the corresponding \pkg{loo} objects; `plot()` returns
 #'   `x` invisibly.
@@ -136,13 +142,17 @@ summary.pdm_mcmc_list <- function(object, rhat_threshold = 1.01, ...) {
   # Pooling is only meaningful once the chains agree, and the pooled summary
   # looks identical either way -- so the summary carries the evidence with it
   # rather than leaving the user to remember to check separately.
-  rhat <- scalar_rhats(object)
+  rhat        <- scalar_rhats(object)
+  rhat_states <- state_rhats(object)
+
   out$chains         <- length(object)
   out$n_chain_each   <- attr(object[[1L]], "n_chain")
   out$rhat           <- rhat
+  out$rhat_states    <- rhat_states
   out$rhat_threshold <- rhat_threshold
 
-  warn_if_unconverged(rhat, rhat_threshold, "the pooled summary below")
+  warn_if_unconverged(c(rhat, rhat_states), rhat_threshold,
+                      "the pooled summary below")
 
   class(out) <- c("summary.pdm_mcmc_list", class(out))
   out
@@ -179,11 +189,9 @@ warn_if_unconverged <- function(rhat, threshold, what) {
 
 #' Rank-normalized split-R-hat for every scalar parameter of a multi-chain fit
 #'
-#' Restricted to the scalar parameters on purpose: they are cheap (a handful of
-#' `n_draw x n_chain` matrices) and, measured across the families, they are also
-#' the slowest-mixing part of these models, so they are what a convergence check
-#' would flag first. The latent state trajectories are one matrix per time point
-#' and are covered by \code{\link{mcmc_convergence}} instead.
+#' Cheap: a handful of `n_draw x n_chain` matrices. This covers only half of
+#' what a convergence check needs — in the link families the latent states are
+#' the slower of the two — so `summary()` pairs it with `state_rhats()`.
 #'
 #' @param x An object of class `"pdm_mcmc_list"`.
 #'
@@ -206,6 +214,61 @@ scalar_rhats <- function(x) {
 }
 
 
+#' Rank-normalized split-R-hat for the latent states, on a sample of time points
+#'
+#' A screen, not a census. Every time point of every trajectory would be one
+#' `n_draw x n_chain` matrix each — measured at n = 400, that is 1.76s against
+#' 0.04s for the scalars, which is too much to spend inside `summary()`. Twenty
+#' evenly spaced points cost about 0.1s and are enough to notice a trajectory
+#' that has not settled.
+#'
+#' Twenty rather than the three that \code{\link{mcmc_convergence}} defaults to:
+#' on a measured binomial fit whose states exceeded the threshold at 47 of 199
+#' time points, three evenly spaced points caught none of them and five caught
+#' none; ten and twenty caught them. Three is a reasonable default for a table a
+#' user reads, and a poor one for an automatic check.
+#'
+#' @param x An object of class `"pdm_mcmc_list"`.
+#' @param timepoints Numeric vector of fractions in \eqn{(0, 1)}.
+#'
+#' @return Named numeric vector of R-hat values, one per sampled time point,
+#'   empty if the model carries no trajectory matrices.
+#'
+#' @keywords internal
+#' @noRd
+state_rhats <- function(x, timepoints = seq(0.05, 0.95, length.out = 20L)) {
+
+  n_draw <- attr(x[[1L]], "n_chain")
+
+  # Trajectories are theta_1, theta_2, ... and stored as n_draw x n_obs. The
+  # initial states theta_01, theta_02 are vectors, are covered by
+  # scalar_rhats(), and must not match here.
+  snames <- grep("^theta_[1-9][0-9]*$", names(x[[1L]]), value = TRUE)
+  snames <- snames[vapply(snames, function(nm) is.matrix(x[[1L]][[nm]]),
+                          logical(1L))]
+  if (length(snames) == 0L) return(numeric(0L))
+  snames <- snames[order(as.integer(sub("theta_", "", snames)))]
+
+  out <- lapply(snames, function(sname) {
+    n_t <- ncol(x[[1L]][[sname]])
+    idx <- sort(unique(pmax(1L, pmin(n_t, round(timepoints * n_t)))))
+    vapply(idx, function(tidx) {
+      draws <- vapply(x, function(ch) ch[[sname]][, tidx], numeric(n_draw))
+      dim(draws) <- c(n_draw, length(x))
+      rhat_rank_normalized(draws)
+    }, numeric(1L))
+  })
+
+  names(out) <- snames
+  unlist(lapply(snames, function(sname) {
+    v <- out[[sname]]
+    n_t <- ncol(x[[1L]][[sname]])
+    idx <- sort(unique(pmax(1L, pmin(n_t, round(timepoints * n_t)))))
+    stats::setNames(v, sprintf("%s[t=%d]", sname, idx))
+  }))
+}
+
+
 #' @rdname pdm_mcmc_list-methods
 #' @param digits Integer, significant digits for the R-hat column. Default 4.
 #' @export
@@ -215,7 +278,10 @@ print.summary.pdm_mcmc_list <- function(x, digits = 4L, ...) {
   # those chains was legitimate.
   NextMethod()
 
-  worst <- if (all(is.na(x$rhat))) NA_real_ else max(x$rhat, na.rm = TRUE)
+  # Reported separately, judged together: which of the two is the bottleneck
+  # differs by family, so a single number would hide the one that matters.
+  all_rhat <- c(x$rhat, x$rhat_states)
+  worst <- if (all(is.na(all_rhat))) NA_real_ else max(all_rhat, na.rm = TRUE)
 
   cat("Multi-chain diagnostics (", x$chains, " chains x ", x$n_chain_each,
       " draws, pooled above)\n", sep = "")
@@ -231,8 +297,15 @@ print.summary.pdm_mcmc_list <- function(x, digits = 4L, ...) {
         paste(rows[[i]], collapse = "   "), "\n", sep = "")
   }
 
+  if (length(x$rhat_states) > 0L) {
+    ws <- max(x$rhat_states, na.rm = TRUE)
+    cat("  State R-hat:   max ", format(ws, digits = digits), " over ",
+        length(x$rhat_states), " time points (", names(which.max(x$rhat_states)),
+        ")\n", sep = "")
+  }
+
   if (is.na(worst)) {
-    cat("  R-hat is undefined for every scalar parameter (constant draws?).\n")
+    cat("  R-hat is undefined everywhere (constant draws?).\n")
   } else if (worst > x$rhat_threshold) {
     cat("  WARNING: max R-hat ", format(worst, digits = digits), " > ",
         x$rhat_threshold, ". The chains disagree, so the\n",
@@ -259,7 +332,8 @@ log_lik.pdm_mcmc_list <- function(object, ...) {
 #' @exportS3Method loo::waic
 waic.pdm_mcmc_list <- function(x, rhat_threshold = 1.01, ...) {
   require_loo()
-  warn_if_unconverged(scalar_rhats(x), rhat_threshold, "the pooled log-likelihood")
+  warn_if_unconverged(c(scalar_rhats(x), state_rhats(x)), rhat_threshold,
+                      "the pooled log-likelihood")
   loo::waic(log_lik(x), ...)
 }
 
@@ -268,7 +342,8 @@ waic.pdm_mcmc_list <- function(x, rhat_threshold = 1.01, ...) {
 #' @exportS3Method loo::loo
 loo.pdm_mcmc_list <- function(x, rhat_threshold = 1.01, ...) {
   require_loo()
-  warn_if_unconverged(scalar_rhats(x), rhat_threshold, "the pooled log-likelihood")
+  warn_if_unconverged(c(scalar_rhats(x), state_rhats(x)), rhat_threshold,
+                      "the pooled log-likelihood")
   ll   <- log_lik(x)
   dots <- list(...)
   if (is.null(dots$r_eff)) {

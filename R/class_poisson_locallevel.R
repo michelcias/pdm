@@ -364,42 +364,27 @@ validate_poisson_locallevel <- function(x) {
 #'   `poisson_locallevel`, `FALSE` otherwise.
 #'
 #' @examples
-#' \donttest{
-#' ## Simulate data (same setup as ? mcmc_poisson_locallevel)
+#' ## A minimal fit is all this test needs; see
+#' ## ?mcmc_poisson_locallevel for a realistic analysis.
 #' set.seed(123)
-#' n <- 500
-#'
-#' # Generate true rates
-#' alpha_true <- exp(sin(2 * pi * seq_len(n) / n) + 1)
-#'
-#' # Generate Poisson observations
-#' y <- rpois(n, lambda = alpha_true)
+#' n <- 40
+#' y <- rpois(n, exp(0.5 + cumsum(rnorm(n, sd = 0.1))))
 #'
 #' out <- mcmc_poisson_locallevel(
 #'   y,
-#'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
-#'   prior_theta01_mean      = 0,
-#'   prior_theta01_prec      = 1,
-#'   prior_prec1_shape       = 100,
-#'   prior_prec1_rate        = 1,
-#'   lag_update              = 50,
-#'   max_step_size           = 0.1,
-#'   base_adaptation_rate    = 1,
-#'   decay_exponent          = 0.6,
-#'   target_acceptance       = 0.44,
-#'   min_deviation_threshold = NULL,
-#'   return_log_sigma        = FALSE,
-#'   return_accept_prop      = TRUE,
-#'   verbose                 = TRUE,
-#'   bar_width               = 60,
-#'   seed                    = 456
+#'   burnin             = 50,
+#'   thinning           = 1,
+#'   n_chain            = 50,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_prec1_shape  = 1e-2,
+#'   prior_prec1_rate   = 1e-2,
+#'   verbose            = FALSE,
+#'   seed               = 456
 #' )
 #'
-#' is.poisson_locallevel(out)  # TRUE
+#' is.poisson_locallevel(out)     # TRUE
 #' is.poisson_locallevel(list())  # FALSE
-#' }
 #'
 #' @export
 is.poisson_locallevel <- function(x) {
@@ -425,7 +410,7 @@ is.poisson_locallevel <- function(x) {
 #' \donttest{
 #' ## Simulate data (same setup as ?mcmc_poisson_locallevel)
 #' set.seed(123)
-#' n <- 500
+#' n <- 200
 #'
 #' # Generate true rates
 #' alpha_true <- exp(sin(2 * pi * seq_len(n) / n) + 1)
@@ -436,8 +421,8 @@ is.poisson_locallevel <- function(x) {
 #' out <- mcmc_poisson_locallevel(
 #'   y,
 #'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
+#'   thinning                = 20,
+#'   n_chain                 = 500,
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
 #'   prior_prec1_shape       = 100,

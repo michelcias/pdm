@@ -292,40 +292,35 @@ validate_probit_bernoulli_localacceleration <- function(x) {
 #'   `probit_bernoulli_localacceleration`, `FALSE` otherwise.
 #'
 #' @examples
-#' \donttest{
-#' ## Simulate data (same setup as ?mcmc_probit_bernoulli_localacceleration)
-#' n <- 500
-#'
+#' ## A minimal fit is all this test needs; see
+#' ## ?mcmc_probit_bernoulli_localacceleration for a realistic analysis.
 #' set.seed(123)
-#' grid_vals <- seq_len(n) / n
-#' alpha_true <- (sin(4 * pi * grid_vals) + sin(8 * pi * grid_vals) + 2) / 4
-#' y <- rbinom(n, size = 1, prob = alpha_true)
+#' n <- 40
+#' y <- rbinom(n, 1, pnorm(cumsum(rnorm(n, sd = 0.2))))
 #'
 #' out <- mcmc_probit_bernoulli_localacceleration(
 #'   y,
-#'   burnin             = 1000,
-#'   thinning           = 50,
-#'   n_chain            = 1000,
+#'   burnin             = 50,
+#'   thinning           = 1,
+#'   n_chain            = 50,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_theta02_mean = 0,
 #'   prior_theta02_prec = 1,
 #'   prior_theta03_mean = 0,
 #'   prior_theta03_prec = 1,
-#'   prior_prec1_shape  = 100,
-#'   prior_prec1_rate   = 1,
-#'   prior_prec2_shape  = 400,
-#'   prior_prec2_rate   = 1,
-#'   prior_prec3_shape  = 1600,
-#'   prior_prec3_rate   = 1,
-#'   verbose            = TRUE,  # Enable progress bar
-#'   bar_width          = 60,    # Progress bar width
+#'   prior_prec1_shape  = 1e-2,
+#'   prior_prec1_rate   = 1e-2,
+#'   prior_prec2_shape  = 1e-2,
+#'   prior_prec2_rate   = 1e-2,
+#'   prior_prec3_shape  = 1e-2,
+#'   prior_prec3_rate   = 1e-2,
+#'   verbose            = FALSE,
 #'   seed               = 456
 #' )
 #'
-#' is.probit_bernoulli_localacceleration(out)  # TRUE
+#' is.probit_bernoulli_localacceleration(out)     # TRUE
 #' is.probit_bernoulli_localacceleration(list())  # FALSE
-#' }
 #'
 #' @export
 is.probit_bernoulli_localacceleration <- function(x) {
@@ -350,7 +345,7 @@ is.probit_bernoulli_localacceleration <- function(x) {
 #' @examples
 #' \donttest{
 #' ## Simulate data (same setup as ?mcmc_probit_bernoulli_localacceleration)
-#' n <- 500
+#' n <- 200
 #'
 #' set.seed(123)
 #' grid_vals <- seq_len(n) / n
@@ -360,8 +355,8 @@ is.probit_bernoulli_localacceleration <- function(x) {
 #' out <- mcmc_probit_bernoulli_localacceleration(
 #'   y,
 #'   burnin             = 1000,
-#'   thinning           = 50,
-#'   n_chain            = 1000,
+#'   thinning           = 20,
+#'   n_chain            = 500,
 #'   prior_theta01_mean = 0,
 #'   prior_theta01_prec = 1,
 #'   prior_theta02_mean = 0,

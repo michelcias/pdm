@@ -381,49 +381,32 @@ validate_binomial_localtrend <- function(x) {
 #'   `binomial_localtrend`, `FALSE` otherwise.
 #'
 #' @examples
-#' \donttest{
-#' ## Simulate data (same setup as ?mcmc_binomial_localtrend)
+#' ## A minimal fit is all this test needs; see
+#' ## ?mcmc_binomial_localtrend for a realistic analysis.
 #' set.seed(123)
-#' n <- 500
-#' n_trials <- 20
-#'
-#' # Generate true probabilities
-#' grid_vals <- seq_len(n) / n
-#' alpha_true <- (sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 2) / 4
-#'
-#' # Generate binomial observations
-#' y <- rbinom(n, size = n_trials, prob = alpha_true)
+#' n <- 40
+#' y <- rbinom(n, 10, plogis(cumsum(rnorm(n, sd = 0.2))))
 #'
 #' out <- mcmc_binomial_localtrend(
 #'   y,
-#'   n_trials                = n_trials,
-#'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
-#'   prior_theta01_mean      = 0,
-#'   prior_theta01_prec      = 1,
-#'   prior_theta02_mean      = 0,
-#'   prior_theta02_prec      = 1,
-#'   prior_prec1_shape       = 100,
-#'   prior_prec1_rate        = 1,
-#'   prior_prec2_shape       = 400,
-#'   prior_prec2_rate        = 1,
-#'   lag_update              = 50,
-#'   max_step_size           = 0.1,
-#'   base_adaptation_rate    = 1,
-#'   decay_exponent          = 0.6,
-#'   target_acceptance       = 0.44,
-#'   min_deviation_threshold = NULL,
-#'   return_log_sigma        = FALSE,
-#'   return_accept_prop      = TRUE,
-#'   verbose                 = TRUE,
-#'   bar_width               = 60,
-#'   seed                    = 456
+#'   n_trials           = 10,
+#'   burnin             = 50,
+#'   thinning           = 1,
+#'   n_chain            = 50,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_theta02_mean = 0,
+#'   prior_theta02_prec = 1,
+#'   prior_prec1_shape  = 1e-2,
+#'   prior_prec1_rate   = 1e-2,
+#'   prior_prec2_shape  = 1e-2,
+#'   prior_prec2_rate   = 1e-2,
+#'   verbose            = FALSE,
+#'   seed               = 456
 #' )
 #'
-#' is.binomial_localtrend(out)  # TRUE
+#' is.binomial_localtrend(out)     # TRUE
 #' is.binomial_localtrend(list())  # FALSE
-#' }
 #'
 #' @export
 is.binomial_localtrend <- function(x) {
@@ -449,7 +432,7 @@ is.binomial_localtrend <- function(x) {
 #' \donttest{
 #' ## Simulate data (same setup as ?mcmc_binomial_localtrend)
 #' set.seed(123)
-#' n <- 500
+#' n <- 200
 #' n_trials <- 20
 #'
 #' # Generate true probabilities
@@ -463,8 +446,8 @@ is.binomial_localtrend <- function(x) {
 #'   y,
 #'   n_trials                = n_trials,
 #'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
+#'   thinning                = 20,
+#'   n_chain                 = 500,
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
 #'   prior_theta02_mean      = 0,

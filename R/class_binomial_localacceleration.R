@@ -381,71 +381,36 @@ validate_binomial_localacceleration <- function(x) {
 #'   `binomial_localacceleration`, `FALSE` otherwise.
 #'
 #' @examples
-#' \donttest{
-#' ## Simulate data (same setup as ?mcmc_binomial_localacceleration)
-#' n <- 500
-#' n_trials <- 20
-#'
-#' theta01_true <- 0.5
-#' theta02_true <- 0.01
-#' theta03_true <- 0.001
-#' prec1_true <- 100
-#' prec2_true <- 400
-#' prec3_true <- 1600
-#'
+#' ## A minimal fit is all this test needs; see
+#' ## ?mcmc_binomial_localacceleration for a realistic analysis.
 #' set.seed(123)
-#' u1 <- rnorm(n, sd = sqrt(1/prec1_true))
-#' u2 <- rnorm(n, sd = sqrt(1/prec2_true))
-#' u3 <- rnorm(n, sd = sqrt(1/prec3_true))
-#'
-#' theta1_true <- numeric(n)
-#' theta2_true <- numeric(n)
-#' theta3_true <- numeric(n)
-#' theta3_true[1] <- theta03_true + u3[1]
-#' theta2_true[1] <- theta02_true + theta03_true + u2[1]
-#' theta1_true[1] <- theta01_true + theta02_true + u1[1]
-#' for (t in 2:n) {
-#'   theta3_true[t] <- theta3_true[t-1] + u3[t]
-#'   theta2_true[t] <- theta2_true[t-1] + theta3_true[t-1] + u2[t]
-#'   theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
-#' }
-#' alpha_true <- plogis(theta1_true)
-#' y <- rbinom(n, size = n_trials, prob = alpha_true)
+#' n <- 40
+#' y <- rbinom(n, 10, plogis(cumsum(rnorm(n, sd = 0.2))))
 #'
 #' out <- mcmc_binomial_localacceleration(
 #'   y,
-#'   n_trials                = n_trials,
-#'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
-#'   prior_theta01_mean      = 0,
-#'   prior_theta01_prec      = 1,
-#'   prior_theta02_mean      = 0,
-#'   prior_theta02_prec      = 1,
-#'   prior_theta03_mean      = 0,
-#'   prior_theta03_prec      = 1,
-#'   prior_prec1_shape       = 100,
-#'   prior_prec1_rate        = 1,
-#'   prior_prec2_shape       = 400,
-#'   prior_prec2_rate        = 1,
-#'   prior_prec3_shape       = 1600,
-#'   prior_prec3_rate        = 1,
-#'   lag_update              = 50,
-#'   max_step_size           = 0.1,
-#'   base_adaptation_rate    = 1,
-#'   decay_exponent          = 0.6,
-#'   target_acceptance       = 0.44,
-#'   min_deviation_threshold = NULL,  # Uses practical default: 1.0/50 = 0.02
-#'   return_log_sigma        = FALSE,
-#'   return_accept_prop      = TRUE,
-#'   verbose                 = TRUE,  # Enable progress bar
-#'   bar_width               = 60,    # Progress bar width
-#'   seed                    = 456
+#'   n_trials           = 10,
+#'   burnin             = 50,
+#'   thinning           = 1,
+#'   n_chain            = 50,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_theta02_mean = 0,
+#'   prior_theta02_prec = 1,
+#'   prior_theta03_mean = 0,
+#'   prior_theta03_prec = 1,
+#'   prior_prec1_shape  = 1e-2,
+#'   prior_prec1_rate   = 1e-2,
+#'   prior_prec2_shape  = 1e-2,
+#'   prior_prec2_rate   = 1e-2,
+#'   prior_prec3_shape  = 1e-2,
+#'   prior_prec3_rate   = 1e-2,
+#'   verbose            = FALSE,
+#'   seed               = 456
 #' )
 #'
-#' is.binomial_localacceleration(out)  # TRUE
+#' is.binomial_localacceleration(out)     # TRUE
 #' is.binomial_localacceleration(list())  # FALSE
-#' }
 #'
 #' @export
 is.binomial_localacceleration <- function(x) {
@@ -470,7 +435,7 @@ is.binomial_localacceleration <- function(x) {
 #' @examples
 #' \donttest{
 #' ## Simulate data (same setup as ?mcmc_binomial_localacceleration)
-#' n <- 500
+#' n <- 200
 #' n_trials <- 20
 #'
 #' theta01_true <- 0.5
@@ -503,8 +468,8 @@ is.binomial_localacceleration <- function(x) {
 #'   y,
 #'   n_trials                = n_trials,
 #'   burnin                  = 1000,
-#'   thinning                = 50,
-#'   n_chain                 = 1000,
+#'   thinning                = 20,
+#'   n_chain                 = 500,
 #'   prior_theta01_mean      = 0,
 #'   prior_theta01_prec      = 1,
 #'   prior_theta02_mean      = 0,

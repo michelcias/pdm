@@ -2,8 +2,8 @@
  * @file generate_alpha_binomial.c
  * @brief Sampling for binomial and Bernoulli state-space models with logit and probit links
  * @author Michel H. Montoril
- * @date 2025-10-11
- * @version 1.0
+ * @date 2026-07-25
+ * @version 1.1
  *
  * @details This file contains optimized functions for MCMC sampling in binomial and Bernoulli
  *          state-space models with different link functions:
@@ -28,6 +28,7 @@
 #include "cwmh_adaptive.h"  /* adapt_cwmh_parameters */
 #include "cwmh_binomial.h"
 #include "utils.h"          /* generate_normal_vector */
+#include "link_guard.h"  /* clamp_link_alpha, ilogit_guarded */
 #include "generate_alpha_binomial.h"
 
 /**
@@ -540,14 +541,7 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
  *          state theta_1: theta_1 is stored exactly as drawn, and only the derived
  *          probability is protected.
  */
-#define LINK_ALPHA_MIN 2e-16
-#define LINK_ALPHA_MAX (1.0 - 2.3e-16)
-
-static inline double clamp_link_alpha(double p) {
-  if (p < LINK_ALPHA_MIN) return LINK_ALPHA_MIN;
-  if (p > LINK_ALPHA_MAX) return LINK_ALPHA_MAX;
-  return p;
-}
+/* Moved to link_guard.h; see the include at the top of this file. */
 
 /**
  * @brief Numerical saturation bound for the probit latent state theta_1.

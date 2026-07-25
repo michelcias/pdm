@@ -2,8 +2,8 @@
  * @file cwmh_binomial.c
  * @brief Component-wise Metropolis-Hastings sampling for logit-binomial state-space models
  * @author Michel H. Montoril
- * @date 2025-10-11
- * @version 1.0
+ * @date 2026-07-25
+ * @version 1.1
  *
  * @details This file implements optimized MCMC update routines for state-space models with
  *          binomial observations and logit link, including:
@@ -19,6 +19,7 @@
 #include <Rmath.h>
 #include <string.h>  /* memcpy */
 #include "utils.h"   /* ilogit */
+#include "link_guard.h"  /* clamp_link_alpha, ilogit_guarded */
 #include "cwmh_binomial.h"
 
 /**
@@ -63,29 +64,7 @@ static inline double stable_log_accept_prob(double lp1n,
  *          state theta_1: theta_1 is stored exactly as drawn, and only the derived
  *          probability is protected.
  */
-#define LINK_ALPHA_MIN 2e-16
-#define LINK_ALPHA_MAX (1.0 - 2.3e-16)
-
-static inline double clamp_link_alpha(double p) {
-  if (p < LINK_ALPHA_MIN) return LINK_ALPHA_MIN;
-  if (p > LINK_ALPHA_MAX) return LINK_ALPHA_MAX;
-  return p;
-}
-
-/**
- * @brief Inverse-logit transform with the probability guard applied.
- *
- * @details Computes alpha = ilogit(theta) and constrains it to
- *          [LINK_ALPHA_MIN, LINK_ALPHA_MAX], so that neither the binomial
- *          likelihood nor the reported success probability ever sees an exact
- *          0 or 1. Invoked at every point where the link g(theta) is evaluated.
- *
- * @param theta Latent state value.
- * @return Guarded success probability in [LINK_ALPHA_MIN, LINK_ALPHA_MAX].
- */
-static inline double ilogit_guarded(double theta) {
-  return clamp_link_alpha(ilogit(theta));
-}
+/* Moved to link_guard.h; see the include at the top of this file. */
 
 /**
  * @brief Numerical saturation bound for the logit latent state theta_1.

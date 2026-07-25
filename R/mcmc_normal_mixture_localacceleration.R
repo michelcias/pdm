@@ -199,7 +199,11 @@
 #' @param thinning Integer \eqn{\geq 1}, thinning interval.
 #' @param n_chain Integer \eqn{\geq 1}, number of posterior samples to retain.
 #' @param prior_mu01_mean Numeric, prior mean for the mean of component 1 (\eqn{\mu_1}).
-#'   If `NULL` (default), set to the 25th percentile of `y`.
+#'   If `NULL` (default), set to the 25th percentile of `y`. The components are
+#'   identified by the constraint \eqn{\mu_1 < \mu_2}, which the sampler enforces
+#'   by relabelling after each draw, so component 1 is the lower one by
+#'   construction; specifying `prior_mu01_mean` above `prior_mu02_mean` asks for
+#'   the reverse and raises a warning.
 #' @param prior_mu01_prec Numeric > 0, prior precision (inverse variance) for \eqn{\mu_1}.
 #'   Default is 0.01 (vague prior).
 #' @param prior_prec01_type,prior_prec01_scale,prior_prec01_df Prior on the
@@ -681,6 +685,11 @@ mcmc_normal_mixture_localacceleration <- function(y,
   if (is.null(prior_mu02_mean)) {
     prior_mu02_mean <- as.numeric(quantile(y, 0.75))
   }
+
+  # The components are identified by the constraint mu_1 < mu_2; warn if the
+  # priors ask for the reverse (see R/mixture_priors.R). Checked after the NULL
+  # defaults are resolved, so the data-driven quantiles are covered too.
+  check_mixture_mu_priors(prior_mu01_mean, prior_mu02_mean)
 
   # Validate mixture component prior parameters
   if (!is.numeric(prior_mu01_mean) || length(prior_mu01_mean) != 1) {

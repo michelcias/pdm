@@ -73,7 +73,11 @@ mcmc_normal_mixture_localacceleration(
 \item{n_chain}{Integer \eqn{\geq 1}, number of posterior samples to retain.}
 
 \item{prior_mu01_mean}{Numeric, prior mean for the mean of component 1 (\eqn{\mu_1}).
-If \code{NULL} (default), set to the 25th percentile of \code{y}.}
+If \code{NULL} (default), set to the 25th percentile of \code{y}. The components are
+identified by the constraint \eqn{\mu_1 < \mu_2}, which the sampler enforces
+by relabelling after each draw, so component 1 is the lower one by
+construction; specifying \code{prior_mu01_mean} above \code{prior_mu02_mean} asks for
+the reverse and raises a warning.}
 
 \item{prior_mu01_prec}{Numeric > 0, prior precision (inverse variance) for \eqn{\mu_1}.
 Default is 0.01 (vague prior).}

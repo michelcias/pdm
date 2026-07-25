@@ -176,6 +176,11 @@
 #' y <- rbinom(n, size = 1, prob = alpha_true)
 #'
 #' ## Running the Gibbs sampler
+#' # NOTE: these MCMC controls are sized to keep the example quick, and are
+#' # not guaranteed to be enough for convergence -- how much burn-in and
+#' # thinning a fit needs depends on the data and on the family. For real
+#' # work, fit with chains > 1 and read mcmc_convergence() before trusting
+#' # any summary.
 #' out <- mcmc_probit_bernoulli_locallevel(
 #'   y,
 #'   burnin             = 1000,

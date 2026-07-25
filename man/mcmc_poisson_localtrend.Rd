@@ -345,6 +345,11 @@ alpha_true <- exp(sin(2 * pi * grid_vals) + sin(4 * pi * grid_vals) + 1)
 y <- rpois(n, lambda = alpha_true)
 
 ## Running the Gibbs sampler
+# NOTE: these MCMC controls are sized to keep the example quick, and are
+# not guaranteed to be enough for convergence -- how much burn-in and
+# thinning a fit needs depends on the data and on the family. For real
+# work, fit with chains > 1 and read mcmc_convergence() before trusting
+# any summary.
 # Run the Gibbs sampler with specified priors and a seed
 out <- mcmc_poisson_localtrend(
   y,

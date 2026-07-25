@@ -27,7 +27,7 @@ which are robust to outliers and skewness in the posterior distribution.
 \examples{
 \donttest{
 ## Simulate data (same setup as ?mcmc_probit_bernoulli_locallevel)
-n <- 500
+n <- 200
 
 set.seed(123)
 alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
@@ -36,8 +36,8 @@ y <- rbinom(n, size = 1, prob = alpha_true)
 out <- mcmc_probit_bernoulli_locallevel(
   y,
   burnin             = 1000,
-  thinning           = 50,
-  n_chain            = 1000,
+  thinning           = 20,
+  n_chain            = 500,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
   prior_prec1_shape  = 100,

@@ -24,7 +24,7 @@ Prints comprehensive posterior statistics in a readable format.
 \examples{
 \donttest{
 ## Simulation of data
-n <- 500
+n <- 200
 theta01_true <- 0.5
 theta02_true <- 0.01
 prec1_true <- 100
@@ -48,8 +48,8 @@ y <- rpois(n, lambda = alpha_true)
 out <- mcmc_poisson_localtrend(
   y,
   burnin                  = 1000,
-  thinning                = 50,
-  n_chain                 = 1000,
+  thinning                = 20,
+  n_chain                 = 500,
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
   prior_theta02_mean      = 0,

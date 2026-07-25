@@ -28,7 +28,7 @@ which are robust to outliers and skewness in the posterior distribution.
 \donttest{
 ## Simulate data (same setup as ?mcmc_binomial_locallevel)
 set.seed(123)
-n <- 500
+n <- 200
 n_trials <- 20
 
 # Generate true probabilities
@@ -41,8 +41,8 @@ out <- mcmc_binomial_locallevel(
   y,
   n_trials                = n_trials,
   burnin                  = 1000,
-  thinning                = 50,
-  n_chain                 = 1000,
+  thinning                = 20,
+  n_chain                 = 500,
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
   prior_prec1_shape       = 100,

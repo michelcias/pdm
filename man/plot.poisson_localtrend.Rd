@@ -193,7 +193,7 @@ pattern of the Poisson rates.
 # oscillating pattern to mimic real-world seasonal or cyclical behavior.
 
 set.seed(123)
-n <- 400          # Number of time points
+n <- 200          # Number of time points
 
 # Generate complex oscillating Poisson rates (mimicking seasonal patterns)
 grid_vals <- seq_len(n) / n
@@ -207,8 +207,8 @@ y <- rpois(n, lambda = alpha_true)
 out <- mcmc_poisson_localtrend(
   y,
   burnin                  = 1000,      # Discard first 1000 iterations
-  thinning                = 50,        # Keep every 50th iteration
-  n_chain                 = 1000,      # Retain 1000 posterior samples
+  thinning                = 20,        # Keep every 20th iteration
+  n_chain                 = 500,       # Retain 500 posterior samples
   # Weakly informative priors for initial states (centered at 0 on log scale)
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
@@ -328,8 +328,8 @@ par(mfrow = c(1, 1))
 out <- mcmc_poisson_localtrend(
   y,
   burnin                  = 1000,
-  thinning                = 50,
-  n_chain                 = 1000,
+  thinning                = 20,
+  n_chain                 = 500,
   # Priors centered at true initial values
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,

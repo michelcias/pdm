@@ -203,7 +203,7 @@ posterior samples are returned.
 # 4. Set a seed for reproducibility
 
 ## Simulation of data
-n <- 1000  # Number of observations to simulate
+n <- 200   # Number of observations to simulate
 
 # True parameters for simulation:
 theta0_true <- 10  # Initial state (theta[01])
@@ -227,7 +227,7 @@ out <- mcmc_normal_locallevel(
   y,
   burnin             = 1000,
   thinning           = 10,
-  n_chain            = 1000,
+  n_chain            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_shape  = 1e-2,
@@ -248,7 +248,7 @@ out_hc <- mcmc_normal_locallevel(
   y,
   burnin             = 1000,
   thinning           = 10,
-  n_chain            = 1000,
+  n_chain            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_type   = "halfcauchy",  # Half-Cauchy on sqrt(W[1])

@@ -78,7 +78,7 @@ condition on and are therefore dependent.
 \examples{
 \donttest{
 set.seed(123)
-n <- 300
+n <- 200
 u1 <- rnorm(n, sd = 1)
 y  <- cumsum(c(10, u1))[-1] + rnorm(n, sd = sqrt(1 / 5))
 
@@ -86,7 +86,7 @@ out <- mcmc_normal_locallevel(
   y,
   burnin             = 1000,
   thinning           = 10,
-  n_chain            = 1000,
+  n_chain            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_shape  = 1e-2,

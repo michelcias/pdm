@@ -178,7 +178,7 @@ pattern of the Bernoulli probabilities.
 # oscillating pattern to mimic real-world temporal variation in binary outcomes.
 
 set.seed(123)
-n <- 500          # Number of time points
+n <- 200          # Number of time points
 
 # Generate complex oscillating Bernoulli probabilities (mimicking temporal patterns)
 grid_vals <- seq_len(n) / n
@@ -192,8 +192,8 @@ y <- rbinom(n, size = 1, prob = alpha_true)
 out <- mcmc_probit_bernoulli_localacceleration(
   y,
   burnin                  = 1000,      # Discard first 1000 iterations
-  thinning                = 50,        # Keep every 50th iteration
-  n_chain                 = 1000,      # Retain 1000 posterior samples
+  thinning                = 20,        # Keep every 20th iteration
+  n_chain                 = 500,       # Retain 500 posterior samples
   # Weakly informative priors for initial states (centered at 0 on probit scale)
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
@@ -320,8 +320,8 @@ par(mfrow = c(1, 1))
 out <- mcmc_probit_bernoulli_localacceleration(
   y,
   burnin                  = 1000,
-  thinning                = 50,
-  n_chain                 = 1000,
+  thinning                = 20,
+  n_chain                 = 500,
   # Priors centered at true initial values
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,

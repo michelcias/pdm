@@ -51,7 +51,7 @@ cached on the object, so it always reflects the current contents of
 \examples{
 \donttest{
 ## Simulate a Gaussian local-level series
-n <- 1000
+n <- 200
 set.seed(123)
 u1 <- rnorm(n, sd = 1)
 e  <- rnorm(n, sd = sqrt(1 / 5))
@@ -62,7 +62,7 @@ out <- mcmc_normal_locallevel(
   y,
   burnin             = 1000,
   thinning           = 10,
-  n_chain            = 1000,
+  n_chain            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_shape  = 1e-2,

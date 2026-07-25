@@ -53,7 +53,7 @@ comparison.
 \examples{
 \donttest{
 set.seed(123)
-n <- 400
+n <- 200
 alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
 z_true <- rbinom(n, size = 1, prob = alpha_true)
 mu_y    <- (1 - z_true) * 0 + z_true * 2
@@ -63,9 +63,9 @@ y <- rnorm(n, mean = mu_y, sd = sigma_y)
 out <- mcmc_normal_mixture_locallevel(
   y,
   link               = "logit",
-  burnin             = 2000,
+  burnin             = 1000,
   thinning           = 10,
-  n_chain            = 1000,
+  n_chain            = 500,
   prior_mu01_prec    = 0.01,
   prior_prec01_shape = 0.01,
   prior_prec01_rate  = 0.01,

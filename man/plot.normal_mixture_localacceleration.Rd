@@ -216,7 +216,7 @@ on the temporal pattern of mixture probabilities.
 # oscillating pattern to mimic real-world temporal variation in mixture weights.
 
 set.seed(123)
-n <- 400          # Number of time points
+n <- 200          # Number of time points
 
 # Generate complex oscillating mixture weights (mimicking temporal patterns)
 grid_vals <- seq_len(n) / n
@@ -240,9 +240,9 @@ y <- rnorm(n, mean = mu_y, sd = sigma_y)
 out_logit <- mcmc_normal_mixture_localacceleration(
   y,
   link               = "logit",
-  burnin             = 2000,       # Discard first 2000 iterations
-  thinning           = 100,        # Keep every 100th iteration
-  n_chain            = 1000,       # Retain 1000 posterior samples
+  burnin             = 1000,       # Discard first 1000 iterations
+  thinning           = 20,         # Keep every 20th iteration
+  n_chain            = 500,        # Retain 500 posterior samples
   # Weakly informative priors for mixture components
   prior_mu01_mean    = NULL,       # Use default (25th percentile)
   prior_mu01_prec    = 1 / 100,
@@ -406,9 +406,9 @@ par(mfrow = c(1, 1))
 out <- mcmc_normal_mixture_localacceleration(
   y,
   link               = "logit",
-  burnin             = 50000,
-  thinning           = 500,
-  n_chain            = 1000,
+  burnin             = 1000,
+  thinning           = 20,
+  n_chain            = 500,
   # Priors for mixture components
   prior_mu01_mean    = NULL,  # Use default (25th percentile)
   prior_mu01_prec    = 1 / 100,

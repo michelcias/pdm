@@ -17,39 +17,28 @@ Logical value: \code{TRUE} if \code{x} inherits from
 Test whether an object is of class \code{normal_locallevel}.
 }
 \examples{
-\donttest{
-## Simulate data (same setup as ?mcmc_normal_locallevel)
-n <- 1000
-
-# True parameters for simulation
-theta0_true <- 10
-prec1_true <- 1
-prec_y_true <- 5
-
+## A minimal fit is all this test needs; see
+## ?mcmc_normal_locallevel for a realistic analysis.
 set.seed(123)
-u1 <- rnorm(n, sd = sqrt(1 / prec1_true))
-e  <- rnorm(n, sd = sqrt(1 / prec_y_true))
-theta1_true <- cumsum(c(theta0_true, u1))[-1]
-y <- theta1_true + e
+n <- 40
+y <- cumsum(c(10, rnorm(n)))[-1] + rnorm(n, sd = 0.5)
 
 out <- mcmc_normal_locallevel(
   y,
-  burnin             = 1000,
-  thinning           = 10,
-  n_chain            = 1000,
+  burnin             = 50,
+  thinning           = 1,
+  n_chain            = 50,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_shape  = 1e-2,
   prior_prec1_rate   = 1e-2,
   prior_prec_y_shape = 1e-2,
   prior_prec_y_rate  = 1e-2,
-  verbose            = TRUE,
-  bar_width          = 60,
+  verbose            = FALSE,
   seed               = 456
 )
 
-is.normal_locallevel(out)  # TRUE
+is.normal_locallevel(out)     # TRUE
 is.normal_locallevel(list())  # FALSE
-}
 
 }

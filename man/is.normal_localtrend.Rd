@@ -17,54 +17,32 @@ Logical value: \code{TRUE} if \code{x} inherits from
 Test whether an object is of class \code{normal_localtrend}.
 }
 \examples{
-\donttest{
-## Simulate data (same setup as ?mcmc_normal_localtrend)
-n <- 1000
-
-# True parameters for simulation
-theta01_true <- 10
-theta02_true <- 0.5
-prec1_true   <- 1 / 0.10
-prec2_true   <- 1 / 0.01
-prec_y_true  <- 1 / 1.00
-
+## A minimal fit is all this test needs; see
+## ?mcmc_normal_localtrend for a realistic analysis.
 set.seed(123)
-u1      <- rnorm(n, sd = sqrt(1 / prec1_true))
-u2      <- rnorm(n, sd = sqrt(1 / prec2_true))
-epsilon <- rnorm(n, sd = sqrt(1 / prec_y_true))
-
-theta1_true    <- numeric(n)
-theta2_true    <- numeric(n)
-theta2_true[1] <- theta02_true + u2[1]
-theta1_true[1] <- theta01_true + theta02_true + u1[1]
-for (t in 2:n) {
-  theta2_true[t] <- theta2_true[t-1] + u2[t]
-  theta1_true[t] <- theta1_true[t-1] + theta2_true[t-1] + u1[t]
-}
-y <- theta1_true + epsilon
+n <- 40
+y <- cumsum(c(10, rnorm(n)))[-1] + rnorm(n, sd = 0.5)
 
 out <- mcmc_normal_localtrend(
   y,
-  burnin             = 2000,
-  thinning           = 100,
-  n_chain            = 1000,
-  prior_theta01_mean = y[1] / 2,
+  burnin             = 50,
+  thinning           = 1,
+  n_chain            = 50,
+  prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
-  prior_theta02_mean = y[1] / 2,
+  prior_theta02_mean = 0,
   prior_theta02_prec = 1 / var(y),
-  prior_prec1_shape  = 1e-1,
-  prior_prec1_rate   = 1e-1,
+  prior_prec1_shape  = 1e-2,
+  prior_prec1_rate   = 1e-2,
   prior_prec2_shape  = 1e-2,
   prior_prec2_rate   = 1e-2,
-  prior_prec_y_shape = 1e-1,
-  prior_prec_y_rate  = 1e-1,
-  verbose            = TRUE,
-  bar_width          = 60,
+  prior_prec_y_shape = 1e-2,
+  prior_prec_y_rate  = 1e-2,
+  verbose            = FALSE,
   seed               = 456
 )
 
-is.normal_localtrend(out)  # TRUE
+is.normal_localtrend(out)     # TRUE
 is.normal_localtrend(list())  # FALSE
-}
 
 }

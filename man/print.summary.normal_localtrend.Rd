@@ -23,7 +23,7 @@ Prints comprehensive posterior statistics in a readable format.
 \examples{
 \donttest{
 ## Simulation of data
-n <- 1000
+n <- 200
 theta01_true <- 10
 theta02_true <- 0.5
 prec1_true   <- 1 / 0.10
@@ -47,9 +47,9 @@ y <- theta1_true + epsilon
 
 out <- mcmc_normal_localtrend(
   y,
-  burnin             = 2000,
+  burnin             = 1000,
   thinning           = 10,
-  n_chain            = 1000,
+  n_chain            = 500,
   prior_theta01_mean = y[1] / 2,
   prior_theta01_prec = 1 / var(y),
   prior_theta02_mean = y[1] / 2,

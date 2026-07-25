@@ -27,7 +27,7 @@ which are robust to outliers and skewness in the posterior distribution.
 \examples{
 \donttest{
 ## Simulate data (same setup as ?mcmc_binomial_localacceleration)
-n <- 500
+n <- 200
 n_trials <- 20
 
 theta01_true <- 0.5
@@ -60,8 +60,8 @@ out <- mcmc_binomial_localacceleration(
   y,
   n_trials                = n_trials,
   burnin                  = 1000,
-  thinning                = 50,
-  n_chain                 = 1000,
+  thinning                = 20,
+  n_chain                 = 500,
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
   prior_theta02_mean      = 0,

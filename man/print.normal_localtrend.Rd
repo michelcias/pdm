@@ -27,7 +27,7 @@ which are robust to outliers and skewness in the posterior distribution.
 \examples{
 \donttest{
 ## Simulate data (same setup as ?mcmc_normal_localtrend)
-n <- 1000
+n <- 200
 
 theta01_true <- 10
 theta02_true <- 0.5
@@ -52,9 +52,9 @@ y <- theta1_true + epsilon
 
 out <- mcmc_normal_localtrend(
   y,
-  burnin             = 2000,
-  thinning           = 100,
-  n_chain            = 1000,
+  burnin             = 1000,
+  thinning           = 20,
+  n_chain            = 500,
   prior_theta01_mean = y[1] / 2,
   prior_theta01_prec = 1 / var(y),
   prior_theta02_mean = y[1] / 2,

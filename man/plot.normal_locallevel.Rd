@@ -123,7 +123,7 @@ Generates 4 pages in total:
 # time-varying pattern to mimic real-world temporal variation.
 
 set.seed(123)
-n <- 500          # Number of time points
+n <- 200          # Number of time points
 
 # Generate simple time-varying pattern (mimicking real-world smooth trends)
 mu_true <- 10 + 3 * sin(2 * pi * seq_len(n) / n)
@@ -136,8 +136,8 @@ y <- rnorm(n, mean = mu_true, sd = 0.5)
 out <- mcmc_normal_locallevel(
   y,
   burnin                  = 1000,      # Discard first 1000 iterations
-  thinning                = 100,       # Keep every 5th iteration
-  n_chain                 = 1000,      # Retain 1000 posterior samples
+  thinning                = 20,        # Keep every 20th iteration
+  n_chain                 = 500,       # Retain 500 posterior samples
   # Weakly informative prior for initial state
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1 / 100,
@@ -238,9 +238,9 @@ par(mfrow = c(1, 1))
 # priors centered near truth to demonstrate parameter recovery
 out <- mcmc_normal_locallevel(
   y,
-  burnin                  = 10000,
-  thinning                = 100,
-  n_chain                 = 1000,
+  burnin                  = 1000,
+  thinning                = 20,
+  n_chain                 = 500,
   # Prior centered at true initial value
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1 / 100,

@@ -65,7 +65,7 @@ ordered from best to worst, with the top model as the reference row
 \examples{
 \donttest{
 ## Simulate a local-level series and fit two competing dynamic orders
-n <- 1000
+n <- 200
 set.seed(123)
 u1 <- rnorm(n, sd = 1)
 e  <- rnorm(n, sd = sqrt(1 / 5))
@@ -75,7 +75,7 @@ out_level <- mcmc_normal_locallevel(
   y,
   burnin             = 1000,
   thinning           = 10,
-  n_chain            = 1000,
+  n_chain            = 500,
   prior_theta01_mean = y[1],
   prior_theta01_prec = 1 / var(y),
   prior_prec1_shape  = 1e-2,
@@ -88,9 +88,9 @@ out_level <- mcmc_normal_locallevel(
 
 out_trend <- mcmc_normal_localtrend(
   y,
-  burnin             = 2000,
-  thinning           = 100,
-  n_chain            = 1000,
+  burnin             = 1000,
+  thinning           = 20,
+  n_chain            = 500,
   prior_theta01_mean = y[1] / 2,
   prior_theta01_prec = 1 / var(y),
   prior_theta02_mean = y[1] / 2,

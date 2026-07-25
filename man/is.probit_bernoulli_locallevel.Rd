@@ -17,28 +17,26 @@ Logical value: \code{TRUE} if \code{x} inherits from
 Test whether an object is of class \code{probit_bernoulli_locallevel}.
 }
 \examples{
-\donttest{
-## Simulate data (same setup as ?mcmc_probit_bernoulli_locallevel)
-n <- 500
-
+## A minimal fit is all this test needs; see
+## ?mcmc_probit_bernoulli_locallevel for a realistic analysis.
 set.seed(123)
-alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
-y <- rbinom(n, size = 1, prob = alpha_true)
+n <- 40
+y <- rbinom(n, 1, pnorm(cumsum(rnorm(n, sd = 0.2))))
 
 out <- mcmc_probit_bernoulli_locallevel(
   y,
-  burnin = 1000,
-  thinning = 50,
-  n_chain = 1000,
+  burnin             = 50,
+  thinning           = 1,
+  n_chain            = 50,
   prior_theta01_mean = 0,
   prior_theta01_prec = 1,
-  prior_prec1_shape = 100,
-  prior_prec1_rate = 1,
-  seed = 456
+  prior_prec1_shape  = 1e-2,
+  prior_prec1_rate   = 1e-2,
+  verbose            = FALSE,
+  seed               = 456
 )
 
-is.probit_bernoulli_locallevel(out)  # TRUE
+is.probit_bernoulli_locallevel(out)     # TRUE
 is.probit_bernoulli_locallevel(list())  # FALSE
-}
 
 }

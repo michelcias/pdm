@@ -28,7 +28,7 @@ which are robust to outliers and skewness in the posterior distribution.
 \donttest{
 ## Simulate data (same setup as ?mcmc_poisson_locallevel)
 set.seed(123)
-n <- 500
+n <- 200
 
 # Generate true rates
 alpha_true <- exp(sin(2 * pi * seq_len(n) / n) + 1)
@@ -39,8 +39,8 @@ y <- rpois(n, lambda = alpha_true)
 out <- mcmc_poisson_locallevel(
   y,
   burnin                  = 1000,
-  thinning                = 50,
-  n_chain                 = 1000,
+  thinning                = 20,
+  n_chain                 = 500,
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
   prior_prec1_shape       = 100,

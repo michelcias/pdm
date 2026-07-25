@@ -57,7 +57,7 @@ visualize the full trajectories.
 \examples{
 \donttest{
 ## Simulation of data
-n <- 500        # Number of observations to simulate
+n <- 200        # Number of observations to simulate
 n_trials <- 20  # Number of binomial trials
 
 # True parameters for simulation:
@@ -80,8 +80,8 @@ out <- mcmc_binomial_locallevel(
   y,
   n_trials                = n_trials,
   burnin                  = 1000,
-  thinning                = 50,
-  n_chain                 = 1000,
+  thinning                = 20,
+  n_chain                 = 500,
   prior_theta01_mean      = 0,
   prior_theta01_prec      = 1,
   prior_prec1_shape       = 100,

@@ -53,15 +53,88 @@ test_that("summary() and log_lik() delegate to the pooled fit", {
   y    <- make_y()
   fits <- fit_ll(y, seed = 1, chains = 3)
 
-  s <- summary(fits)
+  s <- suppressWarnings(summary(fits))
+  expect_s3_class(s, "summary.pdm_mcmc_list")
   expect_s3_class(s, "summary.normal_locallevel")
   expect_equal(s$n_chain, 450L)
-  expect_identical(s, summary(pool_chains(fits)))
+
+  # The tables themselves are exactly the single-chain method's, on the pooled
+  # draws; only the convergence fields and the class are added on top.
+  pooled <- summary(pool_chains(fits))
+  expect_identical(s$scalar_params, pooled$scalar_params)
+  expect_identical(s$theta_summary, pooled$theta_summary)
 
   ll <- log_lik(fits)
   expect_equal(dim(ll), c(450L, length(y)))
   expect_true(all(is.finite(ll)))
   expect_identical(ll, log_lik(pool_chains(fits)))
+})
+
+
+test_that("summary() carries R-hat for every scalar parameter", {
+  y    <- make_y()
+  fits <- fit_ll(y, seed = 1, chains = 3)
+  s    <- suppressWarnings(summary(fits))
+
+  expect_equal(s$chains, 3L)
+  expect_equal(s$n_chain_each, 150L)
+  expect_named(s$rhat, c("V^{-1}", "theta_01", "W_1^{-1}"))
+  expect_true(all(s$rhat > 0.9))
+
+  # The same numbers mcmc_convergence() reports for those parameters.
+  conv <- mcmc_convergence(fits, theta_timepoints = NULL)
+  expect_equal(unname(round(s$rhat[conv$table$Parameter], 4)),
+               conv$table$Rhat, tolerance = 1e-6)
+})
+
+
+test_that("summary() warns when the chains have not converged", {
+  y <- make_y()
+
+  # Ten iterations of burn-in: the chains cannot have agreed yet. Called
+  # directly because fit_ll() fixes the MCMC controls.
+  under <- mcmc_normal_locallevel(
+    y, burnin = 10, thinning = 1, n_chain = 200,
+    prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
+    prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
+    prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2,
+    seed = 99, chains = 4
+  )
+  expect_warning(summary(under), "chains have not converged")
+  expect_warning(summary(under), "max R-hat")
+
+  s <- suppressWarnings(summary(under))
+  expect_gt(max(s$rhat, na.rm = TRUE), 1.01)
+  expect_output(print(s), "WARNING: max R-hat")
+  expect_output(print(s), "no single posterior")
+
+  # Raising the threshold above the observed value silences it.
+  expect_no_warning(summary(under, rhat_threshold = 100))
+})
+
+
+test_that("summary() is silent and reassuring on a converged fit", {
+  y <- make_y()
+  ok <- mcmc_normal_locallevel(
+    y, burnin = 5000, thinning = 30, n_chain = 400,
+    prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
+    prior_prec1_shape = 1e-2, prior_prec1_rate = 1e-2,
+    prior_prec_y_shape = 1e-2, prior_prec_y_rate = 1e-2,
+    seed = 99, chains = 4
+  )
+
+  expect_no_warning(summary(ok))
+  s <- summary(ok)
+  expect_lt(max(s$rhat, na.rm = TRUE), 1.01)
+  expect_output(print(s), "pooling the chains is justified")
+  expect_output(print(s), "Scalar R-hat")
+})
+
+
+test_that("summary() rejects an invalid rhat_threshold", {
+  fits <- fit_ll(make_y(), seed = 1, chains = 2)
+  expect_error(summary(fits, rhat_threshold = 0.9), "greater than 1")
+  expect_error(summary(fits, rhat_threshold = c(1.01, 1.05)), "single numeric")
 })
 
 
@@ -239,5 +312,8 @@ test_that("plot() covers the non-Gaussian families and their extra types", {
   # "params" is the mixture-only page; the alpha page emits a rescaling note.
   expect_silent(plot(mix, type = "mcmc"))
   expect_silent(plot(mix, type = "params", ask = FALSE))
-  expect_s3_class(summary(mix), "summary.normal_mixture_locallevel")
+  # An 80-draw mixture fit has not converged, and summary() now says so; that
+  # is checked elsewhere, so it is silenced here.
+  expect_s3_class(suppressWarnings(summary(mix)),
+                  "summary.normal_mixture_locallevel")
 })

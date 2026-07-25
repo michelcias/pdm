@@ -3,8 +3,8 @@
  * @brief MCMC sampling for Gaussian mixture models with dynamic mixture weights
  * under a local-level evolution
  * @author Michel H. Montoril
- * @date 2025-01-07
- * @version 1.0
+ * @date 2026-07-24
+ * @version 1.1
  *
  * @details Implements the complete Gibbs sampler for Bayesian estimation of
  * two-component Gaussian mixture models with time-varying mixture

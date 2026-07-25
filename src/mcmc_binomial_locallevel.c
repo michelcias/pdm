@@ -2,8 +2,8 @@
  * @file mcmc_binomial_locallevel.c
  * @brief MCMC sampling for local-level binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
- * @date 2025-10-11
- * @version 1.0
+ * @date 2026-07-24
+ * @version 1.1
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
  *          dynamic models with different link functions and local-level structure:

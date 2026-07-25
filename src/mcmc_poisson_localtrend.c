@@ -2,8 +2,8 @@
  * @file mcmc_poisson_localtrend.c
  * @brief MCMC sampling for local-trend Poisson dynamic models
  * @author Michel H. Montoril
- * @date 2025-12-20
- * @version 1.0
+ * @date 2026-07-24
+ * @version 1.1
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of Poisson
  *          dynamic models with log link and local-trend structure:

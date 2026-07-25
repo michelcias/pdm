@@ -2,8 +2,8 @@
  * @file mcmc_binomial_localacceleration.c
  * @brief MCMC sampling for local-acceleration binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
- * @date 2025-01-11
- * @version 1.0
+ * @date 2026-07-24
+ * @version 1.1
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
  *          dynamic models with local-acceleration structure (level + trend + acceleration):

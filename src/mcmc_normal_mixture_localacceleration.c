@@ -2,8 +2,8 @@
  * @file mcmc_normal_mixture_localacceleration.c
  * @brief MCMC sampling for Gaussian mixture models with local-acceleration weights
  * @author Michel H. Montoril
- * @date 2025-01-07
- * @version 1.0
+ * @date 2026-07-24
+ * @version 1.1
  *
  * @details Implements the full Gibbs sampler for Bayesian estimation of two-component
  * Gaussian mixture models with time-varying mixture weights that follow a

@@ -1,7 +1,8 @@
 # Test suite for plot methods
-# Tests visualization functions for normal_mixture_localtrend
+# Tests visualization functions for normal_mixture_localtrend, plus the
+# true_values overlay across the normal and binomial families
 # Author: Michel Helcias (michelcias)
-# Date: 2025-10-25
+# Date: 2026-07-25
 
 # Helper function (reuse from test-print-methods.R or recreate here)
 create_mock_object <- function(n_chain = 100, n_obs = 50, seed = 123) {
@@ -412,4 +413,135 @@ test_that("plot() examples in documentation work", {
   expect_no_error(plot(mock_obj, type = "all", engine = "base", ask = FALSE))
   expect_no_error(plot(mock_obj, type = "mcmc", which = 1:2))
   expect_no_error(plot(mock_obj, type = "alpha"))
+})
+
+
+# ============================================================================
+# Tests for the true_values overlay
+# ============================================================================
+
+# Every plot method documents a `true_values` list and shows worked examples of
+# it, but nothing asserted that the overlay is actually drawn -- only that the
+# call did not error, which it would not even if the argument were dropped on
+# the floor. These pin it per (family, type).
+#
+# The assertion compares the rendered output with and without the overlay. It
+# has to render every page: recordPlot() keeps only the current one, so a
+# display-list comparison silently measures the last page and reports "not
+# drawn" for the several types whose overlay lives on page 1. postscript() is
+# plain text and writes all pages, so its size responds to any added ink.
+render_size <- function(fit, type, true_values, ...) {
+  f <- tempfile(fileext = ".ps")
+  on.exit(unlink(f), add = TRUE)
+
+  postscript(f, width = 7, height = 7)
+  on.exit(if (!is.null(dev.list())) dev.off(), add = TRUE, after = FALSE)
+  suppressWarnings(suppressMessages(capture.output(
+    plot(fit, type = type, true_values = true_values, ask = FALSE, ...)
+  )))
+  dev.off()
+
+  length(readLines(f, warn = FALSE))
+}
+
+expect_overlay_drawn <- function(fit, type, true_values, ...) {
+  without <- render_size(fit, type, NULL, ...)
+  with    <- render_size(fit, type, true_values, ...)
+  expect_gt(with, without)
+}
+
+
+test_that("each true_values element is drawn on the page that documents it", {
+  mock_obj <- create_mock_object()
+  n_obs    <- attr(mock_obj, "n_obs")
+
+  # One key at a time. Passing the whole list would only prove that *something*
+  # was drawn: the params page overlays four elements, so dropping support for
+  # one still changes the output and the assertion would pass regardless.
+  # One element at a time, so that dropping support for a single one is caught.
+  # Passing the whole list would only prove that *something* was drawn.
+  cases <- list(
+    list(type = "mcmc",   values = list(mu_1        = 0)),
+    list(type = "mcmc",   values = list(mu_2        = 2)),
+    list(type = "mcmc",   values = list(prec_1      = 2)),
+    list(type = "mcmc",   values = list(prec_2      = 2)),
+    list(type = "mcmc",   values = list(theta_01    = 0)),
+    list(type = "mcmc",   values = list(theta_02    = 0)),
+    list(type = "mcmc",   values = list(prec_theta1 = 5)),
+    list(type = "mcmc",   values = list(prec_theta2 = 10)),
+    list(type = "states", values = list(theta_1 = rep(0, n_obs))),
+    list(type = "states", values = list(theta_2 = rep(0, n_obs))),
+    list(type = "alpha",  values = list(alpha = rep(0.5, n_obs)))
+  )
+
+  for (case in cases) {
+    expect_overlay_drawn(mock_obj, case$type, case$values)
+  }
+
+  # The params page is four bivariate scatterplots, and each marks the true
+  # value as a single point -- so it needs both coordinates of its panel, and a
+  # lone element correctly draws nothing. Isolating the panel with `which` is
+  # what makes a missing coordinate visible: passing all four values at once
+  # would still change the output if one panel had stopped honouring them.
+  panels <- list(
+    list(which = 1L, values = list(mu_1   = 0, mu_2   = 2)),
+    list(which = 2L, values = list(mu_1   = 0, prec_1 = 2)),
+    list(which = 3L, values = list(mu_2   = 2, prec_2 = 2)),
+    list(which = 4L, values = list(prec_1 = 2, prec_2 = 2))
+  )
+
+  for (panel in panels) {
+    expect_overlay_drawn(mock_obj, "params", panel$values, which = panel$which)
+    # Half a pair marks nothing, by design.
+    expect_equal(
+      render_size(mock_obj, "params", panel$values[1], which = panel$which),
+      render_size(mock_obj, "params", NULL, which = panel$which)
+    )
+  }
+})
+
+
+test_that("true_values is drawn for the normal and binomial families", {
+  skip_on_cran()
+
+  set.seed(3)
+  n <- 50
+  y <- cumsum(c(10, rnorm(n)))[-1] + rnorm(n, sd = sqrt(1 / 5))
+  p <- plogis(cumsum(rnorm(n, sd = 0.2)))
+
+  normal <- mcmc_normal_locallevel(
+    y, 100, 1, 80,
+    prior_theta01_mean = y[1], prior_theta01_prec = 1 / var(y),
+    verbose = FALSE, seed = 1
+  )
+  tv_normal <- list(prec_y = 5, theta_01 = 10, prec_theta1 = 2,
+                    theta_1 = rep(10, n))
+  for (ty in c("mcmc", "states")) {
+    expect_overlay_drawn(normal, ty, tv_normal)
+  }
+
+  binomial <- mcmc_binomial_locallevel(
+    rbinom(n, 10, p), n_trials = 10, 100, 1, 80,
+    prior_theta01_mean = 0, prior_theta01_prec = 1,
+    verbose = FALSE, seed = 1
+  )
+  tv_binomial <- list(theta_01 = 0, prec_theta1 = 2,
+                      theta_1 = qlogis(p), alpha = p)
+  for (ty in c("mcmc", "states", "alpha")) {
+    expect_overlay_drawn(binomial, ty, tv_binomial)
+  }
+})
+
+
+test_that("an unrelated name in true_values draws nothing extra", {
+  # The overlay is looked up by name, so a list holding only names this family
+  # does not use must render identically to no list at all -- never matched by
+  # position, and never an error.
+  mock_obj <- create_mock_object()
+  irrelevant <- list(not_a_parameter = 1, prec_y = 5)
+
+  for (ty in c("states", "params", "alpha")) {
+    expect_equal(render_size(mock_obj, ty, irrelevant),
+                 render_size(mock_obj, ty, NULL))
+  }
 })

@@ -218,10 +218,15 @@
 #'   standard deviation \eqn{\sqrt{1/\phi_1}} (Gelman, 2006). `"halfcauchy"` is
 #'   Half-t with `df = 1`.
 #' @param prior_prec01_shape Numeric > 0, shape parameter of the Gamma prior for
-#'   the precision of component 1 (\eqn{\phi_1}). Default is 0.01 (vague prior).
-#'   Used only when `prior_prec01_type = "gamma"`.
+#'   the precision of component 1 (\eqn{\phi_1}). Default is 2, following
+#'   Richardson and Green (1997); values below 1 make the prior improper-like on
+#'   the data scale and leave the degenerate region (a component collapsing onto
+#'   a few observations, driving its precision up without limit) barely
+#'   penalised. Used only when `prior_prec01_type = "gamma"`.
 #' @param prior_prec01_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_1}.
-#'   Default is 0.01 (vague prior). Used only when `prior_prec01_type = "gamma"`.
+#'   If `NULL` (default), set to `prior_prec01_shape * diff(range(y))^2 / 100`,
+#'   the Richardson and Green (1997) data-range scaling. Used only when
+#'   `prior_prec01_type = "gamma"`.
 #' @param prior_prec01_scale Numeric > 0, scale \eqn{A} of the Half-t prior for
 #'   \eqn{\sqrt{1/\phi_1}}. Required when `prior_prec01_type` is
 #'   `"halft"`/`"halfcauchy"`.
@@ -235,10 +240,15 @@
 #'   \eqn{\phi_2} (`"gamma"` default, or `"halft"` / `"halfcauchy"` for a Half-t /
 #'   Half-Cauchy prior on \eqn{\sqrt{1/\phi_2}}).
 #' @param prior_prec02_shape Numeric > 0, shape parameter of the Gamma prior for
-#'   the precision of component 2 (\eqn{\phi_2}). Default is 0.01 (vague prior).
-#'   Used only when `prior_prec02_type = "gamma"`.
+#'   the precision of component 2 (\eqn{\phi_2}). Default is 2, following
+#'   Richardson and Green (1997); values below 1 make the prior improper-like on
+#'   the data scale and leave the degenerate region (a component collapsing onto
+#'   a few observations, driving its precision up without limit) barely
+#'   penalised. Used only when `prior_prec02_type = "gamma"`.
 #' @param prior_prec02_rate Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_2}.
-#'   Default is 0.01 (vague prior). Used only when `prior_prec02_type = "gamma"`.
+#'   If `NULL` (default), set to `prior_prec02_shape * diff(range(y))^2 / 100`,
+#'   the Richardson and Green (1997) data-range scaling. Used only when
+#'   `prior_prec02_type = "gamma"`.
 #' @param prior_prec02_scale Numeric > 0, Half-t scale for \eqn{\sqrt{1/\phi_2}}.
 #'   Required when `prior_prec02_type` is `"halft"`/`"halfcauchy"`.
 #' @param prior_prec02_df Numeric > 0, Half-t df for \eqn{\sqrt{1/\phi_2}}.
@@ -505,6 +515,10 @@
 #' Montoril, M. H., Correia, L. T., & Migon, H. S. (2021). Bayesian estimation of
 #' dynamic weights in Gaussian mixture models. arXiv:2104.03395.
 #'
+#' Richardson, S., & Green, P. J. (1997). On Bayesian analysis of mixtures with
+#' an unknown number of components (with discussion). \emph{Journal of the Royal
+#' Statistical Society: Series B}, 59(4), 731-792.
+#'
 #' Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 #' Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.
 #'
@@ -534,12 +548,12 @@ mcmc_normal_mixture_locallevel <- function(y,
                                            n_chain,
                                            prior_mu01_mean = NULL,
                                            prior_mu01_prec = 0.01,
-                                           prior_prec01_shape = 0.01,
-                                           prior_prec01_rate = 0.01,
+                                           prior_prec01_shape = 2,
+                                           prior_prec01_rate = NULL,
                                            prior_mu02_mean = NULL,
                                            prior_mu02_prec = 0.01,
-                                           prior_prec02_shape = 0.01,
-                                           prior_prec02_rate = 0.01,
+                                           prior_prec02_shape = 2,
+                                           prior_prec02_rate = NULL,
                                            prior_theta01_mean = 0,
                                            prior_theta01_prec = 0.01,
                                            prior_prec1_shape = 0.01,
@@ -627,6 +641,16 @@ mcmc_normal_mixture_locallevel <- function(y,
   # priors ask for the reverse (see R/mixture_priors.R). Checked after the NULL
   # defaults are resolved, so the data-driven quantiles are covered too.
   check_mixture_mu_priors(prior_mu01_mean, prior_mu02_mean)
+
+  # Richardson & Green (1997) data-scaled rate for the component precisions
+  # (see rg_component_rate() in R/mixture_priors.R). Only the Gamma branch uses
+  # a rate, so the Half-t path is left alone.
+  if (prior_prec01_type == "gamma" && is.null(prior_prec01_rate)) {
+    prior_prec01_rate <- rg_component_rate(y, prior_prec01_shape)
+  }
+  if (prior_prec02_type == "gamma" && is.null(prior_prec02_rate)) {
+    prior_prec02_rate <- rg_component_rate(y, prior_prec02_shape)
+  }
 
   # Validate mixture component prior parameters
   if (!is.numeric(prior_mu01_mean) || length(prior_mu01_mean) != 1) {

@@ -12,12 +12,12 @@ mcmc_normal_mixture_locallevel(
   n_chain,
   prior_mu01_mean = NULL,
   prior_mu01_prec = 0.01,
-  prior_prec01_shape = 0.01,
-  prior_prec01_rate = 0.01,
+  prior_prec01_shape = 2,
+  prior_prec01_rate = NULL,
   prior_mu02_mean = NULL,
   prior_mu02_prec = 0.01,
-  prior_prec02_shape = 0.01,
-  prior_prec02_rate = 0.01,
+  prior_prec02_shape = 2,
+  prior_prec02_rate = NULL,
   prior_theta01_mean = 0,
   prior_theta01_prec = 0.01,
   prior_prec1_shape = 0.01,
@@ -69,11 +69,16 @@ the reverse and raises a warning.}
 Default is 0.01 (vague prior).}
 
 \item{prior_prec01_shape}{Numeric > 0, shape parameter of the Gamma prior for
-the precision of component 1 (\eqn{\phi_1}). Default is 0.01 (vague prior).
-Used only when \code{prior_prec01_type = "gamma"}.}
+the precision of component 1 (\eqn{\phi_1}). Default is 2, following
+Richardson and Green (1997); values below 1 make the prior improper-like on
+the data scale and leave the degenerate region (a component collapsing onto
+a few observations, driving its precision up without limit) barely
+penalised. Used only when \code{prior_prec01_type = "gamma"}.}
 
 \item{prior_prec01_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_1}.
-Default is 0.01 (vague prior). Used only when \code{prior_prec01_type = "gamma"}.}
+If \code{NULL} (default), set to \code{prior_prec01_shape * diff(range(y))^2 / 100},
+the Richardson and Green (1997) data-range scaling. Used only when
+\code{prior_prec01_type = "gamma"}.}
 
 \item{prior_mu02_mean}{Numeric, prior mean for the mean of component 2 (\eqn{\mu_2}).
 If \code{NULL} (default), set to the 75th percentile of \code{y}.}
@@ -82,11 +87,16 @@ If \code{NULL} (default), set to the 75th percentile of \code{y}.}
 Default is 0.01 (vague prior).}
 
 \item{prior_prec02_shape}{Numeric > 0, shape parameter of the Gamma prior for
-the precision of component 2 (\eqn{\phi_2}). Default is 0.01 (vague prior).
-Used only when \code{prior_prec02_type = "gamma"}.}
+the precision of component 2 (\eqn{\phi_2}). Default is 2, following
+Richardson and Green (1997); values below 1 make the prior improper-like on
+the data scale and leave the degenerate region (a component collapsing onto
+a few observations, driving its precision up without limit) barely
+penalised. Used only when \code{prior_prec02_type = "gamma"}.}
 
 \item{prior_prec02_rate}{Numeric > 0, rate parameter of the Gamma prior for \eqn{\phi_2}.
-Default is 0.01 (vague prior). Used only when \code{prior_prec02_type = "gamma"}.}
+If \code{NULL} (default), set to \code{prior_prec02_shape * diff(range(y))^2 / 100},
+the Richardson and Green (1997) data-range scaling. Used only when
+\code{prior_prec02_type = "gamma"}.}
 
 \item{prior_theta01_mean}{Numeric, prior mean for the initial level state
 \eqn{\theta_{0,1}}. Default is 0.}
@@ -593,6 +603,10 @@ hierarchical models. \emph{Bayesian Analysis}, 1(3), 515-534.
 
 Montoril, M. H., Correia, L. T., & Migon, H. S. (2021). Bayesian estimation of
 dynamic weights in Gaussian mixture models. arXiv:2104.03395.
+
+Richardson, S., & Green, P. J. (1997). On Bayesian analysis of mixtures with
+an unknown number of components (with discussion). \emph{Journal of the Royal
+Statistical Society: Series B}, 59(4), 731-792.
 
 Roberts, G. O., & Rosenthal, J. S. (2001). Optimal scaling for various
 Metropolis-Hastings algorithms. \emph{Statistical Science}, 16(4), 351-367.

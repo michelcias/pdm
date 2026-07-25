@@ -1,3 +1,39 @@
+#' Data-scaled default rate for a mixture component precision
+#'
+#' Internal helper shared by the three `mcmc_normal_mixture_*()` wrappers.
+#' Implements the Richardson & Green (1997) scaling for the Gamma prior on a
+#' component precision \eqn{\phi_k}.
+#'
+#' Their specification is \eqn{\phi_k \sim \mathrm{Gamma}(\alpha, \beta)} with
+#' \eqn{\alpha = 2} and a hyperprior \eqn{\beta \sim \mathrm{Gamma}(g, h)},
+#' \eqn{h = 100g/(\alpha R^2)}, where \eqn{R} is the range of the data. `pdm`
+#' has no hyperprior on the rate, so \eqn{\beta} is fixed at the mean of that
+#' hyperprior, \eqn{E(\beta) = g/h = \alpha R^2 / 100}. Written in terms of the
+#' resolved shape so that a user who changes `shape` keeps the same relationship.
+#'
+#' Note what this does *not* reproduce: Richardson & Green treat \eqn{\beta} as
+#' random, and collapsing it to a point discards that layer. Implementing it
+#' properly would need a sampling step for \eqn{\beta} in the C code.
+#'
+#' The scaling is by the **range**, not the variance, because that is what
+#' Richardson & Green use and because `pdm` shares their *independent* prior on
+#' \eqn{(\mu_k, \phi_k)} — the component mean's prior precision is not
+#' multiplied by \eqn{\phi_k}. The variance-based figure of Nobile (2007)
+#' belongs to a conditional Normal-Gamma structure that this package does not
+#' have.
+#'
+#' @param y Numeric vector of observations.
+#' @param shape The resolved Gamma shape \eqn{\alpha} for that component.
+#'
+#' @return Single numeric, the Gamma rate.
+#'
+#' @keywords internal
+#' @noRd
+rg_component_rate <- function(y, shape) {
+  shape * diff(range(y))^2 / 100
+}
+
+
 #' Check the component-mean priors against the ordering constraint
 #'
 #' Internal helper shared by the three `mcmc_normal_mixture_*()` wrappers. The

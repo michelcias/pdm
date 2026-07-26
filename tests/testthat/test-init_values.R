@@ -431,3 +431,135 @@ test_that("the Poisson and binomial samplers take one init per chain", {
                             verbose = FALSE, init = list(prec_theta1 = 1)),
     "one per chain")
 })
+
+
+# --- The probit-Bernoulli family ----------------------------------------------
+# The last of the link families. Its C code lives in the same three files as the
+# logit binomial sampler, one entry point below it, so these tests also stand
+# guard over that split: if an edit meant for one function landed on the other,
+# the accepted names or the recorded start would move.
+
+test_that("init reaches the probit-Bernoulli samplers and is recorded", {
+  set.seed(12)
+  n  <- 40
+  th <- cumsum(c(0, rnorm(n, sd = 0.15)))[-1]
+  y  <- rbinom(n, 1, pnorm(th))
+
+  f <- mcmc_probit_bernoulli_locallevel(y, 60, 1, 30,
+                                        prior_theta01_mean = 0,
+                                        prior_theta01_prec = 1,
+                                        init = list(theta_01 = 0.4,
+                                                    prec_theta1 = 8),
+                                        verbose = FALSE, seed = 456)
+  expect_equal(attr(f, "init")$theta_01, 0.4)
+  expect_equal(attr(f, "init")$prec_theta1, 8)
+
+  g <- mcmc_probit_bernoulli_locallevel(y, 60, 1, 30,
+                                        prior_theta01_mean = 0,
+                                        prior_theta01_prec = 1,
+                                        verbose = FALSE, seed = 456)
+  expect_false(identical(f$prec_theta1, g$prec_theta1))
+
+  # Left out means drawn, and reported as the value actually used.
+  h <- mcmc_probit_bernoulli_locallevel(y, 60, 1, 30,
+                                        prior_theta01_mean = 0,
+                                        prior_theta01_prec = 1,
+                                        init = list(prec_theta1 = 8),
+                                        verbose = FALSE, seed = 456)
+  expect_equal(attr(h, "init")$prec_theta1, 8)
+  expect_true(is.numeric(attr(h, "init")$theta_01))
+})
+
+
+test_that("the vocabulary invariant holds for the probit-Bernoulli family", {
+  set.seed(13)
+  n  <- 40
+  th <- cumsum(c(0, rnorm(n, sd = 0.15)))[-1]
+  y  <- rbinom(n, 1, pnorm(th))
+
+  labels <- c(theta_01    = "theta_01", theta_02    = "theta_02",
+              theta_03    = "theta_03", prec_theta1 = "W_1^{-1}",
+              prec_theta2 = "W_2^{-1}", prec_theta3 = "W_3^{-1}")
+
+  th0 <- list(prior_theta01_mean = 0, prior_theta01_prec = 1)
+  th2 <- c(th0, list(prior_theta02_mean = 0, prior_theta02_prec = 1))
+  th3 <- c(th2, list(prior_theta03_mean = 0, prior_theta03_prec = 1))
+
+  cases <- list(list(mcmc_probit_bernoulli_locallevel,        th0),
+                list(mcmc_probit_bernoulli_localtrend,        th2),
+                list(mcmc_probit_bernoulli_localacceleration, th3))
+
+  for (case in cases) {
+    f     <- case[[1]]
+    extra <- c(case[[2]], list(verbose = FALSE))
+
+    fit <- do.call(f, c(list(y, 20, 1, 10), extra))
+    msg <- tryCatch(do.call(f, c(list(y, 20, 1, 10), extra,
+                                 list(init = list(nope = 1)))),
+                    error = function(e) conditionMessage(e))
+    accepted <- strsplit(sub(".*Valid names for this model are: ", "", msg), ", ")[[1]]
+
+    scalars <- names(fit)[!vapply(fit, is.matrix, logical(1L))]
+    expect_equal(sort(accepted), sort(scalars))
+    # No observation precision here either, and alpha is derived from theta.
+    expect_false("prec_y" %in% accepted)
+    expect_false("alpha" %in% accepted)
+
+    for (nm in accepted) {
+      expect_equal(true_value_for(labels[[nm]], stats::setNames(list(42), nm)), 42)
+    }
+  }
+})
+
+
+test_that("the probit and logit samplers keep separate starting states", {
+  # The two entry points share a C file. Pinning the probit one must not reach
+  # the logit one, and vice versa: a mis-targeted edit would show up here.
+  set.seed(14)
+  n  <- 40
+  th <- cumsum(c(0, rnorm(n, sd = 0.15)))[-1]
+  yb <- rbinom(n, 1, pnorm(th))
+
+  probit <- mcmc_probit_bernoulli_locallevel(yb, 60, 1, 30,
+                                            prior_theta01_mean = 0,
+                                            prior_theta01_prec = 1,
+                                            init = list(prec_theta1 = 3),
+                                            verbose = FALSE, seed = 456)
+  logit  <- mcmc_binomial_locallevel(yb, 1, 60, 1, 30,
+                                     prior_theta01_mean = 0,
+                                     prior_theta01_prec = 1,
+                                     init = list(prec_theta1 = 3),
+                                     verbose = FALSE, seed = 456)
+
+  expect_equal(attr(probit, "init")$prec_theta1, 3)
+  expect_equal(attr(logit, "init")$prec_theta1, 3)
+  # Same start, different algorithms (Albert-Chib against adaptive MH), so the
+  # draws must not coincide.
+  expect_false(identical(probit$prec_theta1, logit$prec_theta1))
+})
+
+
+test_that("every probit-Bernoulli sampler takes one init per chain", {
+  set.seed(15)
+  n <- 40
+  y <- rbinom(n, 1, 0.4)
+
+  fits <- mcmc_probit_bernoulli_locallevel(y, 60, 1, 30,
+                                           prior_theta01_mean = 0,
+                                           prior_theta01_prec = 1,
+                                           chains = 3,
+                                           init = list(list(prec_theta1 = 1),
+                                                       list(prec_theta1 = 5),
+                                                       list(prec_theta1 = 20)),
+                                           verbose = FALSE, seed = 456)
+  expect_s3_class(fits, "pdm_mcmc_list")
+  expect_equal(vapply(fits, function(ch) attr(ch, "init")$prec_theta1, numeric(1)),
+               c(1, 5, 20))
+
+  expect_error(
+    mcmc_probit_bernoulli_locallevel(y, 20, 1, 10, prior_theta01_mean = 0,
+                                     prior_theta01_prec = 1, chains = 3,
+                                     verbose = FALSE,
+                                     init = list(prec_theta1 = 1)),
+    "one per chain")
+})

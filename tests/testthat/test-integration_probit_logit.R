@@ -22,20 +22,26 @@ test_that("probit and logit give similar results for theta near zero", {
   
   # --- Run both samplers ---
   
-  # Probit sampler
+  # Both drivers receive their starting values from R (see resolve_init() in
+  # R/init_values.R), so a direct .Call has to supply them. Building them with
+  # the helper, from the same seed for each, consumes the stream exactly as the
+  # C code used to and leaves both chains starting from the same point -- which
+  # is what this test compares.
   set.seed(702)
+  init_probit <- resolve_init(
+    NULL,
+    states = list(theta_01 = list(mean = 0.0, prec = 1.0)),
+    precs  = list(prec_theta1 = list(code = 0L, shape = 10.0, rate = 1.0,
+                                     scale = 1.0, df = 1.0))
+  )$values
   result_probit <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
                          y, 200L, 2L, 500L,
                          0.0, 1.0,
                          0L, 10.0, 1.0, 1.0, 1.0,  # prec1: Gamma(code 0), shape, rate, scale, df
+                         init_probit,
                          FALSE, 60L)
 
-  # Logit sampler (with n_trials = 1 for Bernoulli). Unlike the probit entry
-  # point, which still draws its own starting values, the logit one receives
-  # them through `init_` (see resolve_init() in R/init_values.R). Building them
-  # with the helper, from the same seed, consumes the stream exactly as the C
-  # code used to and leaves both chains starting from the same point -- which is
-  # what this test compares.
+  # Logit sampler (with n_trials = 1 for Bernoulli).
   set.seed(702)
   init_logit <- resolve_init(
     NULL,
@@ -113,10 +119,17 @@ test_that("probit sampler is more efficient than logit (acceptance rate)", {
 
   # --- Run probit sampler (Gibbs has 100% acceptance) ---
   set.seed(704)
+  init_probit <- resolve_init(
+    NULL,
+    states = list(theta_01 = list(mean = 0.0, prec = 1.0)),
+    precs  = list(prec_theta1 = list(code = 0L, shape = 5.0, rate = 1.0,
+                                     scale = 1.0, df = 1.0))
+  )$values
   result_probit <- .Call("_pdm_C_MCMC_probit_bernoulli_locallevel",
                          y, 100L, 1L, 300L,
                          0.0, 1.0,
                          0L, 5.0, 1.0, 1.0, 1.0,  # prec1: Gamma(code 0), shape, rate, scale, df
+                         init_probit,
                          FALSE, 60L)
   
   # --- Compare efficiency ---

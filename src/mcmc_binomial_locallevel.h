@@ -3,7 +3,7 @@
  * @brief Header for MCMC sampling in local-level binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.2
+ * @version 1.3
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
  *          binomial and Bernoulli dynamic models with local-level structure.
@@ -122,6 +122,9 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
  * @param prior_theta01_prec_ Prior precision for theta_{0,1}
  * @param prior_prec1_shape_  Gamma shape for 1/W_1
  * @param prior_prec1_rate_   Gamma rate for 1/W_1
+ * @param init_               Double vector [3] of starting values, resolved in R by
+ *                            resolve_init(): theta_{0,1}, then 1/W_1, then the Half-t auxiliary
+ *                            of that precision (0 under a Gamma prior, where it is never read).
  * @param verbose_            Flag for progress bar display (0 = off, non-zero = on)
  * @param bar_width_          Width of progress bar in characters (10-120 recommended)
  *
@@ -134,6 +137,8 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for stability
  * @note Acceptance rate: Always 1.0 (Gibbs sampling)
+ * @note Initialization: starting values are decided in R and read from init_;
+ *       this function draws none of them itself
  * @note Each y[t] must be exactly 0 or 1
  *
  * @see Albert & Chib (1993), JASA
@@ -152,6 +157,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
                                         SEXP prior_prec1_rate_,
                                         SEXP prior_prec1_scale_,
                                         SEXP prior_prec1_df_,
+                                        SEXP init_,
                                         SEXP verbose_,
                                         SEXP bar_width_);
 

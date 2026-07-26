@@ -3,7 +3,7 @@
  * @brief MCMC sampling for local-acceleration binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.3
+ * @version 1.4
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
  *          dynamic models with local-acceleration structure (level + trend + acceleration):
@@ -42,7 +42,7 @@
 #include "conditional_theta0.h"
 #include "generate_alpha_binomial.h"
 #include "utils.h"
-#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_*, pdm_init_prec_prior */
+#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_* */
 #include "mcmc_progress_bar.h"
 #include "mcmc_binomial_localacceleration.h"
 
@@ -741,6 +741,10 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @param prior_prec3_rate_   Gamma rate for 1/W_3 (Gamma kind).
  * @param prior_prec3_scale_  Half-t scale A_3 > 0 (Half-t kind).
  * @param prior_prec3_df_     Half-t df nu_3 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param init_               Double vector [9] of starting values, resolved in R by
+ *                            resolve_init(): theta_{0,1} to theta_{0,3}, then 1/W_1 to 1/W_3,
+ *                            then the Half-t auxiliary of each precision in the same order
+ *                            (0 under a Gamma prior, never read).
  * @param verbose_            Logical: display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_          Integer: width of progress bar in characters (10-120).
  *
@@ -759,9 +763,13 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
  * @note Acceptance rate: Always 1.0 (Gibbs sampling)
+ * @note Initialization: starting values are decided in R and read from init_;
+ *       this function draws none of them itself
  * @note Conditional alpha computation eliminates unnecessary pnorm calls
  *
  * @warning Each y[t] must be either 0 or 1
+ * @warning No input validation for init_; it is assumed to have the documented
+ *          length and to hold finite values, both guaranteed by resolve_init()
  * @warning n must not exceed INT_MAX
  *
  * @see Albert & Chib (1993). Bayesian Analysis of Binary and Polychotomous Response Data.
@@ -800,6 +808,7 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
                                                SEXP prior_prec3_rate_,
                                                SEXP prior_prec3_scale_,
                                                SEXP prior_prec3_df_,
+                                               SEXP init_,
                                                SEXP verbose_,
                                                SEXP bar_width_) {
 
@@ -918,8 +927,8 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
   double prec_theta3_current,   prec_theta3_previous;
 
   /* Half-t auxiliaries b = 1/a, one per precision (refreshed in place under a
-   * Half-t prior; left at 0 and never read under the Gamma prior). */
-  double aux_W1 = 0.0, aux_W2 = 0.0, aux_W3 = 0.0;
+   * Half-t prior; hold 0 and are never read under the Gamma prior). */
+  double aux_W1, aux_W2, aux_W3;
 
   /* Working array for right-hand side of linear system */
   double *rhs_vector = (double *) R_Calloc(n, double);
@@ -928,12 +937,22 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
   GetRNGstate();
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
-  theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
-  theta_03_previous = rnorm(mean_theta03, sqrt(1.0 / prec_theta03));
-  prec_theta1_previous   = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
-  prec_theta2_previous   = pdm_init_prec_prior(prec2_kind, &prior_W2, &aux_W2);
-  prec_theta3_previous   = pdm_init_prec_prior(prec3_kind, &prior_W3, &aux_W3);
+  /* Starting values arrive already decided from R (see resolve_init() in
+   * R/init_values.R): whatever the caller pinned through `init`, and a draw
+   * from the corresponding prior for everything else. `init_` is laid out as
+   * the initial states in order, then the precisions, then one auxiliary per
+   * precision in the same order. */
+  const double *init = REAL(init_);
+
+  theta_01_previous    = init[0];
+  theta_02_previous    = init[1];
+  theta_03_previous    = init[2];
+  prec_theta1_previous = init[3];
+  prec_theta2_previous = init[4];
+  prec_theta3_previous = init[5];
+  aux_W1               = init[6];
+  aux_W2               = init[7];
+  aux_W3               = init[8];
 
   /* Start each trajectory flat at this chain's own prior-drawn initial level.
    * A hard-coded zero would be identical in every chain, which costs the

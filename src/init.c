@@ -7,9 +7,17 @@
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.10
+ * @version 1.11
  *
  * @changelog
+ * - v1.11 (2026-07-26): Updated argument counts for the probit-Bernoulli MCMC
+ *     functions, the last of the link families to receive its starting values from
+ *     R through an init_ vector:
+ *     C_MCMC_probit_bernoulli_locallevel: 13 -> 14 args
+ *     C_MCMC_probit_bernoulli_localtrend: 20 -> 21 args
+ *     C_MCMC_probit_bernoulli_localacceleration: 27 -> 28 args
+ *     Twelve of the fifteen samplers now take init; only the three Gaussian
+ *     mixtures still draw their own starting values.
  * - v1.10 (2026-07-26): Updated argument counts for the Poisson and logit binomial
  *     MCMC functions, which now receive their starting values from R through a new
  *     init_ vector:
@@ -116,9 +124,9 @@
  *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration with logit (37 args)
  *
  *          *Bernoulli Dynamic Models with Probit Link (3 functions):*
- *          - C_MCMC_probit_bernoulli_locallevel: Bernoulli local level with probit link (13 args)
- *          - C_MCMC_probit_bernoulli_localtrend: Bernoulli local trend with probit link (20 args)
- *          - C_MCMC_probit_bernoulli_localacceleration:  Bernoulli local acceleration with probit (27 args)
+ *          - C_MCMC_probit_bernoulli_locallevel: Bernoulli local level with probit link (14 args)
+ *          - C_MCMC_probit_bernoulli_localtrend: Bernoulli local trend with probit link (21 args)
+ *          - C_MCMC_probit_bernoulli_localacceleration:  Bernoulli local acceleration with probit (28 args)
  *
  *          *Poisson Dynamic Models with Log Link (3 functions):*
  *          - C_MCMC_log_poisson_locallevel: Poisson local level with log link (22 args)
@@ -222,9 +230,9 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_logit_binomial_localacceleration",       (DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 37},
 
   // --- Bernoulli Dynamic Models (Probit Link) ---
-  {"_pdm_C_MCMC_probit_bernoulli_locallevel",            (DL_FUNC) &C_MCMC_probit_bernoulli_locallevel,        13},
-  {"_pdm_C_MCMC_probit_bernoulli_localtrend",            (DL_FUNC) &C_MCMC_probit_bernoulli_localtrend,        20},
-  {"_pdm_C_MCMC_probit_bernoulli_localacceleration",     (DL_FUNC) &C_MCMC_probit_bernoulli_localacceleration, 27},
+  {"_pdm_C_MCMC_probit_bernoulli_locallevel",            (DL_FUNC) &C_MCMC_probit_bernoulli_locallevel,        14},
+  {"_pdm_C_MCMC_probit_bernoulli_localtrend",            (DL_FUNC) &C_MCMC_probit_bernoulli_localtrend,        21},
+  {"_pdm_C_MCMC_probit_bernoulli_localacceleration",     (DL_FUNC) &C_MCMC_probit_bernoulli_localacceleration, 28},
 
   // --- Poisson Dynamic Models (Log Link) ---
   {"_pdm_C_MCMC_log_poisson_locallevel",            (DL_FUNC) &C_MCMC_log_poisson_locallevel,        22},

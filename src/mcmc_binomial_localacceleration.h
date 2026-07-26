@@ -3,7 +3,7 @@
  * @brief Header for MCMC sampling in local-acceleration binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.2
+ * @version 1.3
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
  *          binomial and Bernoulli dynamic models with local-acceleration structure.
@@ -187,6 +187,10 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @param prior_prec3_rate_   Gamma rate for 1/W_3 (Gamma kind)
  * @param prior_prec3_scale_  Half-t scale A_3 > 0 (Half-t kind)
  * @param prior_prec3_df_     Half-t df nu_3 > 0 (Half-t kind; 1 = Half-Cauchy)
+ * @param init_               Double vector [9] of starting values, resolved in R by
+ *                            resolve_init(): theta_{0,1} to theta_{0,3}, then 1/W_1 to 1/W_3,
+ *                            then the Half-t auxiliary of each precision in the same order
+ *                            (0 under a Gamma prior, never read).
  * @param verbose_            Flag for progress bar display (0 = off, non-zero = on)
  * @param bar_width_          Width of progress bar in characters (10-120 recommended)
  *
@@ -205,6 +209,8 @@ SEXP C_MCMC_logit_binomial_localacceleration(SEXP y_,
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for stability
  * @note Acceptance rate: Always 1.0 (Gibbs sampling)
+ * @note Initialization: starting values are decided in R and read from init_;
+ *       this function draws none of them itself
  * @note Each y[t] must be exactly 0 or 1
  *
  * @see Albert & Chib (1993), JASA
@@ -242,6 +248,7 @@ SEXP C_MCMC_probit_bernoulli_localacceleration(SEXP y_,
                                                SEXP prior_prec3_rate_,
                                                SEXP prior_prec3_scale_,
                                                SEXP prior_prec3_df_,
+                                               SEXP init_,
                                                SEXP verbose_,
                                                SEXP bar_width_);
 

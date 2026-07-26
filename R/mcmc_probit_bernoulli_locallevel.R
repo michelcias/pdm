@@ -88,6 +88,21 @@
 #' Burn-in and thinning are applied so that exactly `n_draws` posterior
 #' samples are returned.
 #'
+#'
+#' \strong{Starting values:}
+#'
+#' By default the chain starts from a draw from each parameter's own prior. That
+#' is what makes several chains disperse, and it is what `chains > 1` relies on,
+#' but it can also start the chain a long way from the bulk of the posterior --
+#' a Half-Cauchy draw for a standard deviation is occasionally enormous -- and
+#' burn-in then pays for it. `init` pins any subset of the parameters to values
+#' of your choosing; everything left out is still drawn from its prior.
+#'
+#' The names are the fitted object's own components, which is also the
+#' vocabulary the `plot()` method's `true_values` argument uses, so one name
+#' means one parameter across the package. `init` covers the scalar parameters
+#' only: the latent trajectories, and the `alpha` probabilities derived from
+#' them, cannot be set -- each trajectory starts flat at its own initial state.
 #' @param y Numeric vector of observed Bernoulli outcomes (length \eqn{n}). Each
 #'   element must be either 0 or 1.
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
@@ -132,6 +147,15 @@
 #'   depend on this setting: every chain receives an explicit seed, so a given
 #'   `seed` reproduces the same output sequentially or in parallel. Default is
 #'   `FALSE`.
+#' @param init Optional named list of starting values, or `NULL` (the default)
+#'   to draw every one of them from its prior, as the sampler has always done.
+#'   The names this model accepts are `theta_01` and `prec_theta1`;
+#'   any subset may be given, and precisions must be positive. An unrecognised
+#'   name is an error rather than being ignored, so a misspelling cannot pass
+#'   for a starting value that quietly had no effect. With `chains > 1` pass a
+#'   list of `chains` such lists, one per chain: a single starting point shared
+#'   by every chain removes the dispersion the Gelman-Rubin statistic in
+#'   \code{\link{mcmc_convergence}} is computed from, so it is refused.
 #'
 #' @return A list with components:
 #' \describe{
@@ -198,6 +222,12 @@
 #' ## Alternative: weakly-informative Half-Cauchy prior (Gelman, 2006)
 #' # Replace the Gamma prior on the innovation precision with a Half-Cauchy on
 #' # the innovation SD sqrt(W[1]); the Gamma shape/rate are then unused.
+#' # This fit also pins two starting values through `init`. Note that the
+#' # initial state lives on the scale of the linear predictor -- the probit
+#' # scale, hence qnorm() of the observed proportion, not the proportion
+#' # itself. `prec_theta1` is pinned too, since a Half-Cauchy draw for an
+#' # innovation SD is occasionally enormous and burn-in then pays for the
+#' # journey back.
 #' out_hc <- mcmc_probit_bernoulli_locallevel(
 #'   y,
 #'   burnin             = 1000,
@@ -207,8 +237,12 @@
 #'   prior_theta01_prec = 1,
 #'   prior_prec1_type   = "halfcauchy",  # Half-Cauchy on sqrt(W[1])
 #'   prior_prec1_scale  = 1,             # scale A_1 > 0
+#'   init               = list(theta_01    = qnorm(mean(y)),
+#'                             prec_theta1 = 10),
 #'   seed               = 456
 #' )
+#' # Where the chain actually started is recorded on the fit:
+#' attr(out_hc, "init")
 #'
 #' ## Posterior analysis and visualization
 #' # Use the plot method for comprehensive diagnostics
@@ -270,16 +304,17 @@ mcmc_probit_bernoulli_locallevel <- function(y,
                                              prior_prec1_scale = 2,
                                              prior_prec1_df = 1,
                                              chains = 1,
-                                             parallel = FALSE) {
+                                             parallel = FALSE,
+                                             init = NULL) {
 
   # --- Multi-chain dispatch ---
-  # Re-issues this same call once per chain, each with its own seed, and returns
-  # the collection. Kept at the very top so `match.call()` captures the call
-  # exactly as the user wrote it.
+  # Re-issues this same call once per chain, each with its own seed and its own
+  # entry of `init`, and returns the collection. Kept at the very top so
+  # `match.call()` captures the call exactly as the user wrote it.
   validate_chains_args(chains, parallel)
   if (chains > 1) {
     return(run_chains(match.call(), parent.frame(),
-                      as.integer(chains), seed, parallel))
+                      as.integer(chains), seed, parallel, init))
   }
 
   # `missing()` must be read before the argument is touched.
@@ -350,6 +385,17 @@ mcmc_probit_bernoulli_locallevel <- function(y,
   }
   # --- End Input Validation ---
 
+  # --- Starting values ---
+  # Validated and resolved in R (see R/init_values.R), drawing whatever `init`
+  # left out in the order the C driver used to draw it, so an `init = NULL` run
+  # consumes the RNG stream exactly as before this argument existed.
+  init_state <- resolve_init(
+    init,
+    states = list(theta_01 = list(mean = prior_theta01_mean,
+                                  prec = prior_theta01_prec)),
+    precs  = list(prec_theta1 = prec1_prior)
+  )
+
   # Call the C function
   result <- .Call(
     "_pdm_C_MCMC_probit_bernoulli_locallevel",
@@ -364,6 +410,7 @@ mcmc_probit_bernoulli_locallevel <- function(y,
     as.numeric(prec1_prior$rate),
     as.numeric(prec1_prior$scale),
     as.numeric(prec1_prior$df),
+    as.numeric(init_state$values),
     as.logical(verbose),
     as.integer(bar_width)
   )
@@ -383,9 +430,10 @@ mcmc_probit_bernoulli_locallevel <- function(y,
   # is a nuisance parameter and is intentionally not returned).
   attr(result, "prior_prec_theta1") <- prec1_prior[c("type", "shape", "rate", "scale", "df")]
 
-  # Record what produced this fit: version, seed and every resolved prior
-  # (see R/provenance.R). Must come after all defaults are filled in.
-  result <- record_provenance(result, seed)
+  # Record what produced this fit: version, seed, every resolved prior and the
+  # starting values (see R/provenance.R). Must come after all defaults are
+  # filled in.
+  result <- record_provenance(result, seed, init_state$init)
 
   return(result)
 }

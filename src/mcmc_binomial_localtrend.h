@@ -3,7 +3,7 @@
  * @brief Header for MCMC sampling in local-trend binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.2
+ * @version 1.3
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
  *          binomial and Bernoulli dynamic models with local-trend structure.
@@ -232,6 +232,10 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
  * @param prior_prec2_rate_   Gamma rate for 1/W_2 (Gamma kind).
  * @param prior_prec2_scale_  Half-t scale A_2 > 0 (Half-t kind).
  * @param prior_prec2_df_     Half-t df nu_2 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param init_               Double vector [6] of starting values, resolved in R by
+ *                            resolve_init(): theta_{0,1} and theta_{0,2}, then 1/W_1 and 1/W_2,
+ *                            then the Half-t auxiliary of each precision in the same order
+ *                            (0 under a Gamma prior, never read).
  * @param verbose_            Logical: display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_          Integer: width of progress bar in characters (10-120).
  *
@@ -247,11 +251,15 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
  * @note Acceptance rate: Always 1.0 (Gibbs sampling)
+ * @note Initialization: starting values are decided in R and read from init_;
+ *       this function draws none of them itself
  * @note Conditional alpha computation eliminates unnecessary pnorm calls
  * @note Progress bar updates approximately once per bar segment (adaptive frequency)
  * @note Minimal performance overhead from progress bar (~0.01% for typical runs)
  *
  * @warning Each y[t] must be either 0 or 1
+ * @warning No input validation for init_; it is assumed to have the documented
+ *          length and to hold finite values, both guaranteed by resolve_init()
  * @warning n must not exceed INT_MAX
  *
  * @see Albert & Chib (1993). Bayesian Analysis of Binary and Polychotomous Response Data.
@@ -281,6 +289,7 @@ SEXP C_MCMC_probit_bernoulli_localtrend(SEXP y_,
                                         SEXP prior_prec2_rate_,
                                         SEXP prior_prec2_scale_,
                                         SEXP prior_prec2_df_,
+                                        SEXP init_,
                                         SEXP verbose_,
                                         SEXP bar_width_);
 

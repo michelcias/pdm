@@ -3,7 +3,7 @@
  * @brief MCMC sampling for local-level binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.3
+ * @version 1.4
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
  *          dynamic models with different link functions and local-level structure:
@@ -37,7 +37,7 @@
 #include "conditional_theta0.h"
 #include "generate_alpha_binomial.h"
 #include "utils.h"
-#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_*, pdm_init_prec_prior */
+#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_* */
 #include "mcmc_progress_bar.h"
 #include "mcmc_binomial_locallevel.h"
 
@@ -510,6 +510,9 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
  * @param prior_prec1_rate_   Gamma rate for 1/W_1 (Gamma kind).
  * @param prior_prec1_scale_  Half-t scale A_1 > 0 (Half-t kind).
  * @param prior_prec1_df_     Half-t df nu_1 > 0 (Half-t kind; 1 = Half-Cauchy).
+ * @param init_               Double vector [3] of starting values, resolved in R by
+ *                            resolve_init(): theta_{0,1}, then 1/W_1, then the Half-t auxiliary
+ *                            of that precision (0 under a Gamma prior, where it is never read).
  * @param verbose_            Logical: display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_          Integer: width of progress bar in characters (10-120).
  *
@@ -522,9 +525,13 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
  * @note Acceptance rate: Always 1.0 (Gibbs sampling)
+ * @note Initialization: starting values are decided in R and read from init_;
+ *       this function draws none of them itself
  * @note Conditional alpha computation eliminates unnecessary pnorm calls
  *
  * @warning Each y[t] must be either 0 or 1
+ * @warning No input validation for init_; it is assumed to have the documented
+ *          length and to hold finite values, both guaranteed by resolve_init()
  * @warning n must not exceed INT_MAX
  *
  * @see Albert & Chib (1993). Bayesian Analysis of Binary and Polychotomous Response Data.
@@ -544,6 +551,7 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
                                         SEXP prior_prec1_rate_,
                                         SEXP prior_prec1_scale_,
                                         SEXP prior_prec1_df_,
+                                        SEXP init_,
                                         SEXP verbose_,
                                         SEXP bar_width_) {
 
@@ -626,8 +634,8 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
   double prec_theta1_current,   prec_theta1_previous;
 
   /* Half-t auxiliary b = 1/a for the W_1 precision (refreshed in place when its
-   * prior is Half-t; left at 0 and never read under the Gamma prior). */
-  double aux_W1 = 0.0;
+   * prior is Half-t; holds 0 and is never read under the Gamma prior). */
+  double aux_W1;
 
   /* Working array for right-hand side of linear system */
   double *rhs_vector = (double *) R_Calloc(n, double);
@@ -636,9 +644,16 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
   GetRNGstate();
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
-  /* Draw initial values from priors to start the Markov chain */
-  theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous   = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
+  /* Starting values arrive already decided from R (see resolve_init() in
+   * R/init_values.R): whatever the caller pinned through `init`, and a draw
+   * from the corresponding prior for everything else. `init_` is laid out as
+   * the initial states in order, then the precisions, then one auxiliary per
+   * precision in the same order. */
+  const double *init = REAL(init_);
+
+  theta_01_previous    = init[0];
+  prec_theta1_previous = init[1];
+  aux_W1               = init[2];
 
   /* Start each trajectory flat at this chain's own prior-drawn initial level.
    * A hard-coded zero would be identical in every chain, which costs the

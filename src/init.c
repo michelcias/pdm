@@ -6,10 +6,17 @@
  *          ensuring proper interface between R and C code.  Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
- * @date 2025-12-21
- * @version 1.8
+ * @date 2026-07-25
+ * @version 1.9
  *
  * @changelog
+ * - v1.9 (2026-07-25): Updated argument counts for the Gaussian MCMC functions,
+ *     which now receive their starting values from R through a new init_ vector:
+ *     C_MCMC_normal_locallevel: 18 -> 19 args
+ *     C_MCMC_normal_localtrend: 25 -> 26 args
+ *     C_MCMC_normal_localacceleration: 32 -> 33 args
+ *     The table of registered methods also carried stale counts for the last two
+ *     (16 and 20 against the 25 and 32 actually registered); both are corrected.
  * - v1.8 (2025-12-21): Added registration for Poisson model test helpers:
  *     test_cwmh_alpha_log_poisson_locallevel:  5 args
  *     test_cwmh_alpha_log_poisson:  6 args
@@ -81,9 +88,9 @@
  *          **Main MCMC Functions (Production):**
  *
  *          *Gaussian Dynamic Models (3 functions):*
- *          - C_MCMC_normal_locallevel:  Gaussian local level model (18 args)
- *          - C_MCMC_normal_localtrend: Gaussian local trend model (16 args)
- *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (20 args)
+ *          - C_MCMC_normal_locallevel:  Gaussian local level model (19 args)
+ *          - C_MCMC_normal_localtrend: Gaussian local trend model (26 args)
+ *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (33 args)
  *
  *          *Gaussian Mixture Models with Dynamic Weights (3 functions):*
  *          - C_MCMC_normal_mixture_locallevel: Gaussian mixture with local-level weights (27 args)
@@ -187,9 +194,9 @@ static const R_CallMethodDef CallEntries[] = {
   //============================================================================
 
   // --- Gaussian Dynamic Models ---
-  {"_pdm_C_MCMC_normal_locallevel",               (DL_FUNC) &C_MCMC_normal_locallevel,        18},
-  {"_pdm_C_MCMC_normal_localtrend",               (DL_FUNC) &C_MCMC_normal_localtrend,        25},
-  {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 32},
+  {"_pdm_C_MCMC_normal_locallevel",               (DL_FUNC) &C_MCMC_normal_locallevel,        19},
+  {"_pdm_C_MCMC_normal_localtrend",               (DL_FUNC) &C_MCMC_normal_localtrend,        26},
+  {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 33},
 
   // --- Gaussian Mixture Models with Dynamic Weights ---
   {"_pdm_C_MCMC_normal_mixture_locallevel",             (DL_FUNC) &C_MCMC_normal_mixture_locallevel,             36},

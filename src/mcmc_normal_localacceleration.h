@@ -3,7 +3,7 @@
  * @brief Header for MCMC sampling in Gaussian local-acceleration dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-25
- * @version 1.2
+ * @version 1.3
  *
  * @details This header declares the Gibbs sampler for Bayesian estimation of local-acceleration
  *          polynomial dynamic models with Gaussian observation equations. The implementation
@@ -128,6 +128,10 @@
  *                              prior on 1/V. Typical value: 0.001 (vague prior).
  * @param prior_prec_y_rate_    SEXP Double scalar, rate parameter eta_y for Gamma(nu_y, eta_y)
  *                              prior on 1/V. Typical value: 0.001 (vague prior).
+ * @param init_                 SEXP Double vector [11] of starting values, resolved in R by
+ *                              resolve_init(): theta_{0,1} to theta_{0,3}, then 1/W_1 to
+ *                              1/W_3 and 1/V, then the Half-t auxiliary of each precision
+ *                              in the same order (0 under a Gamma prior, never read).
  * @param verbose_              Logical flag enabling progress bar display (0 = off, non-zero = on)
  * @param bar_width_            Integer controlling progress bar width (clamped to 10-120 characters)
  *
@@ -146,12 +150,15 @@
  * @note Computational complexity: O(n_iter × n) for n_iter total iterations.
  * @note Memory requirements: O(n) temporary storage for efficient buffer management.
  * @note RNG management: Proper GetRNGstate()/PutRNGstate() bracket for R integration.
- * @note Initialization: Uses prior-based random initialization for all parameters.
+ * @note Initialization: Starting values are decided in R and read from init_; this
+ *       function draws none of them itself.
  *
  * @warning Minimum sample size n >= 3 enforced for numerical stability of recursions.
  * @warning Integer overflow protection: n <= INT_MAX due to R's integer limitations.
  * @warning Memory allocation failures will terminate R session via R_Calloc errors.
  * @warning No input validation for prior hyperparameters; negative values may cause crashes.
+ * @warning No input validation for init_; it is assumed to have the documented
+ *          length and to hold finite values, both guaranteed by resolve_init().
  *
  * @see generate_theta_p
  * @see generate_precision_theta_p
@@ -193,6 +200,7 @@ SEXP C_MCMC_normal_localacceleration(SEXP y_,
                                      SEXP prior_prec_y_rate_,
                                      SEXP prior_prec_y_scale_,
                                      SEXP prior_prec_y_df_,
+                                     SEXP init_,
                                      SEXP verbose_,
                                      SEXP bar_width_);
 

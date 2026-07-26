@@ -7,7 +7,9 @@
 #' The chains differ because every sampler draws its starting values from the
 #' priors (initial state and precisions) before entering the Gibbs loop, so a
 #' different seed means a genuinely different starting point -- the dispersion
-#' that the Gelman-Rubin statistic needs. See `mcmc_convergence` for the
+#' that the Gelman-Rubin statistic needs. A sampler that accepts `init` takes
+#' one starting-value list per chain for the same reason; see
+#' `split_init_by_chain()` in `R/init_values.R`. See `mcmc_convergence` for the
 #' diagnostics computed from the result.
 #'
 #' Reproducibility does not depend on how the chains are executed: each chain
@@ -20,12 +22,19 @@
 #' @param seed Master seed (or `NULL`). Chain seeds are drawn from it, so a
 #'   single `seed` reproduces the whole set.
 #' @param parallel Logical; run the chains with `parallel::mclapply()`.
+#' @param init The caller's `init` argument, already evaluated: `NULL`, or one
+#'   starting-value list per chain. Samplers that do not accept `init` omit it.
 #'
 #' @return An object of class `c("pdm_mcmc_list", "list")`.
 #'
 #' @keywords internal
 #' @noRd
-run_chains <- function(call, envir, chains, seed, parallel) {
+run_chains <- function(call, envir, chains, seed, parallel, init = NULL) {
+
+  # One starting-value list per chain, or a list of NULLs when `init` was not
+  # given, in which case each chain draws its own start from the priors. Done
+  # before the seed is touched, so a rejected `init` leaves the RNG state alone.
+  inits <- split_init_by_chain(init, chains)
 
   # Chain seeds are drawn from the master seed rather than taken as
   # `seed + 1, seed + 2, ...`: consecutive integers are poor Mersenne-Twister
@@ -39,9 +48,13 @@ run_chains <- function(call, envir, chains, seed, parallel) {
   call$parallel <- NULL
   call$verbose  <- FALSE
 
-  run_one <- function(s) {
+  run_one <- function(i) {
     this_call      <- call
-    this_call$seed <- s
+    this_call$seed <- seeds[i]
+    # The value is spliced into the call rather than the symbol `init`, which
+    # would resolve in `envir` to the whole per-chain list. A NULL removes the
+    # argument, leaving the wrapper's own default.
+    this_call$init <- inits[[i]]
     eval(this_call, envir)
   }
 
@@ -49,7 +62,8 @@ run_chains <- function(call, envir, chains, seed, parallel) {
     if (!requireNamespace("parallel", quietly = TRUE)) {
       stop("`parallel = TRUE` requires the 'parallel' package")
     }
-    fits <- parallel::mclapply(seeds, run_one, mc.cores = worker_count(chains))
+    fits <- parallel::mclapply(seq_len(chains), run_one,
+                               mc.cores = worker_count(chains))
     # mclapply reports worker failures as condition objects instead of raising.
     failed <- vapply(fits, inherits, logical(1L), what = "try-error")
     if (any(failed)) {
@@ -57,7 +71,7 @@ run_chains <- function(call, envir, chains, seed, parallel) {
            conditionMessage(attr(fits[[which(failed)[1L]]], "condition")))
     }
   } else {
-    fits <- lapply(seeds, run_one)
+    fits <- lapply(seq_len(chains), run_one)
   }
 
   new_pdm_mcmc_list(fits, seeds = seeds)

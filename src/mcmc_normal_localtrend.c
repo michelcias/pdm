@@ -3,7 +3,7 @@
  * @brief MCMC sampling for Gaussian local-trend dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-25
- * @version 1.1
+ * @version 1.2
  *
  * @details This file implements a complete Gibbs sampler for Bayesian estimation of
  *          local-trend polynomial dynamic models with Gaussian observation equations.
@@ -36,8 +36,7 @@
 #include "conditional_state.h"
 #include "conditional_precision.h"
 #include "conditional_theta0.h"
-#include "utils.h"          /* rgamma_positive */
-#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_*, pdm_init_prec_prior */
+#include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_* */
 #include "mcmc_normal_localtrend.h"
 #include "mcmc_progress_bar.h"
 
@@ -120,6 +119,10 @@
  *                              prior_prec_y_type_ == 1).
  * @param prior_prec_y_df_      SEXP Double scalar, Half-t degrees of freedom nu_y > 0
  *                              (used when prior_prec_y_type_ == 1; 1 = Half-Cauchy).
+ * @param init_                 SEXP Double vector [8] of starting values, resolved in R by
+ *                              resolve_init(): theta_{0,1} and theta_{0,2}, then 1/W_1,
+ *                              1/W_2 and 1/V, then the Half-t auxiliary of each precision
+ *                              in the same order (0 under a Gamma prior, never read).
  * @param verbose_              SEXP Logical scalar controlling progress bar display
  *                              (0 = disabled, non-zero = enabled).
  * @param bar_width_            SEXP Integer scalar defining progress bar width in
@@ -137,12 +140,15 @@
  * @note Computational complexity: O(n_iter × n) for n_iter total iterations.
  * @note Memory requirements: O(n) temporary storage for efficient buffer management.
  * @note RNG management: Proper GetRNGstate()/PutRNGstate() bracket for R integration.
- * @note Initialization: Uses prior-based random initialization for all parameters.
+ * @note Initialization: Starting values are decided in R and read from init_; this
+ *       function draws none of them itself.
  *
  * @warning Minimum sample size n >= 3 enforced for numerical stability of recursions.
  * @warning Integer overflow protection: n <= INT_MAX due to R's integer limitations.
  * @warning Memory allocation failures will terminate R session via R_Calloc errors.
  * @warning No input validation for prior hyperparameters; negative values may cause crashes.
+ * @warning No input validation for init_; it is assumed to have the documented
+ *          length and to hold finite values, both guaranteed by resolve_init().
  *
  * @see generate_theta_p
  * @see generate_precision_theta_p
@@ -175,6 +181,7 @@ SEXP C_MCMC_normal_localtrend(SEXP y_,
                               SEXP prior_prec_y_rate_,
                               SEXP prior_prec_y_scale_,
                               SEXP prior_prec_y_df_,
+                              SEXP init_,
                               SEXP verbose_,
                               SEXP bar_width_) {
 
@@ -281,22 +288,29 @@ SEXP C_MCMC_normal_localtrend(SEXP y_,
   double prec_y_current, prec_y_previous;
 
   /* Half-t auxiliaries b = 1/a, one per precision. Refreshed in place after the
-   * matching precision draw when its prior is Half-t; left at 0 (never read)
+   * matching precision draw when its prior is Half-t; hold 0 (never read)
    * under the Gamma prior. */
-  double aux_W1 = 0.0, aux_W2 = 0.0, aux_V = 0.0;
+  double aux_W1, aux_W2, aux_V;
 
   /* ========== Initialize RNG State ========== */
   GetRNGstate();
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
-  /* Draw initial values from priors to start the Markov chain. Each precision is
-   * initialised from its chosen prior (Gamma directly, or Half-t through the
-   * scale-mixture representation); these one-time branches are outside the loop. */
-  theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  theta_02_previous = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
-  prec_theta1_previous = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
-  prec_theta2_previous = pdm_init_prec_prior(prec2_kind, &prior_W2, &aux_W2);
-  prec_y_previous      = pdm_init_prec_prior(precy_kind, &prior_V,  &aux_V);
+  /* Starting values arrive already decided from R (see resolve_init() in
+   * R/init_values.R): whatever the caller pinned through `init`, and a draw
+   * from the corresponding prior for everything else. `init_` is laid out as
+   * the initial states in order, then the precisions, then one auxiliary per
+   * precision in the same order. */
+  const double *init = REAL(init_);
+
+  theta_01_previous    = init[0];
+  theta_02_previous    = init[1];
+  prec_theta1_previous = init[2];
+  prec_theta2_previous = init[3];
+  prec_y_previous      = init[4];
+  aux_W1               = init[5];
+  aux_W2               = init[6];
+  aux_V                = init[7];
 
   /* Initialize theta_1 and theta_2 trajectories with neutral starting values */
   for (int j = 0; j < n; j++) {

@@ -32,7 +32,8 @@ mcmc_normal_localtrend(
   prior_prec_y_scale = NULL,
   prior_prec_y_df = 1,
   chains = 1,
-  parallel = FALSE
+  parallel = FALSE,
+  init = NULL
 )
 }
 \arguments{
@@ -142,6 +143,17 @@ case, since several bars sharing one console interleave.}
 depend on this setting: every chain receives an explicit seed, so a given
 \code{seed} reproduces the same output sequentially or in parallel. Default is
 \code{FALSE}.}
+
+\item{init}{Optional named list of starting values, or \code{NULL} (the default)
+to draw every one of them from its prior, as the sampler has always done.
+The names this model accepts are \code{theta_01}, \code{theta_02}, \code{prec_theta1},
+\code{prec_theta2} and \code{prec_y}; any subset may be given, and precisions must be
+positive. An unrecognised name is an error rather than being ignored, so a
+misspelling cannot pass for a starting value that quietly had no effect.
+With \code{chains > 1} pass a list of \code{chains} such lists, one per chain: a
+single starting point shared by every chain removes the dispersion the
+Gelman-Rubin statistic in \code{\link{mcmc_convergence}} is computed from,
+so it is refused.}
 }
 \value{
 A list with components:
@@ -159,11 +171,15 @@ When \code{chains > 1} the return value is instead an object of class
 \code{c("pdm_mcmc_list", "list")} holding one such fit per chain; see
 \code{\link{print.pdm_mcmc_list}}.
 
-The object also carries \code{pdm_version}, \code{seed} and \code{priors} as attributes:
-the version that produced it, the seed as supplied, and every prior after
-resolution -- including the ones derived from the data, which never appear in
-the call. Splicing \code{attr(fit, "priors")} back into a fresh call reproduces the
-fit on any later version, whatever the defaults have become.
+The object also carries \code{pdm_version}, \code{seed}, \code{priors} and \code{init} as
+attributes: the version that produced it, the seed as supplied, every prior
+after resolution -- including the ones derived from the data, which never
+appear in the call -- and the starting values the chain actually used,
+whether they were chosen or drawn. Splicing \code{attr(fit, "priors")} back into a
+fresh call reproduces the fit on any later version, whatever the defaults
+have become. \code{init} is recorded for reading and for warm-starting a further
+run, not for that round trip: supplying it changes what is drawn before the
+loop, so a rerun that passes it back is a different, equally valid chain.
 }
 \description{
 Runs a Gibbs sampler for the local trend dynamic model.
@@ -231,6 +247,21 @@ inside the MCMC loop.
 
 Burn-in and thinning are applied so that exactly \code{n_draws} posterior samples
 are returned.
+
+\strong{Starting values:}
+
+By default the chain starts from a draw from each parameter's own prior. That
+is what makes several chains disperse, and it is what \code{chains > 1} relies on,
+but it can also start the chain a long way from the bulk of the posterior --
+a Half-Cauchy draw for a standard deviation is occasionally enormous -- and
+burn-in then pays for it. \code{init} pins any subset of the parameters to values
+of your choosing; everything left out is still drawn from its prior.
+
+The names are the fitted object's own components, which is also the
+vocabulary the \code{plot()} method's \code{true_values} argument uses, so one name
+means one parameter across the package. \code{init} covers the scalar parameters
+only: the latent trajectories, which \code{true_values} does accept, start flat at
+their initial states and cannot be set.
 }
 \examples{
 ## Description
@@ -300,6 +331,10 @@ out <- mcmc_normal_localtrend(
 # Put a Half-Cauchy prior on the level and trend innovation SDs sqrt(W[1]),
 # sqrt(W[2]), keeping a Gamma prior on the observation precision 1/V. Each
 # precision's prior is chosen independently via its `*_type` argument.
+# This fit also pins two starting values through `init`: a Half-Cauchy draw
+# for an innovation SD is occasionally enormous, and starting the chain at a
+# plausible point instead spends the burn-in on mixing rather than on the
+# journey back. The initial states are left out, so they are still drawn.
 out_hc <- mcmc_normal_localtrend(
   y,
   burnin             = 1000,
@@ -315,8 +350,12 @@ out_hc <- mcmc_normal_localtrend(
   prior_prec2_scale  = 1,     # sqrt(W[2])
   prior_prec_y_shape = 1e-1,
   prior_prec_y_rate  = 1e-1,  # 1/V keeps Gamma
+  init               = list(prec_theta1 = 1 / var(diff(y)),
+                            prec_theta2 = 1 / var(diff(y, differences = 2))),
   seed               = 456
 )
+# Where the chain actually started is recorded on the fit:
+attr(out_hc, "init")
 
 ## Posterior analysis and visualization
 # Use the plot method for comprehensive diagnostics

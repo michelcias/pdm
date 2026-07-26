@@ -66,6 +66,21 @@
 #' Burn-in and thinning are applied so that exactly `n_draws` posterior samples
 #' are returned.
 #'
+#' \strong{Starting values:}
+#'
+#' By default the chain starts from a draw from each parameter's own prior. That
+#' is what makes several chains disperse, and it is what `chains > 1` relies on,
+#' but it can also start the chain a long way from the bulk of the posterior --
+#' a Half-Cauchy draw for a standard deviation is occasionally enormous -- and
+#' burn-in then pays for it. `init` pins any subset of the parameters to values
+#' of your choosing; everything left out is still drawn from its prior.
+#'
+#' The names are the fitted object's own components, which is also the
+#' vocabulary the `plot()` method's `true_values` argument uses, so one name
+#' means one parameter across the package. `init` covers the scalar parameters
+#' only: the latent trajectories, which `true_values` does accept, start flat at
+#' their initial states and cannot be set.
+#'
 #' @param y Numeric vector of observations (length \eqn{n}). Must contain only finite values.
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.
 #' @param thinning Integer \eqn{\geq 1}, thinning interval.
@@ -145,6 +160,16 @@
 #'   depend on this setting: every chain receives an explicit seed, so a given
 #'   `seed` reproduces the same output sequentially or in parallel. Default is
 #'   `FALSE`.
+#' @param init Optional named list of starting values, or `NULL` (the default)
+#'   to draw every one of them from its prior, as the sampler has always done.
+#'   The names this model accepts are `theta_01`, `theta_02`, `prec_theta1`,
+#'   `prec_theta2` and `prec_y`; any subset may be given, and precisions must be
+#'   positive. An unrecognised name is an error rather than being ignored, so a
+#'   misspelling cannot pass for a starting value that quietly had no effect.
+#'   With `chains > 1` pass a list of `chains` such lists, one per chain: a
+#'   single starting point shared by every chain removes the dispersion the
+#'   Gelman-Rubin statistic in \code{\link{mcmc_convergence}} is computed from,
+#'   so it is refused.
 #'
 #' @return A list with components:
 #' \describe{
@@ -162,11 +187,15 @@
 #' \code{\link{print.pdm_mcmc_list}}.
 #'
 #'
-#' The object also carries `pdm_version`, `seed` and `priors` as attributes:
-#' the version that produced it, the seed as supplied, and every prior after
-#' resolution -- including the ones derived from the data, which never appear in
-#' the call. Splicing `attr(fit, "priors")` back into a fresh call reproduces the
-#' fit on any later version, whatever the defaults have become.
+#' The object also carries `pdm_version`, `seed`, `priors` and `init` as
+#' attributes: the version that produced it, the seed as supplied, every prior
+#' after resolution -- including the ones derived from the data, which never
+#' appear in the call -- and the starting values the chain actually used,
+#' whether they were chosen or drawn. Splicing `attr(fit, "priors")` back into a
+#' fresh call reproduces the fit on any later version, whatever the defaults
+#' have become. `init` is recorded for reading and for warm-starting a further
+#' run, not for that round trip: supplying it changes what is drawn before the
+#' loop, so a rerun that passes it back is a different, equally valid chain.
 #' @examples
 #' ## Description
 #' # This example demonstrates how to:
@@ -235,6 +264,10 @@
 #' # Put a Half-Cauchy prior on the level and trend innovation SDs sqrt(W[1]),
 #' # sqrt(W[2]), keeping a Gamma prior on the observation precision 1/V. Each
 #' # precision's prior is chosen independently via its `*_type` argument.
+#' # This fit also pins two starting values through `init`: a Half-Cauchy draw
+#' # for an innovation SD is occasionally enormous, and starting the chain at a
+#' # plausible point instead spends the burn-in on mixing rather than on the
+#' # journey back. The initial states are left out, so they are still drawn.
 #' out_hc <- mcmc_normal_localtrend(
 #'   y,
 #'   burnin             = 1000,
@@ -250,8 +283,12 @@
 #'   prior_prec2_scale  = 1,     # sqrt(W[2])
 #'   prior_prec_y_shape = 1e-1,
 #'   prior_prec_y_rate  = 1e-1,  # 1/V keeps Gamma
+#'   init               = list(prec_theta1 = 1 / var(diff(y)),
+#'                             prec_theta2 = 1 / var(diff(y, differences = 2))),
 #'   seed               = 456
 #' )
+#' # Where the chain actually started is recorded on the fit:
+#' attr(out_hc, "init")
 #'
 #' ## Posterior analysis and visualization
 #' # Use the plot method for comprehensive diagnostics
@@ -325,16 +362,17 @@ mcmc_normal_localtrend <- function(y,
                                    prior_prec_y_scale = NULL,
                                    prior_prec_y_df = 1,
                                    chains = 1,
-                                   parallel = FALSE) {
+                                   parallel = FALSE,
+                                   init = NULL) {
 
   # --- Multi-chain dispatch ---
-  # Re-issues this same call once per chain, each with its own seed, and returns
-  # the collection. Kept at the very top so `match.call()` captures the call
-  # exactly as the user wrote it.
+  # Re-issues this same call once per chain, each with its own seed and its own
+  # entry of `init`, and returns the collection. Kept at the very top so
+  # `match.call()` captures the call exactly as the user wrote it.
   validate_chains_args(chains, parallel)
   if (chains > 1) {
     return(run_chains(match.call(), parent.frame(),
-                      as.integer(chains), seed, parallel))
+                      as.integer(chains), seed, parallel, init))
   }
 
   # Record whether the user explicitly set each df (used to flag a contradictory
@@ -447,6 +485,21 @@ mcmc_normal_localtrend <- function(y,
   }
   # --- End Input Validation ---
 
+  # --- Starting values ---
+  # Validated and resolved in R (see R/init_values.R), drawing whatever `init`
+  # left out in the order the C driver used to draw it, so an `init = NULL` run
+  # consumes the RNG stream exactly as before this argument existed.
+  init_state <- resolve_init(
+    init,
+    states = list(theta_01 = list(mean = prior_theta01_mean,
+                                  prec = prior_theta01_prec),
+                  theta_02 = list(mean = prior_theta02_mean,
+                                  prec = prior_theta02_prec)),
+    precs  = list(prec_theta1 = prec1_prior,
+                  prec_theta2 = prec2_prior,
+                  prec_y      = prec_y_prior)
+  )
+
   # Call the C function. Argument order groups each precision's prior spec
   # (type code, Gamma shape/rate, Half-t scale/df) and must match the C signature
   # in `src/mcmc_normal_localtrend.c`.
@@ -475,6 +528,7 @@ mcmc_normal_localtrend <- function(y,
     as.numeric(prec_y_prior$rate),
     as.numeric(prec_y_prior$scale),
     as.numeric(prec_y_prior$df),
+    as.numeric(init_state$values),
     as.logical(verbose),
     as.integer(bar_width)
   )
@@ -497,9 +551,10 @@ mcmc_normal_localtrend <- function(y,
   attr(result, "prior_prec_theta2") <- prec2_prior[c("type", "shape", "rate", "scale", "df")]
   attr(result, "prior_prec_y")      <- prec_y_prior[c("type", "shape", "rate", "scale", "df")]
 
-  # Record what produced this fit: version, seed and every resolved prior
-  # (see R/provenance.R). Must come after all defaults are filled in.
-  result <- record_provenance(result, seed)
+  # Record what produced this fit: version, seed, every resolved prior and the
+  # starting values (see R/provenance.R). Must come after all defaults are
+  # filled in.
+  result <- record_provenance(result, seed, init_state$init)
 
   return(result)
 }

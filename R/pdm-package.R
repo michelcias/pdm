@@ -26,7 +26,7 @@
 
 ## usethis namespace: start
 #' @useDynLib pdm, .registration = TRUE
-#' @importFrom stats acf density fft median nextn qnorm quantile sd var
+#' @importFrom stats acf density fft median nextn qnorm quantile rgamma rnorm sd var
 #' @importFrom graphics abline axTicks axis grid legend lines mtext par points polygon segments title
 #' @importFrom utils tail
 ## usethis namespace: end

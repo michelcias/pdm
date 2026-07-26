@@ -88,8 +88,10 @@
 #' The names are the fitted object's own components, which is also the
 #' vocabulary the `plot()` method's `true_values` argument uses, so one name
 #' means one parameter across the package. `init` covers the scalar parameters
-#' only: the latent trajectories, which `true_values` does accept, start flat at
-#' their initial states and cannot be set.
+#' only: the latent trajectories, which `true_values` does accept, cannot be
+#' set. They start at zero and the first iteration re-draws them in block,
+#' conditional on the initial states and the precisions -- which are exactly
+#' what `init` does control.
 #'
 #' @param y Numeric vector of observations (length \eqn{n}). Must contain only finite values.
 #' @param burnin Integer \eqn{\geq 0}, number of burn-in iterations.

@@ -236,8 +236,10 @@ of your choosing; everything left out is still drawn from its prior.
 The names are the fitted object's own components, which is also the
 vocabulary the \code{plot()} method's \code{true_values} argument uses, so one name
 means one parameter across the package. \code{init} covers the scalar parameters
-only: the latent trajectories, which \code{true_values} does accept, start flat at
-their initial states and cannot be set.
+only: the latent trajectories, which \code{true_values} does accept, cannot be
+set. They start at zero and the first iteration re-draws them in block,
+conditional on the initial states and the precisions -- which are exactly
+what \code{init} does control.
 }
 \examples{
 ## Description

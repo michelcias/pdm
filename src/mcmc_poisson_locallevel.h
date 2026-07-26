@@ -2,8 +2,8 @@
  * @file mcmc_poisson_locallevel.h
  * @brief Header for MCMC sampling in local-level Poisson dynamic models
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.1
+ * @date 2026-07-26
+ * @version 1.2
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
  *          Poisson dynamic models with local-level structure.
@@ -58,6 +58,10 @@
  * @param min_deviation_threshold_ Minimum deviation to trigger adaptation
  * @param return_log_sigma_        Flag for log_sigma diagnostics
  * @param return_accept_prop_      Flag for accept_prop diagnostics
+ * @param init_                    Double vector [3] of starting values, resolved in R by
+ *                                 resolve_init(): theta_{0,1}, then 1/W_1, then the Half-t
+ *                                 auxiliary of that precision (0 under a Gamma prior,
+ *                                 where it is never read).
  * @param verbose_                 Flag for progress bar display (0 = off, non-zero = on)
  * @param bar_width_               Width of progress bar in characters (10-120 recommended)
  *
@@ -96,6 +100,7 @@ SEXP C_MCMC_log_poisson_locallevel(SEXP y_,
                                    SEXP min_deviation_threshold_,
                                    SEXP return_log_sigma_,
                                    SEXP return_accept_prop_,
+                                   SEXP init_,
                                    SEXP verbose_,
                                    SEXP bar_width_);
 

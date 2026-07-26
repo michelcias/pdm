@@ -43,7 +43,8 @@ mcmc_binomial_localacceleration(
   prior_prec3_scale = 2,
   prior_prec3_df = 1,
   chains = 1,
-  parallel = FALSE
+  parallel = FALSE,
+  init = NULL
 )
 }
 \arguments{
@@ -176,6 +177,17 @@ case, since several bars sharing one console interleave.}
 depend on this setting: every chain receives an explicit seed, so a given
 \code{seed} reproduces the same output sequentially or in parallel. Default is
 \code{FALSE}.}
+
+\item{init}{Optional named list of starting values, or \code{NULL} (the default)
+to draw every one of them from its prior, as the sampler has always done.
+The names this model accepts are \code{theta_01}, \code{theta_02}, \code{theta_03}, \code{prec_theta1}, \code{prec_theta2}
+and \code{prec_theta3};
+any subset may be given, and precisions must be positive. An unrecognised
+name is an error rather than being ignored, so a misspelling cannot pass
+for a starting value that quietly had no effect. With \code{chains > 1} pass a
+list of \code{chains} such lists, one per chain: a single starting point shared
+by every chain removes the dispersion the Gelman-Rubin statistic in
+\code{\link{mcmc_convergence}} is computed from, so it is refused.}
 }
 \value{
 An object of class \code{c("binomial_localacceleration", "pdm_mcmc", "list")}
@@ -369,6 +381,22 @@ For most applications:
 
 Burn‐in and thinning are applied so that exactly \code{n_draws} posterior samples
 are returned.
+
+\strong{Starting values:}
+
+By default the chain starts from a draw from each parameter's own prior. That
+is what makes several chains disperse, and it is what \code{chains > 1} relies on,
+but it can also start the chain a long way from the bulk of the posterior --
+a Half-Cauchy draw for a standard deviation is occasionally enormous -- and
+burn-in then pays for it. \code{init} pins any subset of the parameters to values
+of your choosing; everything left out is still drawn from its prior.
+
+The names are the fitted object's own components, which is also the
+vocabulary the \code{plot()} method's \code{true_values} argument uses, so one name
+means one parameter across the package. \code{init} covers the scalar parameters
+only: the latent trajectories, and the \code{alpha} rates or probabilities derived
+from them, cannot be set -- each trajectory starts flat at its own initial
+state.
 }
 \examples{
 ## Description
@@ -431,6 +459,11 @@ out <- mcmc_binomial_localacceleration(
 ## Alternative: weakly-informative Half-Cauchy priors (Gelman, 2006)
 # Put a Half-Cauchy prior on the three innovation SDs sqrt(W[1]), sqrt(W[2]),
 # sqrt(W[3]); each precision's prior is chosen independently via its `*_type`.
+# This fit also pins two starting values through `init`. Note that a link
+# family's initial state lives on the scale of the linear predictor, not on
+# the scale of `y`: hence the logit of the observed proportion. `prec_theta1` is
+# pinned too, since a Half-Cauchy draw for an innovation SD is occasionally
+# enormous and burn-in then pays for the journey back.
 out_hc <- mcmc_binomial_localacceleration(
   y,
   n_trials           = n_trials,
@@ -449,9 +482,13 @@ out_hc <- mcmc_binomial_localacceleration(
   prior_prec2_scale  = 1,  # sqrt(W[2])
   prior_prec3_type   = "halfcauchy",
   prior_prec3_scale  = 1,  # sqrt(W[3])
+  init               = list(theta_01    = qlogis(mean(y / n_trials)),
+                            prec_theta1 = 10),
   verbose            = FALSE,
   seed               = 456
 )
+# Where the chain actually started is recorded on the fit:
+attr(out_hc, "init")
 
 ## Posterior analysis and visualization
 # Use the plot method for comprehensive diagnostics

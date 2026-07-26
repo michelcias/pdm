@@ -2,8 +2,8 @@
  * @file mcmc_binomial_localtrend.h
  * @brief Header for MCMC sampling in local-trend binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.1
+ * @date 2026-07-26
+ * @version 1.2
  *
  * @details This header declares complete Gibbs samplers for Bayesian estimation of
  *          binomial and Bernoulli dynamic models with local-trend structure.
@@ -100,6 +100,10 @@
  * @param min_deviation_threshold_ Minimum deviation to trigger adaptation (>= 0).
  * @param return_log_sigma_        Flag to return log_sigma diagnostics.
  * @param return_accept_prop_      Flag to return accept_prop diagnostics.
+ * @param init_                    Double vector [6] of starting values, resolved in R by
+ *                                 resolve_init(): theta_{0,1} and theta_{0,2}, then 1/W_1
+ *                                 and 1/W_2, then the Half-t auxiliary of each precision in
+ *                                 the same order (0 under a Gamma prior, never read).
  * @param verbose_                 Logical: display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_               Integer: width of progress bar in characters (10-120).
  *
@@ -117,6 +121,8 @@
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
  * @note Proper RNG state management via GetRNGstate()/PutRNGstate()
+ * @note Initialization: the logit sampler's starting values are decided in R and
+ *       read from init_; it draws none of them itself
  * @note Adaptation threshold: practical default is 1.0/lag_update
  * @note Progress bar updates approximately once per bar segment (adaptive frequency)
  * @note Minimal performance overhead from progress bar (~0.01% for typical runs)
@@ -124,6 +130,8 @@
  * @warning Each y[t] must satisfy 0 <= y[t] <= n_trials
  * @warning n must not exceed INT_MAX
  * @warning Memory allocation failures terminate R session
+ * @warning No input validation for init_; it is assumed to have the documented
+ *          length and to hold finite values, both guaranteed by resolve_init()
  *
  * @see generate_alpha_logit_binomial
  * @see generate_theta_p
@@ -159,6 +167,7 @@ SEXP C_MCMC_logit_binomial_localtrend(SEXP y_,
                                       SEXP min_deviation_threshold_,
                                       SEXP return_log_sigma_,
                                       SEXP return_accept_prop_,
+                                      SEXP init_,
                                       SEXP verbose_,
                                       SEXP bar_width_);
 

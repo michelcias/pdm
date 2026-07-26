@@ -6,10 +6,23 @@
  *          ensuring proper interface between R and C code.  Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.9
+ * @date 2026-07-26
+ * @version 1.10
  *
  * @changelog
+ * - v1.10 (2026-07-26): Updated argument counts for the Poisson and logit binomial
+ *     MCMC functions, which now receive their starting values from R through a new
+ *     init_ vector:
+ *     C_MCMC_log_poisson_locallevel: 21 -> 22 args
+ *     C_MCMC_log_poisson_localtrend: 28 -> 29 args
+ *     C_MCMC_log_poisson_localacceleration: 35 -> 36 args
+ *     C_MCMC_logit_binomial_locallevel: 22 -> 23 args
+ *     C_MCMC_logit_binomial_localtrend: 29 -> 30 args
+ *     C_MCMC_logit_binomial_localacceleration: 36 -> 37 args
+ *     The probit-Bernoulli entry points share these files and are unchanged. As in
+ *     v1.9, the table of registered methods carried stale counts for all six; they
+ *     are corrected here, along with the three probit-Bernoulli rows (10, 14 and
+ *     18 against the 13, 20 and 27 actually registered).
  * - v1.9 (2026-07-25): Updated argument counts for the Gaussian MCMC functions,
  *     which now receive their starting values from R through a new init_ vector:
  *     C_MCMC_normal_locallevel: 18 -> 19 args
@@ -98,19 +111,19 @@
  *          - C_MCMC_normal_mixture_localacceleration:  Gaussian mixture with local-acceleration weights (35 args)
  *
  *          *Binomial Dynamic Models with Logit Link (3 functions):*
- *          - C_MCMC_logit_binomial_locallevel: Binomial local level with logit link (19 args)
- *          - C_MCMC_logit_binomial_localtrend:  Binomial local trend with logit link (23 args)
- *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration with logit (27 args)
+ *          - C_MCMC_logit_binomial_locallevel: Binomial local level with logit link (23 args)
+ *          - C_MCMC_logit_binomial_localtrend:  Binomial local trend with logit link (30 args)
+ *          - C_MCMC_logit_binomial_localacceleration: Binomial local acceleration with logit (37 args)
  *
  *          *Bernoulli Dynamic Models with Probit Link (3 functions):*
- *          - C_MCMC_probit_bernoulli_locallevel: Bernoulli local level with probit link (10 args)
- *          - C_MCMC_probit_bernoulli_localtrend: Bernoulli local trend with probit link (14 args)
- *          - C_MCMC_probit_bernoulli_localacceleration:  Bernoulli local acceleration with probit (18 args)
+ *          - C_MCMC_probit_bernoulli_locallevel: Bernoulli local level with probit link (13 args)
+ *          - C_MCMC_probit_bernoulli_localtrend: Bernoulli local trend with probit link (20 args)
+ *          - C_MCMC_probit_bernoulli_localacceleration:  Bernoulli local acceleration with probit (27 args)
  *
  *          *Poisson Dynamic Models with Log Link (3 functions):*
- *          - C_MCMC_log_poisson_locallevel: Poisson local level with log link (18 args)
- *          - C_MCMC_log_poisson_localtrend:  Poisson local trend with log link (22 args)
- *          - C_MCMC_log_poisson_localacceleration: Poisson local acceleration with log link (26 args)
+ *          - C_MCMC_log_poisson_locallevel: Poisson local level with log link (22 args)
+ *          - C_MCMC_log_poisson_localtrend:  Poisson local trend with log link (29 args)
+ *          - C_MCMC_log_poisson_localacceleration: Poisson local acceleration with log link (36 args)
  *
  *          **Test Helper Functions:**
  *
@@ -204,9 +217,9 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_normal_mixture_localacceleration",      (DL_FUNC) &C_MCMC_normal_mixture_localacceleration,      50},
 
   // --- Binomial Dynamic Models (Logit Link) ---
-  {"_pdm_C_MCMC_logit_binomial_locallevel",              (DL_FUNC) &C_MCMC_logit_binomial_locallevel,        22},
-  {"_pdm_C_MCMC_logit_binomial_localtrend",              (DL_FUNC) &C_MCMC_logit_binomial_localtrend,        29},
-  {"_pdm_C_MCMC_logit_binomial_localacceleration",       (DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 36},
+  {"_pdm_C_MCMC_logit_binomial_locallevel",              (DL_FUNC) &C_MCMC_logit_binomial_locallevel,        23},
+  {"_pdm_C_MCMC_logit_binomial_localtrend",              (DL_FUNC) &C_MCMC_logit_binomial_localtrend,        30},
+  {"_pdm_C_MCMC_logit_binomial_localacceleration",       (DL_FUNC) &C_MCMC_logit_binomial_localacceleration, 37},
 
   // --- Bernoulli Dynamic Models (Probit Link) ---
   {"_pdm_C_MCMC_probit_bernoulli_locallevel",            (DL_FUNC) &C_MCMC_probit_bernoulli_locallevel,        13},
@@ -214,9 +227,9 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_probit_bernoulli_localacceleration",     (DL_FUNC) &C_MCMC_probit_bernoulli_localacceleration, 27},
 
   // --- Poisson Dynamic Models (Log Link) ---
-  {"_pdm_C_MCMC_log_poisson_locallevel",            (DL_FUNC) &C_MCMC_log_poisson_locallevel,        21},
-  {"_pdm_C_MCMC_log_poisson_localtrend",            (DL_FUNC) &C_MCMC_log_poisson_localtrend,        28},
-  {"_pdm_C_MCMC_log_poisson_localacceleration",     (DL_FUNC) &C_MCMC_log_poisson_localacceleration, 35},
+  {"_pdm_C_MCMC_log_poisson_locallevel",            (DL_FUNC) &C_MCMC_log_poisson_locallevel,        22},
+  {"_pdm_C_MCMC_log_poisson_localtrend",            (DL_FUNC) &C_MCMC_log_poisson_localtrend,        29},
+  {"_pdm_C_MCMC_log_poisson_localacceleration",     (DL_FUNC) &C_MCMC_log_poisson_localacceleration, 36},
 
   //============================================================================
   // TEST HELPER FUNCTIONS

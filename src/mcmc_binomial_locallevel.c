@@ -2,8 +2,8 @@
  * @file mcmc_binomial_locallevel.c
  * @brief MCMC sampling for local-level binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.2
+ * @date 2026-07-26
+ * @version 1.3
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
  *          dynamic models with different link functions and local-level structure:
@@ -97,6 +97,10 @@
  * @param min_deviation_threshold_ Minimum deviation to trigger adaptation (>= 0).
  * @param return_log_sigma_        Flag to return log_sigma diagnostics.
  * @param return_accept_prop_      Flag to return accept_prop diagnostics.
+ * @param init_                    Double vector [3] of starting values, resolved in R by
+ *                                 resolve_init(): theta_{0,1}, then 1/W_1, then the Half-t
+ *                                 auxiliary of that precision (0 under a Gamma prior,
+ *                                 where it is never read).
  * @param verbose_                 Logical: display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_               Integer: width of progress bar in characters (10-120).
  *
@@ -111,11 +115,15 @@
  * @note Complexity: O(n_iter * n) time, O(n) space
  * @note Requires n >= 3 for numerical stability
  * @note Proper RNG state management via GetRNGstate()/PutRNGstate()
+ * @note Initialization: the logit sampler's starting values are decided in R and
+ *       read from init_; it draws none of them itself
  * @note Adaptation threshold: practical default is 1.0/lag_update
  *
  * @warning Each y[t] must satisfy 0 <= y[t] <= n_trials
  * @warning n must not exceed INT_MAX
  * @warning Memory allocation failures terminate R session
+ * @warning No input validation for init_; it is assumed to have the documented
+ *          length and to hold finite values, both guaranteed by resolve_init()
  *
  * @see generate_alpha_logit_binomial_locallevel
  * @see generate_precision_theta_p
@@ -141,6 +149,7 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
                                       SEXP min_deviation_threshold_,
                                       SEXP return_log_sigma_,
                                       SEXP return_accept_prop_,
+                                      SEXP init_,
                                       SEXP verbose_,
                                       SEXP bar_width_) {
 
@@ -254,8 +263,8 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
   double prec_theta1_current,   prec_theta1_previous;
 
   /* Half-t auxiliary b = 1/a for the W_1 precision (refreshed in place when its
-   * prior is Half-t; left at 0 and never read under the Gamma prior). */
-  double aux_W1 = 0.0;
+   * prior is Half-t; holds 0 and is never read under the Gamma prior). */
+  double aux_W1;
 
   /* Sliding window buffer for acceptance tracking (optimized) */
   double *theta_1_updated  = (double *) R_Calloc(lag_update * n, double);
@@ -276,9 +285,16 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
   GetRNGstate();
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
-  /* Draw initial values from priors to start the Markov chain */
-  theta_01_previous = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  prec_theta1_previous   = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
+  /* Starting values arrive already decided from R (see resolve_init() in
+   * R/init_values.R): whatever the caller pinned through `init`, and a draw
+   * from the corresponding prior for everything else. `init_` is laid out as
+   * the initial states in order, then the precisions, then one auxiliary per
+   * precision in the same order. */
+  const double *init = REAL(init_);
+
+  theta_01_previous    = init[0];
+  prec_theta1_previous = init[1];
+  aux_W1               = init[2];
 
   /* Start each trajectory flat at this chain's own prior-drawn initial level.
    * A hard-coded zero would be identical in every chain, which costs the

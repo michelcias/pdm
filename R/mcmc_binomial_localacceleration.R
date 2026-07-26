@@ -167,6 +167,22 @@
 #' Burn‐in and thinning are applied so that exactly `n_draws` posterior samples
 #' are returned.
 #'
+#'
+#' \strong{Starting values:}
+#'
+#' By default the chain starts from a draw from each parameter's own prior. That
+#' is what makes several chains disperse, and it is what `chains > 1` relies on,
+#' but it can also start the chain a long way from the bulk of the posterior --
+#' a Half-Cauchy draw for a standard deviation is occasionally enormous -- and
+#' burn-in then pays for it. `init` pins any subset of the parameters to values
+#' of your choosing; everything left out is still drawn from its prior.
+#'
+#' The names are the fitted object's own components, which is also the
+#' vocabulary the `plot()` method's `true_values` argument uses, so one name
+#' means one parameter across the package. `init` covers the scalar parameters
+#' only: the latent trajectories, and the `alpha` rates or probabilities derived
+#' from them, cannot be set -- each trajectory starts flat at its own initial
+#' state.
 #' @param y Numeric vector of observed binomial counts (length \eqn{n}). Each
 #'   element must satisfy \eqn{0 \leq y_t \leq n_{trials}}.
 #' @param n_trials Numeric scalar > 0, number of trials for each binomial observation.
@@ -258,6 +274,16 @@
 #'   depend on this setting: every chain receives an explicit seed, so a given
 #'   `seed` reproduces the same output sequentially or in parallel. Default is
 #'   `FALSE`.
+#' @param init Optional named list of starting values, or `NULL` (the default)
+#'   to draw every one of them from its prior, as the sampler has always done.
+#'   The names this model accepts are `theta_01`, `theta_02`, `theta_03`, `prec_theta1`, `prec_theta2`
+#'   and `prec_theta3`;
+#'   any subset may be given, and precisions must be positive. An unrecognised
+#'   name is an error rather than being ignored, so a misspelling cannot pass
+#'   for a starting value that quietly had no effect. With `chains > 1` pass a
+#'   list of `chains` such lists, one per chain: a single starting point shared
+#'   by every chain removes the dispersion the Gelman-Rubin statistic in
+#'   \code{\link{mcmc_convergence}} is computed from, so it is refused.
 #'
 #' @return An object of class `c("binomial_localacceleration", "pdm_mcmc", "list")`
 #'   with components:
@@ -367,6 +393,11 @@
 #' ## Alternative: weakly-informative Half-Cauchy priors (Gelman, 2006)
 #' # Put a Half-Cauchy prior on the three innovation SDs sqrt(W[1]), sqrt(W[2]),
 #' # sqrt(W[3]); each precision's prior is chosen independently via its `*_type`.
+#' # This fit also pins two starting values through `init`. Note that a link
+#' # family's initial state lives on the scale of the linear predictor, not on
+#' # the scale of `y`: hence the logit of the observed proportion. `prec_theta1` is
+#' # pinned too, since a Half-Cauchy draw for an innovation SD is occasionally
+#' # enormous and burn-in then pays for the journey back.
 #' out_hc <- mcmc_binomial_localacceleration(
 #'   y,
 #'   n_trials           = n_trials,
@@ -385,9 +416,13 @@
 #'   prior_prec2_scale  = 1,  # sqrt(W[2])
 #'   prior_prec3_type   = "halfcauchy",
 #'   prior_prec3_scale  = 1,  # sqrt(W[3])
+#'   init               = list(theta_01    = qlogis(mean(y / n_trials)),
+#'                             prec_theta1 = 10),
 #'   verbose            = FALSE,
 #'   seed               = 456
 #' )
+#' # Where the chain actually started is recorded on the fit:
+#' attr(out_hc, "init")
 #'
 #' ## Posterior analysis and visualization
 #' # Use the plot method for comprehensive diagnostics
@@ -451,16 +486,17 @@ mcmc_binomial_localacceleration <- function(y,
                                             prior_prec3_scale = 2,
                                             prior_prec3_df = 1,
                                             chains = 1,
-                                            parallel = FALSE) {
+                                            parallel = FALSE,
+                                    init = NULL) {
 
   # --- Multi-chain dispatch ---
-  # Re-issues this same call once per chain, each with its own seed, and returns
-  # the collection. Kept at the very top so `match.call()` captures the call
-  # exactly as the user wrote it.
+  # Re-issues this same call once per chain, each with its own seed and its own
+  # entry of `init`, and returns the collection. Kept at the very top so
+  # `match.call()` captures the call exactly as the user wrote it.
   validate_chains_args(chains, parallel)
   if (chains > 1) {
     return(run_chains(match.call(), parent.frame(),
-                      as.integer(chains), seed, parallel))
+                      as.integer(chains), seed, parallel, init))
   }
 
   # `missing()` must be read before the arguments are touched.
@@ -593,6 +629,23 @@ mcmc_binomial_localacceleration <- function(y,
   }
   # --- End Input Validation ---
 
+  # --- Starting values ---
+  # Validated and resolved in R (see R/init_values.R), drawing whatever `init`
+  # left out in the order the C driver used to draw it, so an `init = NULL` run
+  # consumes the RNG stream exactly as before this argument existed.
+  init_state <- resolve_init(
+    init,
+    states = list(theta_01 = list(mean = prior_theta01_mean,
+                                  prec = prior_theta01_prec),
+                  theta_02 = list(mean = prior_theta02_mean,
+                                  prec = prior_theta02_prec),
+                  theta_03 = list(mean = prior_theta03_mean,
+                                  prec = prior_theta03_prec)),
+    precs  = list(prec_theta1 = prec1_prior,
+                  prec_theta2 = prec2_prior,
+                  prec_theta3 = prec3_prior)
+  )
+
   # Call the C function with new parameter
   result <- .Call(
     "_pdm_C_MCMC_logit_binomial_localacceleration",
@@ -630,6 +683,7 @@ mcmc_binomial_localacceleration <- function(y,
     as.numeric(min_deviation_threshold),
     as.logical(return_log_sigma),
     as.logical(return_accept_prop),
+    as.numeric(init_state$values),
     as.logical(verbose),
     as.integer(bar_width)
   )
@@ -653,9 +707,10 @@ mcmc_binomial_localacceleration <- function(y,
   attr(result, "prior_prec_theta2") <- prec2_prior[c("type", "shape", "rate", "scale", "df")]
   attr(result, "prior_prec_theta3") <- prec3_prior[c("type", "shape", "rate", "scale", "df")]
 
-  # Record what produced this fit: version, seed and every resolved prior
-  # (see R/provenance.R). Must come after all defaults are filled in.
-  result <- record_provenance(result, seed)
+  # Record what produced this fit: version, seed, every resolved prior and the
+  # starting values (see R/provenance.R). Must come after all defaults are
+  # filled in.
+  result <- record_provenance(result, seed, init_state$init)
 
   return(result)
 }

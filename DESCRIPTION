@@ -1,8 +1,8 @@
 Package: pdm
 Type: Package
 Title: Polynomial dynamic models
-Version: 0.9-0
-Date: 2026-07-25
+Version: 0.10-0
+Date: 2026-07-26
 Authors@R: c(person("Michel H. Montoril", role = c("aut", "cre"),
 	email = "michel@ufscar.br"))
 Author: Michel H. Montoril [aut, cre]

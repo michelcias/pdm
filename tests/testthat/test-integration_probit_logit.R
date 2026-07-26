@@ -30,14 +30,26 @@ test_that("probit and logit give similar results for theta near zero", {
                          0L, 10.0, 1.0, 1.0, 1.0,  # prec1: Gamma(code 0), shape, rate, scale, df
                          FALSE, 60L)
 
-  # Logit sampler (with n_trials = 1 for Bernoulli)
+  # Logit sampler (with n_trials = 1 for Bernoulli). Unlike the probit entry
+  # point, which still draws its own starting values, the logit one receives
+  # them through `init_` (see resolve_init() in R/init_values.R). Building them
+  # with the helper, from the same seed, consumes the stream exactly as the C
+  # code used to and leaves both chains starting from the same point -- which is
+  # what this test compares.
   set.seed(702)
+  init_logit <- resolve_init(
+    NULL,
+    states = list(theta_01 = list(mean = 0.0, prec = 1.0)),
+    precs  = list(prec_theta1 = list(code = 0L, shape = 10.0, rate = 1.0,
+                                     scale = 1.0, df = 1.0))
+  )$values
   result_logit <- .Call("_pdm_C_MCMC_logit_binomial_locallevel",
                         y, 1.0, 200L, 2L, 500L,
                         0.0, 1.0,
                         0L, 10.0, 1.0, 1.0, 1.0,  # prec1: Gamma(code 0), shape, rate, scale, df
                         50L, 0.1, 1.0, 0.5, 0.44, 0.01,
                         FALSE, FALSE,
+                        init_logit,
                         FALSE, 60L)
   
   # --- Compare posterior means ---
@@ -82,13 +94,21 @@ test_that("probit sampler is more efficient than logit (acceptance rate)", {
   y <- as.numeric(rbinom(n, 1, 0.3))
   
   # --- Run logit sampler with acceptance tracking ---
+  # Starting values come from R now; see the note in the previous test.
   set.seed(704)
+  init_logit <- resolve_init(
+    NULL,
+    states = list(theta_01 = list(mean = 0.0, prec = 1.0)),
+    precs  = list(prec_theta1 = list(code = 0L, shape = 5.0, rate = 1.0,
+                                     scale = 1.0, df = 1.0))
+  )$values
   result_logit <- .Call("_pdm_C_MCMC_logit_binomial_locallevel",
                         y, 1.0, 100L, 1L, 300L,
                         0.0, 1.0,
                         0L, 5.0, 1.0, 1.0, 1.0,  # prec1: Gamma(code 0), shape, rate, scale, df
                         30L, 0.1, 1.0, 0.5, 0.44, 0.01,
                         FALSE, TRUE,
+                        init_logit,
                         FALSE, 60L)  # return_accept_prop = TRUE
 
   # --- Run probit sampler (Gibbs has 100% acceptance) ---

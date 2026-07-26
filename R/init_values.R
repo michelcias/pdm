@@ -34,18 +34,37 @@
 #'
 #' Under a Gamma prior the auxiliary is 0 and never read.
 #'
+#' @section Draw order against layout:
+#' Two different orders are in play and they need not agree. `order` is the
+#' sequence the values are *drawn* in, which has to match the C driver so the RNG
+#' stream lines up; the mixtures interleave theirs (`mu_1`, `prec_1`, `mu_2`,
+#' `prec_2`, then the states). The vector handed to `.Call()` always uses the
+#' same *layout* regardless: every state in `names(states)` order, then every
+#' precision in `names(precs)` order, then one auxiliary per precision. Keeping
+#' the layout fixed is what lets each driver read three contiguous runs.
+#'
 #' @param init The user's `init` argument: `NULL`, or a named list whose names
 #'   are a subset of `names(states)` and `names(precs)`.
-#' @param states Named list of the initial-state parameters, in the C driver's
-#'   draw order; each element is `list(mean = , prec = )`, the Normal prior.
-#' @param precs Named list of the precision parameters, in the C driver's draw
-#'   order; each element is a `resolve_prec_prior()` result.
+#' @param states Named list of the initial-state parameters; each element is
+#'   `list(mean = , prec = )`, the Normal prior.
+#' @param precs Named list of the precision parameters; each element is a
+#'   `resolve_prec_prior()` result.
+#' @param order Character vector naming every parameter in the C driver's draw
+#'   order. `NULL` (default) means `c(names(states), names(precs))`, which is the
+#'   order the twelve non-mixture drivers use.
+#' @param ordered_components Optional constraint for a model whose components are
+#'   identified only up to an ordering, as the two-component mixture is:
+#'   `list(states = c(lo, hi), precs = c(lo, hi))`. When the resolved pair comes
+#'   out with `lo > hi`, the two components -- means, precisions and Half-t
+#'   auxiliaries -- are swapped, exactly as the mixture drivers used to swap
+#'   their own draws. If the user supplied either mean, the swap would silently
+#'   move a value they asked for into the other component, so that case is an
+#'   error instead.
 #'
 #' @return A list with two elements:
 #'   \describe{
-#'     \item{`values`}{Numeric vector for `.Call()`: the states in order, then
-#'       the precisions in order, then one auxiliary per precision in the same
-#'       order.}
+#'     \item{`values`}{Numeric vector for `.Call()`, in the layout described
+#'       above.}
 #'     \item{`init`}{Named list of the user-settable starting values -- the
 #'       states and precisions, not the auxiliaries -- for
 #'       `record_provenance()`.}
@@ -53,24 +72,33 @@
 #'
 #' @keywords internal
 #' @noRd
-resolve_init <- function(init, states, precs) {
+resolve_init <- function(init, states, precs, order = NULL,
+                         ordered_components = NULL) {
 
-  init  <- validate_init(init, c(names(states), names(precs)))
-  start <- list()
+  known    <- c(names(states), names(precs))
+  init     <- validate_init(init, known)
+  supplied <- names(init)
 
-  for (nm in names(states)) {
-    s <- states[[nm]]
-    start[[nm]] <- if (is.null(init[[nm]])) {
-      rnorm(1L, s$mean, sqrt(1 / s$prec))
-    } else {
-      init_scalar(init[[nm]], nm, positive = FALSE)
-    }
+  if (is.null(order)) order <- known
+  if (!setequal(order, known)) {
+    stop("Internal error: `order` must name every state and precision exactly once")
   }
 
+  start      <- list()
   aux        <- numeric(length(precs))
   names(aux) <- names(precs)
 
-  for (nm in names(precs)) {
+  for (nm in order) {
+    if (nm %in% names(states)) {
+      s <- states[[nm]]
+      start[[nm]] <- if (is.null(init[[nm]])) {
+        rnorm(1L, s$mean, sqrt(1 / s$prec))
+      } else {
+        init_scalar(init[[nm]], nm, positive = FALSE)
+      }
+      next
+    }
+
     pr <- precs[[nm]]
 
     # `code` is the integer the C layer receives: 1 = Half-t, 0 = Gamma
@@ -98,8 +126,34 @@ resolve_init <- function(init, states, precs) {
     }
   }
 
-  list(values = c(unlist(start, use.names = FALSE), unname(aux)),
-       init   = start)
+  if (!is.null(ordered_components)) {
+    lo <- ordered_components$states[1L]
+    hi <- ordered_components$states[2L]
+    if (start[[lo]] > start[[hi]]) {
+      if (any(c(lo, hi) %in% supplied)) {
+        stop(sprintf(
+          paste0("this model identifies its components only up to their order, so it ",
+                 "requires `%s` <= `%s`, but the starting values resolved to %g and %g. ",
+                 "Supply both, in order, rather than leaving one to be drawn."),
+          lo, hi, start[[lo]], start[[hi]]
+        ))
+      }
+      # Both were drawn, so relabelling them is our own bookkeeping, not a
+      # contradiction of anything the caller asked for.
+      plo <- ordered_components$precs[1L]
+      phi <- ordered_components$precs[2L]
+      start[c(lo, hi)]   <- start[c(hi, lo)]
+      start[c(plo, phi)] <- start[c(phi, plo)]
+      aux[c(plo, phi)]   <- aux[c(phi, plo)]
+    }
+  }
+
+  # Layout for `.Call()`: states, then precisions, then the auxiliaries. Indexed
+  # by name rather than by insertion order, which `order` may have permuted.
+  list(values = c(unlist(start[names(states)], use.names = FALSE),
+                  unlist(start[names(precs)],  use.names = FALSE),
+                  unname(aux)),
+       init   = start[known])
 }
 
 

@@ -50,7 +50,8 @@ mcmc_normal_mixture_localtrend(
   prior_prec2_scale = 2,
   prior_prec2_df = 1,
   chains = 1,
-  parallel = FALSE
+  parallel = FALSE,
+  init = NULL
 )
 }
 \arguments{
@@ -218,6 +219,17 @@ case, since several bars sharing one console interleave.}
 depend on this setting: every chain receives an explicit seed, so a given
 \code{seed} reproduces the same output sequentially or in parallel. Default is
 \code{FALSE}.}
+
+\item{init}{Optional named list of starting values, or \code{NULL} (the default)
+to draw every one of them from its prior, as the sampler has always done.
+The names this model accepts are \code{mu_1}, \code{prec_1}, \code{mu_2}, \code{prec_2},
+\code{theta_01}, \code{theta_02}, \code{prec_theta1} and \code{prec_theta2};
+any subset may be given, and precisions must be positive. An unrecognised
+name is an error rather than being ignored, so a misspelling cannot pass
+for a starting value that quietly had no effect. With \code{chains > 1} pass a
+list of \code{chains} such lists, one per chain: a single starting point shared
+by every chain removes the dispersion the Gelman-Rubin statistic in
+\code{\link{mcmc_convergence}} is computed from, so it is refused.}
 }
 \value{
 A list with components:
@@ -463,6 +475,32 @@ performance overhead (~0.01\% for typical runs).
 
 Burn-in and thinning are applied so that exactly \code{n_draws} posterior
 samples are returned.
+
+\strong{Starting values:}
+
+By default the chain starts from a draw from each parameter's own prior. That
+is what makes several chains disperse, and it is what \code{chains > 1} relies on,
+but it can also start the chain a long way from the bulk of the posterior --
+a Half-Cauchy draw for a standard deviation is occasionally enormous -- and
+burn-in then pays for it. \code{init} pins any subset of the parameters to values
+of your choosing; everything left out is still drawn from its prior.
+
+The names are the fitted object's own components, which is also the
+vocabulary the \code{plot()} method's \code{true_values} argument uses, so one name
+means one parameter across the package. \code{init} covers the scalar parameters
+only. Two components of this model are deliberately left out: the latent
+trajectories and the \code{alpha} weights derived from them, and the indicators
+\code{z}. \code{z} is drawn as \code{Bernoulli(0.5)} inside the sampler and stays there,
+because it is a per-observation vector rather than a scalar, and because that
+draw is a source of the between-chain dispersion
+\code{\link{mcmc_convergence}} needs.
+
+This model identifies its components only up to their order, so the sampler
+requires \eqn{\mu_1 \leq \mu_2}. When both means are drawn and come out the
+wrong way round they are simply relabelled, as before. When you pin either one
+through \code{init} and the resolved pair violates the order, that is an error
+instead: relabelling would move a value you asked for into the other
+component.
 }
 \examples{
 ## Description
@@ -570,6 +608,12 @@ out_probit <- mcmc_normal_mixture_localtrend(
 # Put a Half-Cauchy prior on every precision: the component SDs
 # sqrt(1/phi[1]), sqrt(1/phi[2]) (scale ~ sd(y)) and the level/trend
 # weight-innovation SDs sqrt(W[1]), sqrt(W[2]) (scale ~ 1).
+# This fit also pins starting values through `init`. Two things are worth
+# noting. The component means must be supplied in order -- the model
+# identifies them only up to their labelling, and `mu_1` above `mu_2` is an
+# error rather than a silent relabelling. And `theta_01` is the initial
+# weight on the linear-predictor scale, not a probability: the weight the
+# chain starts from is link(theta_01), so 0 means an even split.
 out_hc <- mcmc_normal_mixture_localtrend(
   y,
   link               = "probit",
@@ -588,9 +632,14 @@ out_hc <- mcmc_normal_mixture_localtrend(
   prior_prec1_scale  = 1,
   prior_prec2_type   = "halfcauchy",
   prior_prec2_scale  = 1,
+  init               = list(mu_1     = quantile(y, 0.25),
+                            mu_2     = quantile(y, 0.75),
+                            theta_01 = 0),
   verbose            = FALSE,
   seed               = 789
 )
+# Where the chain actually started is recorded on the fit:
+attr(out_hc, "init")
 
 ## Posterior analysis and visualization
 # Use the plot method for comprehensive diagnostics

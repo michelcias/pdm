@@ -3,8 +3,8 @@
  * @brief MCMC sampling for Gaussian mixture models with dynamic mixture weights
  *        following a local-level structure
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.1
+ * @date 2026-07-26
+ * @version 1.2
  *
  * @details Declares the complete Gibbs sampler for Bayesian estimation of
  *          two-component Gaussian mixture models with time-varying mixture
@@ -114,6 +114,11 @@
  * @param min_deviation_threshold_ Double scalar, adaptation trigger (logit only).
  * @param return_log_sigma_        Logical, return log_sigma diagnostics (logit only).
  * @param return_accept_prop_      Logical, return accept_prop diagnostics (logit only).
+ * @param init_                    Double vector [9] of starting values, resolved in R by
+ *                                 resolve_init(): mu_1 and mu_2, then theta_{0,1}, then the
+ *                                 component precisions phi_1 and phi_2, then 1/W_1, then one
+ *                                 Half-t auxiliary per precision in that same order (0 under a Gamma
+ *                                 prior, never read). R also enforces mu_1 <= mu_2.
  * @param verbose_                 Logical, display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_               Integer, progress bar width (10-120 recommended).
  *
@@ -183,6 +188,7 @@ SEXP C_MCMC_normal_mixture_locallevel(SEXP y_,
                                       SEXP min_deviation_threshold_,
                                       SEXP return_log_sigma_,
                                       SEXP return_accept_prop_,
+                                      SEXP init_,
                                       SEXP verbose_,
                                       SEXP bar_width_);
 

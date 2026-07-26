@@ -563,3 +563,182 @@ test_that("every probit-Bernoulli sampler takes one init per chain", {
                                      init = list(prec_theta1 = 1)),
     "one per chain")
 })
+
+
+# --- The mixture family -------------------------------------------------------
+# The last three samplers, and the only ones where `resolve_init()` needs its
+# optional arguments: the component parameters interleave with the states in the
+# driver's draw order, and the two components are identified only up to their
+# order.
+
+mix_data <- function(seed = 31, n = 60) {
+  set.seed(seed)
+  th <- cumsum(c(0, rnorm(n, sd = 0.1)))[-1]
+  z  <- rbinom(n, 1, plogis(th))
+  list(y = ifelse(z == 1, rnorm(n, 2, 0.5), rnorm(n, -2, 0.5)), z = z)
+}
+
+
+test_that("resolve_init draws in the order given, not in the layout order", {
+  # The mixtures draw mu_1, prec_1, mu_2, prec_2 and only then the states, so
+  # `order` has to be able to interleave the two lists. The layout of `values`
+  # stays states-then-precisions-then-auxiliaries regardless, which is what lets
+  # each C driver read three contiguous runs.
+  states <- list(mu_1 = list(mean = -1, prec = 1),
+                 mu_2 = list(mean =  1, prec = 1),
+                 theta_01 = list(mean = 0, prec = 1))
+  precs  <- list(prec_1 = gamma_prior(2, 1), prec_2 = gamma_prior(2, 1),
+                 prec_theta1 = gamma_prior(2, 1))
+  ord    <- c("mu_1", "prec_1", "mu_2", "prec_2", "theta_01", "prec_theta1")
+
+  set.seed(77)
+  got <- resolve_init(NULL, states, precs, order = ord)
+
+  set.seed(77)
+  mu_1   <- rnorm(1, -1, 1)
+  prec_1 <- rgamma(1, shape = 2, scale = 1)
+  mu_2   <- rnorm(1,  1, 1)
+  prec_2 <- rgamma(1, shape = 2, scale = 1)
+  th_01  <- rnorm(1,  0, 1)
+  prec_t <- rgamma(1, shape = 2, scale = 1)
+
+  expect_equal(got$init, list(mu_1 = mu_1, mu_2 = mu_2, theta_01 = th_01,
+                              prec_1 = prec_1, prec_2 = prec_2,
+                              prec_theta1 = prec_t))
+  # layout: the three states, the three precisions, then a zero auxiliary each
+  expect_equal(got$values,
+               c(mu_1, mu_2, th_01, prec_1, prec_2, prec_t, 0, 0, 0))
+})
+
+
+test_that("drawn components out of order are relabelled, supplied ones are refused", {
+  states <- list(mu_1 = list(mean = 10, prec = 1e6),   # forces mu_1 > mu_2
+                 mu_2 = list(mean = -10, prec = 1e6))
+  precs  <- list(prec_1 = gamma_prior(2, 1), prec_2 = gamma_prior(5, 1))
+  oc     <- list(states = c("mu_1", "mu_2"), precs = c("prec_1", "prec_2"))
+  ord    <- c("mu_1", "prec_1", "mu_2", "prec_2")
+
+  # Both drawn: relabelling them is our own bookkeeping, as the C driver did.
+  set.seed(5)
+  got <- resolve_init(NULL, states, precs, order = ord, ordered_components = oc)
+  expect_lte(got$init$mu_1, got$init$mu_2)
+  expect_equal(got$init$mu_1, -10, tolerance = 0.01)
+  # the precisions travelled with their means: prec_2 was drawn Gamma(5,1) and
+  # belongs to the component that is now first
+  expect_equal(got$init$prec_1, got$values[[3]])
+
+  # Supplied: silently moving the caller's value into the other component is the
+  # same failure mode as ignoring a misspelled name, so it errors.
+  expect_error(
+    resolve_init(list(mu_1 = 3, mu_2 = -3), states, precs,
+                 order = ord, ordered_components = oc),
+    "requires `mu_1` <= `mu_2`")
+  # Also when only one was supplied and the draw put the pair out of order.
+  expect_error(
+    resolve_init(list(mu_1 = 1e6), states, precs,
+                 order = ord, ordered_components = oc),
+    "Supply both, in order")
+})
+
+
+test_that("init reaches the mixture samplers and is recorded", {
+  d <- mix_data()
+
+  f <- mcmc_normal_mixture_locallevel(d$y, 40, 2, 25,
+                                      prior_theta01_mean = 0,
+                                      prior_theta01_prec = 1,
+                                      link = "logit",
+                                      init = list(mu_1 = -2.5, mu_2 = 2.5,
+                                                  prec_theta1 = 9),
+                                      verbose = FALSE, seed = 456)
+  rec <- attr(f, "init")
+  expect_equal(rec$mu_1, -2.5)
+  expect_equal(rec$mu_2, 2.5)
+  expect_equal(rec$prec_theta1, 9)
+  # what was left out is drawn and reported as the value used
+  expect_true(all(c("prec_1", "prec_2", "theta_01") %in% names(rec)))
+
+  g <- mcmc_normal_mixture_locallevel(d$y, 40, 2, 25,
+                                      prior_theta01_mean = 0,
+                                      prior_theta01_prec = 1,
+                                      link = "logit",
+                                      verbose = FALSE, seed = 456)
+  expect_false(identical(f$mu_1, g$mu_1))
+})
+
+
+test_that("the mixture vocabulary invariant holds, and z and alpha stay out", {
+  d <- mix_data()
+
+  labels <- c(mu_1 = "mu_1", mu_2 = "mu_2", prec_1 = "phi_1", prec_2 = "phi_2",
+              theta_01 = "theta_01", theta_02 = "theta_02", theta_03 = "theta_03",
+              prec_theta1 = "W_1^{-1}", prec_theta2 = "W_2^{-1}",
+              prec_theta3 = "W_3^{-1}")
+
+  th0 <- list(prior_theta01_mean = 0, prior_theta01_prec = 1)
+  th2 <- c(th0, list(prior_theta02_mean = 0, prior_theta02_prec = 1))
+  th3 <- c(th2, list(prior_theta03_mean = 0, prior_theta03_prec = 1))
+
+  cases <- list(list(mcmc_normal_mixture_locallevel,        th0),
+                list(mcmc_normal_mixture_localtrend,        th2),
+                list(mcmc_normal_mixture_localacceleration, th3))
+
+  for (case in cases) {
+    f     <- case[[1]]
+    extra <- c(case[[2]], list(link = "logit", verbose = FALSE))
+
+    fit <- do.call(f, c(list(d$y, 40, 2, 25), extra))
+    msg <- tryCatch(do.call(f, c(list(d$y, 40, 2, 25), extra,
+                                 list(init = list(nope = 1)))),
+                    error = function(e) conditionMessage(e))
+    accepted <- strsplit(sub(".*Valid names for this model are: ", "", msg), ", ")[[1]]
+
+    scalars <- names(fit)[!vapply(fit, is.matrix, logical(1L))]
+    expect_equal(sort(accepted), sort(scalars))
+
+    # z is a per-observation vector and the source of between-chain dispersion;
+    # alpha is derived from the trajectory. Both are matrix components, so the
+    # scalar rule already excludes them -- this asserts it stays that way.
+    expect_false("z" %in% accepted)
+    expect_false("alpha" %in% accepted)
+
+    for (nm in accepted) {
+      expect_equal(true_value_for(labels[[nm]], stats::setNames(list(42), nm)), 42)
+    }
+  }
+})
+
+
+test_that("the mixture weight starts at link(theta_01), not at 0.5", {
+  # The mixtures read alpha before writing it -- step 2 draws z | y, alpha, mu,
+  # phi -- so the starting weight is live, unlike in the link families where it
+  # was dead code. It is now the value the model implies for a trajectory flat at
+  # theta_01 rather than a fixed 0.5. See docs/starting-values.md for the
+  # measurements behind the change.
+  #
+  # burnin = 1 with thinning = 1 makes the first retained sample iteration 1,
+  # whose z was drawn from the *initial* alpha. Step 2 does not see theta_01 at
+  # all: it uses y, alpha, mu and phi, and mu/phi come from the initial z, which
+  # is Bernoulli(0.5) from the same seed in every run below. So theta_01 can
+  # reach that first z only through alpha, which is what isolates the change.
+  d <- mix_data()
+  first_z <- function(t01) {
+    fit <- mcmc_normal_mixture_locallevel(d$y, 1, 1, 2,
+                                          prior_theta01_mean = 0,
+                                          prior_theta01_prec = 1,
+                                          link = "logit",
+                                          init = list(theta_01 = t01),
+                                          verbose = FALSE, seed = 1)
+    mean(fit$z[1, ])
+  }
+
+  # plogis(-6) = 0.0025 and plogis(6) = 0.9975, so a live starting alpha drives
+  # that first z to the corresponding extreme. Under a fixed 0.5 the two would
+  # be identical, and neither would be extreme.
+  expect_equal(first_z(-6), 0)
+  expect_equal(first_z(6), 1)
+  # and the neutral point still lands strictly between them
+  mid <- first_z(0)
+  expect_gt(mid, 0)
+  expect_lt(mid, 1)
+})

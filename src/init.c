@@ -7,9 +7,17 @@
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.11
+ * @version 1.12
  *
  * @changelog
+ * - v1.12 (2026-07-26): Updated argument counts for the Gaussian mixture MCMC
+ *     functions, the last three samplers to receive their starting values from R
+ *     through an init_ vector. All fifteen now do:
+ *     C_MCMC_normal_mixture_locallevel: 36 -> 37 args
+ *     C_MCMC_normal_mixture_localtrend: 43 -> 44 args
+ *     C_MCMC_normal_mixture_localacceleration: 50 -> 51 args
+ *     The prose table carried stale counts for all three (27, 31 and 35 against
+ *     the 36, 43 and 50 actually registered); they are corrected here.
  * - v1.11 (2026-07-26): Updated argument counts for the probit-Bernoulli MCMC
  *     functions, the last of the link families to receive its starting values from
  *     R through an init_ vector:
@@ -114,9 +122,9 @@
  *          - C_MCMC_normal_localacceleration: Gaussian local acceleration model (33 args)
  *
  *          *Gaussian Mixture Models with Dynamic Weights (3 functions):*
- *          - C_MCMC_normal_mixture_locallevel: Gaussian mixture with local-level weights (27 args)
- *          - C_MCMC_normal_mixture_localtrend: Gaussian mixture with local-trend weights (31 args)
- *          - C_MCMC_normal_mixture_localacceleration:  Gaussian mixture with local-acceleration weights (35 args)
+ *          - C_MCMC_normal_mixture_locallevel: Gaussian mixture with local-level weights (37 args)
+ *          - C_MCMC_normal_mixture_localtrend: Gaussian mixture with local-trend weights (44 args)
+ *          - C_MCMC_normal_mixture_localacceleration:  Gaussian mixture with local-acceleration weights (51 args)
  *
  *          *Binomial Dynamic Models with Logit Link (3 functions):*
  *          - C_MCMC_logit_binomial_locallevel: Binomial local level with logit link (23 args)
@@ -220,9 +228,9 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_normal_localacceleration",        (DL_FUNC) &C_MCMC_normal_localacceleration, 33},
 
   // --- Gaussian Mixture Models with Dynamic Weights ---
-  {"_pdm_C_MCMC_normal_mixture_locallevel",             (DL_FUNC) &C_MCMC_normal_mixture_locallevel,             36},
-  {"_pdm_C_MCMC_normal_mixture_localtrend",             (DL_FUNC) &C_MCMC_normal_mixture_localtrend,             43},
-  {"_pdm_C_MCMC_normal_mixture_localacceleration",      (DL_FUNC) &C_MCMC_normal_mixture_localacceleration,      50},
+  {"_pdm_C_MCMC_normal_mixture_locallevel",             (DL_FUNC) &C_MCMC_normal_mixture_locallevel,             37},
+  {"_pdm_C_MCMC_normal_mixture_localtrend",             (DL_FUNC) &C_MCMC_normal_mixture_localtrend,             44},
+  {"_pdm_C_MCMC_normal_mixture_localacceleration",      (DL_FUNC) &C_MCMC_normal_mixture_localacceleration,      51},
 
   // --- Binomial Dynamic Models (Logit Link) ---
   {"_pdm_C_MCMC_logit_binomial_locallevel",              (DL_FUNC) &C_MCMC_logit_binomial_locallevel,        23},

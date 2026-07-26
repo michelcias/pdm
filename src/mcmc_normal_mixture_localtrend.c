@@ -2,8 +2,8 @@
  * @file mcmc_normal_mixture_localtrend.c
  * @brief MCMC sampling for Gaussian mixture models with dynamic mixture weights
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.2
+ * @date 2026-07-26
+ * @version 1.3
  *
  * @details Implements complete Gibbs sampler for Bayesian estimation of two-component
  * Gaussian mixture models with time-varying mixture weights following a
@@ -79,6 +79,7 @@
 #include "conditional_mixture_normal_indicators.h"
 #include "generate_alpha_binomial.h"
 #include "utils.h"
+#include "link_guard.h"  /* ilogit_guarded, clamp_link_alpha */
 #include "prec_prior_dispatch.h" /* prec_prior_t, step_prec_*, pdm_init_prec_prior */
 #include "mcmc_progress_bar.h"
 #include "mcmc_normal_mixture_localtrend.h"
@@ -169,6 +170,12 @@
  * @param min_deviation_threshold_    Minimum deviation to trigger adaptation (logit only).
  * @param return_log_sigma_           Flag to return log_sigma diagnostics (logit only).
  * @param return_accept_prop_         Flag to return accept_prop diagnostics (logit only).
+ * @param init_                   Double vector [12] of starting values, resolved in R by
+ *                                resolve_init(): mu_1 and mu_2, then theta_{0,1} to theta_{0,2}, then the
+ *                                component precisions phi_1 and phi_2, then 1/W_1 to 1/W_2, then one
+ *                                Half-t auxiliary per precision in that same order (0 under a Gamma
+ *                                prior, never read). R also enforces mu_1 <= mu_2, so this driver no
+ *                                longer swaps the components itself.
  * @param verbose_                    Logical: display progress bar (0 = FALSE, 1 = TRUE).
  * @param bar_width_                  Integer: width of progress bar in characters (10-120).
  *
@@ -253,6 +260,7 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
                                       SEXP min_deviation_threshold_,
                                       SEXP return_log_sigma_,
                                       SEXP return_accept_prop_,
+                                      SEXP init_,
                                       SEXP verbose_,
                                       SEXP bar_width_) {
 
@@ -429,7 +437,7 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
   /* Half-t auxiliaries b = 1/a for the state precisions W_1, W_2 and the two
    * mixture component precisions phi_k (refreshed when the matching prior is
    * Half-t; left at 0 and never read under the Gamma prior). */
-  double aux_W1 = 0.0, aux_W2 = 0.0, aux_phi1 = 0.0, aux_phi2 = 0.0;
+  double aux_W1, aux_W2, aux_phi1, aux_phi2;
 
   /* Link-specific buffers - conditional allocation */
   double *theta_1_updated  = NULL;
@@ -462,32 +470,27 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
   GetRNGstate();
 
   /* ========== Initialize Parameters (Iteration 0) ========== */
+  /* Starting values arrive already decided from R (see resolve_init() in
+   * R/init_values.R): whatever the caller pinned through `init`, and a draw
+   * from the corresponding prior for everything else. R also applies the
+   * mu_1 <= mu_2 relabelling -- and refuses it, rather than silently
+   * relabelling, when the caller pinned either mean -- so the component swap
+   * that used to live here is gone. `init_` is laid out as the initial states
+   * in order, then the precisions, then one auxiliary per precision. */
+  const double *init = REAL(init_);
 
-  /* Initialize mixture component parameters (each phi_k from its chosen prior) */
-  params_previous[0] = rnorm(mu_01_mean, sqrt(1.0 / mu_01_prec));      /* mu_1 */
-  params_previous[1] = pdm_init_prec_prior(phi1_kind, &phi_prior_1, &aux_phi1);
-  params_previous[2] = rnorm(mu_02_mean, sqrt(1.0 / mu_02_prec));      /* mu_2 */
-  params_previous[3] = pdm_init_prec_prior(phi2_kind, &phi_prior_2, &aux_phi2);
-
-  /* Enforce label switching constraint for initialization */
-  if (params_previous[0] > params_previous[2]) {
-    double temp_mu = params_previous[0];
-    params_previous[0] = params_previous[2];
-    params_previous[2] = temp_mu;
-    double temp_prec = params_previous[1];
-    params_previous[1] = params_previous[3];
-    params_previous[3] = temp_prec;
-    /* Keep each Half-t auxiliary paired with its component precision. */
-    double temp_aux = aux_phi1;
-    aux_phi1 = aux_phi2;
-    aux_phi2 = temp_aux;
-  }
-
-  /* Initialize dynamic state parameters (each W_k from its chosen prior) */
-  theta_01_previous     = rnorm(mean_theta01, sqrt(1.0 / prec_theta01));
-  theta_02_previous     = rnorm(mean_theta02, sqrt(1.0 / prec_theta02));
-  prec_theta1_previous  = pdm_init_prec_prior(prec1_kind, &prior_W1, &aux_W1);
-  prec_theta2_previous  = pdm_init_prec_prior(prec2_kind, &prior_W2, &aux_W2);
+  params_previous[0]   = init[0];   /* mu_1 */
+  params_previous[2]   = init[1];   /* mu_2 */
+  theta_01_previous    = init[2];
+  theta_02_previous    = init[3];
+  params_previous[1]   = init[4];   /* phi_1 */
+  params_previous[3]   = init[5];   /* phi_2 */
+  prec_theta1_previous = init[6];
+  prec_theta2_previous = init[7];
+  aux_phi1             = init[8];
+  aux_phi2             = init[9];
+  aux_W1               = init[10];
+  aux_W2               = init[11];
 
   /* Start each trajectory flat at this chain's own prior-drawn initial level.
    * A hard-coded zero would be identical in every chain, which costs the
@@ -505,10 +508,28 @@ SEXP C_MCMC_normal_mixture_localtrend(SEXP y_,
    * parameters are drawn from it in step 1), so an all-zero start would put
    * every observation in the same component in every chain.
    */
+  /* The starting weight is the one the model implies for the starting state,
+   * alpha_t = link(theta_{t,1}) with the trajectory flat at theta_{0,1}, rather
+   * than a fixed 0.5. Unlike the link families, this sampler *reads* alpha
+   * before writing it -- step 2 draws z | alpha -- so the value matters. It is
+   * also what makes the pair (theta_1, alpha) a coherent state instead of two
+   * unrelated numbers, the same argument as for the Half-t auxiliary.
+   *
+   * z stays Bernoulli(0.5), drawn here and deliberately not settable through
+   * `init`: it is the between-chain dispersion the Gelman-Rubin statistic needs,
+   * and it is the maximum-entropy start, so both components are guaranteed data
+   * on the first sweep. Measured, not assumed -- see docs/starting-values.md:
+   * deriving z from alpha instead changed nothing (46 of 64 paired fits came out
+   * identical), while the alpha change itself cut alpha RMSE by ~18% under a
+   * vague prior on theta_{0,1} and was neutral under an informative one. */
+  const double alpha_0 = use_logit
+    ? ilogit_guarded(theta_01_previous)
+    : clamp_link_alpha(pnorm(theta_01_previous, 0.0, 1.0, 1, 0));
+
   for (int t = 0; t < n; t++) {
     theta_1_previous[t] = theta_01_previous;
     theta_2_previous[t] = theta_02_previous;
-    alpha_current[t]    = 0.5;
+    alpha_current[t]    = alpha_0;
     z_current[t]        = (unif_rand() < 0.5) ? 1.0 : 0.0;
   }
 

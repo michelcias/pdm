@@ -192,6 +192,32 @@
 #' Burn-in and thinning are applied so that exactly `n_draws` posterior
 #' samples are returned.
 #'
+#'
+#' \strong{Starting values:}
+#'
+#' By default the chain starts from a draw from each parameter's own prior. That
+#' is what makes several chains disperse, and it is what `chains > 1` relies on,
+#' but it can also start the chain a long way from the bulk of the posterior --
+#' a Half-Cauchy draw for a standard deviation is occasionally enormous -- and
+#' burn-in then pays for it. `init` pins any subset of the parameters to values
+#' of your choosing; everything left out is still drawn from its prior.
+#'
+#' The names are the fitted object's own components, which is also the
+#' vocabulary the `plot()` method's `true_values` argument uses, so one name
+#' means one parameter across the package. `init` covers the scalar parameters
+#' only. Two components of this model are deliberately left out: the latent
+#' trajectories and the `alpha` weights derived from them, and the indicators
+#' `z`. `z` is drawn as `Bernoulli(0.5)` inside the sampler and stays there,
+#' because it is a per-observation vector rather than a scalar, and because that
+#' draw is a source of the between-chain dispersion
+#' \code{\link{mcmc_convergence}} needs.
+#'
+#' This model identifies its components only up to their order, so the sampler
+#' requires \eqn{\mu_1 \leq \mu_2}. When both means are drawn and come out the
+#' wrong way round they are simply relabelled, as before. When you pin either one
+#' through `init` and the resolved pair violates the order, that is an error
+#' instead: relabelling would move a value you asked for into the other
+#' component.
 #' @param y Numeric vector of observed data (length \eqn{n}).
 #' @param link Character string specifying the link function. Must be either
 #'   `"logit"` or `"probit"`. Default is `"logit"`.
@@ -337,6 +363,16 @@
 #'   depend on this setting: every chain receives an explicit seed, so a given
 #'   `seed` reproduces the same output sequentially or in parallel. Default is
 #'   `FALSE`.
+#' @param init Optional named list of starting values, or `NULL` (the default)
+#'   to draw every one of them from its prior, as the sampler has always done.
+#'   The names this model accepts are `mu_1`, `prec_1`, `mu_2`, `prec_2`,
+#'   `theta_01` to `theta_03` and `prec_theta1` to `prec_theta3`;
+#'   any subset may be given, and precisions must be positive. An unrecognised
+#'   name is an error rather than being ignored, so a misspelling cannot pass
+#'   for a starting value that quietly had no effect. With `chains > 1` pass a
+#'   list of `chains` such lists, one per chain: a single starting point shared
+#'   by every chain removes the dispersion the Gelman-Rubin statistic in
+#'   \code{\link{mcmc_convergence}} is computed from, so it is refused.
 #'
 #' @return A list with components:
 #' \describe{
@@ -508,6 +544,12 @@
 #' # Put a Half-Cauchy prior on every precision: the component SDs
 #' # sqrt(1/phi[1]), sqrt(1/phi[2]) (scale ~ sd(y)) and the level/trend/accel
 #' # weight-innovation SDs sqrt(W[1]), sqrt(W[2]), sqrt(W[3]) (scale ~ 1).
+#' # This fit also pins starting values through `init`. Two things are worth
+#' # noting. The component means must be supplied in order -- the model
+#' # identifies them only up to their labelling, and `mu_1` above `mu_2` is an
+#' # error rather than a silent relabelling. And `theta_01` is the initial
+#' # weight on the linear-predictor scale, not a probability: the weight the
+#' # chain starts from is link(theta_01), so 0 means an even split.
 #' out_hc <- mcmc_normal_mixture_localacceleration(
 #'   y,
 #'   link               = "probit",
@@ -530,9 +572,14 @@
 #'   prior_prec2_scale  = 1,
 #'   prior_prec3_type   = "halfcauchy",
 #'   prior_prec3_scale  = 1,
+#'   init               = list(mu_1     = quantile(y, 0.25),
+#'                             mu_2     = quantile(y, 0.75),
+#'                             theta_01 = 0),
 #'   verbose            = FALSE,
 #'   seed               = 789
 #' )
+#' # Where the chain actually started is recorded on the fit:
+#' attr(out_hc, "init")
 #'
 #' ## Posterior analysis and visualization
 #' # Use the plot method for comprehensive diagnostics
@@ -661,16 +708,17 @@ mcmc_normal_mixture_localacceleration <- function(y,
                                                   prior_prec3_scale = 2,
                                                   prior_prec3_df = 1,
                                                   chains = 1,
-                                                  parallel = FALSE) {
+                                                  parallel = FALSE,
+                                                  init = NULL) {
 
   # --- Multi-chain dispatch ---
-  # Re-issues this same call once per chain, each with its own seed, and returns
-  # the collection. Kept at the very top so `match.call()` captures the call
-  # exactly as the user wrote it.
+  # Re-issues this same call once per chain, each with its own seed and its own
+  # entry of `init`, and returns the collection. Kept at the very top so
+  # `match.call()` captures the call exactly as the user wrote it.
   validate_chains_args(chains, parallel)
   if (chains > 1) {
     return(run_chains(match.call(), parent.frame(),
-                      as.integer(chains), seed, parallel))
+                      as.integer(chains), seed, parallel, init))
   }
 
   # `missing()` must be read before these arguments are touched.
@@ -876,6 +924,36 @@ mcmc_normal_mixture_localacceleration <- function(y,
 
   # --- End Input Validation ---
 
+  # --- Starting values ---
+  # Validated and resolved in R (see R/init_values.R). `order` is the sequence
+  # the C driver draws in -- the component parameters interleave, unlike every
+  # other family -- so an `init = NULL` run consumes the RNG stream as before.
+  # `ordered_components` carries the mu_1 <= mu_2 relabelling the driver used
+  # to apply to its own draws.
+  init_state <- resolve_init(
+    init,
+    states = list(mu_1     = list(mean = prior_mu01_mean,
+                                  prec = prior_mu01_prec),
+                  mu_2     = list(mean = prior_mu02_mean,
+                                  prec = prior_mu02_prec),
+                  theta_01 = list(mean = prior_theta01_mean,
+                                  prec = prior_theta01_prec),
+                  theta_02 = list(mean = prior_theta02_mean,
+                                  prec = prior_theta02_prec),
+                  theta_03 = list(mean = prior_theta03_mean,
+                                  prec = prior_theta03_prec)),
+    precs  = list(prec_1      = prec01_prior,
+                  prec_2      = prec02_prior,
+                  prec_theta1 = prec1_prior,
+                  prec_theta2 = prec2_prior,
+                  prec_theta3 = prec3_prior),
+    order = c("mu_1", "prec_1", "mu_2", "prec_2",
+              "theta_01", "theta_02", "theta_03",
+              "prec_theta1", "prec_theta2", "prec_theta3"),
+    ordered_components = list(states = c("mu_1", "mu_2"),
+                              precs  = c("prec_1", "prec_2"))
+  )
+
   result <- .Call(
     "_pdm_C_MCMC_normal_mixture_localacceleration",
     as.numeric(y),
@@ -926,6 +1004,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
     as.numeric(min_deviation_threshold),
     as.logical(return_log_sigma),
     as.logical(return_accept_prop),
+    as.numeric(init_state$values),
     as.logical(verbose),
     as.integer(bar_width)
   )
@@ -957,7 +1036,7 @@ mcmc_normal_mixture_localacceleration <- function(y,
 
   # Record what produced this fit: version, seed and every resolved prior
   # (see R/provenance.R). Must come after all defaults are filled in.
-  result <- record_provenance(result, seed)
+  result <- record_provenance(result, seed, init_state$init)
 
   return(result)
 }

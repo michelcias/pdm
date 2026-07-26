@@ -3,7 +3,7 @@
  * @brief MCMC sampling for local-level binomial and Bernoulli dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.4
+ * @version 1.5
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of binomial and Bernoulli
  *          dynamic models with different link functions and local-level structure:
@@ -304,13 +304,12 @@ SEXP C_MCMC_logit_binomial_locallevel(SEXP y_,
    * further, but under a vague precision prior it can reach |theta| ~ 1e3,
    * which saturates the link and stalls the MH step.
    *
-   * alpha_current is not set from theta here: generate_alpha_* writes it under
-   * the same condition that guards the only read of it, so its value at this
-   * point is never observed.
+   * alpha_current needs no starting value at all: generate_alpha_* fills every
+   * element of it whenever `compute_alpha` is set, and the only read of it sits
+   * under that same condition, so nothing here could ever be observed.
    */
   for (int t = 0; t < n; t++) {
     theta_1_previous[t] = theta_01_previous;
-    alpha_current[t]    = 0.5;   /* Neutral probability for success rates */
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */
@@ -663,13 +662,12 @@ SEXP C_MCMC_probit_bernoulli_locallevel(SEXP y_,
    * further, but under a vague precision prior it can reach |theta| ~ 1e3,
    * which saturates the link and stalls the MH step.
    *
-   * alpha_current is not set from theta here: generate_alpha_* writes it under
-   * the same condition that guards the only read of it, so its value at this
-   * point is never observed.
+   * alpha_current needs no starting value at all: generate_alpha_* fills every
+   * element of it whenever `compute_alpha` is set, and the only read of it sits
+   * under that same condition, so nothing here could ever be observed.
    */
   for (int t = 0; t < n; t++) {
     theta_1_previous[t] = theta_01_previous;
-    alpha_current[t]    = 0.5;   /* Neutral probability for success rates */
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */

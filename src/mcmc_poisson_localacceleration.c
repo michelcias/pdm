@@ -3,7 +3,7 @@
  * @brief MCMC sampling for local-acceleration Poisson dynamic models
  * @author Michel H. Montoril
  * @date 2026-07-26
- * @version 1.3
+ * @version 1.4
  *
  * @details Provides complete Gibbs samplers for Bayesian estimation of Poisson
  *          dynamic models with local-acceleration structure (level + trend + acceleration):
@@ -385,15 +385,14 @@ SEXP C_MCMC_log_poisson_localacceleration(SEXP y_,
    * further, but under a vague precision prior it can reach |theta| ~ 1e3,
    * which saturates the link and stalls the MH step.
    *
-   * alpha_current is not set from theta here: generate_alpha_* writes it under
-   * the same condition that guards the only read of it, so its value at this
-   * point is never observed.
+   * alpha_current needs no starting value at all: generate_alpha_* fills every
+   * element of it whenever `compute_alpha` is set, and the only read of it sits
+   * under that same condition, so nothing here could ever be observed.
    */
   for (int t = 0; t < n; t++) {
     theta_1_previous[t] = theta_01_previous;
     theta_2_previous[t] = theta_02_previous;
     theta_3_previous[t] = theta_03_previous;
-    alpha_current[t]    = 1.0;  /* Neutral rate */
   }
 
   /* ========== Main Gibbs Sampling Loop ========== */

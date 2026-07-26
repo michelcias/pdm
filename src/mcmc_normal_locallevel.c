@@ -2,8 +2,8 @@
  * @file mcmc_normal_locallevel.c
  * @brief MCMC sampling for Gaussian local-level dynamic models
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.3
+ * @date 2026-07-26
+ * @version 1.4
  *
  * @details This file implements a complete Gibbs sampler for Bayesian estimation of
  *          local-level polynomial dynamic models with Gaussian observation equations.
@@ -256,7 +256,18 @@ SEXP C_MCMC_normal_locallevel(SEXP y_,
   aux_W1               = init[3];
   aux_V                = init[4];
 
-  /* Initialize theta_1 trajectory with neutral starting values */
+  /* Start every trajectory at zero. This is the chain's initial latent state, not
+   * scratch space: the first iteration draws the trajectories in block given the
+   * initial states and the precisions, and in the trend and acceleration orders
+   * the level trajectory is read while the one above it is drawn. R_Calloc has
+   * already zeroed the buffers, so the loop is redundant as code -- it is kept
+   * because a starting value with a statistical meaning should not depend on an
+   * allocator's side effect, and R_alloc, which does not zero, is one edit away.
+   *
+   * Unlike the link families, these do not flatten at theta_0k (see 4a349c6):
+   * the block draw makes the starting trajectory short-lived, so the dispersion
+   * the Gelman-Rubin statistic needs comes from the scalars alone.
+   */
   for (int j = 0; j < n; j++) {
     theta_1_previous[j] = 0.0;
   }

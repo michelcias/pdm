@@ -296,3 +296,138 @@ test_that("a multi-chain call takes one starting-value list per chain", {
     "one per chain"
   )
 })
+
+
+# --- The Poisson and binomial families ----------------------------------------
+# Same helper, same contract, one parameter fewer: a link family has no
+# observation precision, so `prec_y` must not be accepted here.
+
+test_that("init reaches the Poisson and binomial samplers and is recorded", {
+  set.seed(8)
+  n  <- 40
+  th <- cumsum(c(1, rnorm(n, sd = 0.15)))[-1]
+  yp <- rpois(n, exp(th))
+  yb <- rbinom(n, 10, plogis(th - 1))
+
+  fp <- mcmc_poisson_locallevel(yp, 60, 1, 30,
+                                prior_theta01_mean = log(mean(yp)),
+                                prior_theta01_prec = 1,
+                                init = list(theta_01 = 1.5, prec_theta1 = 8),
+                                verbose = FALSE, seed = 456)
+  expect_equal(attr(fp, "init")$theta_01, 1.5)
+  expect_equal(attr(fp, "init")$prec_theta1, 8)
+
+  fb <- mcmc_binomial_locallevel(yb, 10, 60, 1, 30,
+                                 prior_theta01_mean = 0,
+                                 prior_theta01_prec = 1,
+                                 init = list(prec_theta1 = 8),
+                                 verbose = FALSE, seed = 456)
+  expect_equal(attr(fb, "init")$prec_theta1, 8)
+  # theta_01 was left out, so it was drawn and reported as the value used.
+  expect_true(is.numeric(attr(fb, "init")$theta_01))
+
+  # `init` is not decorative: the same seed from a different start is a
+  # different chain.
+  gp <- mcmc_poisson_locallevel(yp, 60, 1, 30,
+                                prior_theta01_mean = log(mean(yp)),
+                                prior_theta01_prec = 1,
+                                verbose = FALSE, seed = 456)
+  expect_false(identical(fp$prec_theta1, gp$prec_theta1))
+})
+
+
+test_that("a link family rejects prec_y, which it does not have", {
+  set.seed(9)
+  n  <- 40
+  yp <- rpois(n, 5)
+  yb <- rbinom(n, 10, 0.4)
+
+  # prec_y belongs to the Gaussian observation model only. Accepting it here
+  # would silently do nothing, which is the failure mode the name check exists
+  # to prevent.
+  expect_error(
+    mcmc_poisson_locallevel(yp, 20, 1, 10, prior_theta01_mean = 1,
+                            prior_theta01_prec = 1, verbose = FALSE,
+                            init = list(prec_y = 1)),
+    "unknown name")
+  expect_error(
+    mcmc_binomial_locallevel(yb, 10, 20, 1, 10, prior_theta01_mean = 0,
+                             prior_theta01_prec = 1, verbose = FALSE,
+                             init = list(prec_y = 1)),
+    "unknown name")
+  # Nor the trajectories or the derived rates, which `true_values` does accept.
+  expect_error(
+    mcmc_poisson_locallevel(yp, 20, 1, 10, prior_theta01_mean = 1,
+                            prior_theta01_prec = 1, verbose = FALSE,
+                            init = list(alpha = 1)),
+    "unknown name")
+})
+
+
+test_that("the vocabulary invariant holds for the Poisson and binomial families", {
+  # As for the Gaussian samplers: `init` accepts exactly the fit's scalar
+  # components, and every one of them is a name true_value_for() resolves to.
+  set.seed(10)
+  n  <- 40
+  th <- cumsum(c(1, rnorm(n, sd = 0.15)))[-1]
+  yp <- rpois(n, exp(th))
+  yb <- rbinom(n, 10, plogis(th - 1))
+
+  labels <- c(theta_01    = "theta_01", theta_02    = "theta_02",
+              theta_03    = "theta_03", prec_theta1 = "W_1^{-1}",
+              prec_theta2 = "W_2^{-1}", prec_theta3 = "W_3^{-1}")
+
+  th0 <- list(prior_theta01_mean = 0, prior_theta01_prec = 1)
+  th2 <- c(th0, list(prior_theta02_mean = 0, prior_theta02_prec = 1))
+  th3 <- c(th2, list(prior_theta03_mean = 0, prior_theta03_prec = 1))
+
+  cases <- list(
+    list(mcmc_poisson_locallevel,         list(yp, 20, 1, 10), th0),
+    list(mcmc_poisson_localtrend,         list(yp, 20, 1, 10), th2),
+    list(mcmc_poisson_localacceleration,  list(yp, 20, 1, 10), th3),
+    list(mcmc_binomial_locallevel,        list(yb, 10, 20, 1, 10), th0),
+    list(mcmc_binomial_localtrend,        list(yb, 10, 20, 1, 10), th2),
+    list(mcmc_binomial_localacceleration, list(yb, 10, 20, 1, 10), th3))
+
+  for (case in cases) {
+    f <- case[[1]]; pos <- case[[2]]; extra <- c(case[[3]], list(verbose = FALSE))
+
+    fit <- do.call(f, c(pos, extra))
+    msg <- tryCatch(do.call(f, c(pos, extra, list(init = list(nope = 1)))),
+                    error = function(e) conditionMessage(e))
+    accepted <- strsplit(sub(".*Valid names for this model are: ", "", msg), ", ")[[1]]
+
+    scalars <- names(fit)[!vapply(fit, is.matrix, logical(1L))]
+    expect_equal(sort(accepted), sort(scalars))
+    expect_false("prec_y" %in% accepted)
+
+    for (nm in accepted) {
+      expect_equal(true_value_for(labels[[nm]], stats::setNames(list(42), nm)), 42)
+    }
+  }
+})
+
+
+test_that("the Poisson and binomial samplers take one init per chain", {
+  set.seed(11)
+  n  <- 40
+  yp <- rpois(n, 5)
+
+  fits <- mcmc_poisson_locallevel(yp, 60, 1, 30,
+                                  prior_theta01_mean = log(mean(yp)),
+                                  prior_theta01_prec = 1,
+                                  chains = 3,
+                                  init = list(list(prec_theta1 = 1),
+                                              list(prec_theta1 = 5),
+                                              list(prec_theta1 = 20)),
+                                  verbose = FALSE, seed = 456)
+  expect_s3_class(fits, "pdm_mcmc_list")
+  expect_equal(vapply(fits, function(ch) attr(ch, "init")$prec_theta1, numeric(1)),
+               c(1, 5, 20))
+
+  expect_error(
+    mcmc_poisson_locallevel(yp, 20, 1, 10, prior_theta01_mean = 1,
+                            prior_theta01_prec = 1, chains = 3,
+                            verbose = FALSE, init = list(prec_theta1 = 1)),
+    "one per chain")
+})

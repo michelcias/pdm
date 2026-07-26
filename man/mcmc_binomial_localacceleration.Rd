@@ -181,19 +181,19 @@ depend on this setting: every chain receives an explicit seed, so a given
 An object of class \code{c("binomial_localacceleration", "pdm_mcmc", "list")}
 with components:
 \describe{
-\item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
-\item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,2}}.}
-\item{\code{theta_3}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\theta_{t,3}}.}
+\item{\code{theta_1}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for \eqn{\theta_{t,1}}.}
+\item{\code{theta_2}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for \eqn{\theta_{t,2}}.}
+\item{\code{theta_3}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for \eqn{\theta_{t,3}}.}
 \item{\code{theta_01}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{\theta_{0,1}}.}
 \item{\code{theta_02}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{\theta_{0,2}}.}
 \item{\code{theta_03}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{\theta_{0,3}}.}
 \item{\code{prec_theta1}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{1/W_1}.}
 \item{\code{prec_theta2}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{1/W_2}.}
 \item{\code{prec_theta3}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{1/W_3}.}
-\item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for \eqn{\alpha_t}.}
-\item{\code{log_sigma}}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of proposal scale diagnostics
+\item{\code{alpha}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for \eqn{\alpha_t}.}
+\item{\code{log_sigma}}{(Optional) Numeric matrix \eqn{[n_{draws} \times n]} of proposal scale diagnostics
 (if \code{return_log_sigma = TRUE}).}
-\item{\code{accept_prop}}{(Optional) Numeric matrix \eqn{[n_{chain} \times n]} of acceptance proportion
+\item{\code{accept_prop}}{(Optional) Numeric matrix \eqn{[n_{draws} \times n]} of acceptance proportion
 diagnostics (if \code{return_accept_prop = TRUE}).}
 }
 

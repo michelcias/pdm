@@ -197,9 +197,9 @@
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
-#'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
-#'   \item{\code{theta_3}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the acceleration state \eqn{\theta_{t,3}}.}
+#'   \item{\code{theta_1}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for the level state \eqn{\theta_{t,1}}.}
+#'   \item{\code{theta_2}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for the trend state \eqn{\theta_{t,2}}.}
+#'   \item{\code{theta_3}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for the acceleration state \eqn{\theta_{t,3}}.}
 #'   \item{\code{theta_01}}{Numeric vector of length `n_draws` for the initial level \eqn{\theta_{0,1}}.}
 #'   \item{\code{theta_02}}{Numeric vector of length `n_draws` for the initial trend \eqn{\theta_{0,2}}.}
 #'   \item{\code{theta_03}}{Numeric vector of length `n_draws` for the initial acceleration \eqn{\theta_{0,3}}.}

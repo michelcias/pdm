@@ -163,7 +163,7 @@
 #' @return An object of class `c("normal_locallevel", "pdm_mcmc", "list")`
 #'   containing the following components:
 #'   \describe{
-#'     \item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
+#'     \item{\code{theta_1}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for the latent state \eqn{\theta_{t,1}}.}
 #'     \item{\code{theta_01}}{Numeric vector of length `n_draws` of posterior samples for the initial state \eqn{\theta_{0,1}}.}
 #'     \item{\code{prec_theta1}}{Numeric vector of length `n_draws` of posterior samples for the innovation precision \eqn{1/W_1}.}
 #'     \item{\code{prec_y}}{Numeric vector of length `n_draws` of posterior samples for the data precision \eqn{1/V}.}

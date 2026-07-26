@@ -224,15 +224,15 @@ the mean of component 2 (\eqn{\mu_2}). Component 2 is defined as the
 component with the larger mean.}
 \item{\code{prec_2}}{Numeric vector of length \code{n_draws} of posterior samples for
 the precision of component 2 (\eqn{\phi_2 = 1/\sigma_2^2}).}
-\item{\code{theta_1}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+\item{\code{theta_1}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior
 samples for the latent level state \eqn{\theta_{t,1}}.}
 \item{\code{theta_01}}{Numeric vector of length \code{n_draws} of posterior samples
 for the initial level state \eqn{\theta_{0,1}}.}
 \item{\code{prec_theta1}}{Numeric vector of length \code{n_draws} of posterior samples
 for the level innovation precision \eqn{1/W_1}.}
-\item{\code{alpha}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior
+\item{\code{alpha}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior
 samples for the mixture weights \eqn{\alpha_t}.}
-\item{\code{z}}{Numeric matrix \eqn{[n_{chain} \times n]} of posterior samples
+\item{\code{z}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples
 for the latent component indicators \eqn{z_t}.}
 \item{\code{log_sigma}}{(Logit link only, optional) Numeric matrix of proposal
 log standard deviations used in the adaptive Metropolis-Hastings steps.}

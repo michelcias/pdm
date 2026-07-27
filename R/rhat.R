@@ -299,3 +299,45 @@ resolve_timepoints <- function(x, arg = "theta_timepoints") {
 
   sort(unique(x))
 }
+
+
+#' The two earlier R-hat statistics, for reconciliation
+#'
+#' Three statistics circulate under the name "R-hat", and this package, other
+#' implementations and the applied literature do not all report the same one.
+#' `mcmc_convergence()` reports Vehtari et al. (2021); these are the two it
+#' supersedes, computed from the same building blocks so that a number from
+#' elsewhere can be matched against ours instead of guessed at:
+#'
+#' \describe{
+#'   \item{classic}{`rhat_basic(x)` -- Gelman & Rubin (1992). No split, no
+#'     rank normalization: between-chain against within-chain variance on the
+#'     draws as they are.}
+#'   \item{split}{`rhat_basic(split_chains(x))` -- the BDA3 (2013) form. Each
+#'     chain is halved and the halves treated as separate chains, which exposes
+#'     a chain still drifting.}
+#' }
+#'
+#' Neither is invariant to a monotone transformation, which is why a diagnostic
+#' computed on `alpha` by either route is a genuinely different number from the
+#' one on the state, where the rank-based statistic gives the same value for
+#' both.
+#'
+#' The guards match `rhat_rank_normalized()` exactly, so a case that yields
+#' `NA` there yields `NA` here rather than `NaN` from an unguarded variance.
+#'
+#' @param x Numeric matrix, draws in rows and chains in columns.
+#'
+#' @return Named numeric vector of length two, `c(split = , classic = )`.
+#'
+#' @keywords internal
+#' @noRd
+rhat_variants <- function(x) {
+  na <- c(split = NA_real_, classic = NA_real_)
+  if (!is.matrix(x) || ncol(x) < 2L)         return(na)
+  if (!all(is.finite(x)))                    return(na)
+  if (max(x) - min(x) < .Machine$double.eps) return(na)
+
+  c(split   = rhat_basic(split_chains(x)),
+    classic = rhat_basic(x))
+}

@@ -39,6 +39,13 @@
 #'   columns in the output table. Default `TRUE`.
 #' @param show_overall Logical. Whether to include the `Overall` column.
 #'   Default `TRUE`.
+#' @param show_rhat_variants Logical. Whether to add the `Rhat_split` and
+#'   `Rhat_classic` columns, the two earlier statistics that also travel under
+#'   the name "R-hat". Default `FALSE`. These are for **reconciliation** — for
+#'   matching a number reported by another implementation or in a paper — and
+#'   not for deciding convergence: `Rhat` always holds the Vehtari et al.
+#'   (2021) statistic whatever this is set to, and `Overall` is classified from
+#'   that column alone. See "The three R-hat statistics" below.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return An object of class `"pdm_convergence_multi"`, a list with:
@@ -92,6 +99,40 @@
 #'   The distinction matters: a parameter can have a comfortable bulk ESS and
 #'   still carry too few effective draws in the tails to place its own credible
 #'   interval reliably.
+#' }
+#'
+#' \subsection{The three R-hat statistics}{
+#'   Three statistics circulate under one name, and this package, other
+#'   implementations and the applied literature do not all report the same one.
+#'   `show_rhat_variants = TRUE` puts them side by side:
+#'
+#'   \tabular{lll}{
+#'     \strong{Column} \tab \strong{Statistic} \tab \strong{Source} \cr
+#'     `Rhat_classic` \tab no split, no ranks \tab Gelman & Rubin (1992) \cr
+#'     `Rhat_split` \tab split, no ranks \tab BDA3 (2013) \cr
+#'     `Rhat` \tab split, rank-normalized, folded \tab Vehtari et al. (2021)
+#'   }
+#'
+#'   They are not interchangeable, and the gap between them is not a rounding
+#'   detail. Measured on a two-component mixture with a logit weight
+#'   (\eqn{n = 800}, four chains), taking the largest value over all 800 points
+#'   of the weight trajectory:
+#'
+#'   \tabular{lrr}{
+#'     \strong{Statistic} \tab \strong{Largest} \tab \strong{Points above 1.1} \cr
+#'     classic \tab 1.073 \tab 0\% \cr
+#'     split \tab 1.100 \tab 0\% \cr
+#'     rank-normalized, folded \tab 1.153 \tab 3.7\%
+#'   }
+#'
+#'   Splitting contributes 0.027 and rank-normalization with folding a further
+#'   0.053, and the verdict changes only at the third: the first two clear the
+#'   conventional 1.1 at every one of the 800 points. That is why `Rhat` is the
+#'   third and stays the third — the earlier statistics are, on this evidence,
+#'   the more forgiving of the three, and a table in which the reported value
+#'   could quietly be one of them would invite reporting whichever passes.
+#'
+#'   Use the extra columns to explain a discrepancy, not to resolve one.
 #' }
 #'
 #' \subsection{How many time points}{
@@ -214,6 +255,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
                                            ess_threshold    = 400,
                                            show_ess         = TRUE,
                                            show_overall     = TRUE,
+                                           show_rhat_variants = FALSE,
                                            ...) {
 
   # --- Input validation ---------------------------------------------------
@@ -233,7 +275,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
     stop("'ess_threshold' must be a single positive numeric value")
   }
 
-  for (flag in list(show_ess, show_overall)) {
+  for (flag in list(show_ess, show_overall, show_rhat_variants)) {
     if (!is.logical(flag) || length(flag) != 1L) {
       stop("'show_*' arguments must be single logical values")
     }
@@ -261,6 +303,18 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
       Rhat      = rhat,
       stringsAsFactors = FALSE
     )
+
+    # Reconciliation columns only. `Rhat` keeps its meaning -- Vehtari et al.
+    # (2021) -- whatever these are set to, and `Overall` below is classified
+    # from it alone. That is deliberate: the earlier statistics are almost
+    # always the milder of the three, and a table where the reported value
+    # could silently be one of them invites picking whichever clears the
+    # threshold.
+    if (show_rhat_variants) {
+      variants         <- rhat_variants(draws)
+      row$Rhat_split   <- variants[["split"]]
+      row$Rhat_classic <- variants[["classic"]]
+    }
 
     if (show_ess) {
       row$ESS_bulk <- bulk
@@ -374,8 +428,8 @@ print.pdm_convergence_multi <- function(x, digits = 4L, n_worst = 3L, ...) {
   states   <- x$table[ is_state, , drop = FALSE]
 
   fmt <- function(df) {
-    if ("Rhat" %in% names(df)) {
-      df$Rhat <- sprintf(paste0("%.", digits, "f"), df$Rhat)
+    for (col in intersect(c("Rhat", "Rhat_split", "Rhat_classic"), names(df))) {
+      df[[col]] <- sprintf(paste0("%.", digits, "f"), df[[col]])
     }
     for (col in intersect(c("ESS_bulk", "ESS_tail"), names(df))) {
       df[[col]] <- sprintf("%.1f", df[[col]])

@@ -339,3 +339,49 @@ test_that("worker_count() never asks mclapply for a bad core count", {
   options(mc.cores = 0L)
   expect_equal(worker_count(4L), 1L)
 })
+
+test_that("show_rhat_variants adds the two earlier statistics without displacing Rhat", {
+  y    <- make_y()
+  fits <- run_ll(y, burnin = 100, thinning = 1, n_draws = 300, seed = 11, chains = 4)
+
+  plain <- mcmc_convergence(fits)
+  both  <- mcmc_convergence(fits, show_rhat_variants = TRUE)
+
+  expect_false(any(c("Rhat_split", "Rhat_classic") %in% names(plain$table)))
+  expect_true(all(c("Rhat", "Rhat_split", "Rhat_classic") %in% names(both$table)))
+
+  # The point of the flag: `Rhat` keeps its meaning and `Overall` keeps its
+  # basis, so turning the columns on cannot change any verdict. Without this,
+  # the feature would be an invitation to report the friendliest of the three.
+  expect_identical(both$table$Rhat, plain$table$Rhat)
+  expect_identical(both$table$Overall, plain$table$Overall)
+
+  # The three are genuinely different statistics, not the same number thrice.
+  expect_false(isTRUE(all.equal(both$table$Rhat, both$table$Rhat_classic)))
+  expect_false(isTRUE(all.equal(both$table$Rhat_split, both$table$Rhat_classic)))
+
+  # They are what the internals compute, matched row by row.
+  draws <- vapply(fits, function(f) as.numeric(f[["prec_y"]]), numeric(300))
+  i <- which(both$table$Parameter == "V^{-1}")
+  expect_equal(both$table$Rhat_classic[i], pdm:::rhat_basic(draws))
+  expect_equal(both$table$Rhat_split[i],
+               pdm:::rhat_basic(pdm:::split_chains(draws)))
+  expect_equal(both$table$Rhat[i], pdm:::rhat_rank_normalized(draws))
+
+  # All three print, and the flag is validated like its siblings.
+  expect_output(print(both), "Rhat_classic")
+  expect_error(mcmc_convergence(fits, show_rhat_variants = "yes"),
+               "single logical")
+})
+
+test_that("rhat_variants() guards exactly as rhat_rank_normalized() does", {
+  # A case that yields NA there must yield NA here, not NaN from an unguarded
+  # variance, so the two columns cannot disagree about what is computable.
+  bad <- list(matrix(c(1, NA, 2, 3), 2L, 2L),   # non-finite
+              matrix(1, 4L, 1L),                # one chain
+              matrix(1, 4L, 2L))                # constant draws
+  for (m in bad) {
+    expect_true(all(is.na(rhat_variants(m))))
+    expect_true(is.na(rhat_rank_normalized(m)))
+  }
+})

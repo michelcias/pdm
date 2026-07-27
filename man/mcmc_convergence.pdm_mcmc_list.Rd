@@ -11,6 +11,7 @@
   ess_threshold = 400,
   show_ess = TRUE,
   show_overall = TRUE,
+  show_rhat_variants = FALSE,
   ...
 )
 }
@@ -48,6 +49,14 @@ columns in the output table. Default \code{TRUE}.}
 
 \item{show_overall}{Logical. Whether to include the \code{Overall} column.
 Default \code{TRUE}.}
+
+\item{show_rhat_variants}{Logical. Whether to add the \code{Rhat_split} and
+\code{Rhat_classic} columns, the two earlier statistics that also travel under
+the name "R-hat". Default \code{FALSE}. These are for \strong{reconciliation} — for
+matching a number reported by another implementation or in a paper — and
+not for deciding convergence: \code{Rhat} always holds the Vehtari et al.
+(2021) statistic whatever this is set to, and \code{Overall} is classified from
+that column alone. See "The three R-hat statistics" below.}
 
 \item{...}{Additional arguments (currently unused).}
 }
@@ -115,6 +124,40 @@ the effective sample sizes of the indicators that a draw falls below the
 The distinction matters: a parameter can have a comfortable bulk ESS and
 still carry too few effective draws in the tails to place its own credible
 interval reliably.
+}
+
+\subsection{The three R-hat statistics}{
+Three statistics circulate under one name, and this package, other
+implementations and the applied literature do not all report the same one.
+\code{show_rhat_variants = TRUE} puts them side by side:
+
+\tabular{lll}{
+\strong{Column} \tab \strong{Statistic} \tab \strong{Source} \cr
+\code{Rhat_classic} \tab no split, no ranks \tab Gelman & Rubin (1992) \cr
+\code{Rhat_split} \tab split, no ranks \tab BDA3 (2013) \cr
+\code{Rhat} \tab split, rank-normalized, folded \tab Vehtari et al. (2021)
+}
+
+They are not interchangeable, and the gap between them is not a rounding
+detail. Measured on a two-component mixture with a logit weight
+(\eqn{n = 800}, four chains), taking the largest value over all 800 points
+of the weight trajectory:
+
+\tabular{lrr}{
+\strong{Statistic} \tab \strong{Largest} \tab \strong{Points above 1.1} \cr
+classic \tab 1.073 \tab 0\\% \cr
+split \tab 1.100 \tab 0\\% \cr
+rank-normalized, folded \tab 1.153 \tab 3.7\\%
+}
+
+Splitting contributes 0.027 and rank-normalization with folding a further
+0.053, and the verdict changes only at the third: the first two clear the
+conventional 1.1 at every one of the 800 points. That is why \code{Rhat} is the
+third and stays the third — the earlier statistics are, on this evidence,
+the more forgiving of the three, and a table in which the reported value
+could quietly be one of them would invite reporting whichever passes.
+
+Use the extra columns to explain a discrepancy, not to resolve one.
 }
 
 \subsection{How many time points}{

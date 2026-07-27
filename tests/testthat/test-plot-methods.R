@@ -48,10 +48,10 @@ test_that("plot() runs without error with base graphics", {
   pdf(NULL)
   on.exit(dev.off())
 
-  expect_no_error(plot(mock_obj, type = "mcmc", engine = "base"))
-  expect_no_error(plot(mock_obj, type = "params", engine = "base"))
-  expect_no_error(plot(mock_obj, type = "states", engine = "base"))
-  expect_no_error(plot(mock_obj, type = "alpha", engine = "base"))
+  expect_no_error(plot(mock_obj, type = "mcmc"))
+  expect_no_error(plot(mock_obj, type = "params"))
+  expect_no_error(plot(mock_obj, type = "states"))
+  expect_no_error(plot(mock_obj, type = "alpha"))
 })
 
 test_that("plot() type='mcmc' accepts which argument", {
@@ -61,13 +61,13 @@ test_that("plot() type='mcmc' accepts which argument", {
   on.exit(dev.off())
 
   # Single parameter
-  expect_no_error(plot(mock_obj, type = "mcmc", which = 1, engine = "base"))
+  expect_no_error(plot(mock_obj, type = "mcmc", which = 1))
 
   # Multiple parameters
-  expect_no_error(plot(mock_obj, type = "mcmc", which = 1:3, engine = "base"))
+  expect_no_error(plot(mock_obj, type = "mcmc", which = 1:3))
 
   # All 8 parameters
-  expect_no_error(plot(mock_obj, type = "mcmc", which = 1:8, engine = "base"))
+  expect_no_error(plot(mock_obj, type = "mcmc", which = 1:8))
 })
 
 test_that("plot() validates which argument for mcmc type", {
@@ -78,17 +78,17 @@ test_that("plot() validates which argument for mcmc type", {
 
   # Invalid: which out of range
   expect_error(
-    plot(mock_obj, type = "mcmc", which = 0, engine = "base"),
+    plot(mock_obj, type = "mcmc", which = 0),
     "`which` must be between 1 and 8"
   )
 
   expect_error(
-    plot(mock_obj, type = "mcmc", which = 9, engine = "base"),
+    plot(mock_obj, type = "mcmc", which = 9),
     "`which` must be between 1 and 8"
   )
 
   expect_error(
-    plot(mock_obj, type = "mcmc", which = c(1, 10), engine = "base"),
+    plot(mock_obj, type = "mcmc", which = c(1, 10)),
     "`which` must be between 1 and 8"
   )
 })
@@ -102,20 +102,6 @@ test_that("plot() validates type argument", {
   expect_error(plot(mock_obj, type = "invalid"), "'arg' should be one of")
 })
 
-test_that("plot() validates engine argument", {
-  skip(paste0("The 'engine' argument (base vs. ggplot2) is not yet ",
-              "implemented; the ggplot2 backend in plot_utils_ggplot.R is ",
-              "still a prototype. Re-enable once engine selection is wired ",
-              "into the plot methods."))
-
-  mock_obj <- create_mock_object()
-
-  pdf(NULL)
-  on.exit(dev.off())
-
-  expect_error(plot(mock_obj, engine = "invalid"), "'arg' should be one of")
-})
-
 test_that("plot() respects which argument for different types", {
   mock_obj <- create_mock_object()
 
@@ -123,16 +109,16 @@ test_that("plot() respects which argument for different types", {
   on.exit(dev.off())
 
   # Should only plot specified subplots
-  expect_no_error(plot(mock_obj, type = "mcmc", which = c(1, 3), engine = "base"))
-  expect_no_error(plot(mock_obj, type = "params", which = 1:2, engine = "base"))
-  expect_no_error(plot(mock_obj, type = "states", which = c(1, 2), engine = "base"))
+  expect_no_error(plot(mock_obj, type = "mcmc", which = c(1, 3)))
+  expect_no_error(plot(mock_obj, type = "params", which = 1:2))
+  expect_no_error(plot(mock_obj, type = "states", which = c(1, 2)))
 })
 
 test_that("plot() returns invisibly", {
   mock_obj <- create_mock_object()
 
   pdf(NULL)
-  result <- withVisible(plot(mock_obj, type = "alpha", engine = "base"))
+  result <- withVisible(plot(mock_obj, type = "alpha"))
   dev.off()
 
   expect_false(result$visible)
@@ -146,15 +132,15 @@ test_that("plot() handles overlay_data argument", {
   on.exit(dev.off())
 
   # With data overlay
-  expect_no_error(plot(mock_obj, type = "alpha", overlay_data = TRUE, engine = "base"))
+  expect_no_error(plot(mock_obj, type = "alpha", overlay_data = TRUE))
 
   # Without data overlay
-  expect_no_error(plot(mock_obj, type = "alpha", overlay_data = FALSE, engine = "base"))
+  expect_no_error(plot(mock_obj, type = "alpha", overlay_data = FALSE))
 
   # Without data attribute
   mock_obj_no_data <- mock_obj
   attr(mock_obj_no_data, "y") <- NULL
-  expect_no_error(plot(mock_obj_no_data, type = "alpha", overlay_data = TRUE, engine = "base"))
+  expect_no_error(plot(mock_obj_no_data, type = "alpha", overlay_data = TRUE))
 })
 
 test_that("plot() type='all' generates multiple pages", {
@@ -168,89 +154,7 @@ test_that("plot() type='all' generates multiple pages", {
   # - 1 page for mixture params
   # - 1 page for dynamic states
   # - 2 pages for mixture weights (alpha_t and z_t)
-  expect_no_error(plot(mock_obj, type = "all", ask = FALSE, engine = "base"))
-})
-
-
-# ============================================================================
-# Tests for the prototype ggplot2 backend (inst/prototype/)
-# ============================================================================
-#
-# There is no `engine` argument: `529d837` removed it and `b1d1363` parked the
-# ggplot2 backend in `inst/prototype/`, out of `R/` so that `R CMD check` does
-# not analyse unreachable code (see inst/prototype/README.md).
-#
-# The five tests that used to sit here called `plot(obj, engine = "ggplot2")`.
-# With no such argument the value fell into `...` and was silently ignored, so
-# every one of them passed without touching ggplot2 at all -- and two of them
-# asserted on a hexbin message the prototype does not emit. They announced
-# themselves only through an unrelated warning, and once that was fixed in
-# 0.14-0 they were silent, vacuous coverage.
-#
-# These exercise the prototype directly. Their job is to catch rot while the
-# work is parked: the file must still parse, still expose its API, and still
-# run against the current shape of a fitted object. That last point is the one
-# with teeth -- `plot_dynamic_states_generic_ggplot()` calls the package
-# internal `get_param_config()`, so a change there fails here rather than when
-# someone resumes step 1 of the README.
-
-# Source the prototype into an environment parented on the package namespace,
-# so its calls to pdm internals resolve. Returns NULL when the file is not
-# available (e.g. an install that dropped inst/), letting callers skip.
-load_ggplot_prototype <- function() {
-  path <- system.file("prototype", "plot_utils_ggplot.R", package = "pdm")
-  if (!nzchar(path)) return(NULL)
-  env <- new.env(parent = asNamespace("pdm"))
-  sys.source(path, envir = env)
-  env
-}
-
-test_that("the prototype ggplot2 backend still parses and exposes its API", {
-  skip_if_not_installed("ggplot2")
-  env <- load_ggplot_prototype()
-  skip_if(is.null(env), "prototype source not available")
-
-  # Pinned by name: the backend is unreachable from the package, so nothing
-  # else would notice a helper being renamed or dropped.
-  expect_setequal(ls(env), c(
-    "plot_acceptance_rates_ggplot",       "plot_all_mixture_generic_ggplot",
-    "plot_alpha_trajectory_ggplot",       "plot_bernoulli_alpha_ggplot",
-    "plot_binomial_alpha_ggplot",         "plot_component_probabilities_ggplot",
-    "plot_dynamic_states_generic_ggplot", "plot_mixture_params_ggplot",
-    "plot_mixture_weights_ggplot",        "plot_param_diagnostics_ggplot"
-  ))
-  for (nm in ls(env)) expect_true(is.function(env[[nm]]), info = nm)
-})
-
-test_that("the prototype ggplot2 backend runs against a current fit object", {
-  skip_if_not_installed("ggplot2")
-  env <- load_ggplot_prototype()
-  skip_if(is.null(env), "prototype source not available")
-
-  mock_obj <- create_mock_object()
-
-  pdf(NULL)
-  on.exit(dev.off())
-
-  # The one helper that returns its plot. Assert it is really a ggplot and
-  # force the lazy build, rather than settling for "nothing errored" -- a
-  # ggplot object constructs happily and only fails when it is evaluated.
-  p <- env$plot_param_diagnostics_ggplot(mock_obj$mu_1, "mu_1", "mu[1]")
-  expect_s3_class(p, "ggplot")
-  expect_no_error(ggplot2::ggplot_build(p))
-
-  # The rest print and return invisibly, so executing them is what can be
-  # checked. It is still worth checking: each consumes components of the
-  # fitted object and would break if its shape changed.
-  expect_no_error(env$plot_mixture_params_ggplot(
-    mock_obj$mu_1, mock_obj$mu_2, mock_obj$prec_1, mock_obj$prec_2))
-  expect_no_error(env$plot_alpha_trajectory_ggplot(mock_obj$alpha))
-  expect_no_error(env$plot_mixture_weights_ggplot(mock_obj$alpha, mock_obj$z))
-  expect_no_error(env$plot_component_probabilities_ggplot(mock_obj$z))
-
-  # Reaches get_param_config(); this is what ties the parked prototype to the
-  # live package.
-  expect_no_error(env$plot_dynamic_states_generic_ggplot(mock_obj))
+  expect_no_error(plot(mock_obj, type = "all", ask = FALSE))
 })
 
 
@@ -263,14 +167,14 @@ test_that("plot() works with different object sizes", {
   small_obj <- create_mock_object(n_draws = 10, n_obs = 5)
 
   pdf(NULL)
-  expect_no_error(plot(small_obj, type = "alpha", engine = "base"))
+  expect_no_error(plot(small_obj, type = "alpha"))
   dev.off()
 
   # Large object
   large_obj <- create_mock_object(n_draws = 1000, n_obs = 200)
 
   pdf(NULL)
-  expect_no_error(plot(large_obj, type = "alpha", engine = "base"))
+  expect_no_error(plot(large_obj, type = "alpha"))
   dev.off()
 })
 
@@ -282,8 +186,8 @@ test_that("plot() handles extreme values", {
   mock_obj$alpha[, 1] <- c(rep(0, 50), rep(1, 50))
 
   pdf(NULL)
-  expect_no_error(plot(mock_obj, type = "params", engine = "base"))
-  expect_no_error(plot(mock_obj, type = "alpha", engine = "base"))
+  expect_no_error(plot(mock_obj, type = "params"))
+  expect_no_error(plot(mock_obj, type = "alpha"))
   dev.off()
 })
 
@@ -295,10 +199,10 @@ test_that("all plot types work together", {
 
   # Test that all types can be called sequentially
   expect_no_error({
-    plot(mock_obj, type = "mcmc", which = 1, engine = "base")
-    plot(mock_obj, type = "params", engine = "base")
-    plot(mock_obj, type = "states", engine = "base")
-    plot(mock_obj, type = "alpha", engine = "base")
+    plot(mock_obj, type = "mcmc", which = 1)
+    plot(mock_obj, type = "params")
+    plot(mock_obj, type = "states")
+    plot(mock_obj, type = "alpha")
   })
 })
 
@@ -311,7 +215,7 @@ test_that("plot() mcmc diagnostics covers all 8 parameters", {
   # Test each parameter individually
   for (i in 1:8) {
     expect_no_error(
-      plot(mock_obj, type = "mcmc", which = i, engine = "base")
+      plot(mock_obj, type = "mcmc", which = i)
     )
   }
 })
@@ -328,7 +232,7 @@ test_that("plot() handles missing optional components", {
   attr(mock_obj, "y") <- NULL
 
   pdf(NULL)
-  expect_no_error(plot(mock_obj, type = "alpha", overlay_data = TRUE, engine = "base"))
+  expect_no_error(plot(mock_obj, type = "alpha", overlay_data = TRUE))
   dev.off()
 })
 
@@ -341,7 +245,7 @@ test_that("plot() method dispatch works correctly", {
   on.exit(dev.off())
 
   # Custom method should work
-  expect_no_error(plot(mock_obj, type = "alpha", engine = "base"))
+  expect_no_error(plot(mock_obj, type = "alpha"))
 
   # Object WITHOUT our class uses plot.default (different behavior, but no error)
   plain_list <- list(x = 1:10, y = 1:10)
@@ -364,7 +268,7 @@ test_that("plot() respects par() settings", {
   par(mfrow = c(1, 1), mar = c(5, 4, 4, 2))
 
   # Plot should work
-  expect_no_error(plot(mock_obj, type = "alpha", engine = "base"))
+  expect_no_error(plot(mock_obj, type = "alpha"))
 
   # Par should be restored after plot (our functions use on.exit)
   # Note: This is implicit in our implementation
@@ -384,8 +288,8 @@ test_that("plot() respects par() settings", {
 #   on.exit(dev.off())
 #
 #   # Should handle NAs gracefully (density() has na.rm)
-#   expect_no_error(plot(mock_obj, type = "mcmc", which = 1, engine = "base"))
-#   expect_no_error(plot(mock_obj, type = "alpha", engine = "base"))
+#   expect_no_error(plot(mock_obj, type = "mcmc", which = 1))
+#   expect_no_error(plot(mock_obj, type = "alpha"))
 # })
 
 
@@ -405,7 +309,7 @@ test_that("plot() is reasonably fast for typical sizes", {
   # Should complete in reasonable time (< 10 seconds)
   expect_lt(
     system.time({
-      plot(mock_obj, type = "mcmc", which = 1, engine = "base")
+      plot(mock_obj, type = "mcmc", which = 1)
     })[["elapsed"]],
     10
   )
@@ -425,7 +329,7 @@ test_that("plot() examples in documentation work", {
   on.exit(dev.off())
 
   # Examples from documentation
-  expect_no_error(plot(mock_obj, type = "all", engine = "base", ask = FALSE))
+  expect_no_error(plot(mock_obj, type = "all", ask = FALSE))
   expect_no_error(plot(mock_obj, type = "mcmc", which = 1:2))
   expect_no_error(plot(mock_obj, type = "alpha"))
 })

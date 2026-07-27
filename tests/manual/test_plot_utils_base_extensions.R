@@ -358,5 +358,3 @@ cat("  - test_dashboard_localtrend.pdf (13 páginas)\n")
 cat("  - test_dashboard_localacceleration.pdf (16 páginas)\n\n")
 
 cat("As extensões de R/plot_utils_base.R estão funcionando corretamente.\n")
-cat("O backend ggplot2 correspondente está parado em inst/prototype/;\n")
-cat("veja inst/prototype/README.md antes de retomar aquele trabalho.\n")

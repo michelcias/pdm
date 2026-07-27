@@ -26,8 +26,20 @@ test_that("mcmc_convergence() reports the expected table for one chain", {
   expect_true(all(conv$table$Efficiency > 0 & conv$table$Efficiency <= 100))
 
   # Scalars plus the default state screen, and NULL drops the states.
-  expect_equal(sum(grepl("^theta_1\\[t=", conv$table$Parameter)), 3L)
+  expect_equal(sum(grepl("^theta_1\\[t=", conv$table$Parameter)), 20L)
   expect_equal(nrow(mcmc_convergence(conv_fit(), theta_timepoints = NULL)$table), 3L)
+
+  # Both methods of the generic resolve `theta_timepoints` through the same
+  # helper, so the argument means one thing across the package. They were split
+  # once -- three points here, twenty there, and a count accepted only by the
+  # multi-chain method, so `theta_timepoints = 20` worked on one and errored on
+  # the other. Compare the resolved grids, not the declared defaults.
+  expect_equal(
+    pdm:::resolve_timepoints(eval(formals(pdm:::mcmc_convergence.pdm_mcmc)$theta_timepoints)),
+    pdm:::resolve_timepoints(eval(formals(pdm:::mcmc_convergence.pdm_mcmc_list)$theta_timepoints))
+  )
+  expect_equal(sum(grepl("^theta_1\\[t=",
+                         mcmc_convergence(conv_fit(), theta_timepoints = 5)$table$Parameter)), 5L)
 })
 
 

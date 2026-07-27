@@ -4,12 +4,19 @@
 \alias{print.pdm_convergence}
 \title{Print method for pdm_convergence objects}
 \usage{
-\method{print}{pdm_convergence}(x, digits = 3L, ...)
+\method{print}{pdm_convergence}(x, digits = 3L, n_worst = 3L, ...)
 }
 \arguments{
 \item{x}{An object of class \code{"pdm_convergence"}.}
 
-\item{digits}{Integer, significant digits for numeric columns. Default 3.}
+\item{digits}{Integer, digits for the Geweke statistic. Default 3. \code{ESS}
+and \code{Efficiency} always print with one decimal: a count and a percentage
+do not gain from more, and the stored table carries full precision.}
+
+\item{n_worst}{Integer, how many latent-state rows to display, the ones
+with the smallest \code{ESS}. The screen covers twenty time points per state
+block by default, too many to read as a table; the scalars always print
+in full and \code{x$table} is never abridged. Default 3; \code{Inf} prints every row.}
 
 \item{...}{Additional arguments (currently unused).}
 }

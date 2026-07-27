@@ -341,27 +341,11 @@ cat("  ✓ Plots gerados (verifique visualmente)\n\n")
 
 
 # -----------------------------------------------------------------------------
-# 8. TESTE 6: plot_mcmc_diagnostics_generic() - GGPLOT2
+# 8. TESTE 6: Validação de Erros
 # -----------------------------------------------------------------------------
 
 cat("=============================================================================\n")
-cat("TESTE 6: plot_mcmc_diagnostics_generic() - GGPLOT2\n")
-cat("=============================================================================\n\n")
-
-# O argumento engine = c("base", "ggplot2") foi removido dos helpers em #53
-# (529d837); plot_mcmc_diagnostics_generic() hoje só produz base graphics. O
-# backend ggplot2 está parado em inst/prototype/plot_utils_ggplot.R e não está
-# ligado a nenhum método plot.*, então não há nada para testar aqui.
-cat("  ⊘ NÃO APLICÁVEL (seletor engine removido em #53)\n")
-cat("    Veja inst/prototype/README.md para retomar o backend ggplot2.\n\n")
-
-
-# -----------------------------------------------------------------------------
-# 9. TESTE 7: Validação de Erros
-# -----------------------------------------------------------------------------
-
-cat("=============================================================================\n")
-cat("TESTE 7: Validação de Erros\n")
+cat("TESTE 6: Validação de Erros\n")
 cat("=============================================================================\n\n")
 
 # Teste 7.1: which fora do intervalo

@@ -9,7 +9,7 @@ mcmc_convergence(object, ...)
 
 \method{mcmc_convergence}{pdm_mcmc}(
   object,
-  theta_timepoints = c(0.25, 0.5, 0.75),
+  theta_timepoints = 20L,
   ess_thresholds = c(50, 25, 10),
   geweke_level = 0.05,
   show_ess_status = TRUE,
@@ -26,12 +26,19 @@ result of one of the \verb{mcmc_*()} fitting functions (for example
 
 \item{...}{Additional arguments (currently unused).}
 
-\item{theta_timepoints}{Numeric vector of fractions in \eqn{(0, 1)} that
-determine which time points of the latent state chains are included in the
-diagnostics. Each fraction is rounded to the nearest integer index. The
-default \code{c(0.25, 0.5, 0.75)} evaluates the states at the first
-quartile, median and third quartile of the series. Set to \code{NULL} to
-exclude all latent states (scalar parameters only).}
+\item{theta_timepoints}{Which time points of the latent state chains to
+include. Either \strong{a count} — a single whole number, meaning that many
+evenly spaced points, the default \code{20} — or \strong{an explicit numeric vector}
+of fractions in \eqn{(0, 1)} for an irregular grid, following the
+convention \code{hist()} uses for \code{breaks}. Each fraction is rounded to the
+nearest integer index; \code{NULL} excludes the latent states entirely
+(scalar parameters only).
+
+The argument means the same thing, and takes the same forms, in
+\code{\link{mcmc_convergence.pdm_mcmc_list}}. A trajectory that has failed
+to mix rarely fails everywhere, so a screen of three points can step over
+the stretch that does; twenty is dense enough to find it and short enough
+to stay cheap.}
 
 \item{ess_thresholds}{Numeric vector of length 3 giving the efficiency
 cut-offs (in percent) for the \code{ESS_status} labels \code{EXCELLENT},

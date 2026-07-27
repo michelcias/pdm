@@ -42,8 +42,18 @@ set.seed(123)
 y <- cumsum(rnorm(100)) + rnorm(100, sd = 0.5)
 
 # 2. Fit the model
-# The package uses efficient defaults for priors and tuning
-fit <- mcmc_normal_locallevel(y, n_iter = 2000, burnin = 1000)
+# The MCMC run is described by three numbers: iterations discarded, the
+# thinning interval, and how many draws to keep after thinning. The prior on
+# the initial state has to be given; the precision priors default to
+# data-scaled Half-Cauchys if you leave them out.
+fit <- mcmc_normal_locallevel(
+  y,
+  burnin             = 1000,
+  thinning           = 5,
+  n_draws            = 1000,
+  prior_theta01_mean = y[1],
+  prior_theta01_prec = 1 / var(y)
+)
 
 # 3. View summary statistics
 print(fit)
@@ -51,9 +61,42 @@ print(fit)
 # 4. Visualize the estimated states
 plot(fit, type = "states")
 
-# 5. Check MCMC convergence
+# 5. Look at the chain
 plot(fit, type = "mcmc")
 ```
+
+### Checking convergence
+
+A single chain can only be checked against itself. `mcmc_convergence()` reports
+effective sample size and, when `coda` is installed, the Geweke and
+Heidelberger–Welch tests:
+
+```r
+mcmc_convergence(fit)
+```
+
+To find out whether the sampler agrees with *itself from a different starting
+point* — which is what catches a run trapped in one region of the posterior —
+fit several chains and read the Gelman–Rubin statistic:
+
+```r
+fits <- mcmc_normal_locallevel(
+  y,
+  burnin             = 1000,
+  thinning           = 5,
+  n_draws            = 1000,
+  prior_theta01_mean = y[1],
+  prior_theta01_prec = 1 / var(y),
+  chains             = 4   # each chain draws its own starting values from the priors
+)
+
+mcmc_convergence(fits)   # rank-normalized split-R-hat, bulk and tail ESS
+summary(fits)            # pools the chains, and warns first if they disagree
+```
+
+Every `mcmc_*()` sampler accepts `chains`, and `chains = 1` (the default)
+returns exactly what it always did. `seed` acts as a master seed, so a
+multi-chain fit reproduces whether or not it is run in parallel.
 
 ## Implemented Models
 

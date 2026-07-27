@@ -15,12 +15,19 @@
 #' @param object An object inheriting from `"pdm_mcmc"`, typically the
 #'   result of one of the `mcmc_*()` fitting functions (for example
 #'   \code{\link{mcmc_normal_localtrend}}).
-#' @param theta_timepoints Numeric vector of fractions in \eqn{(0, 1)} that
-#'   determine which time points of the latent state chains are included in the
-#'   diagnostics. Each fraction is rounded to the nearest integer index. The
-#'   default `c(0.25, 0.5, 0.75)` evaluates the states at the first
-#'   quartile, median and third quartile of the series. Set to `NULL` to
-#'   exclude all latent states (scalar parameters only).
+#' @param theta_timepoints Which time points of the latent state chains to
+#'   include. Either **a count** — a single whole number, meaning that many
+#'   evenly spaced points, the default `20` — or **an explicit numeric vector**
+#'   of fractions in \eqn{(0, 1)} for an irregular grid, following the
+#'   convention `hist()` uses for `breaks`. Each fraction is rounded to the
+#'   nearest integer index; `NULL` excludes the latent states entirely
+#'   (scalar parameters only).
+#'
+#'   The argument means the same thing, and takes the same forms, in
+#'   \code{\link{mcmc_convergence.pdm_mcmc_list}}. A trajectory that has failed
+#'   to mix rarely fails everywhere, so a screen of three points can step over
+#'   the stretch that does; twenty is dense enough to find it and short enough
+#'   to stay cheap.
 #' @param ess_thresholds Numeric vector of length 3 giving the efficiency
 #'   cut-offs (in percent) for the `ESS_status` labels `EXCELLENT`,
 #'   `GOOD` and `ACCEPTABLE`. Default is `c(50, 25, 10)`,
@@ -255,7 +262,7 @@ mcmc_convergence <- function(object, ...) {
 #' @rdname mcmc_convergence
 #' @export
 mcmc_convergence.pdm_mcmc <- function(object,
-                                      theta_timepoints = c(0.25, 0.5, 0.75),
+                                      theta_timepoints = 20L,
                                       ess_thresholds   = c(50, 25, 10),
                                       geweke_level     = 0.05,
                                       show_ess_status  = TRUE,
@@ -269,13 +276,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
     stop("'object' must inherit from 'pdm_mcmc'")
   }
 
-  if (!is.null(theta_timepoints)) {
-    if (!is.numeric(theta_timepoints) ||
-        any(theta_timepoints <= 0) || any(theta_timepoints >= 1)) {
-      stop("'theta_timepoints' must be a numeric vector with values in (0, 1), or NULL")
-    }
-    theta_timepoints <- sort(unique(theta_timepoints))
-  }
+  theta_timepoints <- resolve_timepoints(theta_timepoints, "theta_timepoints")
 
   if (!is.numeric(ess_thresholds) || length(ess_thresholds) != 3L ||
       any(ess_thresholds <= 0) || any(ess_thresholds >= 100) ||
@@ -433,12 +434,18 @@ mcmc_convergence.pdm_mcmc <- function(object,
 #' Print method for pdm_convergence objects
 #'
 #' @param x An object of class `"pdm_convergence"`.
-#' @param digits Integer, significant digits for numeric columns. Default 3.
+#' @param digits Integer, digits for the Geweke statistic. Default 3. `ESS`
+#'   and `Efficiency` always print with one decimal: a count and a percentage
+#'   do not gain from more, and the stored table carries full precision.
+#' @param n_worst Integer, how many latent-state rows to display, the ones
+#'   with the smallest `ESS`. The screen covers twenty time points per state
+#'   block by default, too many to read as a table; the scalars always print
+#'   in full and `x$table` is never abridged. Default 3; `Inf` prints every row.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return Invisibly returns `x`.
 #' @export
-print.pdm_convergence <- function(x, digits = 3L, ...) {
+print.pdm_convergence <- function(x, digits = 3L, n_worst = 3L, ...) {
 
   cat("\n")
   cat("MCMC Convergence Diagnostics\n")
@@ -473,7 +480,38 @@ print.pdm_convergence <- function(x, digits = 3L, ...) {
   }
   names(df)[names(df) == "Efficiency"] <- "Efficiency(%)"
 
-  print(df, row.names = FALSE, right = TRUE)
+  # Same split as print.pdm_convergence_multi(): the state screen is dense on
+  # purpose, so scalars print in full and the trajectories collapse to the
+  # worst few. `x$table` keeps every row.
+  is_state <- grepl("^theta_[0-9]+\\[", df$Parameter)
+  scalars  <- df[!is_state, , drop = FALSE]
+  states   <- df[ is_state, , drop = FALSE]
+
+  if (nrow(scalars)) print(scalars, row.names = FALSE, right = TRUE)
+
+  if (nrow(states)) {
+    block   <- sub("\\[.*$", "", states$Parameter)
+    n_block <- length(unique(block))
+    n_show  <- min(nrow(states), n_worst)
+
+    cat("\n")
+    cat(sprintf("Latent states - %g time point%s screened per block, %d block%s (%d rows)\n",
+                nrow(states) / n_block, if (nrow(states) / n_block == 1) "" else "s",
+                n_block, if (n_block == 1) "" else "s", nrow(states)))
+
+    if (n_show < nrow(states)) {
+      # Worst = smallest ESS. The column is character by now, so order on the
+      # numbers the object still holds rather than on the formatted strings,
+      # which would sort "9.9" after "100.0".
+      ord <- order(x$table$ESS[is_state], decreasing = FALSE, na.last = TRUE)
+      cat(sprintf("Worst %d of %d, by ESS:\n", n_show, nrow(states)))
+      print(states[ord[seq_len(n_show)], , drop = FALSE],
+            row.names = FALSE, right = TRUE)
+      cat("  Full table in $table.\n")
+    } else {
+      print(states, row.names = FALSE, right = TRUE)
+    }
+  }
 
   cat("\n")
   if (!x$has_coda) {

@@ -1062,12 +1062,21 @@ plot_component_probabilities_base <- function(z,
   # BUILD AND DISPLAY LEGEND
   # ===========================================================================
 
-  # Build legend with component-based interpretation
-  legend_items <- c(
-    paste0("p(z = 1 | data) > ", threshold, "   "),
-    paste0("p(z = 1 | data) \u2264 ", threshold, "   "),
+  # Build legend with component-based interpretation.
+  #
+  # Plotmath, not a U+2264 escape in a string. A device with no glyph for that
+  # character -- pdf() among them, which is what R CMD check and every saved
+  # figure use -- transliterates it to "<=" and warns on every draw, so the
+  # rendered legend disagreed with the source. Plotmath renders the
+  # relation from the symbol font instead, so the glyph is correct everywhere
+  # and nothing warns. `phantom("   ")` reproduces the three trailing spaces
+  # the strings used to carry, which `horiz = TRUE` needs to keep the entries
+  # apart; `*` is plotmath juxtaposition, so it adds no space of its own.
+  legend_items <- as.expression(c(
+    bquote(p(z == 1 ~ "|" ~ data) > .(threshold) * phantom("   ")),
+    bquote(p(z == 1 ~ "|" ~ data) <= .(threshold) * phantom("   ")),
     "Threshold"
-  )
+  ))
   legend_cols <- c(color_above, color_below, "darkgray")
   legend_lty <- c(1, 1, 2)
   legend_lwd <- c(2, 2, 2)

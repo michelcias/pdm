@@ -314,10 +314,14 @@ mcmc_convergence.pdm_mcmc <- function(object,
                   if (efficiency > ess_thresholds[2]) "GOOD"      else
                   if (efficiency > ess_thresholds[3]) "ACCEPTABLE" else "POOR"
 
+    # Stored unrounded; `print.pdm_convergence()` decides how many digits to
+    # show. Rounding here degraded the object for no gain, and worse, disagreed
+    # with the print method: storage kept one decimal while the display asked
+    # for three, so every printed ESS ended in two zeros it had not earned.
     row <- data.frame(
       Parameter  = label,
-      ESS        = round(ess, 1),
-      Efficiency = round(efficiency, 1),
+      ESS        = ess,
+      Efficiency = efficiency,
       stringsAsFactors = FALSE
     )
 
@@ -350,7 +354,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
                     if (tests_pass == 1L) "ACCEPTABLE" else "POOR"
 
       if (show_geweke) {
-        row$Geweke_z    <- round(gz, 4)
+        row$Geweke_z    <- gz
         row$Geweke_pass <- ifelse(geweke_pass, "PASS", "FAIL")
       }
       if (show_heidel) {
@@ -457,9 +461,15 @@ print.pdm_convergence <- function(x, digits = 3L, ...) {
   df <- x$table
 
   # Format numeric columns
-  num_cols <- c("ESS", "Efficiency", "Geweke_z")
-  for (col in intersect(num_cols, names(df))) {
-    df[[col]] <- sprintf(paste0("%.", digits, "f"), df[[col]])
+  # Same split as print.pdm_convergence_multi(): a count and a percentage want
+  # one decimal whatever `digits` says -- three on an effective sample size is
+  # noise -- while the test statistic follows `digits`, because there the fourth
+  # decimal can matter.
+  for (col in intersect(c("ESS", "Efficiency"), names(df))) {
+    df[[col]] <- sprintf("%.1f", df[[col]])
+  }
+  if ("Geweke_z" %in% names(df)) {
+    df$Geweke_z <- sprintf(paste0("%.", digits, "f"), df$Geweke_z)
   }
   names(df)[names(df) == "Efficiency"] <- "Efficiency(%)"
 

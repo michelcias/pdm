@@ -199,7 +199,12 @@ with components:
 \item{\code{prec_theta1}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{1/W_1}.}
 \item{\code{prec_theta2}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{1/W_2}.}
 \item{\code{prec_theta3}}{Numeric vector of length \code{n_draws} of posterior samples for \eqn{1/W_3}.}
-\item{\code{alpha}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for \eqn{\alpha_t} (rates).}
+\item{\code{alpha}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples for \eqn{\alpha_t} (rates). Convergence of \eqn{\alpha_t} is already covered by the
+\code{theta_1[t=...]} rows of \code{\link{mcmc_convergence}} on a
+multi-chain fit, which need not be supplemented by a diagnostic
+computed on \code{alpha} itself; see the "Link families" section of
+\code{\link{mcmc_convergence.pdm_mcmc_list}} for why, and for why
+the same does not hold of the single-chain diagnostics.}
 \item{\code{log_sigma}}{(Optional) Numeric matrix \eqn{[n_{draws} \times n]} of proposal scale diagnostics
 (if \code{return_log_sigma = TRUE}).}
 \item{\code{accept_prop}}{(Optional) Numeric matrix \eqn{[n_{draws} \times n]} of acceptance proportion

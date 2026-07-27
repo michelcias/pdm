@@ -293,7 +293,12 @@ for the trend innovation precision \eqn{1/W_2}.}
 \item{\code{prec_theta3}}{Numeric vector of length \code{n_draws} of posterior samples
 for the acceleration innovation precision \eqn{1/W_3}.}
 \item{\code{alpha}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior
-samples for the time-varying mixture weights \eqn{\alpha_t = P(z_t = 1)}.}
+samples for the time-varying mixture weights \eqn{\alpha_t = P(z_t = 1)}. Convergence of \eqn{\alpha_t} is already covered by the
+\code{theta_1[t=...]} rows of \code{\link{mcmc_convergence}} on a
+multi-chain fit, which need not be supplemented by a diagnostic
+computed on \code{alpha} itself; see the "Link families" section of
+\code{\link{mcmc_convergence.pdm_mcmc_list}} for why, and for why
+the same does not hold of the single-chain diagnostics.}
 \item{\code{z}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples
 for the latent component indicators \eqn{z_t \in \{0, 1\}}. A value of 0
 indicates component 1 (smaller mean), and 1 indicates component 2 (larger mean).}

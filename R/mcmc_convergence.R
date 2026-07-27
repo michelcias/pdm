@@ -120,6 +120,23 @@
 #'   neither does.
 #' }
 #'
+#' \subsection{Link families: these statistics do \emph{not} stand in for
+#'   \code{alpha}}{
+#'   On a multi-chain fit, \code{\link{mcmc_convergence.pdm_mcmc_list}} reports
+#'   rank-based statistics, and a strictly monotone link leaves ranks unchanged,
+#'   so its `theta_1[t=...]` rows are the diagnostics for \eqn{\alpha_t} exactly.
+#'   \strong{That argument does not carry over to this method.} The ESS here is
+#'   computed from the autocorrelations of the draws themselves, and Geweke and
+#'   Heidelberger–Welch compare means and spectral densities; none of the three
+#'   is a function of the ranks, so none is invariant under the link. A
+#'   diagnostic reported here for \eqn{\theta_{t1}} says nothing exact about
+#'   \eqn{\alpha_t}, and vice versa.
+#'
+#'   Where the weight itself is the estimand — as it is in the mixture and
+#'   probit-Bernoulli families — fit with `chains > 1` and read the multi-chain
+#'   method rather than inferring from the state.
+#' }
+#'
 #' @references
 #' Geweke, J. (1992). Evaluating the accuracy of sampling-based approaches to
 #'   the calculation of posterior moments. In J. M. Bernardo, J. O. Berger,

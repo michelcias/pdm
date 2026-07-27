@@ -379,7 +379,12 @@
 #'   \item{\code{prec_theta1}}{Numeric vector of length `n_draws` of posterior samples
 #'     for the level innovation precision \eqn{1/W_1}.}
 #'   \item{\code{alpha}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior
-#'     samples for the mixture weights \eqn{\alpha_t}.}
+#'     samples for the mixture weights \eqn{\alpha_t}. Convergence of \eqn{\alpha_t} is already covered by the
+#'     `theta_1[t=...]` rows of \code{\link{mcmc_convergence}} on a
+#'     multi-chain fit, which need not be supplemented by a diagnostic
+#'     computed on `alpha` itself; see the "Link families" section of
+#'     \code{\link{mcmc_convergence.pdm_mcmc_list}} for why, and for why
+#'     the same does not hold of the single-chain diagnostics.}
 #'   \item{\code{z}}{Numeric matrix \eqn{[n_{draws} \times n]} of posterior samples
 #'     for the latent component indicators \eqn{z_t}.}
 #'   \item{\code{log_sigma}}{(Logit link only, optional) Numeric matrix of proposal

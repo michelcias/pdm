@@ -173,69 +173,84 @@ test_that("plot() type='all' generates multiple pages", {
 
 
 # ============================================================================
-# Tests for ggplot2 Graphics
+# Tests for the prototype ggplot2 backend (inst/prototype/)
 # ============================================================================
+#
+# There is no `engine` argument: `529d837` removed it and `b1d1363` parked the
+# ggplot2 backend in `inst/prototype/`, out of `R/` so that `R CMD check` does
+# not analyse unreachable code (see inst/prototype/README.md).
+#
+# The five tests that used to sit here called `plot(obj, engine = "ggplot2")`.
+# With no such argument the value fell into `...` and was silently ignored, so
+# every one of them passed without touching ggplot2 at all -- and two of them
+# asserted on a hexbin message the prototype does not emit. They announced
+# themselves only through an unrelated warning, and once that was fixed in
+# 0.14-0 they were silent, vacuous coverage.
+#
+# These exercise the prototype directly. Their job is to catch rot while the
+# work is parked: the file must still parse, still expose its API, and still
+# run against the current shape of a fitted object. That last point is the one
+# with teeth -- `plot_dynamic_states_generic_ggplot()` calls the package
+# internal `get_param_config()`, so a change there fails here rather than when
+# someone resumes step 1 of the README.
 
-test_that("plot() runs without error with ggplot2 (if available)", {
+# Source the prototype into an environment parented on the package namespace,
+# so its calls to pdm internals resolve. Returns NULL when the file is not
+# available (e.g. an install that dropped inst/), letting callers skip.
+load_ggplot_prototype <- function() {
+  path <- system.file("prototype", "plot_utils_ggplot.R", package = "pdm")
+  if (!nzchar(path)) return(NULL)
+  env <- new.env(parent = asNamespace("pdm"))
+  sys.source(path, envir = env)
+  env
+}
+
+test_that("the prototype ggplot2 backend still parses and exposes its API", {
   skip_if_not_installed("ggplot2")
+  env <- load_ggplot_prototype()
+  skip_if(is.null(env), "prototype source not available")
+
+  # Pinned by name: the backend is unreachable from the package, so nothing
+  # else would notice a helper being renamed or dropped.
+  expect_setequal(ls(env), c(
+    "plot_acceptance_rates_ggplot",       "plot_all_mixture_generic_ggplot",
+    "plot_alpha_trajectory_ggplot",       "plot_bernoulli_alpha_ggplot",
+    "plot_binomial_alpha_ggplot",         "plot_component_probabilities_ggplot",
+    "plot_dynamic_states_generic_ggplot", "plot_mixture_params_ggplot",
+    "plot_mixture_weights_ggplot",        "plot_param_diagnostics_ggplot"
+  ))
+  for (nm in ls(env)) expect_true(is.function(env[[nm]]), info = nm)
+})
+
+test_that("the prototype ggplot2 backend runs against a current fit object", {
+  skip_if_not_installed("ggplot2")
+  env <- load_ggplot_prototype()
+  skip_if(is.null(env), "prototype source not available")
 
   mock_obj <- create_mock_object()
 
-  expect_no_error(plot(mock_obj, type = "mcmc", which = 1, engine = "ggplot2"))
-  expect_no_error(plot(mock_obj, type = "params", engine = "ggplot2"))
-  expect_no_error(plot(mock_obj, type = "states", engine = "ggplot2"))
-  expect_no_error(plot(mock_obj, type = "alpha", engine = "ggplot2"))
-})
+  pdf(NULL)
+  on.exit(dev.off())
 
-test_that("plot() handles missing hexbin with ggplot2", {
-  skip_if_not_installed("ggplot2")
+  # The one helper that returns its plot. Assert it is really a ggplot and
+  # force the lazy build, rather than settling for "nothing errored" -- a
+  # ggplot object constructs happily and only fails when it is evaluated.
+  p <- env$plot_param_diagnostics_ggplot(mock_obj$mu_1, "mu_1", "mu[1]")
+  expect_s3_class(p, "ggplot")
+  expect_no_error(ggplot2::ggplot_build(p))
 
-  # Skip if hexbin IS installed (we want to test when it's NOT available)
-  if (requireNamespace("hexbin", quietly = TRUE)) {
-    skip("hexbin is installed - cannot test fallback behavior")
-  }
+  # The rest print and return invisibly, so executing them is what can be
+  # checked. It is still worth checking: each consumes components of the
+  # fitted object and would break if its shape changed.
+  expect_no_error(env$plot_mixture_params_ggplot(
+    mock_obj$mu_1, mock_obj$mu_2, mock_obj$prec_1, mock_obj$prec_2))
+  expect_no_error(env$plot_alpha_trajectory_ggplot(mock_obj$alpha))
+  expect_no_error(env$plot_mixture_weights_ggplot(mock_obj$alpha, mock_obj$z))
+  expect_no_error(env$plot_component_probabilities_ggplot(mock_obj$z))
 
-  mock_obj <- create_mock_object()
-
-  # Should show informative message about hexbin
-  expect_message(
-    plot(mock_obj, type = "params", which = 1, engine = "ggplot2"),
-    "Install 'hexbin'"
-  )
-})
-
-test_that("plot() uses hexbin when available with ggplot2", {
-  skip_if_not_installed("ggplot2")
-  skip_if_not_installed("hexbin")
-
-  mock_obj <- create_mock_object()
-
-  # Should NOT show message when hexbin is available
-  expect_no_message(
-    plot(mock_obj, type = "params", which = 1, engine = "ggplot2")
-  )
-})
-
-test_that("plot() handles missing patchwork gracefully", {
-  skip_if_not_installed("ggplot2")
-
-  mock_obj <- create_mock_object()
-
-  # Should work regardless of patchwork availability
-  # (prints sequentially if patchwork not available)
-  expect_no_error(plot(mock_obj, type = "params", engine = "ggplot2"))
-  expect_no_error(plot(mock_obj, type = "states", engine = "ggplot2"))
-})
-
-test_that("plot() handles ggplot2 unavailability gracefully", {
-  skip("Requires manual testing - see comments in test file")
-
-  # Manual test procedure:
-  # 1. remove.packages("ggplot2")
-  # 2. mock_obj <- create_mock_object()
-  # 3. plot(mock_obj, engine = "ggplot2")
-  # 4. Expect warning about falling back to base graphics
-  # 5. install.packages("ggplot2")
+  # Reaches get_param_config(); this is what ties the parked prototype to the
+  # live package.
+  expect_no_error(env$plot_dynamic_states_generic_ggplot(mock_obj))
 })
 
 

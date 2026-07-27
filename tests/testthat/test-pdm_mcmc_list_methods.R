@@ -103,10 +103,19 @@ test_that("summary() warns when the chains have not converged", {
   expect_warning(summary(under), "chains have not converged")
   expect_warning(summary(under), "max R-hat")
 
+  # The warning names the quantity carrying the maximum and what to try, so a
+  # reader is not left with a number and no next step.
+  expect_warning(summary(under), "driven by")
+  expect_warning(summary(under), "burn-in or heavier thinning")
+
   s <- suppressWarnings(summary(under))
   expect_gt(max(s$rhat, na.rm = TRUE), 1.01)
-  expect_output(print(s), "WARNING: max R-hat")
-  expect_output(print(s), "no single posterior")
+
+  # The printed block carries the same finding as the warning -- one wording,
+  # built by unconverged_message(), not two that can drift apart.
+  expect_output(print(s), "WARNING")
+  expect_output(print(s), "chains have not converged")
+  expect_output(print(s), "driven by")
 
   # Raising the threshold above the observed value silences it.
   expect_no_warning(summary(under, rhat_threshold = 100))
@@ -392,8 +401,13 @@ test_that("an unconverged state warns even when every scalar looks fine", {
   expect_warning(summary(fits), "chains have not converged")
   expect_warning(summary(fits), "1.35")
 
+  # The driver must be the offending *state*, not one of the clean scalars --
+  # naming the wrong quantity would be worse than naming none.
+  expect_warning(summary(fits), "driven by theta_1\\[t=40\\]")
+
   s <- suppressWarnings(summary(fits))
-  expect_output(print(s), "WARNING: max R-hat")
+  expect_output(print(s), "WARNING")
+  expect_output(print(s), "driven by theta_1\\[t=40\\]")
 
   # And the scalar table alone would have said nothing is wrong.
   expect_lt(max(s$rhat), 1.01)
@@ -435,4 +449,36 @@ test_that("state_rhats() is empty for a model with no trajectory matrices", {
 
   expect_length(state_rhats(stripped), 0L)
   expect_type(state_rhats(stripped), "double")
+})
+
+test_that("driver_of() names the parameter carrying the largest R-hat", {
+  expect_equal(driver_of(c(a = 1.00, b = 1.42, c = 1.10)), "b")
+
+  # which.max() skips NA, so a partly undefined vector still resolves rather
+  # than reporting nothing.
+  expect_equal(driver_of(c(a = NA_real_, b = 1.2)), "b")
+
+  # No name to give: the message omits the clause instead of printing a
+  # placeholder, so these must come back as NA rather than "" or "1".
+  expect_true(is.na(driver_of(c(1.2, 1.3))))
+  expect_true(is.na(driver_of(numeric(0))))
+
+  blank <- 1.2
+  names(blank) <- ""          # a name that exists but says nothing
+  expect_true(is.na(driver_of(blank)))
+})
+
+test_that("unconverged_message() is one wording, and drops the driver when absent", {
+  with_driver <- unconverged_message(1.42, 1.01, "W_1^{-1}", "the pooled summary below")
+  expect_match(with_driver, "max R-hat is 1.42")
+  expect_match(with_driver, "driven by W_1\\^\\{-1\\}")
+  expect_match(with_driver, "the pooled summary below")
+  expect_match(with_driver, "burn-in or heavier thinning")
+  expect_match(with_driver, "mcmc_convergence\\(\\)")
+
+  # An unnamed vector must not leave a dangling ", driven by NA".
+  without <- unconverged_message(1.42, 1.01, NA_character_, "the pooled summary below")
+  expect_no_match(without, "driven by")
+  expect_no_match(without, "NA")
+  expect_match(without, "max R-hat is 1.42")
 })

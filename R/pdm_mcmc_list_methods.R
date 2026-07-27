@@ -178,12 +178,66 @@ summary.pdm_mcmc_list <- function(object, rhat_threshold = 1.01, ...) {
 warn_if_unconverged <- function(rhat, threshold, what) {
   worst <- if (all(is.na(rhat))) NA_real_ else max(rhat, na.rm = TRUE)
   if (!is.na(worst) && worst > threshold) {
-    warning("The chains have not converged: max R-hat is ",
-            format(worst, digits = 4), " against a threshold of ", threshold,
-            ", so ", what, " mixes draws from distributions that do not agree. ",
-            "Run mcmc_convergence() for the full table.", call. = FALSE)
+    warning(unconverged_message(worst, threshold, driver_of(rhat), what),
+            call. = FALSE)
   }
   invisible(NULL)
+}
+
+
+#' Name of the parameter carrying the largest R-hat
+#'
+#' `which.max()` already skips `NA`, so a vector that is partly undefined still
+#' resolves. Returns `NA_character_` when the vector is unnamed or empty, which
+#' the message then omits rather than printing a placeholder.
+#'
+#' @param rhat Named numeric vector of R-hat values.
+#'
+#' @return Single character, or `NA_character_`.
+#'
+#' @keywords internal
+#' @noRd
+driver_of <- function(rhat) {
+  if (!length(rhat) || is.null(names(rhat))) return(NA_character_)
+  i <- which.max(rhat)
+  if (!length(i)) return(NA_character_)
+  nm <- names(rhat)[i]
+  if (is.na(nm) || !nzchar(nm)) NA_character_ else nm
+}
+
+
+#' The one wording for "these chains have not converged"
+#'
+#' `summary()`, `waic()` and `loo()` warn through `warn_if_unconverged()`, and
+#' `print.summary.pdm_mcmc_list()` prints the same finding to the console. They
+#' used to phrase it two ways ("Run mcmc_convergence()" against "See
+#' mcmc_convergence()"), so this builds the text once.
+#'
+#' It names the quantity driving the maximum and what to try, because the
+#' number alone does not tell the reader whether to spend more computation or
+#' to doubt the model. In practice the first recourse is nearly always a longer
+#' burn-in or heavier thinning: on the dynamic mixture that motivated this,
+#' raising the thinning fivefold took the worst state R-hat from 1.22 to 1.05.
+#'
+#' @param worst Numeric, the largest R-hat observed.
+#' @param threshold Numeric, the cut-off it exceeded.
+#' @param driver Character or `NA`, the parameter carrying `worst`.
+#' @param what Character, what the caller is about to pool.
+#'
+#' @return Single character string, no trailing newline.
+#'
+#' @keywords internal
+#' @noRd
+unconverged_message <- function(worst, threshold, driver, what) {
+  paste0(
+    "The chains have not converged: max R-hat is ", format(worst, digits = 4),
+    " against a threshold of ", threshold,
+    if (!is.na(driver)) paste0(", driven by ", driver) else "",
+    ", so ", what, " mixes draws from distributions that do not agree. ",
+    "Try a longer burn-in or heavier thinning first; mcmc_convergence() ",
+    "reports the full table, including which time points of the latent ",
+    "states disagree."
+  )
 }
 
 
@@ -313,10 +367,13 @@ print.summary.pdm_mcmc_list <- function(x, digits = 4L, ...) {
   if (is.na(worst)) {
     cat("  R-hat is undefined everywhere (constant draws?).\n")
   } else if (worst > x$rhat_threshold) {
-    cat("  WARNING: max R-hat ", format(worst, digits = digits), " > ",
-        x$rhat_threshold, ". The chains disagree, so the\n",
-        "  summary above describes no single posterior.\n",
-        "  See mcmc_convergence() for the full table.\n", sep = "")
+    # Same finding the warning reports, so it is the same wording, wrapped and
+    # indented for the console. See unconverged_message().
+    msg <- unconverged_message(worst, x$rhat_threshold,
+                               driver_of(c(x$rhat, x$rhat_states)),
+                               "the summary above")
+    cat(paste0("  ", strwrap(paste("WARNING:", msg), width = 72), "\n"),
+        sep = "")
   } else {
     cat("  All below ", x$rhat_threshold,
         "; pooling the chains is justified.\n", sep = "")

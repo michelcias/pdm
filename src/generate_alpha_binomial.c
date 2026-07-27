@@ -2,8 +2,8 @@
  * @file generate_alpha_binomial.c
  * @brief Sampling for binomial and Bernoulli state-space models with logit and probit links
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.1
+ * @date 2026-07-27
+ * @version 1.2
  *
  * @details This file contains optimized functions for MCMC sampling in binomial and Bernoulli
  *          state-space models with different link functions:
@@ -562,6 +562,24 @@ static inline double rtruncnorm(double mu, double sigma, double lower, double up
  *          feedback while leaving alpha = Phi(theta) numerically unchanged. In
  *          well-identified problems |theta_1| stays far below the bound (probit
  *          states rarely exceed ~4), so the guard is inert.
+ *
+ *          **Why this equals LOGIT_THETA_CLAMP and not the probit saturation
+ *          point.** Phi reaches exactly 1 in double precision at theta ~ 8.3,
+ *          far earlier than the inverse logit (~36.7), so a bound placed at
+ *          each link's own saturation point would give probit 8 and logit 36.
+ *          It is deliberately 36 for both. The clamped states are what feed
+ *          the draw of 1/W_1 through the sum of squared innovations in
+ *          generate_precision_theta_k(), so a per-link bound would make the
+ *          innovation precision's scale depend on the link rather than on the
+ *          data, and the two samplers would stop measuring W_1 on comparable
+ *          terms.
+ *
+ *          Between 8.3 and 36 the probit likelihood is kept evaluable not by
+ *          this clamp but by clamp_link_alpha() (link_guard.h), which bounds
+ *          the probability away from 0 and 1 without touching theta. The two
+ *          guards do different jobs: that one keeps the arithmetic finite,
+ *          this one stops the runaway. Do not "correct" this constant down to
+ *          the saturation point.
  */
 #define PROBIT_THETA_CLAMP 36.0
 

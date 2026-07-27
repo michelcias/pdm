@@ -2,8 +2,8 @@
  * @file cwmh_binomial.c
  * @brief Component-wise Metropolis-Hastings sampling for logit-binomial state-space models
  * @author Michel H. Montoril
- * @date 2026-07-25
- * @version 1.1
+ * @date 2026-07-27
+ * @version 1.2
  *
  * @details This file implements optimized MCMC update routines for state-space models with
  *          binomial observations and logit link, including:
@@ -82,6 +82,13 @@ static inline double stable_log_accept_prob(double lp1n,
  *          ~2e-16 of 0 or 1, so clamping leaves alpha numerically unchanged; for
  *          well-identified problems |theta_1| stays far below 36 and the guard
  *          is inert.
+ *
+ *          PROBIT_THETA_CLAMP carries the same value, although Phi saturates
+ *          much earlier (~8.3). The bound is shared on purpose: these states
+ *          feed the draw of 1/W_1 through the sum of squared innovations, so a
+ *          per-link bound would tie the innovation precision's scale to the
+ *          link rather than to the data. See the fuller note on
+ *          clamp_probit_state in generate_alpha_binomial.c.
  */
 #define LOGIT_THETA_CLAMP 36.0
 

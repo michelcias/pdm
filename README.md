@@ -247,23 +247,44 @@ problems they never trigger.
   `[1e-300, 1 - DBL_EPSILON/2]`. This handles truncations up to $\sim 36$
   standard deviations while leaving typical draws unchanged.
 
+- **Probabilities bounded away from $0$ and $1$** (`clamp_link_alpha`,
+  `src/link_guard.h`). Every probability produced by an inverse link is confined
+  to $[2\times10^{-16},\, 1 - 2.3\times10^{-16}]$ at the point where it is
+  computed. An exact `0` or `1` is not merely extreme: it makes the log-likelihood
+  $-\infty$, and it lets the mixture indicator sampler take a deterministic
+  branch from which no draw can return. The bounds sit at the numerical
+  saturation point of the logit transform, so on any value a well-behaved chain
+  visits the guard is inert. **It never touches the latent state**: $\theta$ is
+  stored exactly as drawn, and only the derived $\alpha_t$ is protected.
+
 - **Latent-state saturation clamps** (`clamp_probit_state` in
   `src/generate_alpha_binomial.c`; `clamp_logit_state` in `src/cwmh_binomial.c`).
-  When the mixture weight $\alpha_t = g(\theta_{t,1})$ is pushed to the boundary
-  over a stretch — common with well-separated or segmented data, e.g. aCGH
-  copy-number profiles — the inverse link saturates to exactly `0` or `1` and the
-  Bernoulli/Binomial likelihood becomes flat. The state $\theta_{t,1}$ is then
-  unidentified by the data, and the sampler can random-walk into that tail,
-  inflating the state innovations and dragging the innovation precision
-  $W_1^{-1}$ toward zero in a positive-feedback loop that stalls the chain. The
-  probit link saturates already near $|\theta| \approx 8.3$, far earlier than the
-  logit link ($\approx 36.7$), so this most visibly affects the probit samplers.
-  Each state is therefore clamped to a band at its link's saturation point
-  ($\pm 8$ for probit, $\pm 36$ for logit). Since $g$ is already numerically at
-  the boundary there, $\alpha_t = g(\theta_{t,1})$ is unchanged (and, as a side
-  effect, kept strictly inside $(0, 1)$, so the mixture indicator sampler never
-  takes a degenerate deterministic branch); for well-identified problems
-  $|\theta_{t,1}|$ stays far below the bound, so the clamp is inert.
+  This guard addresses a different failure, one the probability bound above
+  cannot reach. When $\alpha_t = g(\theta_{t,1})$ sits at the boundary over a
+  stretch — common with well-separated or segmented data, e.g. aCGH copy-number
+  profiles — the likelihood is flat in $\theta_{t,1}$, which is then unidentified
+  by the data. The sampler random-walks into the tail, the squared innovations
+  $\sum_t (\theta_{t,1} - \theta_{t-1,1})^2$ inflate, and since that sum is the
+  sufficient statistic in the update for $W_1^{-1}$, the innovation precision is
+  dragged toward zero — which widens the next proposal, which lets the state
+  wander further. A positive-feedback loop that stalls the chain without ever
+  raising an error.
+
+  Both links are clamped at the **same** bound, $|\theta_{t,1}| \le 36$, even
+  though they saturate at very different points ($\Phi$ reaches exactly `1` in
+  double precision at $\theta \approx 8.3$; the inverse logit only at
+  $\approx 36.7$). The common bound is deliberate. Those clamped states are what
+  feed the draw of $W_1^{-1}$ through the sum above, so a per-link bound would
+  make the innovation precision's scale depend on which link was chosen rather
+  than on the data — the two samplers would no longer be measuring $W_1$ on
+  comparable terms.
+
+  This splits the work cleanly between the two guards. For probit in the band
+  $8.3 < |\theta| \le 36$, $\alpha_t$ is already numerically at the boundary, so
+  it is the probability bound that keeps the likelihood evaluable; the state
+  clamp is doing nothing there but standing ready as the brake on the runaway.
+  In well-identified problems $|\theta_{t,1}|$ stays far below $36$ and neither
+  guard engages.
 
 ### Diagnostic Tools
 

@@ -81,10 +81,12 @@ test_that("summary() carries R-hat for every scalar parameter", {
   expect_named(s$rhat, c("V^{-1}", "theta_01", "W_1^{-1}"))
   expect_true(all(s$rhat > 0.9))
 
-  # The same numbers mcmc_convergence() reports for those parameters.
+  # The same numbers mcmc_convergence() reports for those parameters --
+  # exactly, not to four decimals. $table used to store rounded values, so this
+  # comparison had to round too and would have missed a genuine disagreement
+  # smaller than 5e-05.
   conv <- mcmc_convergence(fits, theta_timepoints = NULL)
-  expect_equal(unname(round(s$rhat[conv$table$Parameter], 4)),
-               conv$table$Rhat, tolerance = 1e-6)
+  expect_identical(unname(s$rhat[conv$table$Parameter]), conv$table$Rhat)
 })
 
 
@@ -372,12 +374,15 @@ test_that("summary() screens the latent states, not only the scalars", {
   expect_true(all(grepl("^theta_1\\[t=[0-9]+\\]$", names(s$rhat_states))))
   expect_true(all(s$rhat_states > 0.9))
 
-  # The same numbers mcmc_convergence() reports for those time points.
-  conv <- mcmc_convergence(fits, theta_timepoints = seq(0.05, 0.95,
-                                                        length.out = 20L))
+  # The same numbers mcmc_convergence() reports for those time points --
+  # exactly. Both now store the statistic unrounded, so this no longer has to
+  # round one side to meet the other, and a real disagreement below 5e-05 can
+  # no longer hide inside the comparison. The default screen is this same grid,
+  # so passing it explicitly only makes the intent visible.
+  conv <- mcmc_convergence(fits, theta_timepoints = 20L)
   from_conv <- conv$table$Rhat[match(names(s$rhat_states),
                                      conv$table$Parameter)]
-  expect_equal(unname(round(s$rhat_states, 4)), from_conv, tolerance = 1e-6)
+  expect_identical(unname(s$rhat_states), from_conv)
 
   expect_output(print(s), "State R-hat")
 })

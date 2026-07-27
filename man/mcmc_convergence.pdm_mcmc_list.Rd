@@ -56,7 +56,10 @@ An object of class \code{"pdm_convergence_multi"}, a list with:
 \describe{
 \item{\code{table}}{Data frame with one row per assessed parameter or
 state time point. Columns always present: \code{Parameter}, \code{Rhat}.
-Optional columns, controlled by the \verb{show_*} arguments: \code{ESS_bulk},
+Numeric columns are stored \strong{unrounded} — the print method formats to
+four decimals for display, so a value read from here agrees exactly
+with the one \code{\link{summary.pdm_mcmc_list}} reports, rather than
+to the fourth decimal. Optional columns, controlled by the \verb{show_*} arguments: \code{ESS_bulk},
 \code{ESS_tail}, \code{Overall}.}
 \item{\code{chains}}{Number of chains.}
 \item{\code{n_draws}}{Number of retained samples per chain (\eqn{N}).}

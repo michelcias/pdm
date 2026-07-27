@@ -45,7 +45,10 @@
 #'   \describe{
 #'     \item{\code{table}}{Data frame with one row per assessed parameter or
 #'       state time point. Columns always present: `Parameter`, `Rhat`.
-#'       Optional columns, controlled by the `show_*` arguments: `ESS_bulk`,
+#'       Numeric columns are stored **unrounded** — the print method formats to
+#'       four decimals for display, so a value read from here agrees exactly
+#'       with the one \code{\link{summary.pdm_mcmc_list}} reports, rather than
+#'       to the fourth decimal. Optional columns, controlled by the `show_*` arguments: `ESS_bulk`,
 #'       `ESS_tail`, `Overall`.}
 #'     \item{\code{chains}}{Number of chains.}
 #'     \item{\code{n_draws}}{Number of retained samples per chain (\eqn{N}).}
@@ -248,15 +251,20 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
     bulk <- ess_bulk(draws)
     tail <- ess_tail(draws)
 
+    # Stored unrounded. `print.pdm_convergence_multi()` formats to four decimals
+    # for display, so nothing about the printed table changes -- but the object
+    # is what a script reads, and it used to disagree with `summary()$rhat` in
+    # the fifth decimal for no reason other than storage. Rounding is a
+    # presentation decision and belongs in the print method alone.
     row <- data.frame(
       Parameter = label,
-      Rhat      = round(rhat, 4),
+      Rhat      = rhat,
       stringsAsFactors = FALSE
     )
 
     if (show_ess) {
-      row$ESS_bulk <- round(bulk, 1)
-      row$ESS_tail <- round(tail, 1)
+      row$ESS_bulk <- bulk
+      row$ESS_tail <- tail
     }
 
     if (show_overall) {

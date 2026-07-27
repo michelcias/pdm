@@ -229,14 +229,20 @@ scalar_rhats <- function(x) {
 #' user reads, and a poor one for an automatic check.
 #'
 #' @param x An object of class `"pdm_mcmc_list"`.
-#' @param timepoints Numeric vector of fractions in \eqn{(0, 1)}.
+#' @param timepoints How many evenly spaced time points to screen (a single
+#'   whole number, the default 20), or an explicit numeric vector of fractions
+#'   in \eqn{(0, 1)}. Resolved by `resolve_timepoints()`, the same helper
+#'   `mcmc_convergence.pdm_mcmc_list()` uses, so the automatic screen and the
+#'   diagnostic table always look at the same points.
 #'
 #' @return Named numeric vector of R-hat values, one per sampled time point,
 #'   empty if the model carries no trajectory matrices.
 #'
 #' @keywords internal
 #' @noRd
-state_rhats <- function(x, timepoints = seq(0.05, 0.95, length.out = 20L)) {
+state_rhats <- function(x, timepoints = 20L) {
+
+  timepoints <- resolve_timepoints(timepoints, "timepoints")
 
   n_draw <- attr(x[[1L]], "n_draws")
 

@@ -4,13 +4,21 @@
 \alias{print.pdm_convergence_multi}
 \title{Print method for pdm_convergence_multi objects}
 \usage{
-\method{print}{pdm_convergence_multi}(x, digits = 4L, ...)
+\method{print}{pdm_convergence_multi}(x, digits = 4L, n_worst = 3L, ...)
 }
 \arguments{
 \item{x}{An object of class \code{"pdm_convergence_multi"}.}
 
 \item{digits}{Integer, significant digits for the \eqn{\hat{R}} column.
 Default 4.}
+
+\item{n_worst}{Integer, how many latent-state rows to display. The state
+screen covers twenty time points per state block by default, which is too
+many to read as a table, so only the \code{n_worst} with the largest
+\eqn{\hat{R}} are shown, followed by a count of how many exceeded the
+threshold. Default 3; use \code{Inf} to print every row. The scalar parameters
+are always shown in full, and the complete table is always available
+unabridged in \code{x$table}.}
 
 \item{...}{Additional arguments (currently unused).}
 }

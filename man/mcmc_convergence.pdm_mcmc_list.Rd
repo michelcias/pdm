@@ -6,7 +6,7 @@
 \usage{
 \method{mcmc_convergence}{pdm_mcmc_list}(
   object,
-  theta_timepoints = c(0.25, 0.5, 0.75),
+  theta_timepoints = 20L,
   rhat_threshold = 1.01,
   ess_threshold = 400,
   show_ess = TRUE,
@@ -18,11 +18,21 @@
 \item{object}{An object of class \code{"pdm_mcmc_list"}, obtained by calling one
 of the \verb{mcmc_*()} samplers with \code{chains > 1}.}
 
-\item{theta_timepoints}{Numeric vector of fractions in \eqn{(0, 1)} that
-determine which time points of the latent state chains are included. Each
-fraction is rounded to the nearest integer index. The default
-\code{c(0.25, 0.5, 0.75)} evaluates the states at the first quartile, median and
-third quartile of the series. Set to \code{NULL} to exclude all latent states.}
+\item{theta_timepoints}{Which time points of the latent state chains to
+include. Either \strong{a count} — a single whole number, meaning that many
+evenly spaced points, the default \code{20} — or \strong{an explicit numeric vector}
+of fractions in \eqn{(0, 1)} for an irregular grid. This is the convention
+\code{hist()} uses for \code{breaks}, and the two forms cannot be confused because
+fractions lie strictly inside \eqn{(0, 1)} while a count is at least 1.
+Each fraction is rounded to the nearest integer index; \code{NULL} excludes the
+latent states entirely.
+
+A count expands to \code{seq(0.05, 0.95, length.out = n)}, which spans the
+series without touching either endpoint, where a state is pinned by its
+own prior rather than by the data. The same default and the same expansion
+are used by the screen behind \code{\link{summary.pdm_mcmc_list}}, so the
+two cannot disagree about one fit. See "How many time points" below for
+why twenty.}
 
 \item{rhat_threshold}{Numeric > 1, the \eqn{\hat{R}} value above which a
 parameter is flagged. Default \code{1.01}, the cut-off recommended by Vehtari et
@@ -102,6 +112,50 @@ the effective sample sizes of the indicators that a draw falls below the
 The distinction matters: a parameter can have a comfortable bulk ESS and
 still carry too few effective draws in the tails to place its own credible
 interval reliably.
+}
+
+\subsection{How many time points}{
+A latent trajectory is a whole vector of parameters, and a run that has
+failed to mix rarely fails everywhere: the disagreement is usually confined
+to a stretch of the series, so a screen that samples too few points can
+step over it entirely. Measured on a two-component mixture with a logit
+weight (\eqn{n = 800}, four chains), on one fit, taking the largest
+\eqn{\hat{R}} over the screened points:
+
+\tabular{lr}{
+\strong{Points screened} \tab \strong{Largest \eqn{\hat{R}} found} \cr
+3   \tab 1.037 \cr
+5   \tab 1.078 \cr
+10  \tab 1.063 \cr
+20  \tab 1.148 \cr
+50  \tab 1.149 \cr
+100 \tab 1.152 \cr
+all 800 \tab 1.153
+}
+
+Three points report a value that clears every threshold in common use,
+on a fit whose true maximum is 1.153; twenty recover 97\\% of it. The grids
+are not nested, which is why the sequence is not monotone. Twenty is
+therefore the default, matching the screen behind
+\code{\link{summary.pdm_mcmc_list}} so that the two never disagree. A
+denser grid costs little — the whole screen
+is a fraction of a second on a fit that takes seconds to minutes — but
+twenty is where the return flattens.
+}
+
+\subsection{Link families: the states already cover \code{alpha}}{
+For the families that carry a link (the mixture weight, the binomial and
+probit probabilities, the Poisson rate), \code{alpha} has no row of its own
+and needs none. \eqn{\hat{R}} and both effective sample sizes here are
+computed from the \emph{ranks} of the draws, and a link is a strictly
+monotone transformation, so \eqn{\alpha_t = g(\theta_{t1})} has exactly the
+same ranks as \eqn{\theta_{t1}}: the \code{theta_1[t=...]} rows \emph{are} the
+diagnostics for \code{alpha}, to the last bit.
+
+This holds only for the rank-based statistics reported here. The original
+Gelman–Rubin statistic is built from means and variances and is not
+invariant, so a diagnostic computed on \code{alpha} by that route is a genuinely
+different number and will not match this table.
 }
 
 \subsection{Overall classification}{

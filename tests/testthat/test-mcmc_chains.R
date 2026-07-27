@@ -115,9 +115,21 @@ test_that("mcmc_convergence() on a pdm_mcmc_list reports R-hat and ESS", {
   expect_true(all(is.finite(conv$table$Rhat)))
   expect_true(all(conv$table$Rhat > 0.9))
 
-  # Scalar parameters plus three time points of the single state trajectory.
+  # Scalar parameters plus the default state screen.
   expect_true(all(c("theta_01", "W_1^{-1}", "V^{-1}") %in% conv$table$Parameter))
-  expect_equal(sum(grepl("^theta_1\\[t=", conv$table$Parameter)), 3L)
+  expect_equal(sum(grepl("^theta_1\\[t=", conv$table$Parameter)), 20L)
+
+  # The default screen must stay the grid `state_rhats()` uses, since that is
+  # what summary()/waic()/loo() warn from. When the two drifted apart -- three
+  # points here against twenty there -- the same fit came back at 1.037 from
+  # this function and 1.146 from summary(), and the milder number was the one
+  # the warning told the user to go and read. Compare the *resolved* grids, not
+  # the declared defaults: either may be written as a count or as an explicit
+  # vector, and what has to match is the points actually screened.
+  expect_equal(
+    pdm:::resolve_timepoints(eval(formals(pdm:::mcmc_convergence.pdm_mcmc_list)$theta_timepoints)),
+    pdm:::resolve_timepoints(eval(formals(pdm:::state_rhats)$timepoints))
+  )
 
   # theta_timepoints = NULL keeps the scalars only.
   scalars <- mcmc_convergence(fits, theta_timepoints = NULL)

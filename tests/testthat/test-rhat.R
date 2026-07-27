@@ -132,3 +132,35 @@ test_that("ESS returns NA for degenerate input", {
   expect_true(is.na(ess_bulk(x)))
   expect_true(is.na(ess_tail(x)))
 })
+
+test_that("resolve_timepoints() accepts a count or an explicit grid", {
+  # A count expands to evenly spaced fractions spanning (0, 1) without the ends.
+  expect_equal(resolve_timepoints(20L), seq(0.05, 0.95, length.out = 20L))
+  expect_length(resolve_timepoints(50), 50L)
+  expect_equal(resolve_timepoints(3), c(0.05, 0.5, 0.95))
+
+  # A count of 1 is the midpoint, not a degenerate seq() of length 1 at 0.05.
+  expect_equal(resolve_timepoints(1), 0.5)
+
+  # An explicit grid passes through, sorted and de-duplicated.
+  expect_equal(resolve_timepoints(c(0.9, 0.1, 0.9)), c(0.1, 0.9))
+
+  # NULL means "no latent states" and must survive.
+  expect_null(resolve_timepoints(NULL))
+
+  # The two forms cannot collide: fractions are strictly inside (0, 1), a count
+  # is at least 1, so 1 is unambiguously a count.
+  expect_equal(resolve_timepoints(0.5), 0.5)
+
+  # Rejected inputs.
+  expect_error(resolve_timepoints(0), "count")
+  expect_error(resolve_timepoints(-1), "count")
+  expect_error(resolve_timepoints(c(0.5, 1.5)), "count")
+  expect_error(resolve_timepoints(2.5), "count")     # non-integer > 1
+  expect_error(resolve_timepoints("a"), "count")
+  expect_error(resolve_timepoints(NA_real_), "count")
+  expect_error(resolve_timepoints(numeric(0)), "count")
+
+  # The error names the caller's own argument.
+  expect_error(resolve_timepoints(0, arg = "timepoints"), "'timepoints'")
+})

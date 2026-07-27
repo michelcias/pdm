@@ -252,3 +252,50 @@ ess_tail <- function(x) {
   if (is.na(lower) && is.na(upper)) return(NA_real_)
   min(c(lower, upper), na.rm = TRUE)
 }
+
+
+#' Resolve a latent-state time-point specification into fractions
+#'
+#' Accepts either a count or an explicit vector of fractions, following the
+#' convention `hist()` uses for `breaks`: a single whole number is *how many*
+#' evenly spaced points to screen, anything else is the points themselves.
+#' A count is expanded to `seq(0.05, 0.95, length.out = n)`, so the grid spans
+#' the series without touching either endpoint, where a state is pinned by its
+#' own prior rather than by the data.
+#'
+#' Both `mcmc_convergence.pdm_mcmc_list()` and `state_rhats()` resolve through
+#' this, which is what keeps the diagnostic table and the automatic screen
+#' behind `summary()` looking at the same points. They disagreed once — three
+#' points against twenty — and the same fit came back at 1.037 from one and
+#' 1.146 from the other.
+#'
+#' @param x A single whole number >= 1 (a count), a numeric vector of fractions
+#'   in (0, 1), or `NULL`.
+#' @param arg Character, the caller's argument name, used in error messages.
+#'
+#' @return Sorted unique fractions in (0, 1), or `NULL` if `x` was `NULL`.
+#'
+#' @keywords internal
+#' @noRd
+resolve_timepoints <- function(x, arg = "theta_timepoints") {
+  if (is.null(x)) return(NULL)
+
+  if (!is.numeric(x) || !length(x) || anyNA(x)) {
+    stop(sprintf("'%s' must be a count, a numeric vector of fractions in (0, 1), or NULL",
+                 arg), call. = FALSE)
+  }
+
+  # A count: one whole number >= 1. Fractions live strictly inside (0, 1), so
+  # the two forms cannot be confused -- 1 is already outside the open interval.
+  if (length(x) == 1L && x >= 1 && x == as.integer(x)) {
+    n <- as.integer(x)
+    return(if (n == 1L) 0.5 else seq(0.05, 0.95, length.out = n))
+  }
+
+  if (any(x <= 0) || any(x >= 1)) {
+    stop(sprintf("'%s' must be a count (a single whole number >= 1) or a numeric vector with values in (0, 1), or NULL",
+                 arg), call. = FALSE)
+  }
+
+  sort(unique(x))
+}

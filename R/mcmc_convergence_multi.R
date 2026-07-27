@@ -13,11 +13,21 @@
 #'
 #' @param object An object of class `"pdm_mcmc_list"`, obtained by calling one
 #'   of the `mcmc_*()` samplers with `chains > 1`.
-#' @param theta_timepoints Numeric vector of fractions in \eqn{(0, 1)} that
-#'   determine which time points of the latent state chains are included. Each
-#'   fraction is rounded to the nearest integer index. The default
-#'   `c(0.25, 0.5, 0.75)` evaluates the states at the first quartile, median and
-#'   third quartile of the series. Set to `NULL` to exclude all latent states.
+#' @param theta_timepoints Which time points of the latent state chains to
+#'   include. Either **a count** — a single whole number, meaning that many
+#'   evenly spaced points, the default `20` — or **an explicit numeric vector**
+#'   of fractions in \eqn{(0, 1)} for an irregular grid. This is the convention
+#'   `hist()` uses for `breaks`, and the two forms cannot be confused because
+#'   fractions lie strictly inside \eqn{(0, 1)} while a count is at least 1.
+#'   Each fraction is rounded to the nearest integer index; `NULL` excludes the
+#'   latent states entirely.
+#'
+#'   A count expands to `seq(0.05, 0.95, length.out = n)`, which spans the
+#'   series without touching either endpoint, where a state is pinned by its
+#'   own prior rather than by the data. The same default and the same expansion
+#'   are used by the screen behind \code{\link{summary.pdm_mcmc_list}}, so the
+#'   two cannot disagree about one fit. See "How many time points" below for
+#'   why twenty.
 #' @param rhat_threshold Numeric > 1, the \eqn{\hat{R}} value above which a
 #'   parameter is flagged. Default `1.01`, the cut-off recommended by Vehtari et
 #'   al. (2021).
@@ -79,6 +89,50 @@
 #'   The distinction matters: a parameter can have a comfortable bulk ESS and
 #'   still carry too few effective draws in the tails to place its own credible
 #'   interval reliably.
+#' }
+#'
+#' \subsection{How many time points}{
+#'   A latent trajectory is a whole vector of parameters, and a run that has
+#'   failed to mix rarely fails everywhere: the disagreement is usually confined
+#'   to a stretch of the series, so a screen that samples too few points can
+#'   step over it entirely. Measured on a two-component mixture with a logit
+#'   weight (\eqn{n = 800}, four chains), on one fit, taking the largest
+#'   \eqn{\hat{R}} over the screened points:
+#'
+#'   \tabular{lr}{
+#'     \strong{Points screened} \tab \strong{Largest \eqn{\hat{R}} found} \cr
+#'     3   \tab 1.037 \cr
+#'     5   \tab 1.078 \cr
+#'     10  \tab 1.063 \cr
+#'     20  \tab 1.148 \cr
+#'     50  \tab 1.149 \cr
+#'     100 \tab 1.152 \cr
+#'     all 800 \tab 1.153
+#'   }
+#'
+#'   Three points report a value that clears every threshold in common use,
+#'   on a fit whose true maximum is 1.153; twenty recover 97\% of it. The grids
+#'   are not nested, which is why the sequence is not monotone. Twenty is
+#'   therefore the default, matching the screen behind
+#'   \code{\link{summary.pdm_mcmc_list}} so that the two never disagree. A
+#'   denser grid costs little — the whole screen
+#'   is a fraction of a second on a fit that takes seconds to minutes — but
+#'   twenty is where the return flattens.
+#' }
+#'
+#' \subsection{Link families: the states already cover \code{alpha}}{
+#'   For the families that carry a link (the mixture weight, the binomial and
+#'   probit probabilities, the Poisson rate), \code{alpha} has no row of its own
+#'   and needs none. \eqn{\hat{R}} and both effective sample sizes here are
+#'   computed from the \emph{ranks} of the draws, and a link is a strictly
+#'   monotone transformation, so \eqn{\alpha_t = g(\theta_{t1})} has exactly the
+#'   same ranks as \eqn{\theta_{t1}}: the `theta_1[t=...]` rows \emph{are} the
+#'   diagnostics for `alpha`, to the last bit.
+#'
+#'   This holds only for the rank-based statistics reported here. The original
+#'   Gelman–Rubin statistic is built from means and variances and is not
+#'   invariant, so a diagnostic computed on `alpha` by that route is a genuinely
+#'   different number and will not match this table.
 #' }
 #'
 #' \subsection{Overall classification}{
@@ -152,7 +206,7 @@
 #'
 #' @export
 mcmc_convergence.pdm_mcmc_list <- function(object,
-                                           theta_timepoints = c(0.25, 0.5, 0.75),
+                                           theta_timepoints = 20L,
                                            rhat_threshold   = 1.01,
                                            ess_threshold    = 400,
                                            show_ess         = TRUE,
@@ -164,13 +218,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
     stop("'object' must inherit from 'pdm_mcmc_list'")
   }
 
-  if (!is.null(theta_timepoints)) {
-    if (!is.numeric(theta_timepoints) ||
-        any(theta_timepoints <= 0) || any(theta_timepoints >= 1)) {
-      stop("'theta_timepoints' must be a numeric vector with values in (0, 1), or NULL")
-    }
-    theta_timepoints <- sort(unique(theta_timepoints))
-  }
+  theta_timepoints <- resolve_timepoints(theta_timepoints, "theta_timepoints")
 
   if (!is.numeric(rhat_threshold) || length(rhat_threshold) != 1L ||
       rhat_threshold <= 1) {
@@ -285,6 +333,13 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
 #' @param x An object of class `"pdm_convergence_multi"`.
 #' @param digits Integer, significant digits for the \eqn{\hat{R}} column.
 #'   Default 4.
+#' @param n_worst Integer, how many latent-state rows to display. The state
+#'   screen covers twenty time points per state block by default, which is too
+#'   many to read as a table, so only the `n_worst` with the largest
+#'   \eqn{\hat{R}} are shown, followed by a count of how many exceeded the
+#'   threshold. Default 3; use `Inf` to print every row. The scalar parameters
+#'   are always shown in full, and the complete table is always available
+#'   unabridged in `x$table`.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return Invisibly returns `x`.
@@ -292,7 +347,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
 #' @seealso \code{\link{mcmc_convergence.pdm_mcmc_list}}.
 #'
 #' @export
-print.pdm_convergence_multi <- function(x, digits = 4L, ...) {
+print.pdm_convergence_multi <- function(x, digits = 4L, n_worst = 3L, ...) {
 
   cat("\n")
   cat("MCMC Convergence Diagnostics (multi-chain)\n")
@@ -302,15 +357,54 @@ print.pdm_convergence_multi <- function(x, digits = 4L, ...) {
   cat("Draws/chain:   ", x$n_draws, "\n", sep = "")
   cat("\n")
 
-  df <- x$table
-  if ("Rhat" %in% names(df)) {
-    df$Rhat <- sprintf(paste0("%.", digits, "f"), df$Rhat)
-  }
-  for (col in intersect(c("ESS_bulk", "ESS_tail"), names(df))) {
-    df[[col]] <- sprintf("%.1f", df[[col]])
+  # The state screen is dense on purpose (see the "How many time points"
+  # section of ?mcmc_convergence.pdm_mcmc_list), which makes it unreadable as a
+  # flat table: three state blocks at twenty points each is sixty rows. Scalars
+  # print in full; the states collapse to the worst few plus a count.
+  is_state <- grepl("^theta_[0-9]+\\[", x$table$Parameter)
+  scalars  <- x$table[!is_state, , drop = FALSE]
+  states   <- x$table[ is_state, , drop = FALSE]
+
+  fmt <- function(df) {
+    if ("Rhat" %in% names(df)) {
+      df$Rhat <- sprintf(paste0("%.", digits, "f"), df$Rhat)
+    }
+    for (col in intersect(c("ESS_bulk", "ESS_tail"), names(df))) {
+      df[[col]] <- sprintf("%.1f", df[[col]])
+    }
+    df
   }
 
-  print(df, row.names = FALSE, right = TRUE)
+  if (nrow(scalars)) print(fmt(scalars), row.names = FALSE, right = TRUE)
+
+  if (nrow(states)) {
+    # One block is "theta_1[t=...]"; count the distinct blocks to report the
+    # per-block density rather than the raw row count, which is what the user
+    # chose through `theta_timepoints`.
+    block    <- sub("\\[.*$", "", states$Parameter)
+    n_block  <- length(unique(block))
+    per_blk  <- nrow(states) / n_block
+    n_flag   <- sum(states$Rhat > x$rhat_threshold, na.rm = TRUE)
+    n_show   <- min(nrow(states), n_worst)
+
+    cat("\n")
+    cat(sprintf("Latent states - %g time point%s screened per block, %d block%s (%d rows)\n",
+                per_blk, if (per_blk == 1) "" else "s",
+                n_block, if (n_block == 1) "" else "s", nrow(states)))
+
+    if (n_show < nrow(states)) {
+      ord <- order(states$Rhat, decreasing = TRUE, na.last = TRUE)
+      cat(sprintf("Worst %d of %d:\n", n_show, nrow(states)))
+      print(fmt(states[ord[seq_len(n_show)], , drop = FALSE]),
+            row.names = FALSE, right = TRUE)
+    } else {
+      print(fmt(states), row.names = FALSE, right = TRUE)
+    }
+
+    cat(sprintf("  %d of %d above Rhat %g.", n_flag, nrow(states), x$rhat_threshold))
+    if (n_show < nrow(states)) cat("  Full table in $table.")
+    cat("\n")
+  }
 
   cat("\n")
   cat(sprintf("Overall: GOOD if Rhat < %g and both ESS > %g; LOW ESS if only the\n",

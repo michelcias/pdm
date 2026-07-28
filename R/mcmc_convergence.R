@@ -2,11 +2,13 @@
 #'
 #' @description Assesses the convergence of the Markov chains produced by the
 #'   `mcmc_*()` fitting functions. For every scalar parameter of a fitted
-#'   `pdm_mcmc` model the function reports the Effective Sample Size (ESS)
-#'   and the associated sampling efficiency and, when the \pkg{coda} package is
+#'   `pdm_mcmc` model the function reports the rank-normalized
+#'   split-\eqn{\hat{R}} across the two halves of the chain, the Effective
+#'   Sample Size (ESS) and the associated sampling efficiency and, when the
+#'   \pkg{coda} package is
 #'   available, the Geweke convergence diagnostic and the Heidelberger–Welch
-#'   stationarity and halfwidth tests. The individual verdicts are combined into
-#'   a single `Overall` classification per parameter.
+#'   stationarity and halfwidth tests. The two \pkg{coda} verdicts are combined
+#'   into a single `Overall` classification per parameter.
 #'
 #'   Optionally, selected time points of the latent state chains
 #'   (\eqn{\theta_{t,j}}) can also be assessed, one row per state per time
@@ -46,16 +48,24 @@
 #'   `Heidel_hw` columns. Default `TRUE`.
 #' @param show_overall Logical. Whether to include the `Overall` column.
 #'   Default `TRUE`.
+#' @param show_rhat_split Logical. Whether to add the `Rhat_split` column,
+#'   the earlier statistic that also travels under the name \eqn{\hat{R}} —
+#'   split, but neither rank-normalized nor folded. Default `FALSE`, matching
+#'   `show_rhat_variants` in
+#'   \code{\link{mcmc_convergence.pdm_mcmc_list}}. A reconciliation column, not
+#'   a basis for deciding convergence: `Rhat` always holds the Vehtari et al.
+#'   (2021) statistic whatever this is set to.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return An object of class `"pdm_convergence"`, which is a list with:
 #'   \describe{
 #'     \item{\code{table}}{Data frame with one row per assessed parameter or
-#'       state time point. Columns always present: `Parameter`, `ESS`,
-#'       `Efficiency` (in percent). Optional columns, controlled by the
-#'       `show_*` arguments: `ESS_status`, `Geweke_z`,
+#'       state time point. Columns always present: `Parameter`, `Rhat`,
+#'       `ESS`, `Efficiency` (in percent). Optional columns, controlled by the
+#'       `show_*` arguments: `Rhat_split`, `ESS_status`, `Geweke_z`,
 #'       `Geweke_pass`, `Heidel_stat`, `Heidel_hw`,
-#'       `Overall`.}
+#'       `Overall`. Every numeric column is stored unrounded; the print
+#'       method decides the display precision.}
 #'     \item{\code{n_draws}}{Number of retained MCMC draws (\eqn{N}).}
 #'     \item{\code{model_type}}{Character string, e.g. `"locallevel"`,
 #'       `"localtrend"` or `"localacceleration"`.}
@@ -85,6 +95,44 @@
 #' \code{\link{mcmc_normal_locallevel}}) and pass the resulting
 #' `"pdm_mcmc_list"` to the same generic; the method for that class is
 #' documented in \code{\link{mcmc_convergence.pdm_mcmc_list}}.
+#'
+#' \subsection{\eqn{\hat{R}} on a single chain}{
+#'   `Rhat` splits the chain in half and treats the two halves as the two
+#'   sequences the statistic compares. No second chain is required, which is
+#'   what makes an \eqn{\hat{R}} available here at all, and it is how
+#'   \pkg{posterior} and Stan report one for a single-chain run — this column
+#'   reproduces `posterior::rhat()` exactly.
+#'
+#'   It is the same statistic \code{\link{mcmc_convergence.pdm_mcmc_list}}
+#'   reports under the same name: rank-normalized, folded, Vehtari et al.
+#'   (2021), so the conventional threshold of about 1.01 belongs to it. It asks
+#'   the question Geweke asks — does the start of the run agree with the end? —
+#'   through a variance ratio rather than a spectral test of two windows, and
+#'   unlike Geweke and Heidelberger–Welch it needs no external package.
+#'
+#'   \strong{But it is not the multi-chain diagnostic, and the difference is
+#'   not the formula.} There the sequences are independent chains started from
+#'   dispersed points — so dispersed that
+#'   \code{\link{mcmc_convergence.pdm_mcmc_list}}'s samplers refuse a shared
+#'   starting value, since a common start removes the between-chain variance
+#'   the statistic is a ratio of. Here the two sequences are consecutive halves
+#'   of one run, sharing their entire history. The same arithmetic therefore
+#'   answers a narrower question: whether this run has stopped drifting, not
+#'   whether independent runs found the same distribution.
+#'
+#'   The practical consequence is that a chain which never left one mode scores
+#'   near 1, because its two halves agree with each other. That is the failure
+#'   mode of the mixture family, and no single-chain statistic detects it. Fit
+#'   with `chains > 1` when that is the question.
+#'
+#'   \strong{It classifies nothing.} `Overall` stays the Geweke and
+#'   Heidelberger–Welch verdict it has always been, unchanged by either
+#'   \eqn{\hat{R}} column. `show_rhat_split = TRUE` adds `Rhat_split`, the
+#'   split-but-unranked statistic, for reconciling a number with another
+#'   implementation or a paper. It is the more forgiving of the two — on a
+#'   local-level innovation precision the pair read 1.12 and 1.28 on the same
+#'   draws — which is exactly why `Rhat` is the reported one.
+#' }
 #'
 #' \subsection{Effective Sample Size (ESS)}{
 #'   Autocorrelation inflates the variance of MCMC estimators relative to an
@@ -145,6 +193,10 @@
 #' }
 #'
 #' @references
+#' Gelman, A., & Rubin, D. B. (1992). Inference from iterative simulation using
+#'   multiple sequences. \emph{Statistical Science}, \strong{7}(4), 457--472.
+#'   \doi{10.1214/ss/1177011136}
+#'
 #' Geweke, J. (1992). Evaluating the accuracy of sampling-based approaches to
 #'   the calculation of posterior moments. In J. M. Bernardo, J. O. Berger,
 #'   A. P. Dawid, & A. F. M. Smith (Eds.), \emph{Bayesian Statistics 4}
@@ -166,6 +218,12 @@
 #' Plummer, M., Best, N., Cowles, K., & Vines, K. (2006). CODA: Convergence
 #'   diagnosis and output analysis for MCMC. \emph{R News}, \strong{6}(1),
 #'   7--11.
+#'
+#' Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C. (2021).
+#'   Rank-normalization, folding, and localization: An improved \eqn{\hat{R}}
+#'   for assessing convergence of MCMC (with discussion).
+#'   \emph{Bayesian Analysis}, \strong{16}(2), 667--718.
+#'   \doi{10.1214/20-BA1221}
 #'
 #' @examples
 #' \donttest{
@@ -233,11 +291,22 @@
 #' ## 6. Compact table: only ESS columns -----------------------------------
 #' conv_ess <- mcmc_convergence(
 #'   fit,
-#'   show_geweke  = FALSE,
-#'   show_heidel  = FALSE,
-#'   show_overall = FALSE
+#'   show_geweke     = FALSE,
+#'   show_heidel     = FALSE,
+#'   show_overall    = FALSE,
+#'   show_rhat_split = FALSE
 #' )
 #' print(conv_ess)
+#'
+#' ## 6b. R-hat: the two halves of the chain compared -----------------------
+#' # `Rhat` is always reported and never folded into `Overall`, which stays
+#' # the Geweke + Heidelberger-Welch verdict. A chain that never left one mode
+#' # scores near 1 here; only `chains > 1` can see that.
+#' conv$table[, c("Parameter", "Rhat", "ESS")]
+#'
+#' # The earlier statistic alongside it, for reconciling a published number.
+#' conv_var <- mcmc_convergence(fit, show_rhat_split = TRUE)
+#' conv_var$table[, c("Parameter", "Rhat", "Rhat_split")]
 #'
 #' ## 7. Stricter ESS thresholds -------------------------------------------
 #' conv_strict <- mcmc_convergence(fit, ess_thresholds = c(75, 50, 25))
@@ -269,6 +338,7 @@ mcmc_convergence.pdm_mcmc <- function(object,
                                       show_geweke      = TRUE,
                                       show_heidel      = TRUE,
                                       show_overall     = TRUE,
+                                      show_rhat_split  = FALSE,
                                       ...) {
 
   # --- Input validation ---------------------------------------------------
@@ -289,7 +359,8 @@ mcmc_convergence.pdm_mcmc <- function(object,
     stop("'geweke_level' must be a single numeric value in (0, 1)")
   }
 
-  for (flag in list(show_ess_status, show_geweke, show_heidel, show_overall)) {
+  for (flag in list(show_ess_status, show_geweke, show_heidel, show_overall,
+                    show_rhat_split)) {
     if (!is.logical(flag) || length(flag) != 1L) {
       stop("'show_*' arguments must be single logical values")
     }
@@ -315,16 +386,35 @@ mcmc_convergence.pdm_mcmc <- function(object,
                   if (efficiency > ess_thresholds[2]) "GOOD"      else
                   if (efficiency > ess_thresholds[3]) "ACCEPTABLE" else "POOR"
 
+    # R-hat across the two halves of this one chain. `Rhat` is the Vehtari et
+    # al. (2021) statistic, the same one `mcmc_convergence.pdm_mcmc_list()`
+    # reports under that name, so the column means one thing in both methods
+    # and the 1.01 threshold in common use belongs to it. `Rhat_split` is the
+    # plain split statistic, a reconciliation column exactly as it is there.
+    rhat       <- rhat_single(draws)
+    rhat_split <- rhat_split_single(draws)
+
     # Stored unrounded; `print.pdm_convergence()` decides how many digits to
     # show. Rounding here degraded the object for no gain, and worse, disagreed
     # with the print method: storage kept one decimal while the display asked
     # for three, so every printed ESS ended in two zeros it had not earned.
+    # Built column by column rather than in one `data.frame()` call so the
+    # reconciliation column can sit next to the statistic it reconciles,
+    # matching the layout of `mcmc_convergence.pdm_mcmc_list()`.
     row <- data.frame(
-      Parameter  = label,
-      ESS        = ess,
-      Efficiency = efficiency,
+      Parameter = label,
+      Rhat      = rhat,
       stringsAsFactors = FALSE
     )
+
+    # Reconciliation column only. `Rhat` keeps its meaning -- Vehtari et al.
+    # (2021) -- whatever this is set to, and no verdict is computed from
+    # either: `Overall` below stays the Geweke + Heidelberger-Welch result it
+    # has always been.
+    if (show_rhat_split) row$Rhat_split <- rhat_split
+
+    row$ESS        <- ess
+    row$Efficiency <- efficiency
 
     if (show_ess_status) row$ESS_status <- ess_status
 
@@ -434,9 +524,10 @@ mcmc_convergence.pdm_mcmc <- function(object,
 #' Print method for pdm_convergence objects
 #'
 #' @param x An object of class `"pdm_convergence"`.
-#' @param digits Integer, digits for the Geweke statistic. Default 3. `ESS`
-#'   and `Efficiency` always print with one decimal: a count and a percentage
-#'   do not gain from more, and the stored table carries full precision.
+#' @param digits Integer, digits for the test statistics `Rhat_split` and
+#'   `Geweke_z`. Default 3. `ESS` and `Efficiency` always print with one
+#'   decimal: a count and a percentage do not gain from more, and the stored
+#'   table carries full precision.
 #' @param n_worst Integer, how many latent-state rows to display, the ones
 #'   with the smallest `ESS`. The screen covers twenty time points per state
 #'   block by default, too many to read as a table; the scalars always print
@@ -475,8 +566,8 @@ print.pdm_convergence <- function(x, digits = 3L, n_worst = 3L, ...) {
   for (col in intersect(c("ESS", "Efficiency"), names(df))) {
     df[[col]] <- sprintf("%.1f", df[[col]])
   }
-  if ("Geweke_z" %in% names(df)) {
-    df$Geweke_z <- sprintf(paste0("%.", digits, "f"), df$Geweke_z)
+  for (col in intersect(c("Rhat", "Rhat_split", "Geweke_z"), names(df))) {
+    df[[col]] <- sprintf(paste0("%.", digits, "f"), df[[col]])
   }
   names(df)[names(df) == "Efficiency"] <- "Efficiency(%)"
 
@@ -520,6 +611,9 @@ print.pdm_convergence <- function(x, digits = 3L, n_worst = 3L, ...) {
   thr <- x$ess_thresholds
   cat(sprintf("ESS status: >%g%% EXCELLENT, >%g%% GOOD, >%g%% ACCEPTABLE, else POOR\n",
               thr[1], thr[2], thr[3]))
+  cat("Rhat: the two halves of the chain compared. It does not enter Overall,\n")
+  cat("and cannot detect a chain that never left one mode -- for that, fit with\n")
+  cat("chains > 1.\n")
   cat(strrep("-", 70), "\n\n", sep = "")
 
   invisible(x)

@@ -131,8 +131,26 @@ rhat_basic <- function(x) {
 #' @keywords internal
 #' @noRd
 rhat_rank_normalized <- function(x) {
-  if (!is.matrix(x) || ncol(x) < 2L)     return(NA_real_)
-  if (!all(is.finite(x)))               return(NA_real_)
+  if (!is.matrix(x) || ncol(x) < 2L) return(NA_real_)
+  rhat_rank_core(x)
+}
+
+
+#' The rank-normalized split-R-hat computation, without the chain-count guard
+#'
+#' Extracted so that `rhat_rank_normalized()` (two or more chains) and
+#' `rhat_single()` (one chain, split into halves) are the *same*
+#' implementation and cannot drift apart. The two differ only in what they
+#' accept, which is why the chain-count guard stays with the callers.
+#'
+#' @param x Numeric matrix, draws in rows and chains in columns.
+#'
+#' @return Single numeric, or `NA_real_` for constant or non-finite input.
+#'
+#' @keywords internal
+#' @noRd
+rhat_rank_core <- function(x) {
+  if (!all(is.finite(x)))                    return(NA_real_)
   if (max(x) - min(x) < .Machine$double.eps) return(NA_real_)
 
   # Fold around the median of *all* the draws, then split -- not the other way
@@ -144,6 +162,37 @@ rhat_rank_normalized <- function(x) {
 
   if (is.na(bulk) && is.na(folded)) return(NA_real_)
   max(c(bulk, folded), na.rm = TRUE)
+}
+
+
+#' Rank-normalized split-R-hat for a single chain
+#'
+#' The statistic of Vehtari et al. (2021) applied to one chain, whose two
+#' halves supply the sequences that `split_chains()` would otherwise take from
+#' separate runs. This is what Stan and \pkg{posterior} report as `rhat` for a
+#' one-chain run, and it reproduces `posterior::rhat()` exactly.
+#'
+#' Note the single split. Passing the halves in as two columns would split them
+#' again into quarters and give a different, wrong number -- the core already
+#' splits whatever it is handed.
+#'
+#' **It answers a narrower question than the multi-chain statistic.** Two
+#' halves of one run share their whole history, so this asks whether the run
+#' stopped drifting, not whether independent runs found the same distribution.
+#' A chain that never left one mode scores near 1. See the `@details` of
+#' `mcmc_convergence()`.
+#'
+#' @param x Numeric vector of draws from a single chain.
+#'
+#' @return Single numeric, or `NA_real_` when the chain is constant,
+#'   non-finite, or shorter than four draws -- each half needs two for a
+#'   within-half variance.
+#'
+#' @keywords internal
+#' @noRd
+rhat_single <- function(x) {
+  if (!is.numeric(x) || length(x) < 4L) return(NA_real_)
+  rhat_rank_core(matrix(x, ncol = 1L))
 }
 
 
@@ -351,4 +400,40 @@ rhat_variants <- function(x) {
 
   c(split   = rhat_basic(split_chains(x)),
     classic = rhat_basic(x))
+}
+
+
+#' Split-R-hat for a single chain
+#'
+#' The Gelman-Rubin ratio applied to the two halves of one chain. It asks the
+#' question Geweke asks -- does the start of the run agree with the end? -- and
+#' needs no second chain, because `split_chains()` supplies the second
+#' sequence. That is what makes an R-hat available to the single-chain method
+#' at all.
+#'
+#' The plain statistic -- split, but neither rank-normalized nor folded -- so
+#' `Rhat_split` means the same thing here as in the column of that name in
+#' `mcmc_convergence.pdm_mcmc_list()`. It is a reconciliation column in both,
+#' never the reported one: `rhat_single()` holds that role, because the 1.01
+#' threshold in common use belongs to the rank-normalized statistic and this
+#' one is the more forgiving. On a local-level precision the two read 1.12 and
+#' 1.28 on the same draws.
+#'
+#' @param x Numeric vector of draws from a single chain.
+#'
+#' @return Single numeric, or `NA_real_` when the chain is constant,
+#'   non-finite, or shorter than four draws -- each half needs two for a
+#'   within-half variance.
+#'
+#' @keywords internal
+#' @noRd
+rhat_split_single <- function(x) {
+  # The guards mirror `rhat_variants()`, minus its `ncol(x) < 2` rejection:
+  # one chain is the whole point here. The length floor replaces it, since
+  # `var()` on a one-draw half is NA and would surface as NaN, not NA.
+  if (!is.numeric(x) || length(x) < 4L)      return(NA_real_)
+  if (!all(is.finite(x)))                    return(NA_real_)
+  if (max(x) - min(x) < .Machine$double.eps) return(NA_real_)
+
+  rhat_basic(split_chains(matrix(x, ncol = 1L)))
 }

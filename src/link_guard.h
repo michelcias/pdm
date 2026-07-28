@@ -19,6 +19,26 @@
  *          exact-boundary hazard. The lower floor is marginally wider
  *          (@f$2\times 10^{-16}@f$) for symmetry with the probit guard.
  *
+ *          **That paragraph describes the logit only. Do not read it as a
+ *          statement about the probit.** @f$\Phi@f$ saturates far earlier:
+ *          @f$\Phi(-8.14) = 2\times 10^{-16}@f$, so under the probit link the
+ *          floor is reached at @f$|\theta| \approx 8.14@f$, deep inside the
+ *          @f$\pm 36@f$ state clamp of `clamp_probit_state()`
+ *          (`generate_alpha_binomial.c`). Over the whole band
+ *          @f$8.14 < |\theta| < 36@f$ the bound is load-bearing, not inert, and
+ *          it is nowhere near "essentially unchanged": @f$\Phi(-36)@f$ is
+ *          @f$4.2\times 10^{-284}@f$ against a floor of @f$2\times 10^{-16}@f$.
+ *          This is deliberate — it is precisely what keeps the probit
+ *          likelihood evaluable in that band, and the two guards divide the
+ *          work as the block above `clamp_probit_state()` sets out. What is not
+ *          safe is to carry the logit's "inert" reading across to the probit.
+ *
+ *          One consequence for anyone diagnosing a probit fit: inside that band
+ *          distinct theta values all map to the same floored alpha, so alpha
+ *          draws tie where theta draws do not. Rank-based statistics see the
+ *          ties; see `docs/multichain-rhat.md`, *R-hat on alpha is not R-hat on
+ *          theta*.
+ *
  *          Unlike a state clamp, this guard never distorts the sampled latent
  *          state: theta is stored exactly as drawn, and only the derived
  *          probability is protected.

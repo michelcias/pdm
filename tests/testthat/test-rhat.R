@@ -57,6 +57,22 @@ test_that("z_scale() keeps chains in their own columns", {
 })
 
 
+test_that("z_scale() uses Blom's offset, (r - 3/8) / (S + 1/4)", {
+  x <- matrix(c(4, 1, 3, 2), nrow = 2, ncol = 2)
+  r <- rank(x)
+
+  expect_equal(as.vector(z_scale(x)),
+               qnorm((r - 3 / 8) / (length(r) + 1 / 4)))
+
+  # The sign of that quarter is the whole point, and a wrong one is invisible
+  # by inspection, so pin the property it buys: Blom's position is symmetric
+  # about the median, ranks r and S + 1 - r mapping to probabilities that sum
+  # to 1. With S - 1/4 the z-scores all shift upward and this fails.
+  z <- sort(z_scale(iid_chains(n = 16, m = 4, seed = 5)))
+  expect_equal(z, -rev(z))
+})
+
+
 test_that("R-hat is close to 1 for chains from the same distribution", {
   expect_lt(rhat_rank_normalized(iid_chains(seed = 21)), 1.01)
   expect_gt(rhat_rank_normalized(iid_chains(seed = 21)), 0.99)
@@ -103,6 +119,29 @@ test_that("R-hat returns NA for degenerate input", {
 })
 
 
+test_that("the folded statistic centres on the median of all the draws", {
+  # `split_chains()` discards the middle draw when the count is odd, so folding
+  # after the split centres on the median of what survived rather than on the
+  # median of the sample. Both orders are computed here and shown to disagree,
+  # then R-hat is checked to follow the one the definition asks for.
+  x <- iid_chains(n = 301, m = 4, seed = 54)
+
+  splits      <- split_chains(x)
+  bulk        <- rhat_basic(z_scale(splits))
+  fold_first  <- rhat_basic(z_scale(split_chains(abs(x - median(x)))))
+  split_first <- rhat_basic(z_scale(abs(splits - median(splits))))
+
+  expect_false(isTRUE(all.equal(fold_first, split_first)))
+  expect_equal(rhat_rank_normalized(x), max(bulk, fold_first))
+
+  # For an even count nothing is discarded and the question does not arise.
+  y <- iid_chains(n = 300, m = 4, seed = 54)
+  expect_equal(rhat_basic(z_scale(split_chains(abs(y - median(y))))),
+               rhat_basic(z_scale(abs(split_chains(y) -
+                                        median(split_chains(y))))))
+})
+
+
 test_that("ESS approaches the number of draws for independent chains", {
   x <- iid_chains(n = 1000, m = 4, seed = 31)
 
@@ -131,6 +170,32 @@ test_that("ESS returns NA for degenerate input", {
   x[3, 1] <- NA_real_
   expect_true(is.na(ess_bulk(x)))
   expect_true(is.na(ess_tail(x)))
+})
+
+
+test_that("ess_tail() is NA when one tail indicator is degenerate", {
+  # Tie a tenth of the draws at the maximum. The 95% quantile then sits on the
+  # maximum itself, `x <= q95` is constant, and that tail carries no
+  # information. The 5% side is still perfectly well defined -- and must not be
+  # reported in its place, which is what a min(na.rm = TRUE) used to do.
+  x <- iid_chains(n = 200, m = 4, seed = 41)
+  x[1:20, ] <- max(x) + 1
+
+  expect_true(is.na(ess_tail(x)))
+  expect_false(is.na(ess_bulk(x)))
+})
+
+
+test_that("ess_tail() survives ties at the minimum", {
+  # The mirror case is not degenerate and must not be swept up by the guard
+  # above: with 60% of the draws at the minimum the 5% quantile is the minimum,
+  # but `x <= q05` still separates that block from the rest. This is the shape a
+  # saturated link parameter takes, so it has to keep returning a number.
+  y <- iid_chains(n = 200, m = 4, seed = 41)
+  y[1:120, ] <- min(y) - 1
+
+  expect_false(is.na(ess_tail(y)))
+  expect_gt(ess_tail(y), 0)
 })
 
 test_that("resolve_timepoints() accepts a count or an explicit grid", {
@@ -163,4 +228,56 @@ test_that("resolve_timepoints() accepts a count or an explicit grid", {
 
   # The error names the caller's own argument.
   expect_error(resolve_timepoints(0, arg = "timepoints"), "'timepoints'")
+})
+
+
+# --- Differential test against the reference implementation ----------------
+# The statistics above are ours, but the definitions are not: they are Vehtari
+# et al. (2021), and `posterior` is the authors' own implementation. Unit tests
+# that only assert shape and sign let a wrong constant through -- both defects
+# this file now guards against were of exactly that kind, one a sign in a
+# denominator and one an `na.rm`. Agreement to machine precision is the only
+# assertion that would have caught them. `posterior` is in Suggests, so the
+# block skips where it is absent.
+
+test_that("R-hat and both ESS reproduce posterior::", {
+  skip_if_not_installed("posterior")
+
+  set.seed(20260728)
+  scenarios <- list(
+    iid          = iid_chains(n = 500, m = 4, seed = 51),
+    autocorr     = matrix(as.numeric(replicate(4, arima.sim(list(ar = 0.9), 500))),
+                          nrow = 500, ncol = 4),
+    shifted      = iid_chains(n = 400, m = 4, seed = 52) +
+                     rep(c(0, 0.4, -0.3, 0.1), each = 400),
+    two_chains   = iid_chains(n = 600, m = 2, seed = 53),
+    odd_draws    = iid_chains(n = 301, m = 4, seed = 54),
+    heavy_tailed = matrix(rt(4 * 500, df = 2), nrow = 500, ncol = 4),
+    # A link-transformed state: bounded in (0, 1) and skewed, which is the
+    # shape the mixture models actually feed these functions.
+    on_unit      = plogis(iid_chains(n = 500, m = 4, seed = 55) - 2)
+  )
+
+  for (nm in names(scenarios)) {
+    x <- scenarios[[nm]]
+    expect_equal(rhat_rank_normalized(x), posterior::rhat(x),
+                 tolerance = 1e-10, info = nm)
+    expect_equal(ess_bulk(x), posterior::ess_bulk(x),
+                 tolerance = 1e-10, info = nm)
+    expect_equal(ess_tail(x), posterior::ess_tail(x),
+                 tolerance = 1e-10, info = nm)
+  }
+})
+
+
+test_that("the degenerate-tail verdict matches posterior:: too", {
+  skip_if_not_installed("posterior")
+
+  x <- iid_chains(n = 200, m = 4, seed = 41)
+  x[1:20, ] <- max(x) + 1
+  expect_equal(ess_tail(x), posterior::ess_tail(x))
+
+  y <- iid_chains(n = 200, m = 4, seed = 41)
+  y[1:120, ] <- min(y) - 1
+  expect_equal(ess_tail(y), posterior::ess_tail(y), tolerance = 1e-10)
 })

@@ -81,7 +81,11 @@ z_scale <- function(x) {
   # rank() flattens the matrix in column-major order, which is exactly the
   # layout matrix() restores below, so chains stay in their own columns.
   r <- rank(x, ties.method = "average")
-  z <- qnorm((r - 3 / 8) / (length(r) - 1 / 4))
+  # Blom's plotting position is (r - 3/8) / (S + 1/4). The `+` matters: it is
+  # what makes the map symmetric about the median, so ranks r and S + 1 - r
+  # give probabilities summing to 1. A minus sign there shifts every z-score
+  # upward and perturbs R-hat in the fourth decimal.
+  z <- qnorm((r - 3 / 8) / (length(r) + 1 / 4))
   matrix(z, nrow = nrow(x), ncol = ncol(x))
 }
 
@@ -131,9 +135,12 @@ rhat_rank_normalized <- function(x) {
   if (!all(is.finite(x)))               return(NA_real_)
   if (max(x) - min(x) < .Machine$double.eps) return(NA_real_)
 
-  splits <- split_chains(x)
-  bulk   <- rhat_basic(z_scale(splits))
-  folded <- rhat_basic(z_scale(abs(splits - median(splits))))
+  # Fold around the median of *all* the draws, then split -- not the other way
+  # round. For an even number of draws the two orders agree, but an odd one
+  # loses its middle draw to `split_chains()`, and centring on the median of
+  # what survives moves the fold. The definition centres on the full sample.
+  bulk   <- rhat_basic(z_scale(split_chains(x)))
+  folded <- rhat_basic(z_scale(split_chains(abs(x - median(x)))))
 
   if (is.na(bulk) && is.na(folded)) return(NA_real_)
   max(c(bulk, folded), na.rm = TRUE)
@@ -237,7 +244,7 @@ ess_bulk <- function(x) {
 #'
 #' @param x Numeric matrix, draws in rows and chains in columns.
 #'
-#' @return Single numeric, or `NA_real_`.
+#' @return Single numeric, or `NA_real_` when either tail is degenerate.
 #'
 #' @keywords internal
 #' @noRd
@@ -249,8 +256,12 @@ ess_tail <- function(x) {
   lower <- ess_mean(split_chains((x <= q[1L]) * 1))
   upper <- ess_mean(split_chains((x <= q[2L]) * 1))
 
-  if (is.na(lower) && is.na(upper)) return(NA_real_)
-  min(c(lower, upper), na.rm = TRUE)
+  # A plain min(), so one degenerate tail makes the whole statistic NA. An
+  # indicator goes constant when 5% or more of the draws tie at the maximum,
+  # which puts the 95% quantile on the maximum itself. Falling back to the
+  # surviving tail would report a healthy ESS for a quantity whose tail
+  # carries no information at all.
+  min(lower, upper)
 }
 
 

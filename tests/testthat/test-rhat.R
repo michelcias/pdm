@@ -270,6 +270,135 @@ test_that("R-hat and both ESS reproduce posterior::", {
 })
 
 
+test_that("rhat_split_single() is the split statistic on one chain", {
+  set.seed(60)
+  x <- as.numeric(arima.sim(list(ar = 0.9), 500))
+
+  # It is exactly what the multi-chain `Rhat_split` column computes, with the
+  # two halves standing in for the two chains. Built independently here rather
+  # than by calling the same helper, which would prove nothing.
+  half <- 500L %/% 2L
+  manual <- rhat_basic(cbind(x[seq_len(half)], x[(500L - half + 1L):500L]))
+  expect_equal(rhat_split_single(x), manual)
+
+  # A chain still drifting within itself is the case it exists to catch: the
+  # first half and the second sit at different levels. Contrasted against iid
+  # draws, not against the AR(1) above -- at rho = 0.9 a 500-draw run wanders
+  # enough on its own to score 1.07, which is the statistic working, not a
+  # baseline to assert quietness on.
+  set.seed(60)
+  quiet    <- rnorm(500)
+  drifting <- rnorm(500) + seq(0, 5, length.out = 500)
+  expect_lt(rhat_split_single(quiet), 1.02)
+  expect_gt(rhat_split_single(drifting), 1.5)
+})
+
+
+test_that("rhat_split_single() returns NA rather than NaN for degenerate input", {
+  # The guards mirror rhat_variants(), which is what keeps a degenerate case
+  # from surfacing as NaN out of an unguarded variance.
+  expect_true(is.na(rhat_split_single(rep(1, 100))))          # constant
+  expect_true(is.na(rhat_split_single(c(1, 2, NA, 4, 5))))    # non-finite
+  expect_true(is.na(rhat_split_single(c(1, 2, Inf, 4, 5))))
+  expect_true(is.na(rhat_split_single(c(1, 2, 3))))           # too short
+  expect_false(is.na(rhat_split_single(rnorm(4))))            # the floor itself
+})
+
+
+test_that("rhat_single() is the Vehtari statistic on one chain", {
+  set.seed(62)
+  x <- rnorm(500)
+
+  # One split, not two. Handing the halves in as two columns would make the
+  # core split them again into quarters -- a different number, and the mistake
+  # is invisible because it still looks like an R-hat.
+  expect_equal(rhat_single(x), rhat_rank_core(matrix(x, ncol = 1L)))
+  expect_false(isTRUE(all.equal(rhat_single(x),
+                                rhat_rank_normalized(cbind(x[1:250], x[251:500])))))
+
+  # It separates from the plain split statistic where rank normalization is
+  # supposed to matter: a heavy tail.
+  set.seed(63)
+  heavy <- rt(500, df = 2)
+  expect_false(isTRUE(all.equal(rhat_single(heavy), rhat_split_single(heavy))))
+
+  expect_lt(rhat_single(rnorm(500)), 1.05)
+  expect_gt(rhat_single(rnorm(500) + seq(0, 5, length.out = 500)), 1.2)
+})
+
+
+test_that("rhat_single() returns NA rather than NaN for degenerate input", {
+  expect_true(is.na(rhat_single(rep(1, 100))))
+  expect_true(is.na(rhat_single(c(1, 2, NA, 4, 5))))
+  expect_true(is.na(rhat_single(c(1, 2, Inf, 4, 5))))
+  expect_true(is.na(rhat_single(c(1, 2, 3))))
+  expect_false(is.na(rhat_single(rnorm(4))))
+})
+
+
+test_that("extracting rhat_rank_core() left the multi-chain path untouched", {
+  # The guard moved to the caller so one chain could reach the same maths.
+  # Multi-chain results must be bit-identical, and a single-column matrix must
+  # still be NA through the multi-chain entry point -- that function's contract
+  # is unchanged.
+  x <- iid_chains(n = 400, m = 4, seed = 64)
+  expect_identical(rhat_rank_normalized(x), rhat_rank_core(x))
+  expect_true(is.na(rhat_rank_normalized(matrix(rnorm(400), ncol = 1L))))
+  expect_true(is.na(rhat_rank_normalized(rnorm(400))))
+})
+
+
+test_that("rhat_single() reproduces posterior::rhat", {
+  skip_if_not_installed("posterior")
+
+  # The statistic this package reports for one chain must be the one Stan
+  # reports for one chain, not a near neighbour of it.
+  set.seed(65)
+  scenarios <- list(
+    iid       = rnorm(500),
+    autocorr  = as.numeric(arima.sim(list(ar = 0.95), 500)),
+    drifting  = rnorm(400) + seq(0, 2, length.out = 400),
+    odd_draws = rnorm(301),
+    heavy     = rt(500, df = 2),
+    on_unit   = plogis(rnorm(500) - 2)
+  )
+
+  for (nm in names(scenarios)) {
+    expect_equal(rhat_single(scenarios[[nm]]), posterior::rhat(scenarios[[nm]]),
+                 tolerance = 1e-10, info = nm)
+  }
+})
+
+
+test_that("rhat_split_single() reproduces posterior::rhat_basic", {
+  skip_if_not_installed("posterior")
+
+  # posterior::rhat_basic() is the split, non-rank-normalized statistic, and on
+  # a bare vector it treats the input as one chain -- the same definition. This
+  # is the reference comparison the `no new dependency` decision owes, on the
+  # same footing as the block above.
+  set.seed(61)
+  scenarios <- list(
+    iid       = rnorm(500),
+    autocorr  = as.numeric(arima.sim(list(ar = 0.95), 500)),
+    drifting  = rnorm(400) + seq(0, 2, length.out = 400),
+    odd_draws = rnorm(301),
+    heavy     = rt(500, df = 2),
+    on_unit   = plogis(rnorm(500) - 2)
+  )
+
+  for (nm in names(scenarios)) {
+    expect_equal(rhat_split_single(scenarios[[nm]]),
+                 posterior::rhat_basic(scenarios[[nm]]),
+                 tolerance = 1e-10, info = nm)
+  }
+
+  # And the split is what makes it defined at all: posterior returns NA for a
+  # single chain without it.
+  expect_true(is.na(posterior::rhat_basic(scenarios$iid, split = FALSE)))
+})
+
+
 test_that("the degenerate-tail verdict matches posterior:: too", {
   skip_if_not_installed("posterior")
 

@@ -5,6 +5,17 @@ library(testthat)
 # class. That gap is why removing the rounding from its table broke nothing --
 # there was nothing to break. These pin the contract instead.
 
+# The printed table is fixed-width with a header row, so a field is located by
+# its column *name*. Locating it by position -- `fields[2]` -- is what these
+# tests did until `Rhat_split` was inserted ahead of ESS and shifted every one
+# of them. The contract under test is the display precision of a named column,
+# so the lookup should not depend on how many columns precede it.
+printed_field <- function(out, param, column) {
+  header <- strsplit(trimws(grep("Parameter", out, value = TRUE)[1]), "\\s+")[[1]]
+  row    <- strsplit(trimws(grep(param, out, value = TRUE)[1]), "\\s+")[[1]]
+  row[match(column, header)]
+}
+
 conv_fit <- function(n = 120, seed = 7) {
   set.seed(11)
   y <- rnorm(n)
@@ -59,10 +70,9 @@ test_that("the stored table is unrounded, and the print method does the rounding
   # A count and a percentage print with one decimal whatever `digits` says.
   # Scoped to those two columns: the Geweke column on the same row carries
   # three decimals legitimately, so testing the whole line would be wrong.
-  out    <- capture.output(print(conv))
-  fields <- strsplit(trimws(grep("V\\^\\{-1\\}", out, value = TRUE)[1]), "\\s+")[[1]]
-  expect_match(fields[2], "^[0-9]+\\.[0-9]$")   # ESS
-  expect_match(fields[3], "^[0-9]+\\.[0-9]$")   # Efficiency(%)
+  out <- capture.output(print(conv))
+  expect_match(printed_field(out, "V\\^\\{-1\\}", "ESS"), "^[0-9]+\\.[0-9]$")
+  expect_match(printed_field(out, "V\\^\\{-1\\}", "Efficiency(%)"), "^[0-9]+\\.[0-9]$")
 })
 
 
@@ -73,16 +83,19 @@ test_that("digits reaches the test statistic and not the sample sizes", {
 
   expect_gt(max(abs(conv$table$Geweke_z - round(conv$table$Geweke_z, 4))), 0)
 
-  three <- grep("V\\^\\{-1\\}", capture.output(print(conv, digits = 3)), value = TRUE)[1]
-  five  <- grep("V\\^\\{-1\\}", capture.output(print(conv, digits = 5)), value = TRUE)[1]
+  out3 <- capture.output(print(conv, digits = 3))
+  out5 <- capture.output(print(conv, digits = 5))
+
+  three <- grep("V\\^\\{-1\\}", out3, value = TRUE)[1]
+  five  <- grep("V\\^\\{-1\\}", out5, value = TRUE)[1]
 
   # The Geweke column widens with `digits` ...
   expect_false(identical(three, five))
-  expect_match(five, "-?[0-9]+\\.[0-9]{5}")
+  expect_match(printed_field(out5, "V\\^\\{-1\\}", "Geweke_z"), "^-?[0-9]+\\.[0-9]{5}$")
 
   # ... while the ESS column is unmoved by it.
-  ess_of <- function(s) sub("^\\s*\\S+\\s+([0-9.]+).*$", "\\1", trimws(s))
-  expect_identical(ess_of(three), ess_of(five))
+  expect_identical(printed_field(out3, "V\\^\\{-1\\}", "ESS"),
+                   printed_field(out5, "V\\^\\{-1\\}", "ESS"))
 })
 
 
@@ -117,5 +130,91 @@ test_that("the show_* flags drop their columns", {
   bare <- mcmc_convergence(conv_fit(), show_ess_status = FALSE,
                            show_geweke = FALSE, show_heidel = FALSE,
                            show_overall = FALSE)
-  expect_equal(names(bare$table), c("Parameter", "ESS", "Efficiency"))
+  expect_equal(names(bare$table), c("Parameter", "Rhat", "ESS", "Efficiency"))
+})
+
+
+test_that("Rhat is the Vehtari statistic, the same one the multi method reports", {
+  fit  <- conv_fit()
+  conv <- mcmc_convergence(fit)
+
+  # Always present, first after Parameter, exactly as in the multi-chain table.
+  expect_equal(names(conv$table)[1:2], c("Parameter", "Rhat"))
+
+  # It must hold the statistic itself, not a near neighbour. Compare against
+  # the draws the fit carries, for a scalar and for a state point.
+  row <- match("W_1^{-1}", conv$table$Parameter)
+  expect_equal(conv$table$Rhat[row], pdm:::rhat_single(fit$prec_theta1))
+
+  last  <- nrow(conv$table)
+  tidx  <- as.integer(sub(".*t=([0-9]+)\\].*", "\\1", conv$table$Parameter[last]))
+  expect_equal(conv$table$Rhat[last], pdm:::rhat_single(fit$theta_1[, tidx]))
+
+  expect_true(all(is.finite(conv$table$Rhat)))
+
+  # And it is genuinely the rank-normalized statistic, not the plain split one.
+  # On a heavy-tailed precision the two separate; a table reporting the plain
+  # one under this name would pass every assertion above.
+  expect_false(isTRUE(all.equal(conv$table$Rhat[row],
+                                pdm:::rhat_split_single(fit$prec_theta1))))
+})
+
+
+test_that("Rhat matches posterior::rhat on the same draws", {
+  skip_if_not_installed("posterior")
+
+  # The reference comparison, on the shipped path rather than on the internal
+  # alone: what the table reports for one chain is what Stan would report.
+  fit  <- conv_fit()
+  conv <- mcmc_convergence(fit, theta_timepoints = NULL)
+
+  for (nm in c("prec_y", "theta_01", "prec_theta1")) {
+    lbl <- switch(nm, prec_y = "V^{-1}", theta_01 = "theta_01",
+                  prec_theta1 = "W_1^{-1}")
+    expect_equal(conv$table$Rhat[match(lbl, conv$table$Parameter)],
+                 posterior::rhat(fit[[nm]]), tolerance = 1e-10, info = nm)
+  }
+})
+
+
+test_that("show_rhat_split adds a column without moving any existing one", {
+  # documentation-standards.md 3f: a show_* flag adds columns and never
+  # redefines one. `Rhat` is the column that would be tempting to swap for the
+  # friendlier statistic, and it must stay put -- as must `Overall`, which is
+  # classified from neither.
+  off <- mcmc_convergence(conv_fit())
+  on  <- mcmc_convergence(conv_fit(), show_rhat_split = TRUE)
+
+  expect_false("Rhat_split" %in% names(off$table))
+  expect_identical(names(off$table), setdiff(names(on$table), "Rhat_split"))
+  for (col in names(off$table)) {
+    expect_identical(off$table[[col]], on$table[[col]], info = col)
+  }
+
+  # The two are different statistics, and the plain one is the more forgiving
+  # here -- which is the reason it is not the reported column.
+  row <- match("W_1^{-1}", on$table$Parameter)
+  expect_lt(on$table$Rhat_split[row], on$table$Rhat[row])
+})
+
+
+test_that("the R-hat columns are stored unrounded and follow digits", {
+  conv <- mcmc_convergence(conv_fit(), show_rhat_split = TRUE)
+
+  # Same contract as every other numeric column: raw in the object, formatted
+  # only on the way out.
+  for (col in c("Rhat", "Rhat_split")) {
+    expect_gt(max(abs(conv$table[[col]] - round(conv$table[[col]], 3)),
+                  na.rm = TRUE), 0)
+  }
+
+  out3 <- capture.output(print(conv, digits = 3L))
+  out6 <- capture.output(print(conv, digits = 6L))
+  expect_match(printed_field(out3, "W_1\\^\\{-1\\}", "Rhat"), "^[0-9]+\\.[0-9]{3}$")
+  expect_match(printed_field(out6, "W_1\\^\\{-1\\}", "Rhat"), "^[0-9]+\\.[0-9]{6}$")
+
+  # The footer names the two limits that matter, so nobody reads the column as
+  # a verdict or as a substitute for several chains.
+  expect_match(paste(out3, collapse = "\n"), "does not enter Overall")
+  expect_match(paste(out3, collapse = "\n"), "never left one mode")
 })

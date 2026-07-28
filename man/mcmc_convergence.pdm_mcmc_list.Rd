@@ -145,9 +145,9 @@ of the weight trajectory:
 
 \tabular{lrr}{
 \strong{Statistic} \tab \strong{Largest} \tab \strong{Points above 1.1} \cr
-classic \tab 1.073 \tab 0\\% \cr
-split \tab 1.100 \tab 0\\% \cr
-rank-normalized, folded \tab 1.153 \tab 3.7\\%
+classic \tab 1.073 \tab 0\% \cr
+split \tab 1.100 \tab 0\% \cr
+rank-normalized, folded \tab 1.153 \tab 3.7\%
 }
 
 Splitting contributes 0.027 and rank-normalization with folding a further
@@ -180,7 +180,7 @@ all 800 \tab 1.153
 }
 
 Three points report a value that clears every threshold in common use,
-on a fit whose true maximum is 1.153; twenty recover 97\\% of it. The grids
+on a fit whose true maximum is 1.153; twenty recover 97\% of it. The grids
 are not nested, which is why the sequence is not monotone. Twenty is
 therefore the default, matching the screen behind
 \code{\link{summary.pdm_mcmc_list}} so that the two never disagree. A

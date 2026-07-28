@@ -271,7 +271,7 @@ fit <- mcmc_normal_localtrend(
   seed               = 456
 )
 
-## 3. Default diagnostics (scalars + states at 25\\%, 50\\%, 75\\%) ---------
+## 3. Default diagnostics (scalars + 20 evenly spaced state points) ------
 conv <- mcmc_convergence(fit)
 print(conv)
 
@@ -311,7 +311,7 @@ conv_var$table[, c("Parameter", "Rhat", "Rhat_split")]
 conv_strict <- mcmc_convergence(fit, ess_thresholds = c(75, 50, 25))
 print(conv_strict)
 
-# Post-process: flag parameters with ESS efficiency below 25\\%:
+# Post-process: flag parameters with ESS efficiency below 25\%:
 conv$table[conv$table$Efficiency < 25, ]
 }
 

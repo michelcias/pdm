@@ -168,8 +168,12 @@ rhat_basic <- function(x) {
 #' \emph{Bayesian Analysis}, \strong{16}(2), 667--718.
 #' \doi{10.1214/20-BA1221}
 #'
-#' @seealso \code{\link{mcmc_convergence}}, which reports these for the
-#'   parameters of a fit.
+#' @seealso \code{\link{mcmc_convergence.pdm_mcmc_list}} for the table these
+#'   build, computed for the parameters of a fit;
+#'   \code{\link{mcmc_convergence}} for the single-chain diagnostics, which do
+#'   not use them;
+#'   \code{\link{pdm}} for the catalog of samplers, all of which accept
+#'   `chains`.
 #'
 #' @examples
 #' set.seed(1)

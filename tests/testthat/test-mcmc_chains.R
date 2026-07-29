@@ -445,3 +445,25 @@ test_that("rhat_variants() guards exactly as rhat_rank_normalized() does", {
     expect_true(is.na(rhat_rank_normalized(m)))
   }
 })
+
+
+test_that("warmup passed to the single-chain method warns and is ignored", {
+  # The generic's `...` would otherwise swallow it without a word, so a user who
+  # learned the argument from the multi-chain method and applied it to one chain
+  # would get the undiscarded table and no hint the warmup had not happened.
+  y   <- make_y(n = 40)
+  fit <- run_ll(y, burnin = 50, thinning = 1, n_draws = 200, seed = 3)
+
+  expect_warning(a <- mcmc_convergence(fit, warmup = 100),
+                 "applies to the multi-chain method")
+
+  # Ignored, not partially applied: the table is the one computed on every draw.
+  expect_equal(a$table, mcmc_convergence(fit)$table)
+  expect_identical(a$n_draws, 200L)
+
+  # And the multi-chain method is unaffected -- it takes the argument for real.
+  fits <- run_ll(y, burnin = 50, thinning = 1, n_draws = 200, seed = 3,
+                 chains = 2)
+  expect_no_warning(b <- mcmc_convergence(fits, warmup = 100))
+  expect_identical(b$n_draws, 100L)
+})

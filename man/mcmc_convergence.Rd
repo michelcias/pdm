@@ -25,7 +25,13 @@ mcmc_convergence(object, ...)
 result of one of the \verb{mcmc_*()} fitting functions (for example
 \code{\link{mcmc_normal_localtrend}}).}
 
-\item{...}{Additional arguments (currently unused).}
+\item{...}{Additional arguments (currently unused). Passing \code{warmup} is
+accepted but ignored, with a warning: it belongs to
+\code{\link{mcmc_convergence.pdm_mcmc_list}}, and the diagnostics here are
+computed on every retained draw. It is not offered on this method because
+Heidelberger--Welch estimates where stationarity begins, so discarding a
+warmup chosen in advance would change what the reported test means. Subset
+the fit before calling if draws must be dropped.}
 
 \item{theta_timepoints}{Which time points of the latent state chains to
 include. Either \strong{a count} — a single whole number, meaning that many

@@ -50,6 +50,10 @@
 #'   chain before diagnosing. Default `0`, which diagnoses everything stored and
 #'   is what earlier versions did.
 #'
+#'   **This method only.** The single-chain method
+#'   (\code{\link{mcmc_convergence}}) does not take it and warns if it is
+#'   passed, rather than letting the generic's `...` swallow it in silence.
+#'
 #'   Prefer this to truncating the fit yourself. The draws are reached one
 #'   parameter at a time, so discarding here costs nothing, whereas building a
 #'   truncated copy of a `pdm_mcmc_list` duplicates every retained draw — for a

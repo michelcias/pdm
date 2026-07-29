@@ -63,6 +63,10 @@ that column alone. See "The three R-hat statistics" below.}
 chain before diagnosing. Default \code{0}, which diagnoses everything stored and
 is what earlier versions did.
 
+\strong{This method only.} The single-chain method
+(\code{\link{mcmc_convergence}}) does not take it and warns if it is
+passed, rather than letting the generic's \code{...} swallow it in silence.
+
 Prefer this to truncating the fit yourself. The draws are reached one
 parameter at a time, so discarding here costs nothing, whereas building a
 truncated copy of a \code{pdm_mcmc_list} duplicates every retained draw — for a

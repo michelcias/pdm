@@ -55,7 +55,13 @@
 #'   \code{\link{mcmc_convergence.pdm_mcmc_list}}. A reconciliation column, not
 #'   a basis for deciding convergence: `Rhat` always holds the Vehtari et al.
 #'   (2021) statistic whatever this is set to.
-#' @param ... Additional arguments (currently unused).
+#' @param ... Additional arguments (currently unused). Passing `warmup` is
+#'   accepted but ignored, with a warning: it belongs to
+#'   \code{\link{mcmc_convergence.pdm_mcmc_list}}, and the diagnostics here are
+#'   computed on every retained draw. It is not offered on this method because
+#'   Heidelberger--Welch estimates where stationarity begins, so discarding a
+#'   warmup chosen in advance would change what the reported test means. Subset
+#'   the fit before calling if draws must be dropped.
 #'
 #' @return An object of class `"pdm_convergence"`, which is a list with:
 #'   \describe{
@@ -340,6 +346,22 @@ mcmc_convergence.pdm_mcmc <- function(object,
                                       show_overall     = TRUE,
                                       show_rhat_split  = FALSE,
                                       ...) {
+
+  # `warmup` belongs to the multi-chain method and is meaningless here, but the
+  # generic's `...` would swallow it without a word -- so a user who learned the
+  # argument from `mcmc_convergence(fits)` and applied it to one chain would get
+  # the undiscarded table and no hint that the warmup had not happened. Say so.
+  #
+  # Not extended to this method on purpose: Heidelberger-Welch estimates where
+  # stationarity begins, so discarding a user-chosen warmup before running it
+  # would change what the reported diagnostic means.
+  if ("warmup" %in% names(list(...))) {
+    warning("'warmup' applies to the multi-chain method ",
+            "(mcmc_convergence.pdm_mcmc_list) only, and is ignored here: the ",
+            "single-chain diagnostics are computed on every retained draw. ",
+            "Subset the fit before calling if a warmup must be discarded.",
+            call. = FALSE)
+  }
 
   # --- Input validation ---------------------------------------------------
   if (!inherits(object, "pdm_mcmc")) {

@@ -261,8 +261,16 @@ pool_chains <- function(x) {
 #'
 #' @keywords internal
 #' @noRd
-scalar_draws <- function(configs, nm, n_draw) {
-  m <- vapply(configs, function(cfg) cfg[[nm]]$draws, numeric(n_draw))
+scalar_draws <- function(configs, nm, n_draw, keep = NULL) {
+  # `keep` subsets inside the extraction rather than after it, so a caller that
+  # discards a warmup never materialises the draws it is about to throw away.
+  # `n_draw` is the count being asked for, which is `length(keep)` when one is
+  # given -- the argument stays required so the vapply template still checks it.
+  m <- if (is.null(keep)) {
+    vapply(configs, function(cfg) cfg[[nm]]$draws, numeric(n_draw))
+  } else {
+    vapply(configs, function(cfg) cfg[[nm]]$draws[keep], numeric(n_draw))
+  }
   dim(m) <- c(n_draw, length(configs))
   m
 }

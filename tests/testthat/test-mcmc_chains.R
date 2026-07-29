@@ -152,6 +152,66 @@ test_that("mcmc_convergence() rejects invalid thresholds", {
 })
 
 
+test_that("warmup = discards exactly what truncating the fit would have", {
+  # The argument exists to spare the caller a truncated copy of the whole fit,
+  # which on a long unthinned run is gigabytes. That is only worth having if it
+  # is the *same* computation, so this compares it against the copy it replaces
+  # rather than against a stored expectation.
+  y    <- make_y(n = 40)
+  fits <- run_ll(y, burnin = 50, thinning = 1, n_draws = 200, seed = 3,
+                 chains = 2)
+
+  # The truncation `.scalar_view()`-style callers perform by hand: drop the
+  # first `w` rows of every draw-indexed slot and restate the two attributes
+  # that record the geometry.
+  truncate_fit <- function(fit, w, nd = 200L) {
+    keep    <- seq.int(w + 1L, nd)
+    restate <- function(a) {
+      if (!is.null(a[["n_draws"]])) a[["n_draws"]] <- length(keep)
+      if (!is.null(a[["burnin"]]))  a[["burnin"]]  <- a[["burnin"]] + w
+      a
+    }
+    out <- lapply(fit, function(ch) {
+      o <- lapply(ch, function(x) {
+        if (is.matrix(x) && nrow(x) == nd)          x[keep, , drop = FALSE]
+        else if (is.null(dim(x)) && length(x) == nd) x[keep]
+        else                                         x
+      })
+      attributes(o) <- restate(attributes(ch))
+      o
+    })
+    attributes(out) <- restate(attributes(fit))
+    out
+  }
+
+  for (w in c(50L, 120L)) {
+    expect_equal(mcmc_convergence(fits, warmup = w)$table,
+                 mcmc_convergence(truncate_fit(fits, w))$table,
+                 tolerance = 0)
+  }
+
+  # The default has to leave every existing caller where it was.
+  expect_equal(mcmc_convergence(fits)$table,
+               mcmc_convergence(fits, warmup = 0L)$table)
+
+  # And the object says which draws it saw rather than how many were stored.
+  conv <- mcmc_convergence(fits, warmup = 50L)
+  expect_identical(conv$n_draws, 150L)
+  expect_identical(conv$warmup,  50L)
+})
+
+
+test_that("mcmc_convergence() rejects an impossible warmup", {
+  y    <- make_y(n = 40)
+  fits <- run_ll(y, burnin = 50, thinning = 1, n_draws = 100, seed = 3,
+                 chains = 2)
+
+  expect_error(mcmc_convergence(fits, warmup = 100), "leaves no draws")
+  expect_error(mcmc_convergence(fits, warmup = -1),  "non-negative")
+  expect_error(mcmc_convergence(fits, warmup = 1.5), "whole number")
+})
+
+
 test_that("R-hat separates an under-burned run from a converged one", {
   # The point of the diagnostic is not that it runs but that it discriminates.
   # Both fits use the same data, priors and number of chains; only the burn-in

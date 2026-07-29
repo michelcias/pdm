@@ -46,6 +46,18 @@
 #'   not for deciding convergence: `Rhat` always holds the Vehtari et al.
 #'   (2021) statistic whatever this is set to, and `Overall` is classified from
 #'   that column alone. See "The three R-hat statistics" below.
+#' @param warmup Integer >= 0, how many draws to discard from the start of every
+#'   chain before diagnosing. Default `0`, which diagnoses everything stored and
+#'   is what earlier versions did.
+#'
+#'   Prefer this to truncating the fit yourself. The draws are reached one
+#'   parameter at a time, so discarding here costs nothing, whereas building a
+#'   truncated copy of a `pdm_mcmc_list` duplicates every retained draw — for a
+#'   long unthinned run, gigabytes. The diagnostics are computed on exactly the
+#'   draws such a copy would have carried.
+#'
+#'   The returned object reports `n_draws` after the discard, and `warmup`
+#'   alongside it.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @return An object of class `"pdm_convergence_multi"`, a list with:
@@ -58,7 +70,9 @@
 #'       to the fourth decimal. Optional columns, controlled by the `show_*` arguments: `ESS_bulk`,
 #'       `ESS_tail`, `Overall`.}
 #'     \item{\code{chains}}{Number of chains.}
-#'     \item{\code{n_draws}}{Number of retained samples per chain (\eqn{N}).}
+#'     \item{\code{n_draws}}{Number of samples per chain the diagnostics saw
+#'       (\eqn{N}), that is the stored count less `warmup`.}
+#'     \item{\code{warmup}}{Draws discarded from the start of each chain.}
 #'     \item{\code{model_type}}{Character string, e.g. `"locallevel"`.}
 #'     \item{\code{rhat_threshold}}{The \eqn{\hat{R}} cut-off used.}
 #'     \item{\code{ess_threshold}}{The ESS cut-off used.}
@@ -256,6 +270,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
                                            show_ess         = TRUE,
                                            show_overall     = TRUE,
                                            show_rhat_variants = FALSE,
+                                           warmup           = 0L,
                                            ...) {
 
   # --- Input validation ---------------------------------------------------
@@ -282,9 +297,29 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
   }
   # ------------------------------------------------------------------------
 
-  n_draws    <- as.integer(attr(object, "n_draws"))
+  n_stored   <- as.integer(attr(object, "n_draws"))
   n_chains   <- as.integer(attr(object, "chains"))
   model_type <- attr(object, "model_type")
+
+  if (!is.numeric(warmup) || length(warmup) != 1L || is.na(warmup) ||
+      warmup < 0 || warmup != as.integer(warmup)) {
+    stop("'warmup' must be a single non-negative whole number")
+  }
+  warmup <- as.integer(warmup)
+  if (warmup >= n_stored) {
+    stop("'warmup' (", warmup, ") leaves no draws to diagnose; the chains hold ",
+         n_stored, ".")
+  }
+
+  # Discarding here rather than in the caller is the whole point of the
+  # argument. Every draw is reached one parameter at a time, as an
+  # `n_draws x n_chains` matrix, so subsetting inside those extractions costs
+  # nothing; a caller that instead truncates the fit first pays for a second
+  # copy of every retained draw, which on a long run is gigabytes. The
+  # diagnostics are computed on exactly the draws a truncated copy would have
+  # carried, so the two routes agree to the bit.
+  keep    <- if (warmup > 0L) seq.int(warmup + 1L, n_stored) else NULL
+  n_draws <- n_stored - warmup
 
   # Helper: diagnostics row for one n_draws x n_chains matrix of draws
   compute_row <- function(draws, label) {
@@ -339,7 +374,7 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
   param_names <- names(configs[[1L]])
 
   rows_scalar <- lapply(param_names, function(nm) {
-    compute_row(scalar_draws(configs, nm, n_draws),
+    compute_row(scalar_draws(configs, nm, n_draws, keep),
                 configs[[1L]][[nm]]$name_str)
   })
 
@@ -364,8 +399,11 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
       j            <- sub("theta_", "", sname)
 
       for (tidx in time_indices) {
-        draws <- vapply(object, function(ch) ch[[sname]][, tidx],
-                        numeric(n_draws))
+        draws <- if (is.null(keep)) {
+          vapply(object, function(ch) ch[[sname]][, tidx], numeric(n_draws))
+        } else {
+          vapply(object, function(ch) ch[[sname]][keep, tidx], numeric(n_draws))
+        }
         dim(draws) <- c(n_draws, n_chains)
         rows_theta[[length(rows_theta) + 1L]] <-
           compute_row(draws, sprintf("theta_%s[t=%d]", j, tidx))
@@ -380,7 +418,11 @@ mcmc_convergence.pdm_mcmc_list <- function(object,
   result <- list(
     table          = table,
     chains         = n_chains,
+    # The draws the diagnostics actually saw, not the number stored. `warmup`
+    # carries the difference, so a table can say which it is instead of leaving
+    # the reader to infer it.
     n_draws        = n_draws,
+    warmup         = warmup,
     model_type     = model_type,
     rhat_threshold = rhat_threshold,
     ess_threshold  = ess_threshold

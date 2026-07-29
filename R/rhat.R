@@ -123,20 +123,73 @@ rhat_basic <- function(x) {
 }
 
 
-#' Rank-normalized split-R-hat
+#' Convergence statistics for a matrix of draws
 #'
-#' The maximum of the statistic computed on the rank-normalized draws (which
-#' detects disagreement in location) and on the rank-normalized absolute
-#' deviations from the median (the *folded* version, which detects disagreement
-#' in scale). Values below roughly 1.01 are consistent with convergence.
+#' The three diagnostics of Vehtari et al. (2021), each taking an
+#' `n_draws x n_chains` matrix and returning one number. `mcmc_convergence()`
+#' computes its table from exactly these, so a value obtained here and one read
+#' out of that table are the same number by construction.
 #'
-#' @param x Numeric matrix, draws in rows and chains in columns.
+#' They are exported for quantities `mcmc_convergence()` does not itself
+#' tabulate — a derived series, a transformed parameter, one time point of a
+#' latent state at a density the table's own screen does not reach. Assembling
+#' the matrix is the caller's job; the chains must be columns.
 #'
-#' @return Single numeric, or `NA_real_` for a constant, non-finite or
-#'   single-chain input.
+#' \describe{
+#'   \item{`rhat_rank_normalized()`}{The maximum of the statistic on the
+#'     rank-normalized draws (which detects disagreement in location) and on the
+#'     rank-normalized absolute deviations from the median (the *folded*
+#'     version, which detects disagreement in scale). Values below roughly 1.01
+#'     are consistent with convergence.}
+#'   \item{`ess_bulk()`}{Effective sample size of the rank-normalized split
+#'     chains: how well the bulk of the distribution, and therefore the
+#'     posterior mean and median, is resolved.}
+#'   \item{`ess_tail()`}{The smaller of the effective sample sizes of the
+#'     indicators that a draw falls below the 5\% and below the 95\% quantile:
+#'     how well the extremes are resolved, which is what an interval estimate
+#'     depends on. A chain can have a healthy bulk ESS and still be unable to
+#'     place its own credible interval.}
+#' }
 #'
-#' @keywords internal
-#' @noRd
+#' @param x Numeric matrix, draws in rows and chains in columns. Chains are
+#'   split in half internally, so the matrix should hold the draws as they were
+#'   retained, not already halved.
+#'
+#' @return A single numeric, or `NA_real_`: for a constant or non-finite input
+#'   in every case, additionally for a single-chain input in
+#'   `rhat_rank_normalized()`, and additionally for a degenerate tail in
+#'   `ess_tail()` (an indicator that is constant carries no information, and the
+#'   surviving tail is not reported in its place).
+#'
+#' @references
+#' Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C. (2021).
+#' Rank-normalization, folding, and localization: An improved \eqn{\hat{R}} for
+#' assessing convergence of MCMC (with discussion).
+#' \emph{Bayesian Analysis}, \strong{16}(2), 667--718.
+#' \doi{10.1214/20-BA1221}
+#'
+#' @seealso \code{\link{mcmc_convergence}}, which reports these for the
+#'   parameters of a fit.
+#'
+#' @examples
+#' set.seed(1)
+#' # Four independent chains from the same distribution.
+#' x <- matrix(rnorm(4000), nrow = 1000, ncol = 4)
+#' rhat_rank_normalized(x)   # near 1
+#' ess_bulk(x)               # near the 4000 draws
+#' ess_tail(x)
+#'
+#' # One chain shifted: R-hat rises, the effective sample size falls.
+#' x[, 1] <- x[, 1] + 1
+#' rhat_rank_normalized(x)
+#' ess_bulk(x)
+#'
+#' @name convergence-statistics
+NULL
+
+
+#' @rdname convergence-statistics
+#' @export
 rhat_rank_normalized <- function(x) {
   if (!is.matrix(x) || ncol(x) < 2L) return(NA_real_)
   rhat_rank_core(x)
@@ -275,18 +328,8 @@ ess_mean <- function(x) {
 }
 
 
-#' Bulk effective sample size
-#'
-#' Effective sample size of the rank-normalized split chains. It measures how
-#' well the bulk of the distribution -- and therefore the posterior mean and
-#' median -- is resolved.
-#'
-#' @param x Numeric matrix, draws in rows and chains in columns.
-#'
-#' @return Single numeric, or `NA_real_`.
-#'
-#' @keywords internal
-#' @noRd
+#' @rdname convergence-statistics
+#' @export
 ess_bulk <- function(x) {
   if (!all(is.finite(x)))                    return(NA_real_)
   if (max(x) - min(x) < .Machine$double.eps) return(NA_real_)
@@ -294,19 +337,8 @@ ess_bulk <- function(x) {
 }
 
 
-#' Tail effective sample size
-#'
-#' The smaller of the effective sample sizes of the indicators that a draw falls
-#' below the 5% and below the 95% quantile. It measures how well the extremes
-#' are resolved, which is what interval estimates depend on; a chain can have a
-#' healthy bulk ESS and still be unable to place its own credible interval.
-#'
-#' @param x Numeric matrix, draws in rows and chains in columns.
-#'
-#' @return Single numeric, or `NA_real_` when either tail is degenerate.
-#'
-#' @keywords internal
-#' @noRd
+#' @rdname convergence-statistics
+#' @export
 ess_tail <- function(x) {
   if (!all(is.finite(x)))                    return(NA_real_)
   if (max(x) - min(x) < .Machine$double.eps) return(NA_real_)

@@ -436,3 +436,22 @@ test_that("the degenerate-tail verdict matches posterior:: too", {
   y[1:120, ] <- min(y) - 1
   expect_equal(ess_tail(y), posterior::ess_tail(y), tolerance = 1e-10)
 })
+
+
+test_that("the three statistics are exported and reachable without :::", {
+  # They were reached with `:::` by a downstream compendium diagnosing latent
+  # states at every time point, which `mcmc_convergence()`'s own screen does not
+  # cover. That made a private kernel load-bearing: 2026-07-28 changed the
+  # arithmetic inside `autocovariance()`, and nothing would have told the caller.
+  ns <- asNamespace("pdm")
+  for (f in c("rhat_rank_normalized", "ess_bulk", "ess_tail")) {
+    expect_true(f %in% getNamespaceExports(ns), info = f)
+  }
+
+  # And the exported entry points are the same functions the internal path uses,
+  # not a wrapper that could drift from them.
+  x <- iid_chains(n = 400, m = 4, seed = 61)
+  expect_identical(pdm::rhat_rank_normalized(x), rhat_rank_normalized(x))
+  expect_identical(pdm::ess_bulk(x),             ess_bulk(x))
+  expect_identical(pdm::ess_tail(x),             ess_tail(x))
+})

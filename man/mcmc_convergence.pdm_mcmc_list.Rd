@@ -12,6 +12,7 @@
   show_ess = TRUE,
   show_overall = TRUE,
   show_rhat_variants = FALSE,
+  warmup = 0L,
   ...
 )
 }
@@ -58,6 +59,19 @@ not for deciding convergence: \code{Rhat} always holds the Vehtari et al.
 (2021) statistic whatever this is set to, and \code{Overall} is classified from
 that column alone. See "The three R-hat statistics" below.}
 
+\item{warmup}{Integer >= 0, how many draws to discard from the start of every
+chain before diagnosing. Default \code{0}, which diagnoses everything stored and
+is what earlier versions did.
+
+Prefer this to truncating the fit yourself. The draws are reached one
+parameter at a time, so discarding here costs nothing, whereas building a
+truncated copy of a \code{pdm_mcmc_list} duplicates every retained draw — for a
+long unthinned run, gigabytes. The diagnostics are computed on exactly the
+draws such a copy would have carried.
+
+The returned object reports \code{n_draws} after the discard, and \code{warmup}
+alongside it.}
+
 \item{...}{Additional arguments (currently unused).}
 }
 \value{
@@ -71,7 +85,9 @@ with the one \code{\link{summary.pdm_mcmc_list}} reports, rather than
 to the fourth decimal. Optional columns, controlled by the \verb{show_*} arguments: \code{ESS_bulk},
 \code{ESS_tail}, \code{Overall}.}
 \item{\code{chains}}{Number of chains.}
-\item{\code{n_draws}}{Number of retained samples per chain (\eqn{N}).}
+\item{\code{n_draws}}{Number of samples per chain the diagnostics saw
+(\eqn{N}), that is the stored count less \code{warmup}.}
+\item{\code{warmup}}{Draws discarded from the start of each chain.}
 \item{\code{model_type}}{Character string, e.g. \code{"locallevel"}.}
 \item{\code{rhat_threshold}}{The \eqn{\hat{R}} cut-off used.}
 \item{\code{ess_threshold}}{The ESS cut-off used.}

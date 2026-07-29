@@ -198,6 +198,32 @@ test_that("ess_tail() survives ties at the minimum", {
   expect_gt(ess_tail(y), 0)
 })
 
+test_that("ESS survives chains long enough to overflow the FFT normaliser", {
+  # `autocovariance()` normalises by `n_pad * n`. Both were integers, so the
+  # product hit 2^31 once `n` reached 32768 -- and R answers an integer overflow
+  # with NA and a warning, not an error. `ess_bulk()` and `ess_tail()` split the
+  # chains before they get here, so a caller met it at 65536 draws per chain.
+  #
+  # It hid well: R-hat shares none of this arithmetic and went on reporting
+  # healthy values beside a column of missing ESS, which reads as a quirk of the
+  # estimator rather than as a bug. Long runs are exactly the ones nobody
+  # repeats at a smaller size to check.
+  #
+  # 2^16 exactly, the first size that failed; 65535 still worked.
+  x <- iid_chains(n = 65536L, m = 4L, seed = 51)
+
+  expect_no_warning(eb <- ess_bulk(x))
+  expect_no_warning(et <- ess_tail(x))
+
+  # Independent draws, so both should land near the 262144 total. The loose
+  # bound is deliberate: the point is a real number rather than NA.
+  expect_true(is.finite(eb))
+  expect_true(is.finite(et))
+  expect_gt(eb, 0.5 * 4 * 65536)
+  expect_gt(et, 0.5 * 4 * 65536)
+})
+
+
 test_that("resolve_timepoints() accepts a count or an explicit grid", {
   # A count expands to evenly spaced fractions spanning (0, 1) without the ends.
   expect_equal(resolve_timepoints(20L), seq(0.05, 0.95, length.out = 20L))

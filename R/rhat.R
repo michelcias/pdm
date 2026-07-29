@@ -41,7 +41,14 @@ autocovariance <- function(y) {
   yc    <- c(yc, rep.int(0, n_pad - n))
 
   f  <- fft(yc)
-  ac <- Re(fft(f * Conj(f), inverse = TRUE)) / (n_pad * n)
+  # In double precision, not integer. `nextn()` returns an integer and `n` is
+  # one, so `n_pad * n` is an integer product; it reaches 2^31 at n = 32768,
+  # where `n_pad` is already 65536. R answers an integer overflow with NA and a
+  # warning rather than an error, so the NA propagates all the way out as a
+  # missing effective sample size, with nothing to say why. The callers split
+  # the chains before they get here, so this reaches a user at 65536 draws per
+  # chain.
+  ac <- Re(fft(f * Conj(f), inverse = TRUE)) / (as.numeric(n_pad) * n)
   ac[seq_len(n)]
 }
 
@@ -257,7 +264,10 @@ ess_mean <- function(x) {
     }
   }
 
-  n_total <- n_ch * n_draw
+  # Double precision here too, for the reason spelled out in `autocovariance()`.
+  # This product is the returned sample size itself, so an overflow would not
+  # merely lose the answer, it would replace it with NA at the last step.
+  n_total <- as.numeric(n_ch) * n_draw
   tau_hat <- -1 + 2 * sum(rho_hat_t[seq_len(max_t)]) + rho_hat_t[max_t + 1L]
   # Floor on tau keeps the estimate finite for a near-independent chain.
   tau_hat <- max(tau_hat, 1 / log10(n_total))

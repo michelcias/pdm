@@ -70,7 +70,14 @@ detect_model_type <- function(x) {
   # 2. Detect model class from class names
   classes <- class(x)
 
-  if (any(grepl("mixture", classes, fixed = TRUE))) {
+  # The Poisson mixture must be tested before the bare "mixture" pattern, which
+  # its class name also matches. Its components are two rates, not two
+  # mean/precision pairs, so it needs a class of its own rather than the
+  # Gaussian mixture's configuration.
+  if (any(grepl("poisson_mixture", classes, fixed = TRUE))) {
+    model_class <- "poisson_mixture"
+    has_mixture <- TRUE
+  } else if (any(grepl("mixture", classes, fixed = TRUE))) {
     model_class <- "mixture"
     has_mixture <- TRUE
   } else if (any(grepl("binomial", classes, fixed = TRUE)) ||
@@ -116,14 +123,17 @@ detect_model_type <- function(x) {
 #' @description Calculates the total number of scalar parameters for a given
 #'   model configuration based on its observation family and polynomial order.
 #'
-#' @param model_class Character: "mixture", "binomial", "poisson", or "normal".
+#' @param model_class Character: "mixture", "poisson_mixture", "binomial",
+#'   "poisson", or "normal".
 #' @param model_order Integer: 1, 2, or 3.
 #'
 #' @return Integer count of expected parameters.
 #'
 #' @details Parameter counts by model class:
 #'   \itemize{
-#'     \item \strong{Mixture models}: 4 mixture params (mu_1, mu_2, phi_1, phi_2) +
+#'     \item \strong{Gaussian mixture models}: 4 mixture params (mu_1, mu_2, phi_1, phi_2) +
+#'       model_order initial states + model_order innovation precisions
+#'     \item \strong{Poisson mixture models}: 2 mixture params (lambda_1, lambda_2) +
 #'       model_order initial states + model_order innovation precisions
 #'     \item \strong{Normal models}: 1 observation precision (V^-1) +
 #'       model_order initial states + model_order innovation precisions
@@ -136,6 +146,7 @@ detect_model_type <- function(x) {
 #'   Examples:
 #'   \itemize{
 #'     \item mixture order 1 = 4 + 1 + 1 = 6
+#'     \item poisson_mixture order 1 = 2 + 1 + 1 = 4
 #'     \item normal order 2 = 1 + 2 + 2 = 5
 #'     \item binomial order 3 = 0 + 3 + 3 = 6
 #'     \item poisson order 1 = 0 + 1 + 1 = 2
@@ -146,8 +157,10 @@ detect_model_type <- function(x) {
 get_n_params <- function(model_class, model_order) {
 
   # Validate inputs
-  if (!model_class %in% c("mixture", "binomial", "poisson", "normal")) {
-    stop("`model_class` must be 'mixture', 'binomial', 'poisson', or 'normal'")
+  if (!model_class %in% c("mixture", "poisson_mixture", "binomial",
+                          "poisson", "normal")) {
+    stop("`model_class` must be 'mixture', 'poisson_mixture', 'binomial', ",
+         "'poisson', or 'normal'")
   }
   if (!model_order %in% c(1L, 2L, 3L)) {
     stop("`model_order` must be 1, 2, or 3")
@@ -157,6 +170,9 @@ get_n_params <- function(model_class, model_order) {
   if (model_class == "mixture") {
     # 4 mixture components + initial states + innovation precisions
     4L + model_order + model_order
+  } else if (model_class == "poisson_mixture") {
+    # 2 component rates + initial states + innovation precisions
+    2L + model_order + model_order
   } else if (model_class == "normal") {
     # 1 observation precision + initial states + innovation precisions
     1L + model_order + model_order
@@ -242,8 +258,10 @@ get_param_config <- function(x,
   }
 
   # 2. Validate inputs
-  if (!model_class %in% c("mixture", "binomial", "poisson", "normal")) {
-    stop("`model_class` must be 'mixture', 'binomial', 'poisson', or 'normal'")
+  if (!model_class %in% c("mixture", "poisson_mixture", "binomial",
+                          "poisson", "normal")) {
+    stop("`model_class` must be 'mixture', 'poisson_mixture', 'binomial', ",
+         "'poisson', or 'normal'")
   }
   if (!model_order %in% c(1L, 2L, 3L)) {
     stop("`model_order` must be 1, 2, or 3")
@@ -252,7 +270,28 @@ get_param_config <- function(x,
   # 3. Initialize configuration list
   config <- list()
 
-  # 4. Add mixture components (if applicable)
+  # 4a. Add Poisson mixture components (two rates, no precisions)
+  if (model_class == "poisson_mixture") {
+    config$lambda_1 <- list(
+      draws = x$lambda_1,
+      name = quote(lambda[1]),
+      label = expression(lambda[1]),
+      name_str = "lambda_1",
+      label_str = "lambda_1",
+      color = "darkorange"  # Component 1 color
+    )
+
+    config$lambda_2 <- list(
+      draws = x$lambda_2,
+      name = quote(lambda[2]),
+      label = expression(lambda[2]),
+      name_str = "lambda_2",
+      label_str = "lambda_2",
+      color = "darkviolet"  # Component 2 color
+    )
+  }
+
+  # 4b. Add Gaussian mixture components (if applicable)
   if (model_class == "mixture") {
     config$mu_1 <- list(
       draws = x$mu_1,
@@ -451,10 +490,12 @@ true_value_for <- function(name_str, true_values) {
   if (is.null(true_values)) return(NULL)
 
   keys <- c(
-    "mu_1"     = "mu_1",         # mixture component means
+    "mu_1"     = "mu_1",         # Gaussian mixture component means
     "mu_2"     = "mu_2",
-    "phi_1"    = "prec_1",       # mixture component precisions
+    "phi_1"    = "prec_1",       # Gaussian mixture component precisions
     "phi_2"    = "prec_2",
+    "lambda_1" = "lambda_1",     # Poisson mixture component rates
+    "lambda_2" = "lambda_2",
     "V^{-1}"   = "prec_y",       # observation precision (normal models)
     "theta_01" = "theta_01",     # initial states
     "theta_02" = "theta_02",

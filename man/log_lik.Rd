@@ -36,5 +36,6 @@ method.
 \code{\link{log_lik.poisson_locallevel}},
 \code{\link{log_lik.binomial_locallevel}},
 \code{\link{log_lik.probit_bernoulli_locallevel}},
-\code{\link{log_lik.normal_mixture_locallevel}} for the per-family methods.
+\code{\link{log_lik.normal_mixture_locallevel}},
+\code{\link{log_lik.poisson_mixture_locallevel}} for the per-family methods.
 }

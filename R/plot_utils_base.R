@@ -624,6 +624,216 @@ plot_mixture_params_base <- function(mu_1,
 }
 
 
+#' Plot Poisson mixture component parameters (base graphics)
+#'
+#' @description Four-panel view of the two component rates of a Poisson mixture:
+#'   their joint draws, each marginal posterior, and the posterior of their
+#'   separation.
+#'
+#' @details The Gaussian sibling, `plot_mixture_params_base()`, spends its four
+#'   panels on the four pairings of two means with two precisions. A Poisson
+#'   component has no precision to pair a rate with -- the variance is the mean
+#'   -- so three of those panels have no counterpart here. What replaces them is
+#'   the question the pairs were answering in aggregate: how far apart the two
+#'   components actually are, and how sure the posterior is of each.
+#'
+#'   Panel 4 plots \eqn{\lambda_2 - \lambda_1} directly. That difference is the
+#'   quantity a two-component fit lives or dies by: a posterior for it that
+#'   piles up near zero says the data did not need two components, whichever way
+#'   the marginals look.
+#'
+#' @param lambda_1 Numeric vector of MCMC draws for the component-1 rate.
+#' @param lambda_2 Numeric vector of MCMC draws for the component-2 rate.
+#' @param which Integer vector in 1:4 selecting panels. `NULL` shows all four.
+#' @param true_values Named list which may carry `lambda_1` and `lambda_2`, or
+#'   `NULL`.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return NULL (invisibly). Called for its side effects (plotting).
+#'
+#' @seealso \code{\link{plot.poisson_mixture_locallevel}} for the main plot
+#'   method that calls this function.
+#'
+#' @keywords internal
+#' @noRd
+plot_poisson_mixture_params_base <- function(lambda_1,
+                                             lambda_2,
+                                             which = NULL,
+                                             true_values = NULL,
+                                             ...) {
+
+  # ===========================================================================
+  # INPUT VALIDATION
+  # ===========================================================================
+
+  if (!is.numeric(lambda_1) || !is.numeric(lambda_2)) {
+    stop("All MCMC draw arguments must be numeric vectors")
+  }
+
+  if (length(lambda_2) != length(lambda_1)) {
+    stop("All MCMC draw vectors must have the same length")
+  }
+
+  if (is.null(which)) {
+    which <- 1:4
+  }
+
+  if (!is.numeric(which) || any(which != floor(which))) {
+    stop("`which` must be an integer vector")
+  }
+
+  if (any(which < 1) || any(which > 4)) {
+    stop("`which` must contain values between 1 and 4")
+  }
+
+  # ===========================================================================
+  # EXTRACT TRUE VALUES (if provided)
+  # ===========================================================================
+
+  true_lambda_1 <- NULL
+  true_lambda_2 <- NULL
+
+  if (!is.null(true_values)) {
+    if (!is.list(true_values)) {
+      warning("`true_values` must be a named list. Ignoring true values.")
+    } else {
+      for (nm in c("lambda_1", "lambda_2")) {
+        if (!nm %in% names(true_values)) next
+        val <- true_values[[nm]]
+        if (!is.numeric(val) || length(val) != 1) {
+          warning(sprintf("`true_values$%s` must be a single numeric value. Ignoring.", nm))
+          next
+        }
+        if (nm == "lambda_1") true_lambda_1 <- val else true_lambda_2 <- val
+      }
+    }
+  }
+
+  # Define color scheme (shared with the Gaussian mixture page)
+  col_comp1 <- grDevices::rgb(1.0, 0.55, 0.0, 0.4)      # darkorange
+  col_comp2 <- grDevices::rgb(0.58, 0.0, 0.83, 0.4)     # darkviolet
+  col_between <- grDevices::rgb(0.79, 0.28, 0.41, 0.4)  # mediumpurple
+
+  # ===========================================================================
+  # SETUP PLOTTING ENVIRONMENT
+  # ===========================================================================
+
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar))
+
+  par(mfrow = c(2, 2),
+      mar = c(4, 4, 2, 1),
+      oma = c(0, 0, 2, 0),
+      mgp = c(2.5, 1, 0))
+
+  # Draw one marginal posterior with an optional true-value rule.
+  draw_marginal <- function(draws, truth, lab, main_expr, fill) {
+    dens <- density(draws)
+    plot(dens,
+         xlab = lab,
+         ylab = "Density",
+         main = main_expr,
+         col = "black")
+    polygon(dens, col = fill, border = NA)
+    lines(dens)
+    grid()
+
+    if (!is.null(truth)) {
+      abline(v = truth, lty = 2, lwd = 2, col = "black")
+      legend("topright",
+             legend = "True Value",
+             lty = 2,
+             lwd = 2,
+             col = "black",
+             bty = "n",
+             cex = 0.9)
+    }
+  }
+
+  # ===========================================================================
+  # PANEL 1: lambda_1 vs lambda_2 (Component Separation)
+  # ===========================================================================
+
+  if (1 %in% which) {
+    plot(lambda_1,
+         lambda_2,
+         xlab = expression(lambda[1]),
+         ylab = expression(lambda[2]),
+         main = expression(paste(lambda[1], " vs ", lambda[2])),
+         pch = 16,
+         col = col_between)
+    grid()
+
+    if (!is.null(true_lambda_1) && !is.null(true_lambda_2)) {
+      points(true_lambda_1,
+             true_lambda_2,
+             pch = 4,
+             cex = 2,
+             lwd = 3,
+             col = "black")
+
+      legend("topright",
+             legend = "True Value",
+             pch = 4,
+             col = "black",
+             pt.lwd = 3,
+             bty = "n",
+             cex = 0.9)
+    }
+  }
+
+  # ===========================================================================
+  # PANEL 2: Marginal posterior of lambda_1
+  # ===========================================================================
+
+  if (2 %in% which) {
+    draw_marginal(lambda_1, true_lambda_1,
+                  expression(lambda[1]),
+                  expression(paste("Posterior of ", lambda[1])),
+                  col_comp1)
+  }
+
+  # ===========================================================================
+  # PANEL 3: Marginal posterior of lambda_2
+  # ===========================================================================
+
+  if (3 %in% which) {
+    draw_marginal(lambda_2, true_lambda_2,
+                  expression(lambda[2]),
+                  expression(paste("Posterior of ", lambda[2])),
+                  col_comp2)
+  }
+
+  # ===========================================================================
+  # PANEL 4: Posterior of the separation lambda_2 - lambda_1
+  # ===========================================================================
+
+  if (4 %in% which) {
+    true_gap <- if (!is.null(true_lambda_1) && !is.null(true_lambda_2)) {
+      true_lambda_2 - true_lambda_1
+    } else {
+      NULL
+    }
+
+    draw_marginal(lambda_2 - lambda_1, true_gap,
+                  expression(lambda[2] - lambda[1]),
+                  expression(paste("Separation ", lambda[2] - lambda[1])),
+                  col_between)
+  }
+
+  # ===========================================================================
+  # OVERALL TITLE
+  # ===========================================================================
+
+  mtext("Mixture Component Rates",
+        outer = TRUE,
+        cex = 1.3,
+        font = 2)
+
+  invisible(NULL)
+}
+
+
 # =============================================================================
 # Generic Alpha Plotting Functions
 # =============================================================================
@@ -1722,12 +1932,22 @@ plot_all_mixture_generic_base <- function(x,
   # ===========================================================================
 
   if (model_info$has_mixture) {
-    plot_mixture_params_base(x$mu_1,
-                             x$mu_2,
-                             x$prec_1,
-                             x$prec_2,
-                             true_values = true_values,
-                             ...)
+    # The two mixture families describe their components differently -- a
+    # mean/precision pair each for the Gaussian one, a single rate each for the
+    # Poisson one -- so the bivariate page is not the same page.
+    if (identical(model_info$model_class, "poisson_mixture")) {
+      plot_poisson_mixture_params_base(x$lambda_1,
+                                       x$lambda_2,
+                                       true_values = true_values,
+                                       ...)
+    } else {
+      plot_mixture_params_base(x$mu_1,
+                               x$mu_2,
+                               x$prec_1,
+                               x$prec_2,
+                               true_values = true_values,
+                               ...)
+    }
   }
 
   # ===========================================================================

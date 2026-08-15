@@ -73,6 +73,36 @@ format_mixture_params <- function(object, ci_level) {
 }
 
 
+#' Helper: Format Poisson mixture component parameters
+#'
+#' @description Creates summary statistics for the two component rates
+#'   (lambda_1, lambda_2) of a Poisson mixture, and for their difference.
+#'
+#' @details The separation row is not decoration. `lambda_2 - lambda_1` is
+#'   computed draw by draw, so its interval accounts for the posterior
+#'   correlation between the two rates, which differencing the two marginal
+#'   intervals would not. It is the row that says whether the fit found two
+#'   components at all.
+#'
+#' @param object An object containing `lambda_1` and `lambda_2`
+#' @param ci_level Credible interval level; a single numeric value strictly
+#'   between 0 and 1.
+#'
+#' @return Data frame with component rate summaries
+#' @keywords internal
+#' @noRd
+format_poisson_mixture_params <- function(object, ci_level) {
+  data.frame(
+    Parameter = c("lambda_1", "lambda_2", "lambda_2 - lambda_1"),
+    rbind(
+      compute_summary_stats(object$lambda_1, ci_level),
+      compute_summary_stats(object$lambda_2, ci_level),
+      compute_summary_stats(object$lambda_2 - object$lambda_1, ci_level)
+    )
+  )
+}
+
+
 #' Helper: Format dynamic state parameters
 #'
 #' @description Creates summary statistics for dynamic state parameters.
@@ -242,9 +272,17 @@ print_summary_header <- function(x) {
   cat("\n")
 
   # Title based on model type - only used for mixture models now
-  # Non-mixture models print their own titles
+  # Non-mixture models print their own titles. A summary object may name its
+  # own title through `x$title`; the Gaussian wording is the fallback, so the
+  # three normal_mixture summaries keep printing exactly what they did.
   if (!is.null(x$link)) {
-    cat("Summary: Gaussian Mixture Model with Dynamic Mixture Weights\n")
+    cat("Summary: ",
+        if (is.null(x$title)) {
+          "Gaussian Mixture Model with Dynamic Mixture Weights"
+        } else {
+          x$title
+        },
+        "\n", sep = "")
     cat(strrep("=", 75), "\n\n", sep = "")
   }
 

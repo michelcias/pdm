@@ -27,7 +27,8 @@
 #'   \code{\link{log_lik.poisson_locallevel}},
 #'   \code{\link{log_lik.binomial_locallevel}},
 #'   \code{\link{log_lik.probit_bernoulli_locallevel}},
-#'   \code{\link{log_lik.normal_mixture_locallevel}} for the per-family methods.
+#'   \code{\link{log_lik.normal_mixture_locallevel}},
+#'   \code{\link{log_lik.poisson_mixture_locallevel}} for the per-family methods.
 #'
 #' @export
 log_lik <- function(object, ...) {
@@ -551,3 +552,123 @@ log_lik.normal_mixture_localtrend <- function(object, ...) compute_loglik_normal
 #' @rdname log_lik.normal_mixture_locallevel
 #' @export
 log_lik.normal_mixture_localacceleration <- function(object, ...) compute_loglik_normal_mixture(object)
+
+
+# ---------------------------------------------------------------------------
+# Poisson-mixture family (two components):
+#   y_t | z_t ~ Poisson(lambda_{z_t}), z_t ~ Bernoulli(alpha_t)
+# The pointwise likelihood MARGINALISES the latent indicator z_t.
+# ---------------------------------------------------------------------------
+
+#' @noRd
+compute_loglik_poisson_mixture <- function(object) {
+  y     <- loglik_stored_y(object)
+  alpha <- object$alpha   # [n_draws x n_obs]: P(z_t = 1) = weight of component 2
+  n_draws <- nrow(alpha)
+  n_obs   <- ncol(alpha)
+
+  y_mat <- matrix(y, nrow = n_draws, ncol = n_obs, byrow = TRUE)
+
+  # Component rates are per-draw scalars (length n_draws); they recycle per row
+  # against the [n_draws x n_obs] matrices (leading dimension).
+  logd1 <- stats::dpois(y_mat, lambda = object$lambda_1, log = TRUE)
+  logd2 <- stats::dpois(y_mat, lambda = object$lambda_2, log = TRUE)
+  dim(logd1) <- c(n_draws, n_obs)
+  dim(logd2) <- c(n_draws, n_obs)
+
+  # Marginalise z_t: mixture with weights (1 - alpha) on component 1 and alpha
+  # on component 2. Stable two-term log-sum-exp on the log scale.
+  a1 <- log1p(-alpha) + logd1
+  a2 <- log(alpha)    + logd2
+  m  <- pmax(a1, a2)
+  ll <- m + log(exp(a1 - m) + exp(a2 - m))
+  dim(ll) <- c(n_draws, n_obs)
+  ll
+}
+
+#' Pointwise conditional log-likelihood for Poisson-mixture dynamic models
+#'
+#' @description
+#' Computes the pointwise conditional log-likelihood matrix for a fitted
+#' two-component Poisson mixture model with dynamic weights
+#' (\code{\link{mcmc_poisson_mixture_locallevel}},
+#' \code{\link{mcmc_poisson_mixture_localtrend}},
+#' \code{\link{mcmc_poisson_mixture_localacceleration}}). The observation model is
+#' \deqn{y_t \mid z_t \;\sim\; \mathrm{Poisson}\!\left(\lambda_{z_t}\right),
+#'       \qquad z_t \mid \alpha_t \;\sim\; \mathrm{Bernoulli}(\alpha_t),}
+#' with \eqn{z_t \in \{0, 1\}} indexing components 1 and 2 and
+#' \eqn{\alpha_t = T^{-1}(\theta_{t,1})} the weight of component 2.
+#'
+#' @details
+#' The latent indicator \eqn{z_t} is \strong{marginalised out} (rather than
+#' conditioned on its sampled value), giving the two-component mixture mass
+#' function
+#' \deqn{\ell_{s,t} = \log\!\left[(1 - \alpha_t^{(s)})\,
+#'       p\!\left(y_t; \lambda_1^{(s)}\right) +
+#'       \alpha_t^{(s)}\,
+#'       p\!\left(y_t; \lambda_2^{(s)}\right)\right],}
+#' evaluated with a numerically stable log-sum-exp. Marginalising the indicator
+#' is the correct choice for WAIC / LOO with mixture models; conditioning on the
+#' sampled \eqn{z_t} would give a different (and inappropriate) quantity.
+#'
+#' Like the other families this is conditional on the latent \emph{state}
+#' trajectory, so `loo::loo()` on it is a weak, in-sample cross-validation
+#' measure; prefer LFO-CV (Burkner, Gabry & Vehtari, 2020) for predictive
+#' comparison.
+#'
+#' @inherit log_lik.normal_locallevel references return
+#'
+#' @param object An object of class `poisson_mixture_locallevel`,
+#'   `poisson_mixture_localtrend`, or `poisson_mixture_localacceleration`.
+#' @param ... Currently unused.
+#'
+#' @examples
+#' \donttest{
+#' set.seed(123)
+#' n <- 200
+#' alpha_true <- (sin(2 * pi * seq_len(n) / n) + 2) / 4
+#' z_true <- rbinom(n, size = 1, prob = alpha_true)
+#' lambda_y <- (1 - z_true) * 2 + z_true * 10
+#' y <- rpois(n, lambda = lambda_y)
+#'
+#' out <- mcmc_poisson_mixture_locallevel(
+#'   y,
+#'   link               = "logit",
+#'   burnin             = 1000,
+#'   thinning           = 10,
+#'   n_draws            = 500,
+#'   prior_theta01_mean = 0,
+#'   prior_theta01_prec = 1,
+#'   prior_prec1_shape  = 100,
+#'   prior_prec1_rate   = 1,
+#'   verbose            = FALSE,
+#'   seed               = 456
+#' )
+#'
+#' ll <- log_lik(out)
+#' dim(ll)   # c(n_draws, n_obs)
+#'
+#' ## The pointwise matrix feeds the loo package directly
+#' ## (conditional-on-states; see Details):
+#' if (requireNamespace("loo", quietly = TRUE)) {
+#'   print(loo::waic(ll))
+#' }
+#' }
+#'
+#' @seealso
+#'   \code{\link{mcmc_poisson_mixture_locallevel}},
+#'   \code{\link{mcmc_poisson_mixture_localtrend}},
+#'   \code{\link{mcmc_poisson_mixture_localacceleration}} (model generators);
+#'   \code{\link{log_lik}} (generic).
+#'
+#' @rdname log_lik.poisson_mixture_locallevel
+#' @export
+log_lik.poisson_mixture_locallevel <- function(object, ...) compute_loglik_poisson_mixture(object)
+
+#' @rdname log_lik.poisson_mixture_locallevel
+#' @export
+log_lik.poisson_mixture_localtrend <- function(object, ...) compute_loglik_poisson_mixture(object)
+
+#' @rdname log_lik.poisson_mixture_locallevel
+#' @export
+log_lik.poisson_mixture_localacceleration <- function(object, ...) compute_loglik_poisson_mixture(object)

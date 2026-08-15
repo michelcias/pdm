@@ -170,6 +170,30 @@ $$P(z_t = 1) = \alpha_t = g(\theta_{t,1}), \quad g \in \{\text{logit}^{-1}, \Phi
 | Local Trend | `mcmc_normal_mixture_localtrend()` |
 | Local Acceleration | `mcmc_normal_mixture_localacceleration()` |
 
+### 6. Poisson Mixture Models (2 Components)
+
+The count analogue of the family above. The observation $y_t$ is drawn from one of two Poisson components depending on a latent indicator $z_t \in \{0, 1\}$:
+
+$$
+y_t \mid z_t \sim \text{Poisson}(\lambda_{z_t+1}), \quad z_t \in \{0, 1\},
+$$
+
+with the same dynamic weight,
+
+$$P(z_t = 1) = \alpha_t = g(\theta_{t,1}), \quad g \in \{\text{logit}^{-1}, \Phi\}.$$
+
+Note which quantity the latent state drives, because it is **not** the same as in family 3. There, $\theta_{t,1}$ drives the rate through a log link and one Poisson evolves through time. Here the two rates are constants and $\theta_{t,1}$ drives the *weight*: the model for counts that switch between a quiet regime and a busy one rather than drifting between them.
+
+The rates take conjugate $\text{Gamma}(a_{0k}, b_{0k})$ priors, so the component step is exact — there is no Half-t option on $\lambda_k$, which exists for precisions and has nothing to tame here.
+
+**Label Switching**: the constraint $\lambda_1 < \lambda_2$ is enforced during sampling, so component 1 is the low-rate one by construction.
+
+| Structure | Function |
+|-----------|----------|
+| Local Level | `mcmc_poisson_mixture_locallevel()` |
+| Local Trend | `mcmc_poisson_mixture_localtrend()` |
+| Local Acceleration | `mcmc_poisson_mixture_localacceleration()` |
+
 ## Methodological Details
 
 The polynomial dynamic model framework and the dynamic mixture approach implemented in this package are based on the methodology proposed by **Montoril et al. (2021)**.

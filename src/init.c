@@ -6,10 +6,18 @@
  *          ensuring proper interface between R and C code.  Implements security
  *          measures by disabling dynamic symbol lookup.
  * @author Michel H. Montoril
- * @date 2026-07-26
- * @version 1.12
+ * @date 2026-08-15
+ * @version 1.13
  *
  * @changelog
+ * - v1.13 (2026-08-15): Registered the Poisson mixture family, three new entry
+ *     points for two-component Poisson mixtures with dynamic mixture weights:
+ *     C_MCMC_poisson_mixture_locallevel: 27 args
+ *     C_MCMC_poisson_mixture_localtrend: 34 args
+ *     C_MCMC_poisson_mixture_localacceleration: 41 args
+ *     They are shorter than their Gaussian counterparts because a Poisson
+ *     component carries one rate with a conjugate Gamma prior, where a Gaussian
+ *     one carries a mean and a precision and the precision admits a Half-t.
  * - v1.12 (2026-07-26): Updated argument counts for the Gaussian mixture MCMC
  *     functions, the last three samplers to receive their starting values from R
  *     through an init_ vector. All fifteen now do:
@@ -97,6 +105,9 @@
 #include "mcmc_poisson_locallevel.h"
 #include "mcmc_poisson_localtrend.h"
 #include "mcmc_poisson_localacceleration.h"
+#include "mcmc_poisson_mixture_locallevel.h"
+#include "mcmc_poisson_mixture_localtrend.h"
+#include "mcmc_poisson_mixture_localacceleration.h"
 #include "test_helpers.h"
 #include "utils.h"
 #include "hpdi.h"
@@ -140,6 +151,11 @@
  *          - C_MCMC_log_poisson_locallevel: Poisson local level with log link (22 args)
  *          - C_MCMC_log_poisson_localtrend:  Poisson local trend with log link (29 args)
  *          - C_MCMC_log_poisson_localacceleration: Poisson local acceleration with log link (36 args)
+ *
+ *          *Poisson Mixture Models with Dynamic Weights (3 functions):*
+ *          - C_MCMC_poisson_mixture_locallevel: Poisson mixture with local-level weights (27 args)
+ *          - C_MCMC_poisson_mixture_localtrend: Poisson mixture with local-trend weights (34 args)
+ *          - C_MCMC_poisson_mixture_localacceleration: Poisson mixture with local-acceleration weights (41 args)
  *
  *          **Test Helper Functions:**
  *
@@ -246,6 +262,11 @@ static const R_CallMethodDef CallEntries[] = {
   {"_pdm_C_MCMC_log_poisson_locallevel",            (DL_FUNC) &C_MCMC_log_poisson_locallevel,        22},
   {"_pdm_C_MCMC_log_poisson_localtrend",            (DL_FUNC) &C_MCMC_log_poisson_localtrend,        29},
   {"_pdm_C_MCMC_log_poisson_localacceleration",     (DL_FUNC) &C_MCMC_log_poisson_localacceleration, 36},
+
+  // --- Poisson Mixture Models with Dynamic Weights ---
+  {"_pdm_C_MCMC_poisson_mixture_locallevel",            (DL_FUNC) &C_MCMC_poisson_mixture_locallevel,            27},
+  {"_pdm_C_MCMC_poisson_mixture_localtrend",            (DL_FUNC) &C_MCMC_poisson_mixture_localtrend,            34},
+  {"_pdm_C_MCMC_poisson_mixture_localacceleration",     (DL_FUNC) &C_MCMC_poisson_mixture_localacceleration,     41},
 
   //============================================================================
   // TEST HELPER FUNCTIONS

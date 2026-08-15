@@ -361,6 +361,18 @@ test_that("plot() covers the non-Gaussian families and their extra types", {
   # is checked elsewhere, so it is silenced here.
   expect_s3_class(suppressWarnings(summary(mix)),
                   "summary.normal_mixture_locallevel")
+
+  # The Poisson mixture takes the same multi-chain path, but its "params" page
+  # and its scalar configuration are its own (two rates, not two mean/precision
+  # pairs), so it is exercised separately rather than assumed to follow.
+  pmix <- mcmc_poisson_mixture_locallevel(
+    rpois(n, ifelse(rbinom(n, 1, p) == 1, 10, 2)),
+    link = "logit", 100, 1, 80, verbose = FALSE, seed = 1, chains = 2
+  )
+  expect_silent(plot(pmix, type = "mcmc"))
+  expect_silent(plot(pmix, type = "params", ask = FALSE))
+  expect_s3_class(suppressWarnings(summary(pmix)),
+                  "summary.poisson_mixture_locallevel")
 })
 
 

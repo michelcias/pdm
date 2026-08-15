@@ -53,13 +53,18 @@
 #'   order. `NULL` (default) means `c(names(states), names(precs))`, which is the
 #'   order the twelve non-mixture drivers use.
 #' @param ordered_components Optional constraint for a model whose components are
-#'   identified only up to an ordering, as the two-component mixture is:
+#'   identified only up to an ordering, as the two-component mixtures are:
 #'   `list(states = c(lo, hi), precs = c(lo, hi))`. When the resolved pair comes
 #'   out with `lo > hi`, the two components -- means, precisions and Half-t
 #'   auxiliaries -- are swapped, exactly as the mixture drivers used to swap
 #'   their own draws. If the user supplied either mean, the swap would silently
 #'   move a value they asked for into the other component, so that case is an
 #'   error instead.
+#'
+#'   `states` may be omitted, in which case `precs` is itself the ordered pair.
+#'   That is the Poisson mixture, whose components are one rate each: the rates
+#'   are drawn through `precs` (a Gamma draw is a Gamma draw), there is no second
+#'   pair to carry along, and the constraint applies to them directly.
 #'
 #' @return A list with two elements:
 #'   \describe{
@@ -127,8 +132,19 @@ resolve_init <- function(init, states, precs, order = NULL,
   }
 
   if (!is.null(ordered_components)) {
-    lo <- ordered_components$states[1L]
-    hi <- ordered_components$states[2L]
+    # Which pair carries the constraint depends on the family. The Gaussian
+    # mixture orders on its component means, drawn through `states`, and drags
+    # the matching precisions along; the Poisson mixture orders on its component
+    # rates, which are drawn through `precs` and have no second pair to drag.
+    pair  <- if (is.null(ordered_components$states)) {
+      ordered_components$precs
+    } else {
+      ordered_components$states
+    }
+    carry <- ordered_components$precs
+
+    lo <- pair[1L]
+    hi <- pair[2L]
     if (start[[lo]] > start[[hi]]) {
       if (any(c(lo, hi) %in% supplied)) {
         stop(sprintf(
@@ -140,11 +156,13 @@ resolve_init <- function(init, states, precs, order = NULL,
       }
       # Both were drawn, so relabelling them is our own bookkeeping, not a
       # contradiction of anything the caller asked for.
-      plo <- ordered_components$precs[1L]
-      phi <- ordered_components$precs[2L]
-      start[c(lo, hi)]   <- start[c(hi, lo)]
-      start[c(plo, phi)] <- start[c(phi, plo)]
-      aux[c(plo, phi)]   <- aux[c(phi, plo)]
+      start[c(lo, hi)] <- start[c(hi, lo)]
+      if (!identical(carry, pair)) {
+        start[carry] <- start[rev(carry)]
+      }
+      # The auxiliaries follow whichever precisions moved, so each stays paired
+      # with the precision now occupying its slot.
+      aux[carry] <- aux[rev(carry)]
     }
   }
 

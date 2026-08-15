@@ -73,3 +73,90 @@ check_mixture_mu_priors <- function(mu01_mean, mu02_mean) {
   }
   invisible(NULL)
 }
+
+
+#' Data-scaled default rate for a Poisson mixture component
+#'
+#' Internal helper shared by the three `mcmc_poisson_mixture_*()` wrappers. The
+#' component rates take a conjugate \eqn{\mathrm{Gamma}(a, b)} prior, whose mean
+#' is \eqn{a/b}; this returns the rate \eqn{b} that centres it on a target, so
+#' the wrapper can express the default as "put component 1 near the lower
+#' quartile of the counts and component 2 near the upper one" and leave the
+#' shape free to control how tightly.
+#'
+#' This is the counterpart of `rg_component_rate()` for the Gaussian family, but
+#' it is not the same construction and should not be read as one. Richardson &
+#' Green's range scaling exists to keep a *precision* out of the degenerate
+#' region where a component collapses onto a few observations; a Poisson rate has
+#' no such region, so the default here is doing the much simpler job of putting
+#' the two components on the scale of the data, the same job
+#' `prior_mu01_mean = quantile(y, 0.25)` does in the Gaussian mixture.
+#'
+#' @param target The prior mean wanted for that component, on the count scale.
+#' @param shape The resolved Gamma shape \eqn{a} for that component.
+#'
+#' @return Single numeric, the Gamma rate \eqn{b = a/\text{target}}.
+#'
+#' @keywords internal
+#' @noRd
+poisson_component_rate <- function(target, shape) {
+  shape / target
+}
+
+
+#' Default component targets from the observed counts
+#'
+#' The quartiles of `y`, floored away from zero. The floor is not cosmetic: a
+#' count series with many zeros has a lower quartile of exactly 0, and a target
+#' of 0 sends the Gamma rate to infinity. Half a count is the smallest target
+#' that keeps the prior proper while staying below any observable value.
+#'
+#' @param y Numeric vector of observed counts.
+#'
+#' @return Numeric vector of length 2, the targets for components 1 and 2.
+#'
+#' @keywords internal
+#' @noRd
+poisson_component_targets <- function(y) {
+  targets <- as.numeric(quantile(y, c(0.25, 0.75)))
+  pmax(targets, 0.5)
+}
+
+
+#' Check the component-rate priors against the ordering constraint
+#'
+#' The Poisson mixture identifies its components by enforcing
+#' \eqn{\lambda_1 < \lambda_2}, relabelling after each draw. Priors that place
+#' component 1 above component 2 ask for the opposite, and the run is then a
+#' valid draw from the constrained posterior that is almost certainly not the
+#' model the user wrote -- the same situation `check_mixture_mu_priors()`
+#' handles for the Gaussian family, and warned about for the same reason.
+#'
+#' The comparison is between prior *means*, `shape/rate`, rather than between
+#' any single hyperparameter: two components can share a shape and differ only
+#' in rate, or the reverse, and neither pair by itself says which component sits
+#' lower.
+#'
+#' @param shape_01,rate_01 The resolved Gamma hyperparameters for \eqn{\lambda_1}.
+#' @param shape_02,rate_02 The resolved Gamma hyperparameters for \eqn{\lambda_2}.
+#'
+#' @return `NULL`, invisibly; called for the warning.
+#'
+#' @keywords internal
+#' @noRd
+check_mixture_lambda_priors <- function(shape_01, rate_01, shape_02, rate_02) {
+  mean_01 <- shape_01 / rate_01
+  mean_02 <- shape_02 / rate_02
+  if (isTRUE(mean_01 > mean_02)) {
+    warning(
+      "the prior mean for `lambda_1` (", format(mean_01, digits = 4),
+      ") is greater than the prior mean for `lambda_2` (",
+      format(mean_02, digits = 4),
+      "), but the sampler identifies the components by enforcing ",
+      "lambda_1 < lambda_2 and relabels them to do so. Swap the two priors if ",
+      "component 1 is meant to be the low-rate one.",
+      call. = FALSE
+    )
+  }
+  invisible(NULL)
+}

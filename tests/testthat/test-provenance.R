@@ -153,6 +153,7 @@ test_that("every prior argument of every wrapper reaches the record", {
   p  <- plogis(cumsum(rnorm(n, sd = 0.2)))
   yg <- cumsum(c(10, rnorm(n)))[-1] + rnorm(n, sd = 0.4)
   ym <- ifelse(rbinom(n, 1, p) == 1, rnorm(n, 3, 0.5), rnorm(n, 0, 0.5))
+  yp <- rpois(n, ifelse(rbinom(n, 1, p) == 1, 10, 2))
 
   # Initial-state priors are required arguments, so they must be supplied; the
   # precision priors are left at their defaults, which is the case under test.
@@ -182,9 +183,12 @@ test_that("every prior argument of every wrapper reaches the record", {
     cases[[paste0("mixture_", suf)]] <- list(
       fun = get(paste0("mcmc_normal_mixture_", suf)),
       args = c(list(ym, link = "logit"), ctrl))
+    cases[[paste0("poisson_mixture_", suf)]] <- list(
+      fun = get(paste0("mcmc_poisson_mixture_", suf)),
+      args = c(list(yp, link = "logit"), ctrl))
   }
 
-  expect_equal(length(cases), 15L)
+  expect_equal(length(cases), 18L)
 
   for (nm in names(cases)) {
     fit      <- do.call(cases[[nm]]$fun, cases[[nm]]$args)

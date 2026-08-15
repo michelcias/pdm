@@ -14,7 +14,7 @@ A key methodological feature of **pdm** is its efficient treatment of higher-ord
 ## Key Features
 
 - ⚡ **High-Performance C Backend**: Fast MCMC sampling via optimized compiled code.
-- 🎯 **Non-Gaussian Support**: Native support for Binomial, Poisson, Probit-Bernoulli, and Normal Mixture models.
+- 🎯 **Non-Gaussian Support**: Native support for Binomial, Poisson, Probit-Bernoulli, Normal Mixture and Poisson Mixture models.
 - 🔧 **Adaptive Algorithms**: Automatic tuning of Metropolis-Hastings proposals for non-Gaussian models (no manual tuning required).
 - 📈 **Polynomial Structures**: Built-in support for Local Level, Local Trend, and Local Acceleration states.
 - 📊 **Comprehensive Diagnostics**: S3 methods (`plot`, `summary`, `print`) for immediate analysis of convergence and state trajectories.
@@ -227,7 +227,7 @@ The package implements hybrid MCMC strategies to ensure efficiency and convergen
 
 - **Normal Models**: Gibbs samplers with conjugate full conditional distributions for all parameters.
 - **Probit Models**: Exact Gibbs sampling via data augmentation (Albert & Chib, 1993).
-- **Non-Gaussian Models (Binomial/Poisson/Logit-Mixture)**:
+- **Non-Gaussian Models (Binomial/Poisson, and either mixture under `link = "logit"`)**:
   - Uses Adaptive Metropolis-Hastings steps for the latent states.
   - Implements the diminishing adaptation scheme of Roberts & Rosenthal (2009).
   - **User Benefit**: The proposal variances are automatically tuned throughout the MCMC chain to converge towards a target acceptance proportion (user-defined), removing the need for manual parameter tuning.
@@ -281,6 +281,21 @@ problems they never trigger.
   visits the guard is inert. **It never touches the latent state**: $\theta$ is
   stored exactly as drawn, and only the derived $\alpha_t$ is protected.
 
+- **Mixture indicator weights normalised in logs**
+  (`conditional_mixture_poisson_indicators_k2`,
+  `src/conditional_mixture_poisson_indicators.c`). The indicator step needs the
+  ratio $\alpha_t f_2(y_t) / [(1-\alpha_t) f_1(y_t) + \alpha_t f_2(y_t)]$. Its
+  Gaussian counterpart forms the two weighted densities and divides, which is
+  safe because a Normal density underflows only in the far tail. A Poisson mass
+  function does not have that luxury: $P(Y = 100 \mid \lambda = 1)$ is about
+  $10^{-158}$, so a count series with a wide rate separation puts **both**
+  weighted densities under `DBL_MIN` at the same observation and the division
+  becomes $0/0$. The Poisson sampler therefore subtracts the larger of the two
+  log weights before exponentiating: one term comes back as exactly $1$ and the
+  other lands in $(0, 1]$, so the denominator cannot be zero however small the
+  probabilities are on the original scale. The returned probability is the same
+  one, computed without a representable-range hazard.
+
 - **Latent-state saturation clamps** (`clamp_probit_state` in
   `src/generate_alpha_binomial.c`; `clamp_logit_state` in `src/cwmh_binomial.c`).
   This guard addresses a different failure, one the probability bound above
@@ -317,6 +332,7 @@ The package provides a unified `plot()` method with the `type` argument:
 - `plot(fit, type = "states")`: Posterior medians and credible intervals for $\theta_t$.
 - `plot(fit, type = "alpha")`: Transformed parameters (probabilities or rates) on the observation scale.
 - `plot(fit, type = "mcmc")`: Trace plots, ACF, and density estimates for convergence checks.
+- `plot(fit, type = "params")`: (Mixture families only) The component parameters — means against precisions for the Gaussian mixture, the two rates and their separation for the Poisson one.
 - `plot(fit, type = "acceptance")`: (For adaptive models) Tracks the evolution of acceptance rates over time.
 
 ## References
